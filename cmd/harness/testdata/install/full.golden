@@ -24,7 +24,6 @@ wt config shell install --yes zsh <>
 claude mcp remove --scope user agent-browser <>
 claude mcp add --scope user agent-browser -- $SHIMS/agent-browser mcp <>
 claude plugin list --json <>
-uv python find --managed-python 3.14 <>
 claude mcp get agent-browser <>
 opencode debug config <>
 claude plugin validate $CHECKOUT/harness/skills <>

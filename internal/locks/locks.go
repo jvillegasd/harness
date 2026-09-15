@@ -31,8 +31,8 @@ Commands:
   verify                   Recompute every locked body's folder hash offline
 `
 
-// shellEntryPoints are the shell files this repository runs directly; check syntax-checks each. A script that moves to Go leaves this list.
-var shellEntryPoints = []string{"lib/python.sh"}
+// shellEntryPoints are the shell files this repository ships outside locked bodies; check syntax-checks each. A script that moves to Go leaves this list.
+var shellEntryPoints = []string{"harness/aliases.sh"}
 
 // Command runs `harness locks` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {

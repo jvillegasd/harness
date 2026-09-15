@@ -97,7 +97,7 @@ func sandbox(t *testing.T) string {
 		t.Fatal(err)
 	}
 	root := filepath.Join("..", "..")
-	out, err := exec.Command("git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "harness", "lib", "cmd", "internal", "go.mod", "go.sum").Output()
+	out, err := exec.Command("git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "harness", "cmd", "internal", "go.mod", "go.sum").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,6 @@ func shimScripts(shims string) map[string]string {
 		"engram":        "",
 		"gh":            "",
 		"npx":           "",
-		"uv":            "",
 		"claude": `case "$*" in
 "plugin list --json") echo '[{"id": "engram@engram"}]' ;;
 "mcp get agent-browser") echo 'Scope: User config' ;;

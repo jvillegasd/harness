@@ -24,7 +24,7 @@ func newLockRun(t *testing.T) lockRun {
 		shims: filepath.Join(base, "shims"),
 		home:  filepath.Join(base, "home"),
 	}
-	for _, dir := range []string{"harness/skills", "harness/commands", ".claude/skills", "lib"} {
+	for _, dir := range []string{"harness/skills", "harness/commands", ".claude/skills"} {
 		if err := os.MkdirAll(filepath.Join(lr.root, dir), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -58,19 +58,19 @@ while [ $# -gt 0 ]; do
 done
 mkdir -p "$root/harness/skills/$name"
 echo "# $name" > "$root/harness/skills/$name/SKILL.md"
-python3 - "$root/skills-lock.json" "$name" <<'PY'
-import json, sys
-path, name = sys.argv[1], sys.argv[2]
-data = json.load(open(path))
-data["skills"][name] = {
-    "source": "owner/repo",
-    "sourceType": "github",
-    "skillPath": "skills/%s/SKILL.md" % name,
-    "computedHash": "0" * 64,
+cat > "$root/skills-lock.json" <<EOF
+{
+  "version": 1,
+  "skills": {
+    "$name": {
+      "source": "owner/repo",
+      "sourceType": "github",
+      "skillPath": "skills/$name/SKILL.md",
+      "computedHash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  }
 }
-json.dump(data, open(path, "w"), indent=2)
-open(path, "a").write("\n")
-PY
+EOF
 `
 	writeMode(t, filepath.Join(lr.shims, "npx"), script, 0o755)
 }
@@ -410,7 +410,7 @@ func TestLocksVerifyReportsUnverifiableNotDrift(t *testing.T) {
 
 func TestLocksCheckSyntaxAndWhitespace(t *testing.T) {
 	valid := map[string]string{
-		"lib/python.sh": "#!/bin/sh\necho python\n",
+		"harness/aliases.sh": "#!/bin/sh\necho aliases\n",
 	}
 	for _, c := range []struct {
 		name    string
@@ -422,11 +422,11 @@ func TestLocksCheckSyntaxAndWhitespace(t *testing.T) {
 		{name: "clean", wantErr: false},
 		{name: "not a work tree", noRepo: true, wantErr: true, want: "git diff --check"},
 		{name: "missing entry point", mutate: func(t *testing.T, lr lockRun) {
-			os.Remove(filepath.Join(lr.root, "lib/python.sh"))
+			os.Remove(filepath.Join(lr.root, "harness", "aliases.sh"))
 		}, wantErr: true, want: "shell entry point missing"},
 		{name: "syntax error", mutate: func(t *testing.T, lr lockRun) {
-			writeMode(t, filepath.Join(lr.root, "lib/python.sh"), "#!/bin/sh\nif true; then\n", 0o755)
-		}, wantErr: true, want: "bash -n lib/python.sh"},
+			writeMode(t, filepath.Join(lr.root, "harness", "aliases.sh"), "#!/bin/sh\nif true; then\n", 0o755)
+		}, wantErr: true, want: "bash -n harness/aliases.sh"},
 		{name: "whitespace", mutate: func(t *testing.T, lr lockRun) {
 			writeMode(t, filepath.Join(lr.root, "tracked.txt"), "clean\n", 0o644)
 			git(t, lr.root, "add", "tracked.txt")

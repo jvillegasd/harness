@@ -445,6 +445,230 @@ func TestDocumentedRepositoryPathsResolve(t *testing.T) {
 	}
 }
 
+// --- guarded skills: frontmatter-derived set, both guards, and the load wording a command must not use ---
+
+// guardedVerb matches a verb that introduces a skill name, case-insensitively. The Python original excluded "run" preceded by "read and " and "invoke" preceded by "user to " with lookbehind, which RE2 lacks; guardedVerbNames re-applies both exclusions by hand.
+var guardedVerb = regexp.MustCompile("(?i)\\b(run|load|invoke|use)(?:s|ed|ing)?\\b(?: and follow)?(?: the)? ((?:`[a-z-]+`(?:,? (?:and|or) |, )?)+)")
+
+var (
+	frontmatterBlock = regexp.MustCompile(`(?s)\A---\n(.*?)\n---\n`)
+	backtickName     = regexp.MustCompile("`([a-z-]+)`")
+)
+
+func skillFrontmatter(t *testing.T, path string) string {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if match := frontmatterBlock.FindSubmatch(raw); match != nil {
+		return string(match[1])
+	}
+	return ""
+}
+
+// guardedNames are the locally authored skills whose frontmatter disables model invocation; a locked body keeps its upstream wording and is excluded.
+func guardedNames(t *testing.T) map[string]bool {
+	t.Helper()
+	var lock struct {
+		Skills map[string]json.RawMessage `json:"skills"`
+	}
+	raw, err := os.ReadFile(filepath.Join(repoRoot(t), "skills-lock.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &lock); err != nil {
+		t.Fatal(err)
+	}
+	paths, err := filepath.Glob(filepath.Join(repoRoot(t), "harness", "skills", "*", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]bool{}
+	for _, path := range paths {
+		name := filepath.Base(filepath.Dir(path))
+		if _, locked := lock.Skills[name]; !locked && strings.Contains(skillFrontmatter(t, path), "disable-model-invocation: true") {
+			names[name] = true
+		}
+	}
+	return names
+}
+
+// guardedSkillsNamedByCommands is the subset of the derived guarded set that a command names; TestGuardedSetIsDerivedFromFrontmatter pins it separately from the full set.
+func guardedSkillsNamedByCommands(t *testing.T, names map[string]bool) map[string]bool {
+	t.Helper()
+	paths, err := filepath.Glob(filepath.Join(repoRoot(t), "harness", "commands", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var commands strings.Builder
+	for _, path := range paths {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		commands.Write(raw)
+		commands.WriteString("\n")
+	}
+	text := commands.String()
+	named := map[string]bool{}
+	for name := range names {
+		if strings.Contains(text, "`"+name+"`") {
+			named[name] = true
+		}
+	}
+	return named
+}
+
+// guardedVerbNames reports whether a line loads a guarded skill by name through one of the verbs.
+func guardedVerbNames(line string, names map[string]bool) bool {
+	for _, match := range guardedVerb.FindAllStringSubmatchIndex(line, -1) {
+		verb := strings.ToLower(line[match[2]:match[3]])
+		before := strings.ToLower(line[:match[2]])
+		if verb == "run" && strings.HasSuffix(before, "read and ") {
+			continue
+		}
+		if verb == "invoke" && strings.HasSuffix(before, "user to ") {
+			continue
+		}
+		for _, name := range backtickName.FindAllStringSubmatch(line[match[4]:match[5]], -1) {
+			if names[name[1]] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// guardedViolations returns the lines that load a guarded skill by name, or that list one under "Skills this loads" without saying it is read from its path.
+func guardedViolations(text string, names map[string]bool) []string {
+	var found []string
+	listing := false
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(line, "## ") {
+			listing = line == "## Skills this loads"
+		}
+		if guardedVerbNames(line, names) {
+			found = append(found, line)
+			continue
+		}
+		if listing {
+			for name := range names {
+				if strings.HasPrefix(line, "- `"+name+"`") && !strings.Contains(line, "read from its path") {
+					found = append(found, line)
+					break
+				}
+			}
+		}
+	}
+	return found
+}
+
+// pinnedGuardedSkills is every locally authored skill that must carry both invocation guards. grill-with-docs carries them but no command names it, which is why the command-named set below is smaller.
+var pinnedGuardedSkills = []string{"adversarial-review", "evidence", "grill-with-docs", "grilling", "local-tracker", "setup-harness", "workflow-checkpoint"}
+
+var pinnedGuardedSkillsNamedByCommands = []string{"adversarial-review", "evidence", "grilling", "local-tracker", "setup-harness", "workflow-checkpoint"}
+
+func TestGuardedSetIsDerivedFromFrontmatter(t *testing.T) {
+	names := guardedNames(t)
+	if got := sortedNameKeys(names); !equalStringSlices(got, pinnedGuardedSkills) {
+		t.Fatalf("guarded set = %v, want %v", got, pinnedGuardedSkills)
+	}
+	if got := sortedNameKeys(guardedSkillsNamedByCommands(t, names)); !equalStringSlices(got, pinnedGuardedSkillsNamedByCommands) {
+		t.Fatalf("command-named guarded set = %v, want %v", got, pinnedGuardedSkillsNamedByCommands)
+	}
+}
+
+func TestEveryGuardedSkillKeepsBothGuards(t *testing.T) {
+	for _, name := range pinnedGuardedSkills {
+		head := skillFrontmatter(t, filepath.Join(repoRoot(t), "harness", "skills", name, "SKILL.md"))
+		if !strings.Contains(head, "disable-model-invocation: true") {
+			t.Errorf("%s lost disable-model-invocation", name)
+		}
+		if !strings.Contains(head, `opencode/autoinvoke: "false"`) {
+			t.Errorf("%s lost the opencode autoinvoke guard", name)
+		}
+	}
+}
+
+func TestDuplicationDetectorCatchesACopiedBlock(t *testing.T) {
+	block := checkpointBlock(t)
+	// A marker-free block carrying exactly the record schema's keys is what only the JSON-key comparison catches.
+	restated := "The command restates the schema:\n\n```json\n" +
+		`{"state": "active", "branch_tip": "tip", "contract": [], "checks": [], "rationale": "", "next_action": "next"}` +
+		"\n```\n"
+	if !duplicatesProtocol(restated, block) {
+		t.Error("a restated record schema is not flagged")
+	}
+	unrelated := "The command carries an unrelated block:\n\n```json\n{\"other\": true}\n```\n"
+	if duplicatesProtocol(unrelated, block) {
+		t.Error("an unrelated JSON block is flagged as duplicating the schema")
+	}
+	if duplicatesProtocol("ordinary command prose", block) {
+		t.Error("ordinary prose is flagged as duplicating the schema")
+	}
+}
+
+func TestNoCommandOrPolicyLineLoadsAGuardedSkill(t *testing.T) {
+	names := guardedNames(t)
+	paths, err := filepath.Glob(filepath.Join(repoRoot(t), "harness", "commands", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths = append(paths, filepath.Join(repoRoot(t), "harness", "POLICY.md"))
+	for _, path := range paths {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, line := range guardedViolations(string(raw), names) {
+			t.Errorf("%s loads a guarded skill: %s", filepath.Base(path), line)
+		}
+	}
+}
+
+func TestRevertingACommandLineToLoadWordingIsCaught(t *testing.T) {
+	names := guardedNames(t)
+	ship := readRepo(t, "harness/commands/ship.md")
+	for _, mutation := range []struct{ old, new string }{
+		{"Read `workflow-checkpoint`", "Load `workflow-checkpoint`"},
+		{"Read and run `adversarial-review` first", "Run `adversarial-review` first"},
+	} {
+		if !strings.Contains(ship, mutation.old) {
+			t.Fatalf("ship.md lost %q", mutation.old)
+		}
+		if len(guardedViolations(strings.Replace(ship, mutation.old, mutation.new, 1), names)) == 0 {
+			t.Errorf("mutation %q was not caught", mutation.new)
+		}
+	}
+	for _, text := range []string{
+		"Load and follow `evidence`: is it real.",
+		"load the `local-tracker` skill first",
+		"load `ponytail` and `grilling`",
+		"use `ponytail`, `tdd`, and `evidence`",
+		"read and load `evidence`",
+		"invoke the `setup-harness` skill",
+		"## Skills this loads\n\n- `adversarial-review`",
+	} {
+		if len(guardedViolations(text, names)) == 0 {
+			t.Errorf("not caught: %q", text)
+		}
+	}
+	clean := "Read and run `adversarial-review` first.\ntell the user to invoke the `setup-harness` skill\n## Skills this loads\n\n- `grilling`, read from its path\n- `ponytail`"
+	if got := guardedViolations(clean, names); len(got) != 0 {
+		t.Errorf("false positives: %v", got)
+	}
+}
+
+func sortedNameKeys(m map[string]bool) []string {
+	names := make([]string, 0, len(m))
+	for name := range m {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 func assertStrings(t *testing.T, value any, want []string) {
 	t.Helper()
 	items, _ := value.([]any)
