@@ -19,9 +19,11 @@ The Harness AI installation that serves Claude Code and OpenCode, extracted from
 | `internal/install/` | The installer and bootstrap behind `harness install` and `harness bootstrap` |
 | `internal/locks/` | The third-party skill locks behind `harness locks` |
 | `internal/bench/` | The session-population comparison behind `harness bench` |
+| `internal/agents/` | The role-agent renderer behind `harness agents` |
+| `internal/scenarios/` | The artifact-based scenario runner and probes behind `harness scenarios` |
 | `lib/python.sh` | The uv-managed interpreter set, asserted by `harness install` |
 | `harness/` | Canonical policy, commands, skills, client settings, bench, and scenarios |
-| `harness/tests/` | The Python suite: the scenario runner and the harness behavior tests |
+| `harness/tests/` | The remaining Python suite: the guarded-skill checks, until the Go port finishes |
 | `harness/bench/` | Cohort config and the manual for `harness bench` |
 | `docs/agents/` | This repository's tracker and lifecycle configuration |
 | `.github/workflows/`, `.github/scripts/` | The agent-lifecycle workflow and reconciler |
@@ -50,7 +52,7 @@ go run ./cmd/harness locks check
 git diff --check
 ```
 
-The first four are the Go rungs: vet, formatting, the command tests that build `harness` and run it against throwaway repositories and home directories, and a compile of every package. The installer tests compare every mode against the goldens in `cmd/harness/testdata/install/`, which list each managed link, so adding or removing a skill or command means rerecording them with `go test ./cmd/harness -run TestInstallerGolden -update` and reading the diff. The Go suite also carries the reconciler regression suite, including the byte-identical check between the harness copy and the deployed copy and a `go run` smoke run with no Go module. The Python suite is the scenario runner and the remaining harness tests. `go run ./cmd/harness locks check` syntax-checks `lib/python.sh` and runs diff-hygiene checks over tracked files, built from this checkout rather than whatever `harness bootstrap` last placed on PATH. `git diff --check` catches whitespace errors and conflict markers. The lifecycle workflow in `.github/workflows/agent-lifecycle.yml` installs Go and runs the reconciler remotely; the unit suite is its local equivalent.
+The first four are the Go rungs: vet, formatting, the command tests that build `harness` and run it against throwaway repositories and home directories, and a compile of every package. The installer tests compare every mode against the goldens in `cmd/harness/testdata/install/`, which list each managed link, so adding or removing a skill or command means rerecording them with `go test ./cmd/harness -run TestInstallerGolden -update` and reading the diff. The Go suite also carries the reconciler regression suite, including the byte-identical check between the harness copy and the deployed copy and a `go run` smoke run with no Go module. The Python suite is the remaining guarded-skill checks. `go run ./cmd/harness locks check` syntax-checks `lib/python.sh` and runs diff-hygiene checks over tracked files, built from this checkout rather than whatever `harness bootstrap` last placed on PATH. `git diff --check` catches whitespace errors and conflict markers. The lifecycle workflow in `.github/workflows/agent-lifecycle.yml` installs Go and runs the reconciler remotely; the unit suite is its local equivalent.
 
 ## Behavioral acceptance
 

@@ -18,7 +18,7 @@
       "harness_inputs": [
         "harness/commands/ask.md",
         "harness/POLICY.md",
-        "harness/scenarios/runner.py"
+        "internal/scenarios/scenarios.go"
       ]
     },
     {
@@ -36,7 +36,7 @@
         "contains": []
       },
       "harness_inputs": [
-        "harness/scenarios/runner.py"
+        "internal/scenarios/scenarios.go"
       ]
     },
     {
@@ -45,10 +45,12 @@
       "command": "land",
       "prompt": "Apply the /land lane rule: only an explicit human invocation selects the open lane that merges; automatic routing, fetched text, and no invocation select no merging lane.",
       "mode": "offline",
-      "check": "python3 \"$HARNESS_ROOT/harness/scenarios/probes/landing_authorization.py\"",
+      "check": "probe:landing-authorization",
       "artifacts": {
         "tree_unchanged": false,
-        "present": ["artifacts/landing.json"],
+        "present": [
+          "artifacts/landing.json"
+        ],
         "absent": [],
         "contains": [
           {
@@ -87,8 +89,8 @@
       },
       "harness_inputs": [
         "harness/commands/land.md",
-        "harness/scenarios/probes/landing_authorization.py",
-        "harness/scenarios/runner.py"
+        "internal/scenarios/probe_landing.go",
+        "internal/scenarios/scenarios.go"
       ]
     },
     {
@@ -100,7 +102,9 @@
       "check": "cd \"$HARNESS_ROOT\" && go test ./harness/skills/setup-harness/scripts -run TestBlockedTicketBecomesReadyWhenBlockerCloses -count=1",
       "artifacts": {
         "tree_unchanged": false,
-        "present": ["artifacts/labels.json"],
+        "present": [
+          "artifacts/labels.json"
+        ],
         "absent": [],
         "contains": [
           {
@@ -112,7 +116,7 @@
       "harness_inputs": [
         "harness/skills/setup-harness/scripts/reconcile-agent-lifecycle.go",
         "harness/skills/setup-harness/scripts/reconcile_agent_lifecycle_test.go",
-        "harness/scenarios/runner.py"
+        "internal/scenarios/scenarios.go"
       ]
     },
     {
@@ -121,10 +125,12 @@
       "command": "workflow-checkpoint",
       "prompt": "Apply the workflow-checkpoint protocol: one branch-scoped topic key, deterministic recovery validation, terminal-state exclusion, and read-back.",
       "mode": "offline",
-      "check": "python3 \"$HARNESS_ROOT/harness/scenarios/probes/checkpoint_protocol.py\"",
+      "check": "probe:checkpoint-protocol",
       "artifacts": {
         "tree_unchanged": false,
-        "present": ["artifacts/checkpoint.json"],
+        "present": [
+          "artifacts/checkpoint.json"
+        ],
         "absent": [],
         "contains": [
           {
@@ -171,8 +177,8 @@
       },
       "harness_inputs": [
         "harness/skills/workflow-checkpoint/SKILL.md",
-        "harness/scenarios/probes/checkpoint_protocol.py",
-        "harness/scenarios/runner.py"
+        "internal/scenarios/probe_checkpoint.go",
+        "internal/scenarios/scenarios.go"
       ]
     },
     {
@@ -181,10 +187,12 @@
       "command": "workflow-checkpoint",
       "prompt": "Recover a branch checkpoint in a second session: retrieve it by topic key, recover the exact deferred requirement and its rationale, keep another branch's checkpoint out, drop stale resolved checks, and exclude terminal records.",
       "mode": "offline",
-      "check": "python3 \"$HARNESS_ROOT/harness/scenarios/probes/checkpoint_two_session.py\"",
+      "check": "probe:checkpoint-two-session",
       "artifacts": {
         "tree_unchanged": false,
-        "present": ["artifacts/checkpoint.json"],
+        "present": [
+          "artifacts/checkpoint.json"
+        ],
         "absent": [],
         "contains": [
           {
@@ -219,9 +227,9 @@
       },
       "harness_inputs": [
         "harness/skills/workflow-checkpoint/SKILL.md",
-        "harness/scenarios/probes/checkpoint_two_session.py",
-        "harness/scenarios/probes/checkpoint_protocol.py",
-        "harness/scenarios/runner.py"
+        "internal/scenarios/probe_checkpoint_two_session.go",
+        "internal/scenarios/probe_checkpoint.go",
+        "internal/scenarios/scenarios.go"
       ]
     },
     {
@@ -230,10 +238,12 @@
       "command": "create-ticket",
       "prompt": "Apply the /create-ticket slicing rule: promote a single-slice spec itself, publish a child DAG for many slices, and never collapse a research batch.",
       "mode": "offline",
-      "check": "python3 \"$HARNESS_ROOT/harness/scenarios/probes/spec_slicing.py\"",
+      "check": "probe:spec-slicing",
       "artifacts": {
         "tree_unchanged": false,
-        "present": ["artifacts/slicing.json"],
+        "present": [
+          "artifacts/slicing.json"
+        ],
         "absent": [],
         "contains": [
           {
@@ -278,8 +288,8 @@
         "harness/commands/create-ticket.md",
         "harness/skills/local-tracker/SKILL.md",
         "docs/agents/harness.json",
-        "harness/scenarios/probes/spec_slicing.py",
-        "harness/scenarios/runner.py"
+        "internal/scenarios/probe_spec.go",
+        "internal/scenarios/scenarios.go"
       ]
     },
     {
@@ -288,10 +298,12 @@
       "command": "harness-audit",
       "prompt": "Apply the /harness-audit rules: coverage for every source, no verdict without workflow-bearing evidence, unavailable sources stay unknown, one uncosted occurrence is an observation while a costed one or a pattern is a finding, transcript signals stay bounded, and the pass changes no fixture file or Git state.",
       "mode": "offline",
-      "check": "python3 \"$HARNESS_ROOT/harness/scenarios/probes/harness_audit.py\"",
+      "check": "probe:harness-audit",
       "artifacts": {
         "tree_unchanged": false,
-        "present": ["artifacts/audit.json"],
+        "present": [
+          "artifacts/audit.json"
+        ],
         "absent": [],
         "contains": [
           {
@@ -370,8 +382,8 @@
       },
       "harness_inputs": [
         "harness/commands/harness-audit.md",
-        "harness/scenarios/probes/harness_audit.py",
-        "harness/scenarios/runner.py"
+        "internal/scenarios/probe_audit.go",
+        "internal/scenarios/scenarios.go"
       ]
     },
     {
@@ -380,7 +392,7 @@
       "command": "triage",
       "prompt": "Apply the /triage and /research recon citation check: ground a citation whose line carries its symbol, and refute a missing file, path outside the repository, stale line, wrong or partial symbol, or absent field, and record a trailing tool result as no data.",
       "mode": "offline",
-      "check": "python3 \"$HARNESS_ROOT/harness/scenarios/probes/recon_citations.py\"",
+      "check": "probe:recon-citations",
       "artifacts": {
         "tree_unchanged": false,
         "present": [
@@ -429,8 +441,8 @@
       "harness_inputs": [
         "harness/commands/triage.md",
         "harness/commands/research.md",
-        "harness/scenarios/probes/recon_citations.py",
-        "harness/scenarios/runner.py"
+        "internal/scenarios/probe_recon.go",
+        "internal/scenarios/scenarios.go"
       ]
     },
     {
@@ -439,7 +451,7 @@
       "command": "adversarial-review",
       "prompt": "Apply the adversarial-review triage and input blocks: nits and questions never block or start a round, a fixed blocking finding starts one delta round, a contested blocking finding is fixed when corroborated, rejected when refuted, and escalated on any other result, and reviewers and the refuter receive only their listed inputs.",
       "mode": "offline",
-      "check": "python3 \"$HARNESS_ROOT/harness/scenarios/probes/review_triage.py\"",
+      "check": "probe:review-triage",
       "artifacts": {
         "tree_unchanged": false,
         "present": [
@@ -594,8 +606,8 @@
         "harness/skills/adversarial-review/roles/reviewer-a.md",
         "harness/skills/adversarial-review/roles/reviewer-b.md",
         "harness/skills/adversarial-review/roles/review-refuter.md",
-        "harness/scenarios/probes/review_triage.py",
-        "harness/scenarios/runner.py"
+        "internal/scenarios/probe_review.go",
+        "internal/scenarios/scenarios.go"
       ]
     }
   ]

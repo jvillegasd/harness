@@ -1,0 +1,62 @@
+package main
+
+import (
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+)
+
+var attemptPath = regexp.MustCompile(` -> .*`)
+
+// TestScenariosValidateAndRunAgainstRecordedFixtures drives the command boundary over the shipped matrix without paid sessions, comparing each result to the golden captured from the Python runner before it was deleted.
+func TestScenariosValidateAndRunAgainstRecordedFixtures(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := t.TempDir()
+
+	validate := runBinary(t, root, "scenarios", "validate", "--root", root, "--out", out)
+	if validate.code != 0 {
+		t.Fatalf("validate exited %d: %s", validate.code, validate.stderr)
+	}
+	assertGolden(t, "validate.golden", validate.stdout)
+
+	run := runBinary(t, root, "scenarios", "run", "--root", root, "--out", out)
+	normalized := attemptPath.ReplaceAllString(run.stdout, " -> <attempt>")
+	assertGolden(t, "run.golden", normalized)
+
+	report := runBinary(t, root, "scenarios", "report", "--root", root, "--out", out)
+	if report.code != 0 {
+		t.Fatalf("report exited %d: %s", report.code, report.stderr)
+	}
+	assertGolden(t, "report.golden", report.stdout)
+}
+
+func assertGolden(t *testing.T, name, got string) {
+	t.Helper()
+	want, err := os.ReadFile(filepath.Join("testdata", "scenarios", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != string(want) {
+		t.Fatalf("%s differs from the captured golden:\ngot:\n%s\nwant:\n%s", name, got, want)
+	}
+}
+
+func TestScenariosValidateRejectsABadMatrix(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	matrix := filepath.Join(t.TempDir(), "matrix.json")
+	if err := os.WriteFile(matrix, []byte(`{"version":1,"scenarios":[{"id":"s","command":"c","prompt":"p","artifacts":{}}]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := runBinary(t, root, "scenarios", "validate", "--matrix", matrix, "--root", root, "--out", t.TempDir())
+	if r.code != 1 || !strings.Contains(r.stderr, "artifacts") {
+		t.Fatalf("validate exited %d with stderr %q", r.code, r.stderr)
+	}
+}

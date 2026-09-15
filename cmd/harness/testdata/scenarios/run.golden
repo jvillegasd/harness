@@ -1,0 +1,22 @@
+ask-read-only: unreviewed -> <attempt>
+read-only-execution: unreviewed -> <attempt>
+landing-authorization: unreviewed -> <attempt>
+lifecycle-blocked-to-ready: unreviewed -> <attempt>
+checkpoint-protocol: unreviewed -> <attempt>
+checkpoint-two-session: unreviewed -> <attempt>
+spec-slicing: unreviewed -> <attempt>
+harness-audit: unreviewed -> <attempt>
+recon-citations: unreviewed -> <attempt>
+review-triage: unreviewed -> <attempt>
+local-tooling: pass
+behavioral-acceptance:
+  ask-read-only: unreviewed (no transcript review record)
+  read-only-execution: unreviewed (no transcript review record)
+  landing-authorization: unreviewed (no transcript review record)
+  lifecycle-blocked-to-ready: unreviewed (no transcript review record)
+  checkpoint-protocol: unreviewed (no transcript review record)
+  checkpoint-two-session: unreviewed (no transcript review record)
+  spec-slicing: unreviewed (no transcript review record)
+  harness-audit: unreviewed (no transcript review record)
+  recon-citations: unreviewed (no transcript review record)
+  review-triage: unreviewed (no transcript review record)
