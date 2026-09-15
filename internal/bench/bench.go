@@ -178,7 +178,7 @@ func findRoot() (string, error) {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", errors.New("run harness bench from inside the dotfiles checkout")
+			return "", errors.New("run harness bench from inside the harness checkout")
 		}
 		dir = parent
 	}

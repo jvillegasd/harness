@@ -32,7 +32,7 @@ Commands:
 `
 
 // shellEntryPoints are the shell files this repository runs directly; check syntax-checks each. A script that moves to Go leaves this list.
-var shellEntryPoints = []string{"macos.sh", "linux.sh", "lib/common.sh", "lib/python.sh"}
+var shellEntryPoints = []string{"lib/python.sh"}
 
 // Command runs `harness locks` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {

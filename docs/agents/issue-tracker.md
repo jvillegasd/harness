@@ -1,6 +1,6 @@
 # Issue tracker: GitHub
 
-This repository keeps its contracts as GitHub issues on `jvillegasd/dotfiles`. A spec is an issue, its slices are that issue's native sub-issues, and the ordering between them is native issue dependencies. Nothing here lives in a file; the tracker is the service.
+This repository keeps its contracts as GitHub issues on `jvillegasd/harness`. A spec is an issue, its slices are that issue's native sub-issues, and the ordering between them is native issue dependencies. Nothing here lives in a file; the tracker is the service.
 
 ## Prerequisites
 
@@ -16,8 +16,8 @@ A spec issue is the parent. Its slices are its sub-issues, and each slice names 
 
 Native GitHub relationships are the source of truth for this repository. Do not restate them as prose in issue bodies, and do not infer them from task lists: both are already available as API state, and a second copy is a second thing to keep in sync.
 
-- **Parent and child**: native sub-issues. `gh api repos/jvillegasd/dotfiles/issues/<n> --jq .sub_issues_summary` reports a parent's children; the sub-issues endpoint adds and removes them. Both are enabled on this repository.
-- **Ordering**: native issue dependencies. A slice declares what must finish first as a `blocked_by` edge, added with `gh api --method POST repos/jvillegasd/dotfiles/issues/<child>/dependencies/blocked_by -F issue_id=<blocker-database-id>`. The `issue_id` is the blocker's numeric **database id** from `gh api repos/jvillegasd/dotfiles/issues/<n> --jq .id`, not its `#number` and not its `node_id`. Passing the number silently addresses the wrong issue or fails, so resolve the id first.
+- **Parent and child**: native sub-issues. `gh api repos/jvillegasd/harness/issues/<n> --jq .sub_issues_summary` reports a parent's children; the sub-issues endpoint adds and removes them. Both are enabled on this repository.
+- **Ordering**: native issue dependencies. A slice declares what must finish first as a `blocked_by` edge, added with `gh api --method POST repos/jvillegasd/harness/issues/<child>/dependencies/blocked_by -F issue_id=<blocker-database-id>`. The `issue_id` is the blocker's numeric **database id** from `gh api repos/jvillegasd/harness/issues/<n> --jq .id`, not its `#number` and not its `node_id`. Passing the number silently addresses the wrong issue or fails, so resolve the id first.
 - **Reading the gate**: `issue_dependencies_summary.blocked_by` counts open blockers only, which is the live gate. `total_blocked_by` counts every edge including satisfied ones, so it never answers "can this start".
 
 ## Lifecycle labels

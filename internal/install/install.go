@@ -1,4 +1,4 @@
-// Package install reconciles the harness of the dotfiles checkout into the home directory: the managed links, the zsh alias block, the tracked Claude settings, and the Engram and agent-browser registrations.
+// Package install reconciles the harness of the checkout into the home directory: the managed links, the zsh alias block, the tracked Claude settings, and the Engram and agent-browser registrations.
 package install
 
 import (
@@ -167,7 +167,7 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 	return 0
 }
 
-// findCheckout finds the dotfiles checkout holding the working directory. Its harness is the one installed, so running from another worktree installs that worktree.
+// findCheckout finds the harness checkout holding the working directory. Its harness is the one installed, so running from another worktree installs that worktree.
 func findCheckout() string {
 	dir, err := os.Getwd()
 	must(err)
@@ -177,7 +177,7 @@ func findCheckout() string {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			die("Run harness from inside the dotfiles checkout.")
+			die("Run harness from inside the harness checkout.")
 		}
 		dir = parent
 	}

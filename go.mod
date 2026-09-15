@@ -1,4 +1,4 @@
-module github.com/jvillegasd/dotfiles
+module github.com/jvillegasd/harness
 
 go 1.26.0
 

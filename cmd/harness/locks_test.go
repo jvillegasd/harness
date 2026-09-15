@@ -410,9 +410,6 @@ func TestLocksVerifyReportsUnverifiableNotDrift(t *testing.T) {
 
 func TestLocksCheckSyntaxAndWhitespace(t *testing.T) {
 	valid := map[string]string{
-		"macos.sh":      "#!/bin/sh\necho macos\n",
-		"linux.sh":      "#!/bin/sh\necho linux\n",
-		"lib/common.sh": "#!/bin/sh\ncommon() { :; }\n",
 		"lib/python.sh": "#!/bin/sh\necho python\n",
 	}
 	for _, c := range []struct {
@@ -428,8 +425,8 @@ func TestLocksCheckSyntaxAndWhitespace(t *testing.T) {
 			os.Remove(filepath.Join(lr.root, "lib/python.sh"))
 		}, wantErr: true, want: "shell entry point missing"},
 		{name: "syntax error", mutate: func(t *testing.T, lr lockRun) {
-			writeMode(t, filepath.Join(lr.root, "macos.sh"), "#!/bin/sh\nif true; then\n", 0o755)
-		}, wantErr: true, want: "bash -n macos.sh"},
+			writeMode(t, filepath.Join(lr.root, "lib/python.sh"), "#!/bin/sh\nif true; then\n", 0o755)
+		}, wantErr: true, want: "bash -n lib/python.sh"},
 		{name: "whitespace", mutate: func(t *testing.T, lr lockRun) {
 			writeMode(t, filepath.Join(lr.root, "tracked.txt"), "clean\n", 0o644)
 			git(t, lr.root, "add", "tracked.txt")

@@ -186,7 +186,7 @@ flowchart TD
 
 ## Install
 
-The root `../macos.sh` and `../linux.sh` install the harness by default: after their package step they run `harness bootstrap` through `go run`, which links the tracked configs, builds `harness` into `~/.local/bin`, and runs a full install. `harness install` installs the harness of the checkout it runs from, so run it from the checkout root, and through `go run` so the install code matches that checkout: the `harness` on PATH is whatever `harness bootstrap` last built. To reconcile only policy, commands, and skills:
+`harness bootstrap`, run through `go run` from this checkout, builds `harness` into `~/.local/bin` and runs a full install. `harness install` installs the harness of the checkout it runs from, so run it from the checkout root, and through `go run` so the install code matches that checkout: the `harness` on PATH is whatever `harness bootstrap` last built. To reconcile only policy, commands, and skills:
 
 ```sh
 go run ./cmd/harness install --links-only
@@ -201,7 +201,7 @@ go run ./cmd/harness install --links-only
 
 Reconciliation removes as well as adds. A symlink in a managed root is backed up and removed when its target is gone, points into `harness/` at something no longer installed, or carries a name differing from its target's, so a retired entry cannot outlive the change that retired it. A real directory shadowing a managed name is backed up too, since the sweep cannot see it. One defect is left in place and tracked separately: the dangling branch removes a dangling symlink whoever wrote it, because a target resolving to nothing cannot be tested for ownership.
 
-Managed roots are real directories, so harness links and your private entries sit side by side; a symlink standing in for one is moved aside under `.previous-link`. The OpenCode skills root is normalized but never created, since OpenCode reads `~/.agents/skills`. OpenCode's own three paths follow `XDG_CONFIG_HOME` when set, the same default `../lib/common.sh` resolves. Anything in the way is moved to a timestamped directory under `~/.dotfiles-backups/harness/`, or deleted with `--no-backup`, which the root installer forwards. Each removal is logged.
+Managed roots are real directories, so harness links and your private entries sit side by side; a symlink standing in for one is moved aside under `.previous-link`. The OpenCode skills root is normalized but never created, since OpenCode reads `~/.agents/skills`. OpenCode's own three paths follow `XDG_CONFIG_HOME` when set. Anything in the way is moved to a timestamped directory under `~/.dotfiles-backups/harness/`, or deleted with `--no-backup`. Each removal is logged.
 
 Both run modes verify what they wrote. The link check asserts every skill, command, policy, status line, and role agent link on every run; the tool check adds the client, plugin, and interpreter assertions only a full run can satisfy. Its OpenCode assertion reads `opencode debug config` through a temporary file rather than a pipe: that command stops at the 64 KiB pipe capacity whenever stdout is not a regular file, and this config passed 64 KiB once the harness's own command templates went into it, so the piped form failed on a JSON parse error instead of on the assertion. Both run after Engram, which rewrites `settings.json` and `opencode.json`.
 
@@ -225,7 +225,7 @@ Python belongs to uv rather than Homebrew:
 uv python install 3.14
 ```
 
-`PYTHON_VERSIONS` in `../lib/python.sh` is the one declaration. The root scripts call `install_pythons`; the tool check sources the same file and calls `assert_pythons`, because the harness consumes the interpreters. That check asks `uv python find --managed-python` rather than testing `PATH`, since a shadowing Homebrew `python3.14` would pass while uv had nothing to resolve, and `uv` therefore arrives first, from `Brewfile` on macOS and `linux.sh` on Linux. Nothing here claims the name `python3`: each version also lands as `~/.local/bin/python3.14`, usually behind the pyenv shims. Run `uv python update-shell` to change that.
+`PYTHON_VERSIONS` in `../lib/python.sh` is the one declaration. The tool check sources that file and calls `assert_pythons`, because the harness consumes the interpreters. That check asks `uv python find --managed-python` rather than testing `PATH`, since a shadowing Homebrew `python3.14` would pass while uv had nothing to resolve, and `uv` therefore arrives first, from Homebrew. Nothing here claims the name `python3`: each version also lands as `~/.local/bin/python3.14`, usually behind the pyenv shims. Run `uv python update-shell` to change that.
 
 ### OpenAI models through OpenCode
 

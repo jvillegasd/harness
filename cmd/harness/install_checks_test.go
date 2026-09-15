@@ -224,7 +224,7 @@ func TestAgentUninstallFailsByNameOnALinkInsideASymlinkedRoot(t *testing.T) {
 	}
 }
 
-func TestBootstrapLinksConfigsBuildsHarnessAndInstalls(t *testing.T) {
+func TestBootstrapBuildsHarnessAndInstalls(t *testing.T) {
 	goBinary, err := exec.LookPath("go")
 	if err != nil {
 		t.Skip("go is not on PATH")
@@ -241,20 +241,9 @@ func TestBootstrapLinksConfigsBuildsHarnessAndInstalls(t *testing.T) {
 	seedFull(t, base)
 	home, checkout := filepath.Join(base, "home"), filepath.Join(base, "checkout")
 	symlink(t, goBinary, filepath.Join(base, "shims", "go"))
-	writeMode(t, filepath.Join(home, ".gitconfig"), "[user]\n\tname = mine\n", 0o644)
-	symlink(t, filepath.Join(base, "elsewhere"), filepath.Join(home, ".config", "nvim"))
 
 	ok(t, runHarness(t, base, []string{"GOCACHE=" + strings.TrimSpace(string(cache)), "GOMODCACHE=" + strings.TrimSpace(string(modcache))}, "bootstrap"), "bootstrap")
 
-	for dest, source := range map[string]string{".config/nvim": "nvim", ".config/ghostty": "ghostty", ".gitconfig": "git/gitconfig", ".config/git/ignore": "git/ignore", ".config/worktrunk/config.toml": "worktrunk/config.toml"} {
-		if got, want := linkText(filepath.Join(home, dest)), filepath.Join(checkout, source); got != want {
-			t.Errorf("~/%s -> %q, want %q", dest, got, want)
-		}
-	}
-	backups, err := filepath.Glob(filepath.Join(home, ".gitconfig.backup.*"))
-	if err != nil || len(backups) != 1 || readFile(t, backups[0]) != "[user]\n\tname = mine\n" {
-		t.Errorf("the displaced ~/.gitconfig was not kept beside it: %v", backups)
-	}
 	if help, err := exec.Command(filepath.Join(home, ".local", "bin", "harness"), "--help").Output(); err != nil || !strings.Contains(string(help), "bootstrap") {
 		t.Errorf("the built harness does not run: %v %s", err, help)
 	}

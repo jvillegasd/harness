@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jvillegasd/dotfiles/internal/bench"
-	"github.com/jvillegasd/dotfiles/internal/install"
-	"github.com/jvillegasd/dotfiles/internal/locks"
-	"github.com/jvillegasd/dotfiles/internal/state"
+	"github.com/jvillegasd/harness/internal/bench"
+	"github.com/jvillegasd/harness/internal/install"
+	"github.com/jvillegasd/harness/internal/locks"
+	"github.com/jvillegasd/harness/internal/state"
 )
 
 func main() {
@@ -21,7 +21,7 @@ func main() {
 const usage = `Usage: harness <command> [arguments]
 
 Commands:
-  bootstrap  Link the tracked configs, build harness into ~/.local/bin, and install the harness
+  bootstrap  Build harness into ~/.local/bin and install it
   install    Install, reconcile, or remove the harness on this machine
   bench      Compare the session population before and after a harness change
   locks      Manage the reviewed third-party skill locks
