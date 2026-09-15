@@ -21,9 +21,7 @@ The Harness AI installation that serves Claude Code and OpenCode, extracted from
 | `internal/bench/` | The session-population comparison behind `harness bench` |
 | `internal/agents/` | The role-agent renderer behind `harness agents` |
 | `internal/scenarios/` | The artifact-based scenario runner and probes behind `harness scenarios` |
-| `lib/python.sh` | The uv-managed interpreter set, asserted by `harness install` |
 | `harness/` | Canonical policy, commands, skills, client settings, bench, and scenarios |
-| `harness/tests/` | The remaining Python suite: the guarded-skill checks, until the Go port finishes |
 | `harness/bench/` | Cohort config and the manual for `harness bench` |
 | `docs/agents/` | This repository's tracker and lifecycle configuration |
 | `.github/workflows/`, `.github/scripts/` | The agent-lifecycle workflow and reconciler |
@@ -32,7 +30,7 @@ The Harness AI installation that serves Claude Code and OpenCode, extracted from
 
 ## Prerequisites
 
-macOS or Linux with zsh, Homebrew, Go 1.26 or newer, Python 3 (the tests run on the system `python3`), and `uv` for the managed interpreters. The GitHub tracker operations need the `gh` CLI authenticated with issue write permission. Branch worktrees use Worktrunk (`wt`) 0.61 or newer, the first release with the `--config-set` flag `harness state` passes; Orca is optional.
+macOS or Linux with zsh, Homebrew, and Go 1.26 or newer. The GitHub tracker operations need the `gh` CLI authenticated with issue write permission. Branch worktrees use Worktrunk (`wt`) 0.61 or newer, the first release with the `--config-set` flag `harness state` passes; Orca is optional.
 
 ## Task runners
 
@@ -47,12 +45,11 @@ go vet ./...
 test -z "$(gofmt -l .)"
 go test ./...
 go build ./...
-python3 -m unittest discover -s harness/tests
 go run ./cmd/harness locks check
 git diff --check
 ```
 
-The first four are the Go rungs: vet, formatting, the command tests that build `harness` and run it against throwaway repositories and home directories, and a compile of every package. The installer tests compare every mode against the goldens in `cmd/harness/testdata/install/`, which list each managed link, so adding or removing a skill or command means rerecording them with `go test ./cmd/harness -run TestInstallerGolden -update` and reading the diff. The Go suite also carries the reconciler regression suite, including the byte-identical check between the harness copy and the deployed copy and a `go run` smoke run with no Go module. The Python suite is the remaining guarded-skill checks. `go run ./cmd/harness locks check` syntax-checks `lib/python.sh` and runs diff-hygiene checks over tracked files, built from this checkout rather than whatever `harness bootstrap` last placed on PATH. `git diff --check` catches whitespace errors and conflict markers. The lifecycle workflow in `.github/workflows/agent-lifecycle.yml` installs Go and runs the reconciler remotely; the unit suite is its local equivalent.
+The first four are the Go rungs: vet, formatting, the command tests that build `harness` and run it against throwaway repositories and home directories, and a compile of every package. The installer tests compare every mode against the goldens in `cmd/harness/testdata/install/`, which list each managed link, so adding or removing a skill or command means rerecording them with `go test ./cmd/harness -run TestInstallerGolden -update` and reading the diff. The Go suite also carries the reconciler regression suite, including the byte-identical check between the harness copy and the deployed copy and a `go run` smoke run with no Go module. `go run ./cmd/harness locks check` syntax-checks the remaining repo shell, `harness/aliases.sh`, and runs diff-hygiene checks over tracked files, built from this checkout rather than whatever `harness bootstrap` last placed on PATH. `git diff --check` catches whitespace errors and conflict markers. The lifecycle workflow in `.github/workflows/agent-lifecycle.yml` installs Go and runs the reconciler remotely; the unit suite is its local equivalent.
 
 ## Behavioral acceptance
 

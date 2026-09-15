@@ -12,7 +12,7 @@ The harness this machine's Claude Code and OpenCode installations run: one vendo
 go run ./cmd/harness bootstrap
 ```
 
-Builds `harness` into `~/.local/bin` and runs a full install. Requires Go 1.26 or newer, Homebrew, and `uv`.
+Builds `harness` into `~/.local/bin` and runs a full install. Requires Go 1.26 or newer and Homebrew.
 
 ## Checks
 
@@ -21,6 +21,5 @@ go vet ./...
 test -z "$(gofmt -l .)"
 go test ./...
 go build ./...
-python3 -m unittest discover -s harness/tests
 go run ./cmd/harness locks check
 ```

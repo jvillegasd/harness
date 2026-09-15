@@ -335,13 +335,12 @@ func (in *installer) checkStatusline() {
 
 // checkTools verifies what only a full run installs, since each assertion needs a client or a package on PATH.
 func (in *installer) checkTools() {
-	for _, name := range []string{"claude", "opencode", "gh", "python3", "uv", "engram", "wt", "agent-browser"} {
+	for _, name := range []string{"claude", "opencode", "gh", "engram", "wt", "agent-browser"} {
 		if _, err := exec.LookPath(name); err != nil {
 			die("Missing required command: %s", name)
 		}
 	}
 	in.assertPluginCount("engram", 1)
-	in.assertPythons()
 	// The scope too: a leftover project-scoped entry would satisfy a bare get while the user scope stayed empty. Engram reaches Claude Code as a plugin plus this file rather than an mcp entry.
 	get := exec.Command("claude", "mcp", "get", "agent-browser")
 	get.Stderr = in.stderr
@@ -397,17 +396,6 @@ func (in *installer) assertPluginCount(plugin string, expected int) {
 	}
 	if count != expected {
 		die("Expected %d %s integration in Claude Code; found %d.", expected, plugin, count)
-	}
-}
-
-// assertPythons runs lib/python.sh's own assertion, which keeps the interpreter set declared once for the platform scripts and this installer.
-func (in *installer) assertPythons() {
-	script := `log() { :; }; die() { printf '%s\n' "$*" >&2; exit 1; }; source "$1" && assert_pythons`
-	cmd := exec.Command("bash", "-c", script, "bash", filepath.Join(filepath.Dir(in.harness), "lib", "python.sh"))
-	var stderr strings.Builder
-	cmd.Stderr = &stderr
-	if cmd.Run() != nil {
-		die("%s", strings.TrimSpace(stderr.String()))
 	}
 }
 

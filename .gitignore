@@ -3,8 +3,6 @@
 .env.*
 !.env.example
 
-**/.venv/
-**/__pycache__/
 **/.cache/
 **/browsers/
 **/screenshots/

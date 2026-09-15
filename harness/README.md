@@ -204,7 +204,7 @@ Reconciliation removes as well as adds. A symlink in a managed root is backed up
 
 Managed roots are real directories, so harness links and your private entries sit side by side; a symlink standing in for one is moved aside under `.previous-link`. The OpenCode skills root is normalized but never created, since OpenCode reads `~/.agents/skills`. OpenCode's own three paths follow `XDG_CONFIG_HOME` when set. Anything in the way is moved to a timestamped directory under `~/.dotfiles-backups/harness/`, or deleted with `--no-backup`. Each removal is logged.
 
-Both run modes verify what they wrote. The link check asserts every skill, command, policy, and role agent link, and probes the status line binary the tracked setting runs, on every run; the tool check adds the client, plugin, and interpreter assertions only a full run can satisfy. Its OpenCode assertion reads `opencode debug config` through a temporary file rather than a pipe: that command stops at the 64 KiB pipe capacity whenever stdout is not a regular file, and this config passed 64 KiB once the harness's own command templates went into it, so the piped form failed on a JSON parse error instead of on the assertion. Both run after Engram, which rewrites `settings.json` and `opencode.json`.
+Both run modes verify what they wrote. The link check asserts every skill, command, policy, and role agent link, and probes the status line binary the tracked setting runs, on every run; the tool check adds the client and plugin assertions only a full run can satisfy. Its OpenCode assertion reads `opencode debug config` through a temporary file rather than a pipe: that command stops at the 64 KiB pipe capacity whenever stdout is not a regular file, and this config passed 64 KiB once the harness's own command templates went into it, so the piped form failed on a JSON parse error instead of on the assertion. Both run after Engram, which rewrites `settings.json` and `opencode.json`.
 
 ### MCP servers
 
@@ -220,13 +220,7 @@ The formula is homebrew-core. It publishes no x86_64 macOS bottle, so an Intel M
 
 Homebrew carries every tool on both platforms, because three of them (OpenCode, Engram, Worktrunk) ship only as taps. Claude Code comes from Anthropic's native latest channel. The installer never starts an interactive client or authenticates for you.
 
-Python belongs to uv rather than Homebrew:
-
-```sh
-uv python install 3.14
-```
-
-`PYTHON_VERSIONS` in `../lib/python.sh` is the one declaration. The tool check sources that file and calls `assert_pythons`, because the harness consumes the interpreters. That check asks `uv python find --managed-python` rather than testing `PATH`, since a shadowing Homebrew `python3.14` would pass while uv had nothing to resolve, and `uv` therefore arrives first, from Homebrew. Nothing here claims the name `python3`: each version also lands as `~/.local/bin/python3.14`, usually behind the pyenv shims. Run `uv python update-shell` to change that.
+Python is machine tooling rather than a harness dependency: the platform scripts install uv's managed interpreters, and `harness install` asserts no Python at all.
 
 ### OpenAI models through OpenCode
 
