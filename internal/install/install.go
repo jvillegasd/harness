@@ -62,7 +62,7 @@ const summaryText = `Next steps (interactive; not run by this installer):
   4. Restart Claude Code and OpenCode.
   5. Invoke setup-harness in each project that should use the public lifecycle.
 
-Status line: harness/statusline/claude.sh, which Claude Code runs on every draw.
+Status line: harness statusline, which Claude Code runs on every draw.
 OpenCode exposes no status line surface, so it gets none.
 
 Commands use /name in Claude Code and OpenCode.
@@ -313,14 +313,6 @@ func (in *installer) checkLinks() {
 	in.checkAgents()
 	if !in.trackedSettingsHold(false) {
 		die("Tracked Claude settings are not reconciled in %s.", in.settingsPath())
-	}
-	statusline := filepath.Join(in.harness, "statusline", "claude.sh")
-	if readlink(filepath.Join(in.home, ".claude", "statusline.sh")) != statusline {
-		die("Missing the Claude statusline link.")
-	}
-	// Claude Code executes it on every draw, so a lost mode bit breaks the status line.
-	if info, err := os.Stat(statusline); err != nil || info.Mode().Perm()&0o111 == 0 {
-		die("Status line is not executable: %s", statusline)
 	}
 }
 

@@ -261,7 +261,6 @@ func (in *installer) installLinks() {
 			in.linkManaged(command, filepath.Join(root, filepath.Base(command)))
 		}
 	}
-	in.linkManaged(filepath.Join(in.harness, "statusline", "claude.sh"), filepath.Join(in.home, ".claude", "statusline.sh"))
 	in.linkManaged(filepath.Join(in.harness, "POLICY.md"), filepath.Join(in.home, ".claude", "CLAUDE.md"))
 	in.linkManaged(filepath.Join(in.harness, "POLICY.md"), filepath.Join(in.config, "opencode", "AGENTS.md"))
 	in.installAgents()
@@ -274,7 +273,6 @@ func (in *installer) uninstallLinks() {
 	in.reconcileOrphans(nil)
 	in.unlinkManaged(filepath.Join(in.harness, "POLICY.md"), filepath.Join(in.home, ".claude", "CLAUDE.md"))
 	in.unlinkManaged(filepath.Join(in.harness, "POLICY.md"), filepath.Join(in.config, "opencode", "AGENTS.md"))
-	in.unlinkManaged(filepath.Join(in.harness, "statusline", "claude.sh"), filepath.Join(in.home, ".claude", "statusline.sh"))
 	in.removeAgents()
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/jvillegasd/harness/internal/install"
 	"github.com/jvillegasd/harness/internal/locks"
 	"github.com/jvillegasd/harness/internal/state"
+	"github.com/jvillegasd/harness/internal/statusline"
 )
 
 func main() {
@@ -25,6 +26,7 @@ Commands:
   install    Install, reconcile, or remove the harness on this machine
   bench      Compare the session population before and after a harness change
   locks      Manage the reviewed third-party skill locks
+  statusline Print the Claude Code status line for the payload on stdin
   state      Read and write this branch's oracle ladder and rabbit-hole counters
 `
 
@@ -54,6 +56,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return bench.Command(args[1:], stdout, stderr)
 	case "locks":
 		return locks.Command(args[1:], stdout, stderr)
+	case "statusline":
+		return statusline.Command(args[1:], os.Stdin, stdout, stderr)
 	case "state":
 		return runState(args[1:], stdout, stderr)
 	case "-h", "--help", "help":

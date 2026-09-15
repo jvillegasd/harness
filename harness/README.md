@@ -10,7 +10,6 @@ One committed source for Claude Code and OpenCode.
 | `../internal/install/` | The installer behind `harness install`: installs clients and integrations, reconciles links, preserves mutable client state. |
 | `../internal/locks/` | The third-party skill locks behind `harness locks`: add, update, remove, check, and offline verify. |
 | `../internal/bench/` | The session-population comparison behind `harness bench`. Cohort config and manual in `bench/`. |
-| `statusline/` | One file per provider that has a status line. |
 | `clients/` | The client settings this harness owns: `claude.json` declares them, `assignments.json` gives every role its definition, model, and effort, and `agents.py` renders the role agents. |
 | `roles/` | Canonical roles no skill owns, currently the executor. |
 
@@ -203,7 +202,7 @@ Reconciliation removes as well as adds. A symlink in a managed root is backed up
 
 Managed roots are real directories, so harness links and your private entries sit side by side; a symlink standing in for one is moved aside under `.previous-link`. The OpenCode skills root is normalized but never created, since OpenCode reads `~/.agents/skills`. OpenCode's own three paths follow `XDG_CONFIG_HOME` when set. Anything in the way is moved to a timestamped directory under `~/.dotfiles-backups/harness/`, or deleted with `--no-backup`. Each removal is logged.
 
-Both run modes verify what they wrote. The link check asserts every skill, command, policy, status line, and role agent link on every run; the tool check adds the client, plugin, and interpreter assertions only a full run can satisfy. Its OpenCode assertion reads `opencode debug config` through a temporary file rather than a pipe: that command stops at the 64 KiB pipe capacity whenever stdout is not a regular file, and this config passed 64 KiB once the harness's own command templates went into it, so the piped form failed on a JSON parse error instead of on the assertion. Both run after Engram, which rewrites `settings.json` and `opencode.json`.
+Both run modes verify what they wrote. The link check asserts every skill, command, policy, and role agent link on every run; the tool check adds the client, plugin, and interpreter assertions only a full run can satisfy. Its OpenCode assertion reads `opencode debug config` through a temporary file rather than a pipe: that command stops at the 64 KiB pipe capacity whenever stdout is not a regular file, and this config passed 64 KiB once the harness's own command templates went into it, so the piped form failed on a JSON parse error instead of on the assertion. Both run after Engram, which rewrites `settings.json` and `opencode.json`.
 
 ### MCP servers
 
@@ -248,14 +247,14 @@ Zsh is the only shell either shell-facing step writes: the aliases go into `~/.z
 
 ## Status line
 
-The two clients expose different amounts of surface, so one committed script cannot serve both.
+The two clients expose different amounts of surface, so one renderer cannot serve both.
 
-| Client | File | Mechanism |
-| --- | --- | --- |
-| Claude Code | `statusline/claude.sh` | A renderer run on every draw, linked to `~/.claude/statusline.sh` with `statusLine` pointed at it |
-| OpenCode | none | No status line field in its schema and no plugin hook, so there is nothing to render into |
+| Client | Mechanism |
+| --- | --- |
+| Claude Code | `harness statusline`, run on every draw from the tracked `statusLine` command |
+| OpenCode | none: no status line field in its schema and no plugin hook |
 
-`claude.sh` renders model, context-window percentage, directory and branch with a dirty marker, session duration, and reasoning effort, then the five-hour and weekly rate-limit bars, fetched from the OAuth usage endpoint and cached for sixty seconds in `/tmp/claude`.
+`harness statusline` reads the client's payload as JSON on stdin and prints model, context-window percentage, directory and branch with a dirty marker, session duration, and reasoning effort, then the five-hour and weekly rate-limit bars, fetched from the OAuth usage endpoint and cached for sixty seconds in the system temporary directory.
 
 ## Third-party skill updates
 

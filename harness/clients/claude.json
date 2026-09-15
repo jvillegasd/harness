@@ -36,6 +36,6 @@
   "skipAutoPermissionPrompt": true,
   "statusLine": {
     "type": "command",
-    "command": "bash \"$HOME/.claude/statusline.sh\""
+    "command": "\"$HOME/.local/bin/harness\" statusline"
   }
 }
