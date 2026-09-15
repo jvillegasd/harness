@@ -19,6 +19,8 @@ import (
 
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
+
+	"github.com/jvillegasd/harness/internal/checkout"
 )
 
 const usage = `Usage: harness locks <command> [arguments]
@@ -30,9 +32,6 @@ Commands:
   check                    Run shell syntax and diff hygiene checks
   verify                   Recompute every locked body's folder hash offline
 `
-
-// shellEntryPoints are the shell files this repository ships outside locked bodies; check syntax-checks each. A script that moves to Go leaves this list.
-var shellEntryPoints = []string{"harness/aliases.sh"}
 
 // Command runs `harness locks` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
@@ -49,7 +48,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness locks: unknown command %q; run harness locks --help\n", args[0])
 		return 2
 	}
-	root, err := findRoot()
+	c, err := checkout.Find(".")
 	if err != nil {
 		fmt.Fprintf(stderr, "[err] %v\n", err)
 		return 1
@@ -57,15 +56,15 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	var runErr error
 	switch args[0] {
 	case "add":
-		runErr = add(root, args[1:], stdout, stderr)
+		runErr = add(c, args[1:], stdout, stderr)
 	case "update":
-		runErr = update(root, args[1:], stdout, stderr)
+		runErr = update(c, args[1:], stdout, stderr)
 	case "remove":
-		runErr = remove(root, args[1:], stdout, stderr)
+		runErr = remove(c, args[1:], stdout, stderr)
 	case "check":
-		runErr = check(root, args[1:], stdout, stderr)
+		runErr = check(c, args[1:], stdout, stderr)
 	case "verify":
-		runErr = verify(root, args[1:], stdout, stderr)
+		runErr = verify(c, args[1:], stdout, stderr)
 	}
 	if runErr != nil {
 		fmt.Fprintf(stderr, "[err] %v\n", runErr)
@@ -83,31 +82,13 @@ type paths struct {
 	claude   string
 }
 
-func pathsFor(root string) paths {
+func pathsFor(c checkout.Checkout) paths {
 	return paths{
-		root:     root,
-		lock:     filepath.Join(root, "skills-lock.json"),
-		skills:   filepath.Join(root, "harness", "skills"),
-		commands: filepath.Join(root, "harness", "commands"),
-		claude:   filepath.Join(root, ".claude", "skills"),
-	}
-}
-
-// findRoot walks up to the checkout holding harness/POLICY.md, so the tool acts on the working directory's checkout rather than a fixed path.
-func findRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "harness", "POLICY.md")); err == nil {
-			return dir, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", errors.New("run harness from inside the dotfiles checkout")
-		}
-		dir = parent
+		root:     c.Root,
+		lock:     c.Lock(),
+		skills:   c.Skills(),
+		commands: c.Commands(),
+		claude:   c.ClaudeSkills(),
 	}
 }
 
@@ -301,7 +282,7 @@ func run(root string, stdout, stderr io.Writer, name string, args ...string) err
 	return nil
 }
 
-func add(root string, args []string, stdout, stderr io.Writer) error {
+func add(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
 	if len(args) != 2 {
 		return errors.New("add expects 2 argument(s)")
 	}
@@ -312,7 +293,7 @@ func add(root string, args []string, stdout, stderr io.Writer) error {
 	if err := validateName(name); err != nil {
 		return err
 	}
-	p := pathsFor(root)
+	p := pathsFor(c)
 	lf, err := readLock(p.lock)
 	if err != nil {
 		return err
@@ -332,7 +313,7 @@ func add(root string, args []string, stdout, stderr io.Writer) error {
 	if exists(link) {
 		return fmt.Errorf("claude path already exists: %s", link)
 	}
-	if err := run(root, stdout, stderr, "npx", "skills@1", "add", source, "--skill", name, "--agent", "universal", "-y"); err != nil {
+	if err := run(c.Root, stdout, stderr, "npx", "skills@1", "add", source, "--skill", name, "--agent", "universal", "-y"); err != nil {
 		return err
 	}
 	if fi, err := os.Stat(filepath.Join(body, "SKILL.md")); err != nil || !fi.Mode().IsRegular() {
@@ -354,17 +335,17 @@ func add(root string, args []string, stdout, stderr io.Writer) error {
 	return reviewPaths(p, stdout)
 }
 
-func update(root string, args []string, stdout, stderr io.Writer) error {
+func update(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
 	if len(args) != 0 {
 		return errors.New("update expects 0 argument(s)")
 	}
-	if err := run(root, stdout, stderr, "npx", "skills@1", "update", "--project", "--yes"); err != nil {
+	if err := run(c.Root, stdout, stderr, "npx", "skills@1", "update", "--project", "--yes"); err != nil {
 		return err
 	}
-	return reviewPaths(pathsFor(root), stdout)
+	return reviewPaths(pathsFor(c), stdout)
 }
 
-func remove(root string, args []string, stdout, stderr io.Writer) error {
+func remove(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
 	if len(args) != 1 {
 		return errors.New("remove expects 1 argument(s)")
 	}
@@ -372,7 +353,7 @@ func remove(root string, args []string, stdout, stderr io.Writer) error {
 	if err := validateName(name); err != nil {
 		return err
 	}
-	p := pathsFor(root)
+	p := pathsFor(c)
 	lf, err := readLock(p.lock)
 	if err != nil {
 		return err
@@ -420,23 +401,24 @@ func remove(root string, args []string, stdout, stderr io.Writer) error {
 	return reviewPaths(p, stdout)
 }
 
-func check(root string, args []string, stdout, stderr io.Writer) error {
+func check(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
 	if len(args) != 0 {
 		return errors.New("check expects 0 argument(s)")
 	}
-	for _, rel := range shellEntryPoints {
-		path := filepath.Join(root, rel)
-		if _, err := os.Stat(path); err != nil {
-			return fmt.Errorf("shell entry point missing: %s", rel)
-		}
-		cmd := exec.Command("bash", "-n", path)
-		cmd.Stdout, cmd.Stderr = stdout, stderr
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("bash -n %s: %w", rel, err)
-		}
+	aliases, err := filepath.Rel(c.Root, c.Aliases())
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(c.Aliases()); err != nil {
+		return fmt.Errorf("shell entry point missing: %s", aliases)
+	}
+	cmd := exec.Command("bash", "-n", c.Aliases())
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("bash -n %s: %w", aliases, err)
 	}
 	for _, cached := range []bool{false, true} {
-		args := []string{"-C", root, "diff"}
+		args := []string{"-C", c.Root, "diff"}
 		if cached {
 			args = append(args, "--cached")
 		}
@@ -458,8 +440,8 @@ type LockResult struct {
 }
 
 // Verify recomputes every locked body's folder hash offline and reports each skill's status in lock order. It reads only and never rewrites a lock.
-func Verify(root string) ([]LockResult, error) {
-	p := pathsFor(root)
+func Verify(c checkout.Checkout) ([]LockResult, error) {
+	p := pathsFor(c)
 	lf, err := readLock(p.lock)
 	if err != nil {
 		return nil, err
@@ -485,11 +467,11 @@ func Verify(root string) ([]LockResult, error) {
 	return results, nil
 }
 
-func verify(root string, args []string, stdout, stderr io.Writer) error {
+func verify(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
 	if len(args) != 0 {
 		return errors.New("verify expects 0 argument(s)")
 	}
-	results, err := Verify(root)
+	results, err := Verify(c)
 	if err != nil {
 		return err
 	}
@@ -567,7 +549,14 @@ func folderHash(dir string) (string, error) {
 func reviewPaths(p paths, stdout io.Writer) error {
 	if insideWorkTree(p.root) {
 		fmt.Fprint(stdout, "\nLocked-skill changes:\n")
-		cmd := exec.Command("git", "-C", p.root, "status", "--short", "--", "harness/skills", "skills-lock.json", ".claude/skills")
+		within := func(abs string) string {
+			rel, err := filepath.Rel(p.root, abs)
+			if err != nil {
+				return abs
+			}
+			return rel
+		}
+		cmd := exec.Command("git", "-C", p.root, "status", "--short", "--", within(p.skills), within(p.lock), within(p.claude))
 		cmd.Stdout = stdout
 		cmd.Stderr = io.Discard
 		_ = cmd.Run()
