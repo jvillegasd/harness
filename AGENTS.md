@@ -21,6 +21,7 @@ The Harness AI installation that serves Claude Code and OpenCode, extracted from
 | `internal/bench/` | The session-population comparison behind `harness bench` |
 | `internal/agents/` | The role-agent renderer behind `harness agents` |
 | `internal/scenarios/` | The artifact-based scenario runner and probes behind `harness scenarios` |
+| `internal/dash/` | The live terminal dashboard behind `harness dash` |
 | `harness/` | Canonical policy, commands, skills, client settings, bench, and scenarios |
 | `harness/bench/` | Cohort config and the manual for `harness bench` |
 | `docs/agents/` | This repository's tracker and lifecycle configuration |
