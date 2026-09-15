@@ -75,11 +75,8 @@ func isEmpty(input []byte) bool {
 	return len(bytes.TrimRight(input, "\n")) == 0
 }
 
-// render returns the status line for a Claude Code payload. Empty input prints Claude alone; any other payload renders whatever segments it actually carries.
+// render returns the status line for a Claude Code payload, rendering whatever segments the payload actually carries. Command handles the empty payload before calling it.
 func render(input []byte, env environment) string {
-	if isEmpty(input) {
-		return "Claude"
-	}
 	doc := map[string]any{}
 	dec := json.NewDecoder(bytes.NewReader(input))
 	dec.UseNumber()

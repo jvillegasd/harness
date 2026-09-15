@@ -123,8 +123,8 @@ func TestRateLinesRenderTheWholeBlock(t *testing.T) {
 	}
 }
 
-// TestRenderPinsTheSessionSegmentAndTheEmptyInput builds the whole line for a payload with a session clock, because the fixtures cannot carry a start time without becoming time-dependent.
-func TestRenderPinsTheSessionSegmentAndTheEmptyInput(t *testing.T) {
+// TestRenderPinsTheSessionSegment builds the whole line for a payload with a session clock, because the fixtures cannot carry a start time without becoming time-dependent.
+func TestRenderPinsTheSessionSegment(t *testing.T) {
 	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
 	env := environment{Home: t.TempDir(), Now: now}
 	got := render([]byte(`{"model":{"display_name":"X"},"cwd":"/nonexistent","session":{"start_time":"2026-09-15T10:45:00Z"}}`), env)
@@ -143,13 +143,5 @@ func TestRenderPinsTheSessionSegmentAndTheEmptyInput(t *testing.T) {
 		dim + "◑ default" + reset
 	if without != wantWithout {
 		t.Errorf("an unparseable start time rendered %q, want %q", without, wantWithout)
-	}
-}
-
-func TestRenderEmptyInputIsClaudeAlone(t *testing.T) {
-	for _, input := range []string{"", "\n", "\n\n"} {
-		if got := render([]byte(input), environment{}); got != "Claude" {
-			t.Errorf("render(%q) = %q, want Claude", input, got)
-		}
 	}
 }

@@ -92,3 +92,30 @@ func TestStatuslineHelpAndBadArguments(t *testing.T) {
 		t.Errorf("a bad argument exited %d with stderr %q, want non-zero and one line", r.code, r.stderr)
 	}
 }
+
+// TestStatuslineEmptyPayloadTouchesNeitherKeychainNorCache keeps the empty payload from doing any work, as the shell returned on it before the cache, keychain, or network.
+func TestStatuslineEmptyPayloadTouchesNeitherKeychainNorCache(t *testing.T) {
+	base, home, work := statuslineEnv(t)
+	log := filepath.Join(base, "security.log")
+	writeMode(t, filepath.Join(base, "shims", "security"), "#!/bin/sh\nprintf invoked >> '"+log+"'\nexit 1\n", 0o755)
+	cmd := exec.Command(binary, "statusline")
+	cmd.Dir = work
+	cmd.Env = []string{
+		"HOME=" + home,
+		"PATH=" + filepath.Join(base, "shims") + ":/usr/bin:/bin",
+		"TMPDIR=" + filepath.Join(base, "tmp"),
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(out) != "Claude" {
+		t.Errorf("empty payload printed %q, want Claude", out)
+	}
+	if data, err := os.ReadFile(log); err == nil {
+		t.Errorf("empty payload invoked security: %s", data)
+	}
+	if _, err := os.Stat(filepath.Join(base, "tmp", "claude")); err == nil {
+		t.Error("empty payload touched the usage cache")
+	}
+}
