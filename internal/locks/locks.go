@@ -450,35 +450,61 @@ func check(root string, args []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
-func verify(root string, args []string, stdout, stderr io.Writer) error {
-	if len(args) != 0 {
-		return errors.New("verify expects 0 argument(s)")
-	}
+// LockResult is one locked skill's offline verification. Status is match, drift, or unverifiable; Detail carries the two hashes for drift.
+type LockResult struct {
+	Name   string
+	Status string
+	Detail string
+}
+
+// Verify recomputes every locked body's folder hash offline and reports each skill's status in lock order. It reads only and never rewrites a lock.
+func Verify(root string) ([]LockResult, error) {
 	p := pathsFor(root)
 	lf, err := readLock(p.lock)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	var drifted, unverifiable int
+	var results []LockResult
 	for _, name := range lf.skills.keys {
 		var e entry
 		if err := json.Unmarshal(lf.skills.values[name], &e); err != nil || !isLocalHash(e.ComputedHash) {
-			fmt.Fprintf(stdout, "%s: unverifiable\n", name)
-			unverifiable++
+			results = append(results, LockResult{Name: name, Status: "unverifiable"})
 			continue
 		}
 		got, err := folderHash(filepath.Join(p.skills, name))
 		if err != nil {
-			fmt.Fprintf(stdout, "%s: unverifiable\n", name)
-			unverifiable++
+			results = append(results, LockResult{Name: name, Status: "unverifiable"})
 			continue
 		}
 		if got == e.ComputedHash {
-			fmt.Fprintf(stdout, "%s: match\n", name)
+			results = append(results, LockResult{Name: name, Status: "match"})
 			continue
 		}
-		fmt.Fprintf(stdout, "%s: drift (recorded %s, computed %s)\n", name, e.ComputedHash, got)
-		drifted++
+		results = append(results, LockResult{Name: name, Status: "drift", Detail: fmt.Sprintf("recorded %s, computed %s", e.ComputedHash, got)})
+	}
+	return results, nil
+}
+
+func verify(root string, args []string, stdout, stderr io.Writer) error {
+	if len(args) != 0 {
+		return errors.New("verify expects 0 argument(s)")
+	}
+	results, err := Verify(root)
+	if err != nil {
+		return err
+	}
+	var drifted, unverifiable int
+	for _, r := range results {
+		switch r.Status {
+		case "match":
+			fmt.Fprintf(stdout, "%s: match\n", r.Name)
+		case "drift":
+			fmt.Fprintf(stdout, "%s: drift (%s)\n", r.Name, r.Detail)
+			drifted++
+		default:
+			fmt.Fprintf(stdout, "%s: unverifiable\n", r.Name)
+			unverifiable++
+		}
 	}
 	if unverifiable > 0 {
 		fmt.Fprintf(stderr, "[warn] %d skill(s) unverifiable\n", unverifiable)

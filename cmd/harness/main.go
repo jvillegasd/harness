@@ -10,6 +10,7 @@ import (
 
 	"github.com/jvillegasd/harness/internal/agents"
 	"github.com/jvillegasd/harness/internal/bench"
+	"github.com/jvillegasd/harness/internal/dash"
 	"github.com/jvillegasd/harness/internal/install"
 	"github.com/jvillegasd/harness/internal/locks"
 	"github.com/jvillegasd/harness/internal/scenarios"
@@ -32,6 +33,7 @@ Commands:
   locks      Manage the reviewed third-party skill locks
   statusline Print the Claude Code status line for the payload on stdin
   state      Read and write this branch's oracle ladder and rabbit-hole counters
+  dash       Show the live harness dashboard
 `
 
 const stateUsage = `Usage: harness state <operation>
@@ -68,6 +70,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return statusline.Command(args[1:], os.Stdin, stdout, stderr)
 	case "state":
 		return runState(args[1:], stdout, stderr)
+	case "dash":
+		return dash.Command(args[1:], stdout, stderr)
 	case "-h", "--help", "help":
 		fmt.Fprint(stdout, usage)
 		return 0
