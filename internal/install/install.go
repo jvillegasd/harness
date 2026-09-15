@@ -316,8 +316,13 @@ func (in *installer) checkLinks() {
 	}
 }
 
-// checkTools verifies what only a full run installs, since each assertion needs a client or a package on PATH.
+// checkTools verifies what only a full run installs, since each assertion needs a client, a package on PATH, or the built binary.
 func (in *installer) checkTools() {
+	// The tracked statusLine runs this binary by absolute path, so a full install without it would leave the status line silently broken. Bootstrap is what builds it.
+	binary := filepath.Join(in.home, ".local", "bin", "harness")
+	if info, err := os.Stat(binary); err != nil || info.Mode().Perm()&0o111 == 0 {
+		die("The status line binary is missing or not executable: %s; run harness bootstrap.", binary)
+	}
 	for _, name := range []string{"claude", "opencode", "gh", "python3", "uv", "engram", "wt", "agent-browser"} {
 		if _, err := exec.LookPath(name); err != nil {
 			die("Missing required command: %s", name)

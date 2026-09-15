@@ -267,6 +267,35 @@ func TestClearBackupsRunsOutsideTheCheckout(t *testing.T) {
 	}
 }
 
+// TestInstallRetiresTheLegacyStatuslineLink covers the upgrade: the retired renderer's link sits outside every swept root, so install and uninstall each have to remove a harness-owned link left at that path.
+func TestInstallRetiresTheLegacyStatuslineLink(t *testing.T) {
+	for _, stage := range []string{"--links-only", "--uninstall"} {
+		t.Run(stage, func(t *testing.T) {
+			base := sandbox(t)
+			harness := filepath.Join(base, "checkout", "harness")
+			legacy := filepath.Join(base, "home", ".claude", "statusline.sh")
+			symlink(t, filepath.Join(harness, "POLICY.md"), legacy)
+			ok(t, runInstaller(t, base, stage), stage)
+			if isSymlink(legacy) {
+				t.Errorf("%s left a harness-owned link at %s", stage, legacy)
+			}
+		})
+	}
+}
+
+// TestFullInstallRefusesAMissingStatuslineBinary keeps the tracked statusLine honest: a full install that cannot find the binary it points Claude Code at has to fail rather than leave a silently broken status line.
+func TestFullInstallRefusesAMissingStatuslineBinary(t *testing.T) {
+	base := sandbox(t)
+	seedFullInstalled(t, base)
+	if err := os.Remove(filepath.Join(base, "home", ".local", "bin", "harness")); err != nil {
+		t.Fatal(err)
+	}
+	r := runInstaller(t, base)
+	if r.code == 0 || !strings.Contains(r.stderr, filepath.Join(".local", "bin", "harness")) {
+		t.Fatalf("exit %d, stderr %q; want a refusal naming the status line binary", r.code, r.stderr)
+	}
+}
+
 // A non-object mcp in opencode.json stops the run before either client is registered, and leaves the file as it was.
 func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
 	base := sandbox(t)

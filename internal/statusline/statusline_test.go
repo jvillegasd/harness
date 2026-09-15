@@ -105,45 +105,51 @@ func TestParseUsageReducesTheResponse(t *testing.T) {
 	}
 }
 
-func TestRateLinesRenderCurrentWeeklyAndExtra(t *testing.T) {
+// TestRateLinesRenderTheWholeBlock pins the current, weekly, and extra-usage lines byte for byte, the extra reset included.
+func TestRateLinesRenderTheWholeBlock(t *testing.T) {
 	now := time.Date(2026, 9, 15, 0, 0, 0, 0, time.UTC)
-	lines := rateLines(usage{
-		fivePct: 24, fiveReset: "9:30pm",
-		sevenPct: 51, sevenReset: "sep 20, 9:00am",
-		extra: true, extraPct: 12, extraUsed: "12.34", extraLimit: "50.00",
-	}, now)
-	for _, want := range []string{
-		white + "current" + reset,
-		dim + "⟳" + reset + " " + white + "9:30pm" + reset,
-		"\n" + white + "weekly" + reset + "  ",
-		"$12.34" + dim + "/" + reset + white + "$50.00" + reset,
-		"\n" + dim + "resets " + reset + white + "oct 1" + reset,
-	} {
-		if !strings.Contains(lines, want) {
-			t.Errorf("rate lines %q missing %q", lines, want)
-		}
+	bar0 := green + dim + "○○○○○○○○○○" + reset
+	bar12 := green + "●" + dim + "○○○○○○○○○" + reset
+	want := white + "current" + reset + " " + bar0 + " " + green + "  0%" + reset + " " + dim + "⟳" + reset + " " + white + reset +
+		"\n" + white + "weekly" + reset + "  " + bar0 + " " + green + "  0%" + reset + " " + dim + "⟳" + reset + " " + white + reset +
+		"\n" + white + "extra" + reset + "   " + bar12 + " " + green + "$12.34" + dim + "/" + reset + white + "$50.00" + reset +
+		"\n" + dim + "resets " + reset + white + "oct 1" + reset
+	got := rateLines(usage{fivePct: 0, sevenPct: 0, extra: true, extraPct: 12, extraUsed: "12.34", extraLimit: "50.00"}, now)
+	if got != want {
+		t.Errorf("rateLines = %q, want %q", got, want)
 	}
-	if got := rateLines(usage{}, now); strings.Contains(got, "extra") {
-		t.Errorf("disabled extra usage rendered %q", got)
+	if disabled := rateLines(usage{}, now); strings.Contains(disabled, "extra") {
+		t.Errorf("disabled extra usage rendered %q", disabled)
 	}
 }
 
-func TestRenderDropsTheSessionSegmentWhenUnparseable(t *testing.T) {
+// TestRenderPinsTheSessionSegmentAndTheEmptyInput builds the whole line for a payload with a session clock, because the fixtures cannot carry a start time without becoming time-dependent.
+func TestRenderPinsTheSessionSegmentAndTheEmptyInput(t *testing.T) {
 	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
-	withStart := Render([]byte(`{"model":{"display_name":"X"},"cwd":"/nonexistent","session":{"start_time":"2026-09-15T10:45:00Z"}}`), Environment{Now: now})
-	if !strings.Contains(withStart, white+"1h15m"+reset) {
-		t.Errorf("a parseable start time rendered %q", withStart)
+	env := environment{Home: t.TempDir(), Now: now}
+	got := render([]byte(`{"model":{"display_name":"X"},"cwd":"/nonexistent","session":{"start_time":"2026-09-15T10:45:00Z"}}`), env)
+	want := blue + "X" + reset + separator +
+		"✍️ " + green + "0%" + reset + separator +
+		cyan + "nonexistent" + reset + separator +
+		dim + "⏱ " + reset + white + "1h15m" + reset + separator +
+		dim + "◑ default" + reset
+	if got != want {
+		t.Errorf("render = %q, want %q", got, want)
 	}
-	without := Render([]byte(`{"model":{"display_name":"X"},"cwd":"/nonexistent","session":{"start_time":"nonsense"}}`), Environment{Now: now})
-	if strings.Contains(without, "1h15m") || strings.Contains(without, "⏱") {
-		t.Errorf("an unparseable start time rendered a duration: %q", without)
+	without := render([]byte(`{"model":{"display_name":"X"},"cwd":"/nonexistent","session":{"start_time":"nonsense"}}`), env)
+	wantWithout := blue + "X" + reset + separator +
+		"✍️ " + green + "0%" + reset + separator +
+		cyan + "nonexistent" + reset + separator +
+		dim + "◑ default" + reset
+	if without != wantWithout {
+		t.Errorf("an unparseable start time rendered %q, want %q", without, wantWithout)
 	}
 }
 
 func TestRenderEmptyInputIsClaudeAlone(t *testing.T) {
 	for _, input := range []string{"", "\n", "\n\n"} {
-		if got := Render([]byte(input), Environment{}); got != "Claude" {
-			t.Errorf("Render(%q) = %q, want Claude", input, got)
+		if got := render([]byte(input), environment{}); got != "Claude" {
+			t.Errorf("render(%q) = %q, want Claude", input, got)
 		}
 	}
 }

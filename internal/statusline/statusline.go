@@ -52,22 +52,32 @@ func Command(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness statusline: %v\n", err)
 		return 1
 	}
+	// The empty payload prints Claude alone before any cache, keychain, or network work, exactly as the shell exited on it.
+	if isEmpty(input) {
+		fmt.Fprint(stdout, "Claude")
+		return 0
+	}
 	now := time.Now()
 	home, _ := os.UserHomeDir()
-	fmt.Fprint(stdout, Render(input, Environment{Home: home, Now: now, Usage: loadUsage(now)}))
+	fmt.Fprint(stdout, render(input, environment{Home: home, Now: now, Usage: loadUsage(now)}))
 	return 0
 }
 
-// Environment carries everything Render reads beyond the payload itself: the home whose Claude settings name the effort level, the current time for the session clock, and the fetched usage data, nil when none is available.
-type Environment struct {
+// environment carries everything render reads beyond the payload itself: the home whose Claude settings name the effort level, the current time for the session clock, and the fetched usage data, nil when none is available.
+type environment struct {
 	Home  string
 	Now   time.Time
 	Usage *usage
 }
 
-// Render returns the status line for a Claude Code payload. Empty input prints Claude alone; any other payload renders whatever segments it actually carries.
-func Render(input []byte, env Environment) string {
-	if len(bytes.TrimRight(input, "\n")) == 0 {
+// isEmpty is the shell's `[ -z "$input" ]`, which saw the payload after command substitution stripped its trailing newlines.
+func isEmpty(input []byte) bool {
+	return len(bytes.TrimRight(input, "\n")) == 0
+}
+
+// render returns the status line for a Claude Code payload. Empty input prints Claude alone; any other payload renders whatever segments it actually carries.
+func render(input []byte, env environment) string {
+	if isEmpty(input) {
 		return "Claude"
 	}
 	doc := map[string]any{}

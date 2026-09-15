@@ -26,7 +26,7 @@ var installScenarios = []struct {
 	{name: "links-only", seed: seedLived, runs: [][]string{{"--links-only"}}},
 	{name: "links-only-no-backup", seed: seedLived, runs: [][]string{{"--links-only", "--no-backup"}}},
 	// Linux adds --with-deps to the browser download, so this golden is macOS's.
-	{name: "full", darwinOnly: true, seed: seedFull, runs: [][]string{nil}},
+	{name: "full", darwinOnly: true, seed: seedFullInstalled, runs: [][]string{nil}},
 	{name: "uninstall", seed: seedLived, runs: [][]string{{"--links-only"}, {"--uninstall"}}},
 	{name: "clear-backups", seed: seedBackups, runs: [][]string{{"--clear-backups"}}},
 	{name: "rejected-flags", runs: [][]string{{"--uninstall", "--links-only"}, {"--clear-backups", "--uninstall"}, {"--links-only", "--clear-backups"}, {"--bogus"}}},
@@ -217,6 +217,12 @@ func seedLived(t *testing.T, base string) {
 // seedFull holds only what a real `engram setup` would have written, which the full run's tool check reads.
 func seedFull(t *testing.T, base string) {
 	writeMode(t, filepath.Join(base, "home", ".claude/mcp/engram.json"), "{}\n", 0o644)
+}
+
+// seedFullInstalled is seedFull plus the status line binary `harness bootstrap` would have built, which a bare `harness install` finds already in place.
+func seedFullInstalled(t *testing.T, base string) {
+	seedFull(t, base)
+	writeMode(t, filepath.Join(base, "home", ".local/bin/harness"), "#!/bin/sh\n", 0o755)
 }
 
 func seedBackups(t *testing.T, base string) {

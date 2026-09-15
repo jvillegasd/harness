@@ -57,7 +57,7 @@ func loadUsage(now time.Time) *usage {
 	return parseUsage(data)
 }
 
-// cachePath follows the shell renderer into the system temporary directory, so an install upgrades without stranding the warm cache.
+// cachePath puts the sixty-second cache in the system temporary directory. The shell renderer hardcoded /tmp/claude, which on macOS is not os.TempDir(), so the first draw after an upgrade warms a fresh cache.
 func cachePath() string {
 	return filepath.Join(os.TempDir(), "claude", "statusline-usage-cache.json")
 }

@@ -178,6 +178,11 @@ F .dotfiles-backups/harness/<stamp>/.claude/settings.json.pre-reconcile
   |
 F .dotfiles-backups/harness/<stamp>/.zshrc.pre-reconcile
   |
+D .local
+D .local/bin
+F .local/bin/harness
+  |#!/bin/sh
+  |
 F .zshrc
   |# portable-harness aliases
   |[ -f "$CHECKOUT/harness/aliases.sh" ] && source "$CHECKOUT/harness/aliases.sh"
