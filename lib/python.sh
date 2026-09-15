@@ -1,25 +1,13 @@
 #!/usr/bin/env bash
-# The one declaration of which Python interpreters this machine provisions, shared by the platform bootstrap scripts and `harness install`.
+# The one declaration of which Python interpreters this harness consumes.
 #
-# Sourced, never executed, and always after its caller has defined `log` and `die`: macos.sh and linux.sh get theirs through lib/common.sh, and `harness install` defines both before sourcing it, so a run never has two different loggers.
-#
-# The split of duties is the reason this file exists at all. macos.sh and linux.sh install the interpreters, because packages are what those scripts are for. `harness install` only asserts them, because the harness is what consumes them and so is where a missing one has to fail loudly.
+# Sourced, never executed, and always after its caller has defined `log` and `die`: `harness install` defines both before sourcing it. The dotfiles platform scripts install the same set from their own copy of this file; here the harness only asserts them, because the harness is what consumes the interpreters and so is where a missing one has to fail loudly.
 
 # Newest first. Homebrew supplies none of these: uv resolves a managed version
 # through its own registry rather than through PATH, so `uv run --python 3.14`
 # finds them whatever pyenv or Homebrew have done to `python3`. 3.11 was here
 # only for the SEO runtime's pin and went with it.
 PYTHON_VERSIONS=(3.14)
-
-# Idempotent: an already-installed version is a no-op. Each version also lands
-# as ~/.local/bin/python3.<minor>, but nothing here claims the bare name
-# `python3`, which belongs to whatever comes first on PATH and on a machine
-# running pyenv is not uv's bin directory.
-install_pythons() {
-    command -v uv >/dev/null || die "uv is required before installing Python; it comes from the package step."
-    log "Installing uv-managed Python: ${PYTHON_VERSIONS[*]}"
-    uv python install "${PYTHON_VERSIONS[@]}"
-}
 
 # Asked of uv rather than of PATH, because that is how every caller reaches
 # them: a shadowing Homebrew or pyenv python3.<minor> would pass a PATH check
@@ -31,6 +19,6 @@ assert_pythons() {
         # uv's own "no interpreter found" goes to stderr; the actionable
         # message is the one below, and two errors for one problem is noise.
         uv python find --managed-python "$version" >/dev/null 2>&1 ||
-            die "Missing uv-managed Python $version; run the root ./macos.sh or ./linux.sh."
+            die "Missing uv-managed Python $version; install it with 'uv python install $version'."
     done
 }
