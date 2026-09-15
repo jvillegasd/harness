@@ -10,6 +10,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/jvillegasd/harness/internal/agents"
 )
 
 // exists is true for anything at a path, a dangling symlink included.
@@ -307,9 +309,7 @@ func (in *installer) sweepAgentLinks() {
 
 // installAgents renders the role agents and links them into each client, refusing an unowned root or collision before linking anything. The renderer prints every enforcement gap, so what a client cannot restrict is never reported as enforced.
 func (in *installer) installAgents() {
-	render := exec.Command(filepath.Join(in.harness, "clients", "agents.py"), filepath.Join(in.harness, "clients", "assignments.json"), in.agentOut())
-	render.Stdout, render.Stderr = in.stdout, in.stderr
-	if code := exitCode(render.Run()); code != 0 && code != 3 {
+	if code := agents.GenerateCommand(filepath.Join(in.harness, "clients", "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 && code != 3 {
 		die("Generating the role agents failed with status %d.", code)
 	}
 	for _, pair := range in.agentRoots() {
@@ -335,9 +335,7 @@ func (in *installer) installAgents() {
 }
 
 func (in *installer) checkAgents() {
-	check := exec.Command(filepath.Join(in.harness, "clients", "agents.py"), "--check", filepath.Join(in.harness, "clients", "assignments.json"), in.agentOut())
-	check.Stdout, check.Stderr = in.stdout, in.stderr
-	if check.Run() != nil {
+	if code := agents.CheckCommand(filepath.Join(in.harness, "clients", "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 {
 		die("Role agents in %s are missing, drifted, or widened.", in.agentOut())
 	}
 	for _, pair := range in.agentRoots() {

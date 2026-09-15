@@ -8,9 +8,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jvillegasd/harness/internal/agents"
 	"github.com/jvillegasd/harness/internal/bench"
 	"github.com/jvillegasd/harness/internal/install"
 	"github.com/jvillegasd/harness/internal/locks"
+	"github.com/jvillegasd/harness/internal/scenarios"
 	"github.com/jvillegasd/harness/internal/state"
 	"github.com/jvillegasd/harness/internal/statusline"
 )
@@ -24,6 +26,8 @@ const usage = `Usage: harness <command> [arguments]
 Commands:
   bootstrap  Build harness into ~/.local/bin and install it
   install    Install, reconcile, or remove the harness on this machine
+  agents     Render and check the role agent definitions
+  scenarios  Validate, run, and compare the artifact-based scenarios
   bench      Compare the session population before and after a harness change
   locks      Manage the reviewed third-party skill locks
   statusline Print the Claude Code status line for the payload on stdin
@@ -52,6 +56,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return install.Bootstrap(args[1:], stdout, stderr)
 	case "install":
 		return install.Command(args[1:], stdout, stderr)
+	case "agents":
+		return agents.Command(args[1:], stdout, stderr)
+	case "scenarios":
+		return scenarios.Command(args[1:], stdout, stderr)
 	case "bench":
 		return bench.Command(args[1:], stdout, stderr)
 	case "locks":
