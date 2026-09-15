@@ -65,7 +65,7 @@ func (in *installer) uninstallAll() {
 		fmt.Fprint(in.stdout, "\nThe agent-browser formula could not be removed and is still installed; the\nwarning above says so. Its configuration is gone either way.\n")
 	}
 	fmt.Fprint(in.stdout, uninstallLeft)
-	fmt.Fprintf(in.stdout, "Reinstall with: cd %s && go run ./cmd/harness install\n", filepath.Dir(in.harness))
+	fmt.Fprintf(in.stdout, "Reinstall with: cd %s && go run ./cmd/harness install\n", in.dir.Root)
 }
 
 func removeFile(path string) {
@@ -319,13 +319,13 @@ func (in *installer) checkRemoved() {
 			continue
 		}
 		for _, entry := range entries(root) {
-			if isLink(entry) && strings.HasPrefix(realpath(entry), in.harness+"/") {
+			if isLink(entry) && strings.HasPrefix(realpath(entry), in.dir.Assets()+"/") {
 				die("Managed link survived the uninstall: %s", entry)
 			}
 		}
 	}
 	for _, entry := range []string{filepath.Join(in.home, ".claude", "CLAUDE.md"), filepath.Join(in.config, "opencode", "AGENTS.md")} {
-		if isLink(entry) && strings.HasPrefix(readlink(entry), in.harness+"/") {
+		if isLink(entry) && strings.HasPrefix(readlink(entry), in.dir.Assets()+"/") {
 			die("Managed link survived the uninstall: %s", entry)
 		}
 	}

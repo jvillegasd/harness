@@ -35,6 +35,7 @@ func newLockRun(t *testing.T) lockRun {
 		}
 	}
 	writeMode(t, filepath.Join(lr.root, "harness", "POLICY.md"), "# policy\n", 0o644)
+	writeMode(t, filepath.Join(lr.root, "go.mod"), "module github.com/jvillegasd/harness\n", 0o644)
 	writeMode(t, filepath.Join(lr.root, "skills-lock.json"), "{\n  \"version\": 1,\n  \"skills\": {}\n}\n", 0o644)
 	return lr
 }

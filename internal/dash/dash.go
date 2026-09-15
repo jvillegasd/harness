@@ -21,6 +21,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/jvillegasd/harness/internal/bench"
+	"github.com/jvillegasd/harness/internal/checkout"
 	"github.com/jvillegasd/harness/internal/locks"
 	"github.com/jvillegasd/harness/internal/state"
 )
@@ -83,7 +84,7 @@ type LabelCount struct {
 
 // Model is the dashboard's whole state. Its rendering and key handling are pure, so seam-3 tests never touch terminal I/O.
 type Model struct {
-	root           string
+	dir            checkout.Checkout
 	snap           Snapshot
 	benchErr       string
 	localRunning   bool
@@ -91,9 +92,9 @@ type Model struct {
 	trackerRunning bool
 }
 
-// New builds the model over one snapshot.
+// New builds the model over one snapshot of a checkout rooted at root.
 func New(root string, snap Snapshot) Model {
-	return Model{root: root, snap: snap}
+	return Model{dir: checkout.Checkout{Root: root}, snap: snap}
 }
 
 func (m Model) Init() tea.Cmd {
@@ -341,38 +342,38 @@ func tick() tea.Cmd {
 }
 
 func (m Model) refreshLocal() tea.Cmd {
-	root := m.root
-	return func() tea.Msg { return localMsg(localData(root)) }
+	dir := m.dir
+	return func() tea.Msg { return localMsg(localData(dir)) }
 }
 
 func (m Model) refreshBench() tea.Cmd {
-	root := m.root
-	return func() tea.Msg { return computeBench(root) }
+	dir := m.dir
+	return func() tea.Msg { return computeBench(dir) }
 }
 
 func (m Model) refreshTracker() tea.Cmd {
-	root := m.root
-	return func() tea.Msg { return loadTracker(root) }
+	dir := m.dir
+	return func() tea.Msg { return loadTracker(dir) }
 }
 
 // --- loaders -------------------------------------------------------------------
 
-func loadLocal(root string) Snapshot {
-	snap := localData(root)
+func loadLocal(dir checkout.Checkout) Snapshot {
+	snap := localData(dir)
 	snap.Bench = loadBenchCache()
 	return snap
 }
 
 // localData loads the panels that reload on the tick. The bench cache is not among them: its age is derived from its timestamp at render time.
-func localData(root string) Snapshot {
+func localData(dir checkout.Checkout) Snapshot {
 	snap := Snapshot{}
-	snap.Worktrees, snap.WorktreesErr = loadWorktrees(root)
-	snap.Locks, snap.LocksErr = loadLocks(root)
+	snap.Worktrees, snap.WorktreesErr = loadWorktrees(dir)
+	snap.Locks, snap.LocksErr = loadLocks(dir)
 	return snap
 }
 
-func loadWorktrees(root string) ([]Worktree, string) {
-	out, err := capture(root, "wt", "list", "--format=json", "--config-set", "list.json-schema=2")
+func loadWorktrees(dir checkout.Checkout) ([]Worktree, string) {
+	out, err := capture(dir.Root, "wt", "list", "--format=json", "--config-set", "list.json-schema=2")
 	if err != nil {
 		return nil, err.Error()
 	}
@@ -382,7 +383,7 @@ func loadWorktrees(root string) ([]Worktree, string) {
 	}
 	for i := range trees {
 		// listing the branch in wt list is what makes Worktrunk its state store; a legacy harness.* value still reads through the fallback.
-		br := &state.Branch{Dir: root, Name: trees[i].Branch, Store: "worktrunk"}
+		br := &state.Branch{Dir: dir.Root, Name: trees[i].Branch, Store: "worktrunk"}
 		if st, err := br.Get(); err != nil {
 			trees[i].Err = err.Error()
 		} else {
@@ -423,16 +424,16 @@ func parseWorktrees(data []byte) ([]Worktree, error) {
 	return trees, nil
 }
 
-func loadLocks(root string) ([]locks.LockResult, string) {
-	results, err := locks.Verify(root)
+func loadLocks(dir checkout.Checkout) ([]locks.LockResult, string) {
+	results, err := locks.Verify(dir)
 	if err != nil {
 		return nil, err.Error()
 	}
 	return results, ""
 }
 
-func computeBench(root string) benchMsg {
-	split, err := headDate(root)
+func computeBench(dir checkout.Checkout) benchMsg {
+	split, err := headDate(dir.Root)
 	if err != nil {
 		return benchMsg{err: "bench: " + err.Error()}
 	}
@@ -452,12 +453,12 @@ func computeBench(root string) benchMsg {
 	return benchMsg{cache: &BenchCache{Report: report, At: now}}
 }
 
-func loadTracker(root string) trackerMsg {
-	labels, err := readLabels(filepath.Join(root, "docs", "agents", "harness.json"))
+func loadTracker(dir checkout.Checkout) trackerMsg {
+	labels, err := readLabels(filepath.Join(dir.Root, "docs", "agents", "harness.json"))
 	if err != nil {
 		return trackerMsg{tracker: Tracker{Err: err.Error()}}
 	}
-	out, err := capture(root, "gh", "issue", "list", "--state", "open", "--limit", "1000", "--json", "number,labels")
+	out, err := capture(dir.Root, "gh", "issue", "list", "--state", "open", "--limit", "1000", "--json", "number,labels")
 	if err != nil {
 		return trackerMsg{tracker: Tracker{Err: "gh unavailable: " + err.Error()}}
 	}
@@ -565,35 +566,17 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness dash: unknown argument %q; run harness dash --help\n", args[0])
 		return 2
 	}
-	root, err := findRoot()
+	dir, err := checkout.Find(".")
 	if err != nil {
 		fmt.Fprintf(stderr, "harness dash: %v\n", err)
 		return 1
 	}
-	program := tea.NewProgram(New(root, loadLocal(root)), tea.WithOutput(stdout), tea.WithInput(os.Stdin))
+	program := tea.NewProgram(New(dir.Root, loadLocal(dir)), tea.WithOutput(stdout), tea.WithInput(os.Stdin))
 	if _, err := program.Run(); err != nil {
 		fmt.Fprintf(stderr, "harness dash: %v\n", err)
 		return 1
 	}
 	return 0
-}
-
-// findRoot walks up to the checkout holding harness/POLICY.md, so the dashboard reads the working directory's checkout.
-func findRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "harness", "POLICY.md")); err == nil {
-			return dir, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", errors.New("run harness dash from inside the harness checkout")
-		}
-		dir = parent
-	}
 }
 
 func headDate(root string) (string, error) {

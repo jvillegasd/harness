@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/jvillegasd/harness/internal/checkout"
 )
 
 const bootstrapUsage = `Usage: harness bootstrap [--no-backup]
@@ -32,14 +34,17 @@ func Bootstrap(args []string, stdout, stderr io.Writer) (code int) {
 			die("Unknown argument: %s", arg)
 		}
 	}
-	checkout := findCheckout()
-	in.setPaths(checkout)
+	dir, err := checkout.Find(".")
+	if err != nil {
+		die("%v", err)
+	}
+	in.setPaths(dir)
 
 	bin := filepath.Join(in.home, ".local", "bin", "harness")
 	in.log("Building %s", bin)
 	must(os.MkdirAll(filepath.Dir(bin), 0o755))
 	build := exec.Command("go", "build", "-o", bin, "./cmd/harness")
-	build.Dir, build.Stdout, build.Stderr = checkout, stdout, stderr
+	build.Dir, build.Stdout, build.Stderr = dir.Root, stdout, stderr
 	if err := build.Run(); err != nil {
 		die("Building harness failed: %v", err)
 	}

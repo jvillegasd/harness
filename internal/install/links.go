@@ -76,7 +76,7 @@ func (in *installer) commandRoots() []string {
 
 // agentOut is this checkout's own untracked directory of rendered role agents. A client link's text pointing into it is what proves this checkout wrote the link.
 func (in *installer) agentOut() string {
-	return filepath.Join(in.harness, ".generated", "agents")
+	return filepath.Join(in.dir.Generated(), "agents")
 }
 
 // agentRoots pairs each client with the directory its role agents are linked into.
@@ -86,7 +86,7 @@ func (in *installer) agentRoots() [][2]string {
 
 // skillNames are the real directories under harness/skills; a symlink there is not a skill this harness ships.
 func (in *installer) skillNames() []string {
-	list, err := os.ReadDir(filepath.Join(in.harness, "skills"))
+	list, err := os.ReadDir(in.dir.Skills())
 	must(err)
 	var names []string
 	for _, entry := range list {
@@ -99,7 +99,7 @@ func (in *installer) skillNames() []string {
 
 func (in *installer) commands() []string {
 	var paths []string
-	for _, path := range entries(filepath.Join(in.harness, "commands")) {
+	for _, path := range entries(in.dir.Commands()) {
 		if strings.HasSuffix(path, ".md") {
 			paths = append(paths, path)
 		}
@@ -225,7 +225,7 @@ func (in *installer) reconcileOrphans(desired map[string]bool) {
 			}
 			target, err := filepath.EvalSymlinks(entry)
 			must(err)
-			if strings.HasPrefix(target, in.harness+"/") && (!desired[target] || filepath.Base(entry) != filepath.Base(target)) {
+			if strings.HasPrefix(target, in.dir.Assets()+"/") && (!desired[target] || filepath.Base(entry) != filepath.Base(target)) {
 				in.backupExisting(entry, "")
 			}
 		}
@@ -244,7 +244,7 @@ func (in *installer) installLinks() {
 
 	desired := map[string]bool{}
 	for _, skill := range in.skillNames() {
-		desired[filepath.Join(in.harness, "skills", skill)] = true
+		desired[filepath.Join(in.dir.Skills(), skill)] = true
 	}
 	for _, command := range in.commands() {
 		desired[command] = true
@@ -252,7 +252,7 @@ func (in *installer) installLinks() {
 	in.reconcileOrphans(desired)
 
 	for _, skill := range in.skillNames() {
-		source := filepath.Join(in.harness, "skills", skill)
+		source := filepath.Join(in.dir.Skills(), skill)
 		// OpenCode reads ~/.agents/skills, so a second copy would double-list.
 		in.backupExisting(filepath.Join(in.config, "opencode", "skills", skill), "")
 		in.linkManaged(source, filepath.Join(in.home, ".agents", "skills", skill))
@@ -263,8 +263,8 @@ func (in *installer) installLinks() {
 			in.linkManaged(command, filepath.Join(root, filepath.Base(command)))
 		}
 	}
-	in.linkManaged(filepath.Join(in.harness, "POLICY.md"), filepath.Join(in.home, ".claude", "CLAUDE.md"))
-	in.linkManaged(filepath.Join(in.harness, "POLICY.md"), filepath.Join(in.config, "opencode", "AGENTS.md"))
+	in.linkManaged(in.dir.Policy(), filepath.Join(in.home, ".claude", "CLAUDE.md"))
+	in.linkManaged(in.dir.Policy(), filepath.Join(in.config, "opencode", "AGENTS.md"))
 	in.retireLegacyStatusline()
 	in.installAgents()
 	// The SEO group is gone, and its launcher sits outside the swept roots.
@@ -274,7 +274,7 @@ func (in *installer) installLinks() {
 // retireLegacyStatusline removes the `~/.claude/statusline.sh` link the retired shell renderer owned. It sits outside every swept root, so without this an upgrade strands a dangling symlink and an uninstall leaves it behind. The link is recognized by where it points, never by naming the renderer.
 func (in *installer) retireLegacyStatusline() {
 	dest := filepath.Join(in.home, ".claude", "statusline.sh")
-	if isLink(dest) && strings.HasPrefix(realpath(dest), in.harness+"/") {
+	if isLink(dest) && strings.HasPrefix(realpath(dest), in.dir.Assets()+"/") {
 		in.backupExisting(dest, "")
 	}
 }
@@ -282,8 +282,8 @@ func (in *installer) retireLegacyStatusline() {
 // uninstallLinks removes everything installLinks wrote: the orphan sweep told nothing is desired, whose ownership test is already the harness's, then the two named links outside the swept roots.
 func (in *installer) uninstallLinks() {
 	in.reconcileOrphans(nil)
-	in.unlinkManaged(filepath.Join(in.harness, "POLICY.md"), filepath.Join(in.home, ".claude", "CLAUDE.md"))
-	in.unlinkManaged(filepath.Join(in.harness, "POLICY.md"), filepath.Join(in.config, "opencode", "AGENTS.md"))
+	in.unlinkManaged(in.dir.Policy(), filepath.Join(in.home, ".claude", "CLAUDE.md"))
+	in.unlinkManaged(in.dir.Policy(), filepath.Join(in.config, "opencode", "AGENTS.md"))
 	in.retireLegacyStatusline()
 	in.removeAgents()
 }
@@ -309,7 +309,7 @@ func (in *installer) sweepAgentLinks() {
 
 // installAgents renders the role agents and links them into each client, refusing an unowned root or collision before linking anything. The renderer prints every enforcement gap, so what a client cannot restrict is never reported as enforced.
 func (in *installer) installAgents() {
-	if code := agents.GenerateCommand(filepath.Join(in.harness, "clients", "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 && code != 3 {
+	if code := agents.GenerateCommand(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 && code != 3 {
 		die("Generating the role agents failed with status %d.", code)
 	}
 	for _, pair := range in.agentRoots() {
@@ -335,7 +335,7 @@ func (in *installer) installAgents() {
 }
 
 func (in *installer) checkAgents() {
-	if code := agents.CheckCommand(filepath.Join(in.harness, "clients", "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 {
+	if code := agents.CheckCommand(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 {
 		die("Role agents in %s are missing, drifted, or widened.", in.agentOut())
 	}
 	for _, pair := range in.agentRoots() {
@@ -350,7 +350,7 @@ func (in *installer) checkAgents() {
 func (in *installer) removeAgents() {
 	in.sweepAgentLinks()
 	must(os.RemoveAll(in.agentOut()))
-	_ = os.Remove(filepath.Join(in.harness, ".generated"))
+	_ = os.Remove(in.dir.Generated())
 }
 
 // checkAgentsRemoved follows a symlinked root on purpose: the sweep never writes through a directory this checkout does not own, so a link it left inside one fails here by name.

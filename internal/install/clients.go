@@ -150,7 +150,7 @@ func (in *installer) readSettings(path string) (live *object, before []byte, tra
 	if err != nil {
 		die("%s is not a JSON object; fix it and re-run.", path)
 	}
-	trackedPath := filepath.Join(in.harness, "clients", "claude.json")
+	trackedPath := filepath.Join(in.dir.Clients(), "claude.json")
 	data, err := os.ReadFile(trackedPath)
 	if err == nil {
 		tracked, err = parseObject(data)
@@ -227,7 +227,7 @@ func (in *installer) removeClaudeSettings() {
 // trackedSettingsHold reports whether every tracked key reached the live settings, or with removed, whether every one is gone while the untracked keys beside them stay.
 func (in *installer) trackedSettingsHold(removed bool) bool {
 	live, liveOK := decodeFile(in.settingsPath())
-	tracked, trackedOK := decodeFile(filepath.Join(in.harness, "clients", "claude.json"))
+	tracked, trackedOK := decodeFile(filepath.Join(in.dir.Clients(), "claude.json"))
 	if !liveOK || !trackedOK {
 		return false
 	}
@@ -279,7 +279,7 @@ func (in *installer) reconcileAliases(remove bool) {
 		die("Could not reconcile aliases in %s.", rc)
 	}
 	current := string(data)
-	source := filepath.Join(in.harness, "aliases.sh")
+	source := in.dir.Aliases()
 	// No empty entry after a final line break.
 	lines := lineBreak.Split(current, -1)
 	if lines[len(lines)-1] == "" {

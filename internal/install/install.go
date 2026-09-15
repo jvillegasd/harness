@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/jvillegasd/harness/internal/checkout"
 )
 
 const (
@@ -92,7 +94,8 @@ func must(err error) {
 }
 
 type installer struct {
-	home, config, harness          string
+	home, config                   string
+	dir                            checkout.Checkout
 	linksOnly, noBackup, uninstall bool
 	backupRoot                     string
 	stdout, stderr                 io.Writer
@@ -118,13 +121,13 @@ func recoverFatal(stderr io.Writer, code *int) {
 	}
 }
 
-func (in *installer) setPaths(checkout string) {
+func (in *installer) setPaths(dir checkout.Checkout) {
 	in.home = os.Getenv("HOME")
 	in.config = os.Getenv("XDG_CONFIG_HOME")
 	if in.config == "" {
 		in.config = filepath.Join(in.home, ".config")
 	}
-	in.harness = filepath.Join(checkout, "harness")
+	in.dir = dir
 }
 
 // Command runs `harness install` with its arguments and returns the exit code.
@@ -163,29 +166,15 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 		in.clearBackups()
 		return 0
 	}
-	in.setPaths(findCheckout())
+	dir, err := checkout.Find(".")
+	must(err)
+	in.setPaths(dir)
 	if in.uninstall {
 		in.uninstallAll()
 	} else {
 		in.install()
 	}
 	return 0
-}
-
-// findCheckout finds the harness checkout holding the working directory. Its harness is the one installed, so running from another worktree installs that worktree.
-func findCheckout() string {
-	dir, err := os.Getwd()
-	must(err)
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "harness", "POLICY.md")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			die("Run harness from inside the harness checkout.")
-		}
-		dir = parent
-	}
 }
 
 func (in *installer) install() {
@@ -267,7 +256,7 @@ func (in *installer) warnUnlessZsh() {
 	}
 	in.warn("Your login shell is %s, not zsh. The yolo aliases go into", shell)
 	in.warn("~/.zshrc and Worktrunk gets its zsh integration. Source")
-	in.warn("%s from your own shell rc, and run", filepath.Join(in.harness, "aliases.sh"))
+	in.warn("%s from your own shell rc, and run", in.dir.Aliases())
 	in.warn("`wt config shell install` for the shell you use.")
 }
 
@@ -275,7 +264,7 @@ var description = regexp.MustCompile(`(?m)^description:`)
 
 // checkLinks verifies what every run installs, so the mode that exists for reconciling links confirms each one landed.
 func (in *installer) checkLinks() {
-	for _, skill := range entries(filepath.Join(in.harness, "skills")) {
+	for _, skill := range entries(in.dir.Skills()) {
 		name := filepath.Base(skill)
 		if !isFile(filepath.Join(skill, "SKILL.md")) {
 			die("Missing SKILL.md: %s", skill)
@@ -305,14 +294,14 @@ func (in *installer) checkLinks() {
 			die("Command missing the task-data constraint: %s", command)
 		}
 	}
-	policy := filepath.Join(in.harness, "POLICY.md")
+	policy := in.dir.Policy()
 	if readlink(filepath.Join(in.home, ".claude", "CLAUDE.md")) != policy {
 		die("Missing Claude policy link.")
 	}
 	if readlink(filepath.Join(in.config, "opencode", "AGENTS.md")) != policy {
 		die("Missing OpenCode policy link.")
 	}
-	if !isFile(filepath.Join(in.harness, "skills", "ponytail", "SKILL.md")) {
+	if !isFile(filepath.Join(in.dir.Skills(), "ponytail", "SKILL.md")) {
 		die("Missing the ponytail skill body.")
 	}
 	in.checkAgents()
@@ -363,7 +352,7 @@ func (in *installer) checkTools() {
 	if !in.opencodeRegistered(resolved.Name()) {
 		die("OpenCode is missing an expected plugin or MCP server.")
 	}
-	validate := exec.Command("claude", "plugin", "validate", filepath.Join(in.harness, "skills"))
+	validate := exec.Command("claude", "plugin", "validate", in.dir.Skills())
 	validate.Stderr = in.stderr
 	if err := validate.Run(); err != nil {
 		die("claude plugin validate failed: %v", err)

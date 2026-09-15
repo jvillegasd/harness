@@ -22,6 +22,8 @@ import (
 	"unicode"
 
 	_ "modernc.org/sqlite"
+
+	"github.com/jvillegasd/harness/internal/checkout"
 )
 
 // metrics is the report's row order: three cost, then the two the harness
@@ -116,12 +118,12 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	if len(clients) == 0 {
 		clients = clientList{"claude", "opencode"}
 	}
-	root, err := findRoot()
+	c, err := checkout.Find(".")
 	if err != nil {
 		fmt.Fprintf(stderr, "harness bench: %v\n", err)
 		return 1
 	}
-	sessions, err := collect(home, clients, patterns(root, stderr))
+	sessions, err := collect(home, clients, patterns(c, stderr))
 	if err != nil {
 		fmt.Fprintf(stderr, "harness bench: %v\n", err)
 		return 1
@@ -165,31 +167,12 @@ func parseDate(value string) (time.Time, error) {
 	return time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC), nil
 }
 
-// findRoot walks up to the checkout holding harness/POLICY.md, so cohorts come
-// from the working directory's checkout rather than a fixed path.
-func findRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "harness", "POLICY.md")); err == nil {
-			return dir, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", errors.New("run harness bench from inside the harness checkout")
-		}
-		dir = parent
-	}
-}
-
-// patterns reads the project patterns that mark a session as work. The
-// committed example names nobody, so an unconfigured checkout reports one
-// population and never a misleading split.
-func patterns(root string, stderr io.Writer) []string {
+// patterns reads the project patterns that mark a session as work, from the
+// working directory's checkout. The committed example names nobody, so an
+// unconfigured checkout reports one population and never a misleading split.
+func patterns(c checkout.Checkout, stderr io.Writer) []string {
 	for _, name := range []string{"cohorts.json", "cohorts.example.json"} {
-		data, err := os.ReadFile(filepath.Join(root, "harness", "bench", name))
+		data, err := os.ReadFile(filepath.Join(c.Bench(), name))
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
 				continue

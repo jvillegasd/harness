@@ -16,6 +16,7 @@ The Harness AI installation that serves Claude Code and OpenCode, extracted from
 | --- | --- |
 | `go.mod`, `cmd/harness/` | The Go module and the `harness` command, the single entry point for operating the harness |
 | `internal/state/` | The per-branch oracle ladder and rabbit-hole counters behind `harness state` |
+| `internal/checkout/` | Checkout discovery and canonical asset locations, shared by the commands that resolve a checkout |
 | `internal/install/` | The installer and bootstrap behind `harness install` and `harness bootstrap` |
 | `internal/locks/` | The third-party skill locks behind `harness locks` |
 | `internal/bench/` | The session-population comparison behind `harness bench` |

@@ -18,6 +18,9 @@ func benchDir(t *testing.T) string {
 	if err := os.WriteFile(filepath.Join(dir, "harness", "POLICY.md"), []byte("x\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module github.com/jvillegasd/harness\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	cohorts, err := os.ReadFile(filepath.Join("testdata", "bench", "cohorts.json"))
 	if err != nil {
 		t.Fatal(err)
