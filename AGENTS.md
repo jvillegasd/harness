@@ -20,7 +20,7 @@ The Harness AI installation that serves Claude Code and OpenCode, extracted from
 | `internal/locks/` | The third-party skill locks behind `harness locks` |
 | `internal/bench/` | The session-population comparison behind `harness bench` |
 | `lib/python.sh` | The uv-managed interpreter set, asserted by `harness install` |
-| `harness/` | Canonical policy, commands, skills, status lines, client settings, bench, and scenarios |
+| `harness/` | Canonical policy, commands, skills, client settings, bench, and scenarios |
 | `harness/tests/` | The Python suite: the scenario runner and the harness behavior tests |
 | `harness/bench/` | Cohort config and the manual for `harness bench` |
 | `docs/agents/` | This repository's tracker and lifecycle configuration |

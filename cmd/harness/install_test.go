@@ -89,7 +89,7 @@ func runHarness(t *testing.T, base string, extra []string, args ...string) resul
 	return result{stdout.String(), stderr.String(), code}
 }
 
-// sandbox lays out a resolved temporary base holding a copy of this checkout's harness, an empty HOME, and the recording shims. The base is resolved because the installer compares resolved link targets against its own directory, and macOS temp paths pass through a symlink.
+// sandbox lays out a resolved temporary base holding a copy of this checkout's harness, an empty HOME with the status line binary a prior bootstrap would have built, and the recording shims. The base is resolved because the installer compares resolved link targets against its own directory, and macOS temp paths pass through a symlink.
 func sandbox(t *testing.T) string {
 	t.Helper()
 	base, err := filepath.EvalSymlinks(t.TempDir())
@@ -118,6 +118,8 @@ func sandbox(t *testing.T) string {
 	if err := os.MkdirAll(filepath.Join(base, "home"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// The status line binary a prior `harness bootstrap` left in place, which every install mode now probes.
+	writeMode(t, filepath.Join(base, "home", ".local/bin/harness"), "#!/bin/sh\n", 0o755)
 	shims, log := filepath.Join(base, "shims"), filepath.Join(base, "shims.log")
 	for name, body := range shimScripts(shims) {
 		script := "#!/bin/sh\ninput=$(cat)\nprintf '%s\\n' \"" + name + " $* <$input>\" >> '" + log + "'\n" + body + "\nexit 0\n"

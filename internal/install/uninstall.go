@@ -23,12 +23,11 @@ const subagentStatusline = "opencode-subagent-statusline"
 
 var yoloAlias = regexp.MustCompile(`(?m)^[ \t]*alias (ccyolo|oyolo|ocyolo)=`)
 
-const uninstallGone = `Gone: every managed skill and command link, both POLICY.md links, the Claude
-status line link, the role agent links and their generated definitions,
-the ~/.zshrc alias block, the tracked keys in ~/.claude/settings.json, Engram:
-its plugin, marketplace, and MCP registration in both clients, plus the
-formula, and agent-browser: its MCP registration in both clients, plus the
-formula.
+const uninstallGone = `Gone: every managed skill and command link, both POLICY.md links, the role
+agent links and their generated definitions, the ~/.zshrc alias block, the
+tracked keys in ~/.claude/settings.json, Engram: its plugin, marketplace, and
+MCP registration in both clients, plus the formula, and agent-browser: its MCP
+registration in both clients, plus the formula.
 
 Kept: ~/.engram, which is your memory database rather than anything this
 installer wrote. Reinstalling finds it where it was. To take it with you:
@@ -325,7 +324,7 @@ func (in *installer) checkRemoved() {
 			}
 		}
 	}
-	for _, entry := range []string{filepath.Join(in.home, ".claude", "CLAUDE.md"), filepath.Join(in.config, "opencode", "AGENTS.md"), filepath.Join(in.home, ".claude", "statusline.sh")} {
+	for _, entry := range []string{filepath.Join(in.home, ".claude", "CLAUDE.md"), filepath.Join(in.config, "opencode", "AGENTS.md")} {
 		if isLink(entry) && strings.HasPrefix(readlink(entry), in.harness+"/") {
 			die("Managed link survived the uninstall: %s", entry)
 		}

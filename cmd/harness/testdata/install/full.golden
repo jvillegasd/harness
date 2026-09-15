@@ -112,7 +112,7 @@ F .claude/settings.json
   |  "skipAutoPermissionPrompt": true,
   |  "statusLine": {
   |    "type": "command",
-  |    "command": "bash \"$HOME/.claude/statusline.sh\""
+  |    "command": "\"$HOME/.local/bin/harness\" statusline"
   |  }
   |}
   |
@@ -134,7 +134,6 @@ L .claude/skills/resolving-merge-conflicts -> $CHECKOUT/harness/skills/resolving
 L .claude/skills/setup-harness -> $CHECKOUT/harness/skills/setup-harness
 L .claude/skills/tdd -> $CHECKOUT/harness/skills/tdd
 L .claude/skills/workflow-checkpoint -> $CHECKOUT/harness/skills/workflow-checkpoint
-L .claude/statusline.sh -> $CHECKOUT/harness/statusline/claude.sh
 D .config
 D .config/opencode
 L .config/opencode/AGENTS.md -> $CHECKOUT/harness/POLICY.md
@@ -178,6 +177,11 @@ F .dotfiles-backups/harness/<stamp>/.claude/settings.json.pre-reconcile
   |{}
   |
 F .dotfiles-backups/harness/<stamp>/.zshrc.pre-reconcile
+  |
+D .local
+D .local/bin
+F .local/bin/harness
+  |#!/bin/sh
   |
 F .zshrc
   |# portable-harness aliases

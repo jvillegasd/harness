@@ -52,6 +52,11 @@ const usage = `Usage: harness install [--links-only] [--no-backup]
                  only copy of anything of yours an install displaced. Touches
                  nothing else in ~/.dotfiles-backups and installs nothing;
                  runs on its own.
+
+Every install mode points the Claude Code status line at
+~/.local/bin/harness and verifies it, so run harness bootstrap first to
+build the binary there. A run without it fails rather than leaving the
+status line silently empty.
 `
 
 const summaryText = `Next steps (interactive; not run by this installer):
@@ -62,7 +67,7 @@ const summaryText = `Next steps (interactive; not run by this installer):
   4. Restart Claude Code and OpenCode.
   5. Invoke setup-harness in each project that should use the public lifecycle.
 
-Status line: harness/statusline/claude.sh, which Claude Code runs on every draw.
+Status line: harness statusline, which Claude Code runs on every draw.
 OpenCode exposes no status line surface, so it gets none.
 
 Commands use /name in Claude Code and OpenCode.
@@ -314,13 +319,17 @@ func (in *installer) checkLinks() {
 	if !in.trackedSettingsHold(false) {
 		die("Tracked Claude settings are not reconciled in %s.", in.settingsPath())
 	}
-	statusline := filepath.Join(in.harness, "statusline", "claude.sh")
-	if readlink(filepath.Join(in.home, ".claude", "statusline.sh")) != statusline {
-		die("Missing the Claude statusline link.")
+	in.checkStatusline()
+}
+
+// checkStatusline probes the binary the tracked statusLine runs on every draw, in every mode, because every mode writes that setting. A missing file, a lost mode bit, or a binary predating the subcommand all fail here rather than as a silently empty status line.
+func (in *installer) checkStatusline() {
+	binary := filepath.Join(in.home, ".local", "bin", "harness")
+	if info, err := os.Stat(binary); err != nil || info.Mode().Perm()&0o111 == 0 {
+		die("The status line binary is missing or not executable: %s; run harness bootstrap.", binary)
 	}
-	// Claude Code executes it on every draw, so a lost mode bit breaks the status line.
-	if info, err := os.Stat(statusline); err != nil || info.Mode().Perm()&0o111 == 0 {
-		die("Status line is not executable: %s", statusline)
+	if exec.Command(binary, "statusline", "--help").Run() != nil {
+		die("The status line binary has no statusline subcommand: %s; run harness bootstrap.", binary)
 	}
 }
 
