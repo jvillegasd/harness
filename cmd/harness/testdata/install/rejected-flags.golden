@@ -8,4 +8,9 @@ run [--bogus]: exit 1
 [err] Unknown argument: --bogus
 == commands
 == home
+D .local
+D .local/bin
+F .local/bin/harness
+  |#!/bin/sh
+  |
 == generated

@@ -201,6 +201,9 @@ F .dotfiles-backups/other/keep.txt
   |
 D .local
 D .local/bin
+F .local/bin/harness
+  |#!/bin/sh
+  |
 D .local/share
 D .local/share/opencode
 F .local/share/opencode/auth.json

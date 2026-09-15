@@ -240,6 +240,10 @@ func TestBootstrapBuildsHarnessAndInstalls(t *testing.T) {
 	base := sandbox(t)
 	seedFull(t, base)
 	home, checkout := filepath.Join(base, "home"), filepath.Join(base, "checkout")
+	// Bootstrap builds the binary itself, so the seeded stand-in has to go or `go build -o` refuses it.
+	if err := os.Remove(filepath.Join(home, ".local", "bin", "harness")); err != nil {
+		t.Fatal(err)
+	}
 	symlink(t, goBinary, filepath.Join(base, "shims", "go"))
 
 	ok(t, runHarness(t, base, []string{"GOCACHE=" + strings.TrimSpace(string(cache)), "GOMODCACHE=" + strings.TrimSpace(string(modcache))}, "bootstrap"), "bootstrap")
@@ -267,32 +271,74 @@ func TestClearBackupsRunsOutsideTheCheckout(t *testing.T) {
 	}
 }
 
-// TestInstallRetiresTheLegacyStatuslineLink covers the upgrade: the retired renderer's link sits outside every swept root, so install and uninstall each have to remove a harness-owned link left at that path.
-func TestInstallRetiresTheLegacyStatuslineLink(t *testing.T) {
+// TestInstallRetiresOnlyTheHarnessOwnedLegacyStatuslineLink covers the upgrade: the retired renderer's link sits outside every swept root, so install and uninstall each remove a harness-owned link left at that path while leaving a foreign link or a real file alone.
+func TestInstallRetiresOnlyTheHarnessOwnedLegacyStatuslineLink(t *testing.T) {
+	cases := []struct {
+		name    string
+		seed    func(t *testing.T, base, path string)
+		retired bool
+	}{
+		{"live harness link", func(t *testing.T, base, path string) {
+			symlink(t, filepath.Join(base, "checkout", "harness", "POLICY.md"), path)
+		}, true},
+		{"dangling harness link", func(t *testing.T, base, path string) {
+			symlink(t, filepath.Join(base, "checkout", "harness", "gone.md"), path)
+		}, true},
+		{"foreign link", func(t *testing.T, base, path string) {
+			symlink(t, filepath.Join(base, "elsewhere", "statusline.sh"), path)
+		}, false},
+		{"regular file", func(t *testing.T, base, path string) {
+			writeMode(t, path, "mine\n", 0o644)
+		}, false},
+	}
 	for _, stage := range []string{"--links-only", "--uninstall"} {
-		t.Run(stage, func(t *testing.T) {
-			base := sandbox(t)
-			harness := filepath.Join(base, "checkout", "harness")
-			legacy := filepath.Join(base, "home", ".claude", "statusline.sh")
-			symlink(t, filepath.Join(harness, "POLICY.md"), legacy)
-			ok(t, runInstaller(t, base, stage), stage)
-			if isSymlink(legacy) {
-				t.Errorf("%s left a harness-owned link at %s", stage, legacy)
-			}
-		})
+		for _, c := range cases {
+			t.Run(stage+"/"+c.name, func(t *testing.T) {
+				base := sandbox(t)
+				legacy := filepath.Join(base, "home", ".claude", "statusline.sh")
+				c.seed(t, base, legacy)
+				ok(t, runInstaller(t, base, stage), stage)
+				if _, err := os.Lstat(legacy); (err != nil) != c.retired {
+					t.Errorf("%s: %s gone = %v, want %v", stage, c.name, err != nil, c.retired)
+				}
+			})
+		}
 	}
 }
 
-// TestFullInstallRefusesAMissingStatuslineBinary keeps the tracked statusLine honest: a full install that cannot find the binary it points Claude Code at has to fail rather than leave a silently broken status line.
-func TestFullInstallRefusesAMissingStatuslineBinary(t *testing.T) {
-	base := sandbox(t)
-	seedFullInstalled(t, base)
-	if err := os.Remove(filepath.Join(base, "home", ".local", "bin", "harness")); err != nil {
-		t.Fatal(err)
+// TestInstallRefusesAnUnusableStatuslineBinary keeps the tracked statusLine honest: a missing binary, one without the exec bit, or one predating the subcommand has to fail the run rather than leave Claude Code with a silently empty status line.
+func TestInstallRefusesAnUnusableStatuslineBinary(t *testing.T) {
+	binary := func(base string) string { return filepath.Join(base, "home", ".local", "bin", "harness") }
+	cases := []struct {
+		name string
+		seed func(t *testing.T, base string)
+		want string
+	}{
+		{"missing", func(t *testing.T, base string) {
+			if err := os.Remove(binary(base)); err != nil {
+				t.Fatal(err)
+			}
+		}, "missing or not executable"},
+		{"not executable", func(t *testing.T, base string) {
+			// writeMode keeps an existing file's mode, so the exec bit has to come off explicitly.
+			writeMode(t, binary(base), "#!/bin/sh\n", 0o644)
+			if err := os.Chmod(binary(base), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}, "missing or not executable"},
+		{"pre-port", func(t *testing.T, base string) {
+			writeMode(t, binary(base), "#!/bin/sh\n[ \"$1\" = statusline ] && exit 64\nexit 0\n", 0o755)
+		}, "no statusline subcommand"},
 	}
-	r := runInstaller(t, base)
-	if r.code == 0 || !strings.Contains(r.stderr, filepath.Join(".local", "bin", "harness")) {
-		t.Fatalf("exit %d, stderr %q; want a refusal naming the status line binary", r.code, r.stderr)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			base := sandbox(t)
+			c.seed(t, base)
+			r := runInstaller(t, base, "--links-only")
+			if r.code == 0 || !strings.Contains(r.stderr, c.want) {
+				t.Fatalf("exit %d, stderr %q; want a refusal containing %q", r.code, r.stderr, c.want)
+			}
+		})
 	}
 }
 

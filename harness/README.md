@@ -185,7 +185,7 @@ flowchart TD
 
 ## Install
 
-`harness bootstrap`, run through `go run` from this checkout, builds `harness` into `~/.local/bin` and runs a full install. `harness install` installs the harness of the checkout it runs from, so run it from the checkout root, and through `go run` so the install code matches that checkout: the `harness` on PATH is whatever `harness bootstrap` last built. To reconcile only policy, commands, and skills:
+`harness bootstrap`, run through `go run` from this checkout, builds `harness` into `~/.local/bin` and runs a full install. `harness install` installs the harness of the checkout it runs from, so run it from the checkout root, and through `go run` so the install code matches that checkout: the `harness` on PATH is whatever `harness bootstrap` last built. Every install mode points the Claude Code status line at `~/.local/bin/harness` and verifies that binary, so run `harness bootstrap` first; a run without a working binary there fails instead of leaving the status line silently empty. To reconcile only policy, commands, and skills:
 
 ```sh
 go run ./cmd/harness install --links-only
@@ -202,7 +202,7 @@ Reconciliation removes as well as adds. A symlink in a managed root is backed up
 
 Managed roots are real directories, so harness links and your private entries sit side by side; a symlink standing in for one is moved aside under `.previous-link`. The OpenCode skills root is normalized but never created, since OpenCode reads `~/.agents/skills`. OpenCode's own three paths follow `XDG_CONFIG_HOME` when set. Anything in the way is moved to a timestamped directory under `~/.dotfiles-backups/harness/`, or deleted with `--no-backup`. Each removal is logged.
 
-Both run modes verify what they wrote. The link check asserts every skill, command, policy, and role agent link on every run; the tool check adds the client, plugin, and interpreter assertions only a full run can satisfy. Its OpenCode assertion reads `opencode debug config` through a temporary file rather than a pipe: that command stops at the 64 KiB pipe capacity whenever stdout is not a regular file, and this config passed 64 KiB once the harness's own command templates went into it, so the piped form failed on a JSON parse error instead of on the assertion. Both run after Engram, which rewrites `settings.json` and `opencode.json`.
+Both run modes verify what they wrote. The link check asserts every skill, command, policy, and role agent link, and probes the status line binary the tracked setting runs, on every run; the tool check adds the client, plugin, and interpreter assertions only a full run can satisfy. Its OpenCode assertion reads `opencode debug config` through a temporary file rather than a pipe: that command stops at the 64 KiB pipe capacity whenever stdout is not a regular file, and this config passed 64 KiB once the harness's own command templates went into it, so the piped form failed on a JSON parse error instead of on the assertion. Both run after Engram, which rewrites `settings.json` and `opencode.json`.
 
 ### MCP servers
 

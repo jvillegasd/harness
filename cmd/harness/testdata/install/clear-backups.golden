@@ -6,4 +6,9 @@ D .dotfiles-backups/other
 F .dotfiles-backups/other/keep.txt
   |kept
   |
+D .local
+D .local/bin
+F .local/bin/harness
+  |#!/bin/sh
+  |
 == generated

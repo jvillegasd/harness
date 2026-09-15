@@ -52,6 +52,11 @@ const usage = `Usage: harness install [--links-only] [--no-backup]
                  only copy of anything of yours an install displaced. Touches
                  nothing else in ~/.dotfiles-backups and installs nothing;
                  runs on its own.
+
+Every install mode points the Claude Code status line at
+~/.local/bin/harness and verifies it, so run harness bootstrap first to
+build the binary there. A run without it fails rather than leaving the
+status line silently empty.
 `
 
 const summaryText = `Next steps (interactive; not run by this installer):
@@ -314,15 +319,22 @@ func (in *installer) checkLinks() {
 	if !in.trackedSettingsHold(false) {
 		die("Tracked Claude settings are not reconciled in %s.", in.settingsPath())
 	}
+	in.checkStatusline()
 }
 
-// checkTools verifies what only a full run installs, since each assertion needs a client, a package on PATH, or the built binary.
-func (in *installer) checkTools() {
-	// The tracked statusLine runs this binary by absolute path, so a full install without it would leave the status line silently broken. Bootstrap is what builds it.
+// checkStatusline probes the binary the tracked statusLine runs on every draw, in every mode, because every mode writes that setting. A missing file, a lost mode bit, or a binary predating the subcommand all fail here rather than as a silently empty status line.
+func (in *installer) checkStatusline() {
 	binary := filepath.Join(in.home, ".local", "bin", "harness")
 	if info, err := os.Stat(binary); err != nil || info.Mode().Perm()&0o111 == 0 {
 		die("The status line binary is missing or not executable: %s; run harness bootstrap.", binary)
 	}
+	if exec.Command(binary, "statusline", "--help").Run() != nil {
+		die("The status line binary has no statusline subcommand: %s; run harness bootstrap.", binary)
+	}
+}
+
+// checkTools verifies what only a full run installs, since each assertion needs a client or a package on PATH.
+func (in *installer) checkTools() {
 	for _, name := range []string{"claude", "opencode", "gh", "python3", "uv", "engram", "wt", "agent-browser"} {
 		if _, err := exec.LookPath(name); err != nil {
 			die("Missing required command: %s", name)
