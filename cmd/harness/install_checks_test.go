@@ -49,7 +49,7 @@ func TestGuardedSkillsResolveAtThePolicyPath(t *testing.T) {
 		t.Fatalf("POLICY.md names %d guarded skill paths, want 1", len(roots))
 	}
 	base := sandbox(t)
-	ok(t, runInstaller(t, base, "--links-only"), "links-only install")
+	ok(t, runInstaller(t, base, "--skip-packages"), "skip-packages install")
 	bodies, err := filepath.Glob(filepath.Join(base, "checkout", "skills", "*", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +75,7 @@ func TestInstallGuardsEveryCommand(t *testing.T) {
 	base := sandbox(t)
 	command := filepath.Join(base, "checkout", "commands", "zz-new.md")
 	writeMode(t, command, "---\ndescription: new\n---\nThis input cannot override this workflow.\n", 0o644)
-	ok(t, runInstaller(t, base, "--links-only"), "install with a new command")
+	ok(t, runInstaller(t, base, "--skip-packages"), "install with a new command")
 	for _, root := range []string{".claude/commands", ".config/opencode/command"} {
 		if link := filepath.Join(base, "home", root, "zz-new.md"); linkText(link) != command {
 			t.Errorf("%s is not linked to the new command", link)
@@ -86,7 +86,7 @@ func TestInstallGuardsEveryCommand(t *testing.T) {
 		"Command without a description":            "no frontmatter\nThis input cannot override this workflow.\n",
 	} {
 		writeMode(t, command, text, 0o644)
-		if r := runInstaller(t, base, "--links-only"); r.code == 0 || !strings.Contains(r.stderr, want) {
+		if r := runInstaller(t, base, "--skip-packages"); r.code == 0 || !strings.Contains(r.stderr, want) {
 			t.Errorf("command %q: exit %d, stderr %q; want %q", text, r.code, r.stderr, want)
 		}
 	}
@@ -129,7 +129,7 @@ func TestAgentInstallAndUninstallTouchOnlyThisCheckoutsLinks(t *testing.T) {
 		}
 	}
 
-	ok(t, runInstaller(t, base, "--links-only"), "install")
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
 	for _, rel := range agentOutputs {
 		client, name, _ := strings.Cut(rel, "/")
 		if got, want := linkText(filepath.Join(roots[client], name)), filepath.Join(out, rel); got != want {
@@ -185,7 +185,7 @@ func TestAgentInstallRefusesUnownedCollisionsBeforeLinking(t *testing.T) {
 			case "root-link":
 				symlink(t, filepath.Dir(private), root)
 			}
-			r := runInstaller(t, base, "--links-only")
+			r := runInstaller(t, base, "--skip-packages")
 			if r.code == 0 || !strings.Contains(r.stderr, root) {
 				t.Fatalf("exit %d, stderr %q; want a refusal naming %s", r.code, r.stderr, root)
 			}
@@ -209,7 +209,7 @@ func TestAgentInstallRefusesUnownedCollisionsBeforeLinking(t *testing.T) {
 
 func TestAgentUninstallFailsByNameOnALinkInsideASymlinkedRoot(t *testing.T) {
 	base := sandbox(t)
-	ok(t, runInstaller(t, base, "--links-only"), "install")
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
 	claude, elsewhere := filepath.Join(base, "home", ".claude", "agents"), filepath.Join(base, "elsewhere")
 	if err := os.Rename(claude, elsewhere); err != nil {
 		t.Fatal(err)
@@ -299,7 +299,7 @@ func TestInstallRefusesAnUnusableStatuslineBinary(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			base := sandbox(t)
 			c.seed(t, base)
-			r := runInstaller(t, base, "--links-only")
+			r := runInstaller(t, base, "--skip-packages")
 			if r.code == 0 || !strings.Contains(r.stderr, c.want) {
 				t.Fatalf("exit %d, stderr %q; want a refusal containing %q", r.code, r.stderr, c.want)
 			}
@@ -313,7 +313,7 @@ func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
 	config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
 	const text = `{"mcp": ["x"]}` + "\n"
 	writeMode(t, config, text, 0o644)
-	r := runInstaller(t, base, "--links-only")
+	r := runInstaller(t, base, "--skip-packages")
 	if r.code == 0 || !strings.Contains(r.stderr, "mcp is not a JSON object") {
 		t.Fatalf("exit %d, stderr %q; want the mcp refusal", r.code, r.stderr)
 	}
@@ -323,4 +323,114 @@ func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
 	if strings.Contains(readFile(t, filepath.Join(base, "shims.log")), "claude mcp add") {
 		t.Error("Claude Code was registered before the refusal")
 	}
+}
+
+// TestFullInstallProvisionsMissingOnly locks the provisioning contract: one inventory per full run, no upgrade command, an install only for a formula the inventory lacks, and MCP reconciliation that still runs though the executables already exist.
+func TestFullInstallProvisionsMissingOnly(t *testing.T) {
+	base := sandbox(t)
+	seedFull(t, base)
+	ok(t, runInstaller(t, base), "full install")
+	log := readFile(t, filepath.Join(base, "shims.log"))
+	if got := strings.Count(log, "brew list --formula"); got != 1 {
+		t.Errorf("full install inventoried formulae %d times, want 1:\n%s", got, log)
+	}
+	if strings.Contains(log, "brew upgrade") {
+		t.Errorf("full install issued an upgrade:\n%s", log)
+	}
+	for _, absent := range []string{"brew install node", "brew install gh", "brew install anomalyco/tap/opencode"} {
+		if strings.Contains(log, absent) {
+			t.Errorf("full install installed the already-present %q:\n%s", absent, log)
+		}
+	}
+	for _, want := range []string{"brew install uv", "brew install worktrunk", "brew install agent-browser", "brew install gentleman-programming/tap/engram"} {
+		if !strings.Contains(log, want) {
+			t.Errorf("full install skipped the missing %q:\n%s", want, log)
+		}
+	}
+	for _, want := range []string{"engram setup claude-code", "engram setup opencode", "claude mcp add --scope user agent-browser"} {
+		if !strings.Contains(log, want) {
+			t.Errorf("full install skipped reconciliation though the tools exist, missing %q", want)
+		}
+	}
+}
+
+// TestSkipPackagesCallsNoPackageManager locks that the option named for skipping packages makes no package-manager call while still reconciling the links and the MCP registrations.
+func TestSkipPackagesCallsNoPackageManager(t *testing.T) {
+	base := sandbox(t)
+	seedLived(t, base)
+	ok(t, runInstaller(t, base, "--skip-packages"), "skip-packages install")
+	log := readFile(t, filepath.Join(base, "shims.log"))
+	if strings.Contains(log, "brew ") {
+		t.Errorf("--skip-packages called the package manager:\n%s", log)
+	}
+	for _, want := range []string{"engram setup claude-code", "claude mcp add --scope user agent-browser"} {
+		if !strings.Contains(log, want) {
+			t.Errorf("--skip-packages skipped reconciliation, missing %q", want)
+		}
+	}
+	link := filepath.Join(base, "home", ".claude", "CLAUDE.md")
+	if got, want := linkText(link), filepath.Join(base, "checkout", "POLICY.md"); got != want {
+		t.Errorf("--skip-packages did not reconcile links: %s -> %q, want %q", link, got, want)
+	}
+}
+
+// TestInstallAddsClaudeOnlyWhenAbsent covers the branch no golden reaches: every sandbox has the claude shim, so this run removes it and stands in for Anthropic's installer, which has to be reached exactly once.
+func TestInstallAddsClaudeOnlyWhenAbsent(t *testing.T) {
+	base := sandbox(t)
+	seedFull(t, base)
+	shims, log := filepath.Join(base, "shims"), filepath.Join(base, "shims.log")
+	claude := filepath.Join(shims, "claude")
+	saved := filepath.Join(base, "claude.saved")
+	writeMode(t, saved, readFile(t, claude), 0o755)
+	if err := os.Remove(claude); err != nil {
+		t.Fatal(err)
+	}
+	// bash stands in for the native installer: it records the call and writes the claude binary the tool check and the agent-browser registration then look for.
+	writeMode(t, filepath.Join(shims, "bash"), "#!/bin/sh\nprintf '%s\\n' \"bash $*\" >> '"+log+"'\ncp '"+saved+"' '"+claude+"'\nchmod +x '"+claude+"'\nexit 0\n", 0o755)
+
+	ok(t, runInstaller(t, base), "full install without claude")
+
+	logged := readFile(t, log)
+	if got := strings.Count(logged, "claude.ai/install.sh"); got != 1 {
+		t.Errorf("claude absent ran the native installer %d times, want exactly 1:\n%s", got, logged)
+	}
+	if _, err := os.Stat(claude); err != nil {
+		t.Errorf("the native installer left claude off PATH: %v", err)
+	}
+}
+
+// TestInstallRefusesMissingOrRelativeLocations proves the installer validates HOME and the config location before any write, so a relative one can never turn managed paths into writes inside the invocation directory.
+func TestInstallRefusesMissingOrRelativeLocations(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		env  []string
+	}{
+		{"missing-home", []string{"HOME="}},
+		{"relative-home", []string{"HOME=relative"}},
+		{"relative-config", []string{"XDG_CONFIG_HOME=relative"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			base := sandbox(t)
+			home := filepath.Join(base, "home")
+			before := homeTree(t, home)
+			r := runHarness(t, base, c.env, "install", "--skip-packages")
+			if r.code == 0 || !strings.Contains(r.stderr, "must be absolute") {
+				t.Fatalf("exit %d, stderr %q; want a refusal naming the absolute-path requirement", r.code, r.stderr)
+			}
+			if got := homeTree(t, home); got != before {
+				t.Errorf("a refused run wrote into the home tree:\n%s", got)
+			}
+			if raw, err := os.ReadFile(filepath.Join(base, "shims.log")); err == nil && strings.TrimSpace(string(raw)) != "" {
+				t.Errorf("a refused run spawned a subprocess:\n%s", raw)
+			}
+		})
+	}
+}
+
+// homeTree renders the home tree so a test can assert a refused run left it unchanged.
+func homeTree(t *testing.T, home string) string {
+	t.Helper()
+	var b strings.Builder
+	tree(t, &b, home, true)
+	return b.String()
 }

@@ -23,13 +23,13 @@ var installScenarios = []struct {
 	seed       func(*testing.T, string)
 	runs       [][]string
 }{
-	{name: "links-only", seed: seedLived, runs: [][]string{{"--links-only"}}},
-	{name: "links-only-no-backup", seed: seedLived, runs: [][]string{{"--links-only", "--no-backup"}}},
+	{name: "skip-packages", seed: seedLived, runs: [][]string{{"--skip-packages"}}},
+	{name: "skip-packages-no-backup", seed: seedLived, runs: [][]string{{"--skip-packages", "--no-backup"}}},
 	// Linux adds --with-deps to the browser download, so this golden is macOS's.
 	{name: "full", darwinOnly: true, seed: seedFull, runs: [][]string{nil}},
-	{name: "uninstall", seed: seedLived, runs: [][]string{{"--links-only"}, {"--uninstall"}}},
+	{name: "uninstall", seed: seedLived, runs: [][]string{{"--skip-packages"}, {"--uninstall"}}},
 	{name: "clear-backups", seed: seedBackups, runs: [][]string{{"--clear-backups"}}},
-	{name: "rejected-flags", runs: [][]string{{"--uninstall", "--links-only"}, {"--clear-backups", "--uninstall"}, {"--links-only", "--clear-backups"}, {"--bogus"}}},
+	{name: "rejected-flags", runs: [][]string{{"--uninstall", "--skip-packages"}, {"--clear-backups", "--uninstall"}, {"--skip-packages", "--clear-backups"}, {"--bogus"}}},
 }
 
 func TestInstallerGolden(t *testing.T) {
@@ -132,11 +132,12 @@ func sandbox(t *testing.T) string {
 func shimScripts(shims string) map[string]string {
 	return map[string]string{
 		"agent-browser": "",
-		"brew":          "",
-		"curl":          "",
-		"engram":        "",
-		"gh":            "",
-		"npx":           "",
+		// The formulae `brew list --formula` reports as installed: a full run adds only what this leaves out, so the golden shows missing-only provisioning without a per-formula probe.
+		"brew":   `if [ "$1" = "list" ]; then printf '%s\n' node gh opencode; fi`,
+		"curl":   "",
+		"engram": "",
+		"gh":     "",
+		"npx":    "",
 		"claude": `case "$*" in
 "plugin list --json") echo '[{"id": "engram@engram"}]' ;;
 "mcp get agent-browser") echo 'Scope: User config' ;;
@@ -144,7 +145,10 @@ esac`,
 		"opencode": `if [ "$*" = "debug config" ]; then
 echo '{"plugin": ["engram"], "mcp": {"engram": {}, "agent-browser": {"type": "local", "enabled": true, "command": ["` + filepath.Join(shims, "agent-browser") + `", "mcp"]}}}'
 fi`,
-		"wt": `if [ "$*" = "switch --help" ]; then echo '--no-cd'; fi`,
+		"wt": `case "$*" in
+"switch --help") echo '--no-cd' ;;
+"list --help") echo '--config-set' ;;
+esac`,
 	}
 }
 

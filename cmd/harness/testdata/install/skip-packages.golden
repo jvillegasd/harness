@@ -1,4 +1,4 @@
-run [--links-only]: exit 0
+run [--skip-packages]: exit 0
 == commands
 engram setup claude-code <y>
 engram setup opencode <>

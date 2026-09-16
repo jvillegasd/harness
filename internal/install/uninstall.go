@@ -26,8 +26,9 @@ var yoloAlias = regexp.MustCompile(`(?m)^[ \t]*alias (ccyolo|oyolo|ocyolo)=`)
 const uninstallGone = `Gone: every managed skill and command link, both POLICY.md links, the role
 agent links and their generated definitions, the ~/.zshrc alias block, the
 tracked keys in ~/.claude/settings.json, Engram: its plugin, marketplace, and
-MCP registration in both clients, plus the formula, and agent-browser: its MCP
-registration in both clients, plus the formula.
+MCP registration in both clients, the OpenCode subagent status line it enables,
+plus the formula, and agent-browser: its MCP registration in both clients, plus
+the formula.
 
 Kept: ~/.engram, which is your memory database rather than anything this
 installer wrote. Reinstalling finds it where it was. To take it with you:
