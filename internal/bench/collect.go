@@ -2,6 +2,7 @@ package bench
 
 import (
 	"bufio"
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -115,8 +116,14 @@ func (s *session) metric(name string) (float64, bool) {
 
 // collect builds the population for the requested clients and window. Repeating
 // a client is a set, so a duplicate selection never doubles a population or its
-// rows, and since drops sessions before their metrics are aggregated.
+// rows, and since drops sessions before their metrics are aggregated. Since is
+// a date, so its time of day is truncated here: that is what keeps the Claude
+// day comparison and the OpenCode instant comparison in agreement.
 func collect(home string, clients []string, work []string, since *time.Time) ([]*session, error) {
+	if since != nil {
+		day := startOfDay(*since)
+		since = &day
+	}
 	var sessions []*session
 	seen := make(map[string]bool, len(clients))
 	for _, client := range clients {
@@ -365,7 +372,8 @@ func parseStamp(value any) (time.Time, bool) {
 
 // maxRecordBytes bounds one streamed JSONL record, far above anything a client
 // writes. Records are decoded one at a time, so the transcript as a whole is
-// never held in memory.
+// never held in memory, and a record past the ceiling is reported rather than
+// silently dropped because it would bias every median.
 const maxRecordBytes = 64 << 20
 
 // forEachEntry streams a JSONL transcript's decoded records to fn, one at a
@@ -383,9 +391,9 @@ func forEachEntry(path string, fn func(entry map[string]any) bool) error {
 	for scanner.Scan() {
 		var value any
 		// A line the decoder rejects is damage and is skipped, the same as the
-		// whole-file reader skipped it. Surrounding whitespace needs no trim:
-		// the decoder tolerates it.
-		if json.Unmarshal(scanner.Bytes(), &value) != nil {
+		// whole-file reader skipped it. TrimSpace matches what that reader
+		// stripped before decoding, which is wider than JSON's own whitespace.
+		if json.Unmarshal(bytes.TrimSpace(scanner.Bytes()), &value) != nil {
 			continue
 		}
 		if entry, ok := value.(map[string]any); ok {
@@ -394,7 +402,13 @@ func forEachEntry(path string, fn func(entry map[string]any) bool) error {
 			}
 		}
 	}
-	return scanner.Err()
+	if err := scanner.Err(); err != nil {
+		if errors.Is(err, bufio.ErrTooLong) {
+			return fmt.Errorf("%s: record exceeds %d bytes", path, maxRecordBytes)
+		}
+		return err
+	}
+	return nil
 }
 
 // --- OpenCode: ~/.local/share/opencode/opencode.db ---------------------------

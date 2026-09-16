@@ -16,7 +16,7 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-const usage = `Usage: harness bench --split <date> [--since <date>] [--client <name>] [--home <dir>] [--rows]
+const usage = `Usage: harness bench [--split <date>] [--since <date>] [--client <name>] [--home <dir>] [--rows]
 
 Compare the session population before and after a harness change.
 
@@ -86,7 +86,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness bench: %v\n", err)
 		return 1
 	}
-	out, err := Report(Options{Home: home, Clients: clients, Work: patterns(c, stderr), Since: sinceDate, Split: splitDate, Rows: rows}, stderr)
+	out, err := Report(Options{Home: home, Clients: clients, Work: patterns(c, stderr), Since: sinceDate, Split: splitDate, Rows: rows})
 	if err != nil {
 		fmt.Fprintf(stderr, "harness bench: %v\n", err)
 		return 1
@@ -96,8 +96,9 @@ func Command(args []string, stdout, stderr io.Writer) int {
 }
 
 // Options is the resolved population request behind one benchmark run: the
-// inputs after flag parsing. Split is nil for a row export, which does not need
-// one.
+// inputs after flag parsing, with Work already read from a checkout. Split is
+// nil for a row export, which does not need one, and Since is a date whose
+// time of day is ignored.
 type Options struct {
 	Home    string
 	Clients []string
@@ -107,10 +108,10 @@ type Options struct {
 	Rows    bool
 }
 
-// Report collects the requested population and renders it, diagnostics included
-// on stderr. It is the narrow operation the command shares with any other
-// consumer, so a caller reaches reporting without re-entering argument parsing.
-func Report(opts Options, stderr io.Writer) (string, error) {
+// Report collects the requested population and renders it. It is the narrow
+// operation the command shares with any other consumer, so a caller reaches
+// reporting without re-entering argument parsing.
+func Report(opts Options) (string, error) {
 	if !opts.Rows && opts.Split == nil {
 		return "", errors.New("a report needs a split date")
 	}

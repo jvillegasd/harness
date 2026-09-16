@@ -2,7 +2,6 @@ package bench
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -76,6 +75,20 @@ func TestCollectExcludesBeforeAggregation(t *testing.T) {
 	}
 }
 
+// TestCollectSinceIsDateGranular pins the window to the date, so a consumer
+// that passes a Since with a time of day still selects whole sessions.
+func TestCollectSinceIsDateGranular(t *testing.T) {
+	home := synthHome(t, 10, 4)
+	noon := time.Date(2026, 1, 8, 12, 0, 0, 0, time.UTC)
+	got, err := collect(home, []string{"claude"}, nil, &noon)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("collected %d sessions, want the 3 dated on or after %s", len(got), noon.Format("2006-01-02"))
+	}
+}
+
 func TestCollectSkipsExcludedParentSidecar(t *testing.T) {
 	home := t.TempDir()
 	dir := filepath.Join(home, ".claude", "projects", "-tmp-acme-app")
@@ -143,7 +156,7 @@ func TestStreamSkipsDamagedLines(t *testing.T) {
 func TestReportCallableDirectly(t *testing.T) {
 	home := synthHome(t, 3, 4)
 	split := time.Date(2026, 1, 3, 0, 0, 0, 0, time.UTC)
-	out, err := Report(Options{Home: home, Clients: []string{"claude"}, Work: []string{"acme"}, Split: &split}, io.Discard)
+	out, err := Report(Options{Home: home, Clients: []string{"claude"}, Work: []string{"acme"}, Split: &split})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,14 +166,14 @@ func TestReportCallableDirectly(t *testing.T) {
 	if !strings.Contains(out, "claude  work") {
 		t.Fatalf("report did not split the configured cohort:\n%s", out)
 	}
-	rows, err := Report(Options{Home: home, Clients: []string{"claude"}, Work: []string{"acme"}, Rows: true}, io.Discard)
+	rows, err := Report(Options{Home: home, Clients: []string{"claude"}, Work: []string{"acme"}, Rows: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if n := strings.Count(rows, "\n"); n != 3 {
 		t.Fatalf("row export wrote %d lines, want 3", n)
 	}
-	if _, err := Report(Options{Home: home}, io.Discard); err == nil {
+	if _, err := Report(Options{Home: home}); err == nil {
 		t.Fatal("a report without a split date was accepted")
 	}
 }

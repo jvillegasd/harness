@@ -82,11 +82,17 @@ func TestBenchRowsMatchRecordedRows(t *testing.T) {
 }
 
 // TestBenchRowsWithoutSplit pins the split date to the report: a row export
-// needs no split, and its population is the same either way.
+// needs no split, adding one changes nothing, and the population still matches
+// the recorded baseline.
 func TestBenchRowsWithoutSplit(t *testing.T) {
-	r := ok(t, harness(t, benchDir(t), "", "bench", "--rows", "--home", benchHome(t)), "bench --rows")
-	if want := readGolden(t, "rows.golden"); r.stdout != want {
-		t.Fatalf("rows without a split differ from the recorded baseline:\n--- want\n%s\n--- got\n%s", want, r.stdout)
+	dir := benchDir(t)
+	without := ok(t, harness(t, dir, "", "bench", "--rows", "--home", benchHome(t)), "bench --rows")
+	with := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--rows", "--home", benchHome(t)), "bench --split --rows")
+	if without.stdout != with.stdout {
+		t.Fatalf("adding --split changed the rows:\n--- without\n%s\n--- with\n%s", without.stdout, with.stdout)
+	}
+	if want := readGolden(t, "rows.golden"); without.stdout != want {
+		t.Fatalf("rows without a split differ from the recorded baseline:\n--- want\n%s\n--- got\n%s", want, without.stdout)
 	}
 }
 

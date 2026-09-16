@@ -6,9 +6,10 @@ import (
 	"time"
 )
 
-// benchCollect is the one call site the pre- and post-change measurements share,
-// so both runs time the same workload. Before the change collect had no date
-// boundary and read every session; after, the requested boundary is passed in.
+// benchCollect isolates collection: a nil since decodes every transcript, and a
+// since date decodes only the sessions the window keeps. The benchmark is
+// unchanged across the before and after runs, so the delta reports the work the
+// window now saves rather than a change to the benchmark itself.
 func benchCollect(home string, since *time.Time) ([]*session, error) {
 	return collect(home, []string{"claude"}, nil, since)
 }
