@@ -78,9 +78,26 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness scenarios: unknown command %q; run harness scenarios --help\n", sub)
 		return 2
 	}
+	if len(rest) > 0 && (rest[0] == "-h" || rest[0] == "--help") {
+		fmt.Fprint(stdout, usageText)
+		return 0
+	}
 	if err := flags.Parse(rest); err != nil {
 		fmt.Fprintf(stderr, "harness scenarios: %v; run harness scenarios --help\n", err)
 		return 2
+	}
+	// The invocation is validated before the checkout is resolved or the matrix is read, so a malformed one touches nothing.
+	switch sub {
+	case "compare":
+		if *before == "" || *after == "" {
+			fmt.Fprintln(stderr, "harness scenarios: compare needs --before and --after")
+			return 2
+		}
+	case "run":
+		if isFlagSet(flags, "allow-paid") != isFlagSet(flags, "max-sessions") {
+			fmt.Fprintln(stderr, "harness scenarios: run takes --allow-paid and --max-sessions together; a paid batch retains its cap.")
+			return 2
+		}
 	}
 	root := *rootFlag
 	if root == "" {
@@ -125,13 +142,13 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, report(declaration, *out, root))
 		return 0
 	case "compare":
-		if *before == "" || *after == "" {
-			fmt.Fprintln(stderr, "harness scenarios: compare needs --before and --after")
-			return 2
-		}
 		fmt.Fprintln(stdout, compare(*before, *after, declaration, root))
 		return 0
 	case "run":
+		if *scenario != "" && !hasScenario(declaration, *scenario) {
+			fmt.Fprintf(stderr, "harness scenarios: unknown scenario %q; run harness scenarios --help\n", *scenario)
+			return 2
+		}
 		fixturesPath := *fixtures
 		if fixturesPath == "" {
 			fixturesPath = filepath.Join(root, "scenarios", "fixtures")
@@ -168,4 +185,15 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return exitCode
 	}
 	return 2
+}
+
+// hasScenario reports whether the declaration names a scenario with this id, so a narrowed run can reject an id that matches nothing.
+func hasScenario(declaration map[string]any, id string) bool {
+	for _, raw := range list(declaration, "scenarios") {
+		entry, _ := raw.(map[string]any)
+		if getString(entry, "id") == id {
+			return true
+		}
+	}
+	return false
 }

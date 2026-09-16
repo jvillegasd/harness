@@ -24,38 +24,73 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stderr, usage)
 		return 2
 	}
-	switch args[0] {
-	case "help", "-h", "--help":
+	sub, rest := args[0], args[1:]
+	if sub == "help" || sub == "-h" || sub == "--help" {
 		fmt.Fprint(stdout, usage)
 		return 0
+	}
+	switch sub {
 	case "add", "update", "remove", "check", "verify":
 	default:
-		fmt.Fprintf(stderr, "harness locks: unknown command %q; run harness locks --help\n", args[0])
+		fmt.Fprintf(stderr, "harness locks: unknown command %q; run harness locks --help\n", sub)
+		return 2
+	}
+	if len(rest) > 0 && (rest[0] == "-h" || rest[0] == "--help") {
+		fmt.Fprint(stdout, usage)
+		return 0
+	}
+	// The whole invocation is validated before the checkout is resolved, so a malformed one touches nothing.
+	if err := validateInvocation(sub, rest); err != nil {
+		fmt.Fprintf(stderr, "harness locks: %v; run harness locks --help\n", err)
 		return 2
 	}
 	c, err := checkout.Find(".")
 	if err != nil {
-		fmt.Fprintf(stderr, "[err] %v\n", err)
+		fmt.Fprintf(stderr, "harness locks: %v\n", err)
 		return 1
 	}
 	var runErr error
-	switch args[0] {
+	switch sub {
 	case "add":
-		runErr = add(c, args[1:], stdout, stderr)
+		runErr = add(c, rest, stdout, stderr)
 	case "update":
-		runErr = update(c, args[1:], stdout, stderr)
+		runErr = update(c, stdout, stderr)
 	case "remove":
-		runErr = remove(c, args[1:], stdout, stderr)
+		runErr = remove(c, rest, stdout, stderr)
 	case "check":
-		runErr = check(c, args[1:], stdout, stderr)
+		runErr = check(c, stdout, stderr)
 	case "verify":
-		runErr = verify(c, args[1:], stdout, stderr)
+		runErr = verify(c, stdout, stderr)
 	}
 	if runErr != nil {
-		fmt.Fprintf(stderr, "[err] %v\n", runErr)
+		fmt.Fprintf(stderr, "harness locks: %v\n", runErr)
 		return 1
 	}
 	return 0
+}
+
+// validateInvocation rejects a malformed subcommand invocation without reading the checkout.
+func validateInvocation(sub string, rest []string) error {
+	switch sub {
+	case "add":
+		if len(rest) != 2 {
+			return fmt.Errorf("add expects 2 argument(s)")
+		}
+		if err := validateSource(rest[0]); err != nil {
+			return err
+		}
+		return validateName(rest[1])
+	case "remove":
+		if len(rest) != 1 {
+			return fmt.Errorf("remove expects 1 argument(s)")
+		}
+		return validateName(rest[0])
+	default:
+		if len(rest) != 0 {
+			return fmt.Errorf("%s expects 0 argument(s)", sub)
+		}
+	}
+	return nil
 }
 
 // paths are the checkout-relative locations the lock tool reads and writes.

@@ -109,14 +109,14 @@ func (in *installer) warn(format string, args ...any) {
 	fmt.Fprintf(in.stderr, "\033[1;33m[warn]\033[0m "+format+"\n", args...)
 }
 
-// recoverFatal turns a die into one red error line and exit 1. It works only when deferred directly.
-func recoverFatal(stderr io.Writer, code *int) {
+// recoverFatal turns a die into one red error line with the command's context and exit 1. It works only when deferred directly.
+func recoverFatal(command string, stderr io.Writer, code *int) {
 	if r := recover(); r != nil {
 		msg, ok := r.(fatal)
 		if !ok {
 			panic(r)
 		}
-		fmt.Fprintf(stderr, "\033[1;31m[err]\033[0m %s\n", msg)
+		fmt.Fprintf(stderr, "\033[1;31mharness %s:\033[0m %s\n", command, msg)
 		*code = 1
 	}
 }
@@ -132,7 +132,7 @@ func (in *installer) setPaths(dir checkout.Checkout) {
 
 // Command runs `harness install` with its arguments and returns the exit code.
 func Command(args []string, stdout, stderr io.Writer) (code int) {
-	defer recoverFatal(stderr, &code)
+	defer recoverFatal("install", stderr, &code)
 	in := &installer{stdout: stdout, stderr: stderr}
 	clearBackups := false
 	for _, arg := range args {
@@ -149,15 +149,18 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 			fmt.Fprint(stdout, usage)
 			return 0
 		default:
-			die("Unknown argument: %s", arg)
+			fmt.Fprintf(stderr, "harness install: unknown argument %s; run harness install --help\n", arg)
+			return 2
 		}
 	}
 	// Contradictory rather than redundant: --links-only names a subset of the install to write, and --uninstall writes none of it. An uninstall deletes rather than archives, so --no-backup beside it is redundant and allowed.
 	if in.uninstall && in.linksOnly {
-		die("--uninstall and --links-only are contradictory; --uninstall removes every link.")
+		fmt.Fprintln(stderr, "harness install: --uninstall and --links-only are contradictory; --uninstall removes every link.")
+		return 2
 	}
 	if clearBackups && (in.uninstall || in.linksOnly) {
-		die("--clear-backups runs on its own; it neither installs nor uninstalls.")
+		fmt.Fprintln(stderr, "harness install: --clear-backups runs on its own; it neither installs nor uninstalls.")
+		return 2
 	}
 	in.noBackup = in.noBackup || in.uninstall
 	if clearBackups {

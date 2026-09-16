@@ -52,6 +52,10 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stderr, usage)
 		return 2
 	}
+	if flags.NArg() != 0 {
+		fmt.Fprintf(stderr, "harness bench: unexpected argument %q; run harness bench --help\n", flags.Arg(0))
+		return 2
+	}
 	if split == "" {
 		fmt.Fprintln(stderr, "harness bench: --split is required")
 		return 2

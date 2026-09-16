@@ -57,16 +57,7 @@ func run(root string, stdout, stderr io.Writer, name string, args ...string) err
 }
 
 func add(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
-	if len(args) != 2 {
-		return errors.New("add expects 2 argument(s)")
-	}
 	source, name := args[0], args[1]
-	if err := validateSource(source); err != nil {
-		return err
-	}
-	if err := validateName(name); err != nil {
-		return err
-	}
 	p := pathsFor(c)
 	lf, err := readLock(p.lock)
 	if err != nil {
@@ -109,10 +100,7 @@ func add(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
 	return reviewPaths(p, stdout)
 }
 
-func update(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
-	if len(args) != 0 {
-		return errors.New("update expects 0 argument(s)")
-	}
+func update(c checkout.Checkout, stdout, stderr io.Writer) error {
 	if err := run(c.Root, stdout, stderr, "npx", "skills@1", "update", "--project", "--yes"); err != nil {
 		return err
 	}
@@ -120,13 +108,7 @@ func update(c checkout.Checkout, args []string, stdout, stderr io.Writer) error 
 }
 
 func remove(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
-	if len(args) != 1 {
-		return errors.New("remove expects 1 argument(s)")
-	}
 	name := args[0]
-	if err := validateName(name); err != nil {
-		return err
-	}
 	p := pathsFor(c)
 	lf, err := readLock(p.lock)
 	if err != nil {

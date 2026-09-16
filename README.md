@@ -104,6 +104,10 @@ Every command that ingests text written elsewhere, a ticket body, a review comme
 
 A locally authored skill carries both invocation guards in its frontmatter: `disable-model-invocation: true` and `metadata."opencode/autoinvoke": "false"`. Claude Code applies the first to every model-initiated load, so the model reads a guarded skill from `~/.agents/skills/<name>/SKILL.md` instead of loading it, whether a command, a skill, or the policy names it. A locked body gets none, because its frontmatter is upstream content and `computedHash` covers the whole directory, so anything written inside it is clobbered by the next update with the lockfile recording the loss as correct. The only control that survives an update is not installing the body at all.
 
+### Command contract
+
+Every command and leaf command answers `--help` and `-h` with its usage on stdout and exit status 0, without reading stdin, discovering tools, or resolving a checkout, so usage is always discoverable and side-effect free. An invalid invocation (an unknown option, an unexpected operand, a missing argument, or a contradictory mode) exits 2 before any collection, subprocess, or write. An operational failure, invalid configuration, or failed check exits 1, and a successful run exits 0, a no-op reconciliation included. Diagnostics carry the command's context on stderr; reports and machine-readable results stay on stdout with unchanged schemas.
+
 ## Role agents
 
 `adversarial-review` launches Reviewer A, Reviewer B, and the review refuter as named agents, and a workflow that chooses to delegate implementation launches the `executor`. The reviewers' and the refuter's standing instructions, output format, and read-search intent live once, in `skills/adversarial-review/roles/`; the skill keeps orchestration, scaling, diff delivery, triage, refuter adjudication, and the loop cap. The executor lives in `roles/executor.md` and keeps implementation access: it edits and runs commands inside the slice it was handed, while the delegating workflow keeps scope, commits, review, conformance, and every gate. `harness agents <assignments> <output>` renders one definition per role per client and rewrites nothing that already matches; `--check` reports a missing, drifted, unmanaged, or widened definition.
@@ -179,7 +183,7 @@ flowchart TD
     role -->|no| default["client default"]
     override --> supported{"a value that client supports?"}
     default --> supported
-    supported -->|no| refused(["exit 4: nothing written,<br>nothing substituted"])
+    supported -->|no| refused(["exit 1: nothing written,<br>nothing substituted"])
     supported -->|yes| defined{"does the role have a definition?"}
     defined -->|no| pending["pending: assignment validated,<br>no agent generated"]
     defined -->|yes, inherit| session["session inheritance<br>Claude Code: model: inherit, no effort line<br>OpenCode: neither line"]
@@ -282,7 +286,7 @@ harness locks check
 harness locks verify
 ```
 
-`add` refuses invalid sources and existing paths before delegating. `update` updates every locked body. `remove` accepts only a current lock entry. Every mutation prints the affected paths; `check` runs syntax and diff hygiene; `verify` recomputes each locked body's folder hash offline and reports match, drift, or unverifiable. The subcommand's `--help` is side-effect free, but do not probe the upstream update subcommand with `--help`: skills.sh treats that as a full update.
+`add` refuses invalid sources and existing paths before delegating. `update` updates every locked body. `remove` accepts only a current lock entry. Every mutation prints the affected paths; `check` runs syntax and diff hygiene; `verify` recomputes each locked body's folder hash offline and reports match, drift, or unverifiable. Every subcommand's `--help` is side-effect free, and its arguments are validated before the checkout is read, but do not probe the upstream update subcommand with `--help`: skills.sh treats that as a full update.
 
 Review every upstream body, security report, and diff, then commit only the approved change. Locked bodies stay pristine; behavior changes belong in a command or in `POLICY.md`. Provisioning never runs the helper or a lockfile restore. A copied skill with unknown provenance stays an attributed local fork until its upstream is identified. Engram and Orca-provided skills are runtime managed and never belong in `skills-lock.json`.
 
