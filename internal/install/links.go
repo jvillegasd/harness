@@ -84,7 +84,7 @@ func (in *installer) agentRoots() [][2]string {
 	return [][2]string{{"claude", filepath.Join(in.home, ".claude", "agents")}, {"opencode", filepath.Join(in.config, "opencode", "agents")}}
 }
 
-// skillNames are the real directories under harness/skills; a symlink there is not a skill this harness ships.
+// skillNames are the real directories under the checkout's skills namespace; a symlink there is not a skill this harness ships.
 func (in *installer) skillNames() []string {
 	list, err := os.ReadDir(in.dir.Skills())
 	must(err)
@@ -225,7 +225,7 @@ func (in *installer) reconcileOrphans(desired map[string]bool) {
 			}
 			target, err := filepath.EvalSymlinks(entry)
 			must(err)
-			if strings.HasPrefix(target, in.dir.Assets()+"/") && (!desired[target] || filepath.Base(entry) != filepath.Base(target)) {
+			if in.dir.Manages(target) && (!desired[target] || filepath.Base(entry) != filepath.Base(target)) {
 				in.backupExisting(entry, "")
 			}
 		}
@@ -265,18 +265,9 @@ func (in *installer) installLinks() {
 	}
 	in.linkManaged(in.dir.Policy(), filepath.Join(in.home, ".claude", "CLAUDE.md"))
 	in.linkManaged(in.dir.Policy(), filepath.Join(in.config, "opencode", "AGENTS.md"))
-	in.retireLegacyStatusline()
 	in.installAgents()
 	// The SEO group is gone, and its launcher sits outside the swept roots.
 	in.backupExisting(filepath.Join(in.home, ".local", "bin", "claude-seo"), "")
-}
-
-// retireLegacyStatusline removes the `~/.claude/statusline.sh` link the retired shell renderer owned. It sits outside every swept root, so without this an upgrade strands a dangling symlink and an uninstall leaves it behind. The link is recognized by where it points, never by naming the renderer.
-func (in *installer) retireLegacyStatusline() {
-	dest := filepath.Join(in.home, ".claude", "statusline.sh")
-	if isLink(dest) && strings.HasPrefix(realpath(dest), in.dir.Assets()+"/") {
-		in.backupExisting(dest, "")
-	}
 }
 
 // uninstallLinks removes everything installLinks wrote: the orphan sweep told nothing is desired, whose ownership test is already the harness's, then the two named links outside the swept roots.
@@ -284,7 +275,6 @@ func (in *installer) uninstallLinks() {
 	in.reconcileOrphans(nil)
 	in.unlinkManaged(in.dir.Policy(), filepath.Join(in.home, ".claude", "CLAUDE.md"))
 	in.unlinkManaged(in.dir.Policy(), filepath.Join(in.config, "opencode", "AGENTS.md"))
-	in.retireLegacyStatusline()
 	in.removeAgents()
 }
 

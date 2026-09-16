@@ -10,6 +10,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/jvillegasd/harness/internal/checkout"
 )
 
 var requiredEvidence = []string{
@@ -36,9 +38,10 @@ Commands:
   compare    Compare two retained batches, pass rates before efficiency
 
 Flags:
-  --matrix <path>   Matrix declaration (default <root>/harness/scenarios/matrix.json)
-  --out <path>      Attempt directory (default <root>/harness/scenarios/attempts)
-  --root <path>     Harness checkout the harness_inputs resolve against (default .)
+  --matrix <path>   Matrix declaration (default <root>/scenarios/matrix.json)
+  --out <path>      Attempt directory (default <root>/scenarios/attempts)
+  --root <path>     Harness checkout the harness_inputs resolve against (default: the
+                    enclosing checkout, required outside one)
   run:     --scenario <id> --fixtures <path> --allow-paid --max-sessions <n>
   compare: --before <dir> --after <dir>
 `
@@ -81,13 +84,19 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	}
 	root := *rootFlag
 	if root == "" {
-		root, _ = os.Getwd()
+		// The default is the enclosing checkout, not the invocation directory, so the matrix, attempts, and fixtures resolve from a nested directory the same way every other checkout-dependent command resolves them.
+		c, err := checkout.Find(".")
+		if err != nil {
+			fmt.Fprintf(stderr, "harness scenarios: %v\n", err)
+			return 1
+		}
+		root = c.Root
 	}
 	if *matrix == "" {
-		*matrix = filepath.Join(root, "harness", "scenarios", "matrix.json")
+		*matrix = filepath.Join(root, "scenarios", "matrix.json")
 	}
 	if *out == "" {
-		*out = filepath.Join(root, "harness", "scenarios", "attempts")
+		*out = filepath.Join(root, "scenarios", "attempts")
 	}
 	data, err := os.ReadFile(*matrix)
 	if err != nil {
@@ -125,7 +134,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	case "run":
 		fixturesPath := *fixtures
 		if fixturesPath == "" {
-			fixturesPath = filepath.Join(root, "harness", "scenarios", "fixtures")
+			fixturesPath = filepath.Join(root, "scenarios", "fixtures")
 		}
 		var cap *int
 		if isFlagSet(flags, "max-sessions") {

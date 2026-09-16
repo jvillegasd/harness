@@ -34,7 +34,7 @@ func TestAgentsRendersTheCapturedGolden(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := resolvedTemp(t)
-	r := runBinary(t, root, "agents", filepath.Join(root, "harness", "clients", "assignments.json"), out)
+	r := runBinary(t, root, "agents", filepath.Join(root, "clients", "assignments.json"), out)
 	if r.code != 0 {
 		t.Fatalf("agents exited %d: %s", r.code, r.stderr)
 	}
@@ -61,7 +61,7 @@ func TestAgentsRendersTheCapturedGolden(t *testing.T) {
 			t.Errorf("%s differs from the captured golden", rel)
 		}
 	}
-	if check := runBinary(t, root, "agents", "--check", filepath.Join(root, "harness", "clients", "assignments.json"), out); check.code != 0 {
+	if check := runBinary(t, root, "agents", "--check", filepath.Join(root, "clients", "assignments.json"), out); check.code != 0 {
 		t.Fatalf("check on fresh output exited %d: %s", check.code, check.stderr)
 	}
 }
@@ -71,7 +71,7 @@ func TestAgentsCheckExitsNonZeroOnStaleOrMissing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	config := filepath.Join(root, "harness", "clients", "assignments.json")
+	config := filepath.Join(root, "clients", "assignments.json")
 	out := resolvedTemp(t)
 	if r := runBinary(t, root, "agents", config, out); r.code != 0 {
 		t.Fatalf("agents exited %d: %s", r.code, r.stderr)

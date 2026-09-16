@@ -76,7 +76,7 @@ func TestLandingProbe(t *testing.T) {
 	}) {
 		t.Fatalf("landing block = %v", block)
 	}
-	text := readRepoFile(t, "harness/commands/land.md")
+	text := readRepoFile(t, "commands/land.md")
 	for _, phrase := range []string{
 		"Merge approval comes only from the human explicitly invoking `/land`",
 		"Never invoke this command through automatic routing or another workflow",
@@ -91,7 +91,7 @@ func TestLandingProbe(t *testing.T) {
 	// The probe reads the rule from the command, so repointing the open lane changes its behavior.
 	saved := landingCommandPath
 	t.Cleanup(func() { landingCommandPath = saved })
-	landingCommandPath = writeTemp(t, patch(t, "harness/commands/land.md", `"action": "merge"`, `"action": "stop"`))
+	landingCommandPath = writeTemp(t, patch(t, "commands/land.md", `"action": "merge"`, `"action": "stop"`))
 	outcomes, err := probeLandingRun(root)
 	if err != nil {
 		t.Fatal(err)
@@ -127,7 +127,7 @@ func TestSpecSlicingProbe(t *testing.T) {
 	}) {
 		t.Fatalf("slicing block = %v", block)
 	}
-	text := readRepoFile(t, "harness/commands/create-ticket.md")
+	text := readRepoFile(t, "commands/create-ticket.md")
 	for _, phrase := range []string{"Promote the published spec issue itself", "**Zero slices.**", "**One slice.**", "**Many slices.**", "never collapses", "no route adds an approval gate"} {
 		if !contains(text, phrase) {
 			t.Errorf("create-ticket.md is missing %q", phrase)
@@ -136,7 +136,7 @@ func TestSpecSlicingProbe(t *testing.T) {
 
 	saved := slicingCommandPath
 	t.Cleanup(func() { slicingCommandPath = saved })
-	slicingCommandPath = writeTemp(t, patch(t, "harness/commands/create-ticket.md", `"single_slice_route": "promote_spec_in_place"`, `"single_slice_route": "publish_child_dag"`))
+	slicingCommandPath = writeTemp(t, patch(t, "commands/create-ticket.md", `"single_slice_route": "promote_spec_in_place"`, `"single_slice_route": "publish_child_dag"`))
 	route, err := slicingRoute(root, []any{slice("x")}, "spec")
 	if err != nil || route != "publish_child_dag" {
 		t.Fatalf("route = %q, %v", route, err)
@@ -189,7 +189,7 @@ func TestCheckpointProbe(t *testing.T) {
 
 	// The record table lists the canonical fields.
 	tableRows := map[string]bool{}
-	for _, line := range splitLines(readRepoFile(t, filepath.Join("harness", "skills", "workflow-checkpoint", "SKILL.md"))) {
+	for _, line := range splitLines(readRepoFile(t, filepath.Join("skills", "workflow-checkpoint", "SKILL.md"))) {
 		if strings.HasPrefix(line, "| `") {
 			if end := strings.Index(line[3:], "`"); end >= 0 {
 				tableRows[line[3:3+end]] = true
@@ -207,7 +207,7 @@ func TestCheckpointProbeReadsRulesFromTheSkill(t *testing.T) {
 	saved := checkpointSkillPath
 	t.Cleanup(func() { checkpointSkillPath = saved })
 
-	checkpointSkillPath = writeTemp(t, patch(t, filepath.Join("harness", "skills", "workflow-checkpoint", "SKILL.md"),
+	checkpointSkillPath = writeTemp(t, patch(t, filepath.Join("skills", "workflow-checkpoint", "SKILL.md"),
 		`"stale_invalidates": ["checks", "next_action"]`, `"stale_invalidates": ["checks"]`))
 	protocol, err := probeCheckpointProtocol(testRepoRoot())
 	if err != nil {
@@ -225,7 +225,7 @@ func TestCheckpointProbeReadsRulesFromTheSkill(t *testing.T) {
 		t.Fatalf("usable = %v", usable)
 	}
 
-	checkpointSkillPath = writeTemp(t, patch(t, filepath.Join("harness", "skills", "workflow-checkpoint", "SKILL.md"),
+	checkpointSkillPath = writeTemp(t, patch(t, filepath.Join("skills", "workflow-checkpoint", "SKILL.md"),
 		`"require_non_empty": ["contract", "next_action"]`, `"require_non_empty": ["contract", "next_action", "checks"]`))
 	protocol, err = probeCheckpointProtocol(testRepoRoot())
 	if err != nil {
@@ -278,7 +278,7 @@ func TestHarnessAuditProbe(t *testing.T) {
 	if getString(block, "verdict_requires") != "workflow_bearing_evidence" || !deepEqual(dict(block, "finding_rule"), map[string]any{"pattern_minimum": json.Number("2"), "single_requires": "concrete_cost"}) {
 		t.Fatalf("audit rules = %v", block)
 	}
-	text := readRepoFile(t, "harness/commands/harness-audit.md")
+	text := readRepoFile(t, "commands/harness-audit.md")
 	for _, phrase := range []string{"No verdict without workflow-bearing evidence", "Read-only is a hard constraint", "A single uncosted occurrence is an observation, not a finding", "never creates a label"} {
 		if !contains(text, phrase) {
 			t.Errorf("harness-audit.md is missing %q", phrase)
@@ -287,7 +287,7 @@ func TestHarnessAuditProbe(t *testing.T) {
 
 	saved := auditCommandPath
 	t.Cleanup(func() { auditCommandPath = saved })
-	auditCommandPath = writeTemp(t, patch(t, "harness/commands/harness-audit.md", `"pattern_minimum": 2`, `"pattern_minimum": 3`))
+	auditCommandPath = writeTemp(t, patch(t, "commands/harness-audit.md", `"pattern_minimum": 2`, `"pattern_minimum": 3`))
 	block, err = probeAuditBlock(root)
 	if err != nil {
 		t.Fatal(err)
@@ -441,7 +441,7 @@ func mutateReviewBlock(t *testing.T, getter func(string) (map[string]any, error)
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := readRepoFile(t, filepath.Join("harness", "skills", "adversarial-review", "SKILL.md"))
+	text := readRepoFile(t, filepath.Join("skills", "adversarial-review", "SKILL.md"))
 	matches := jsonBlockPattern.FindAllStringSubmatchIndex(text, -1)
 	patched := ""
 	for _, match := range matches {

@@ -12,10 +12,10 @@ import (
 func benchDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, "harness", "bench"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "bench"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "harness", "POLICY.md"), []byte("x\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "POLICY.md"), []byte("x\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module github.com/jvillegasd/harness\n"), 0o644); err != nil {
@@ -25,7 +25,7 @@ func benchDir(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "harness", "bench", "cohorts.json"), cohorts, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "bench", "cohorts.json"), cohorts, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	return dir

@@ -94,11 +94,11 @@ F .dotfiles-backups/harness/<stamp>/.claude/CLAUDE.md
   |a hand-written policy
   |
 D .dotfiles-backups/harness/<stamp>/.claude/agents
-L .dotfiles-backups/harness/<stamp>/.claude/agents/retired.md -> $CHECKOUT/harness/.generated/agents/claude/retired.md
+L .dotfiles-backups/harness/<stamp>/.claude/agents/retired.md -> $CHECKOUT/.generated/agents/claude/retired.md
 D .dotfiles-backups/harness/<stamp>/.claude/commands
 L .dotfiles-backups/harness/<stamp>/.claude/commands/foreign.md -> /nonexistent/foreign.md
-L .dotfiles-backups/harness/<stamp>/.claude/commands/renamed.md -> $CHECKOUT/harness/commands/ship.md
-L .dotfiles-backups/harness/<stamp>/.claude/commands/retired.md -> $CHECKOUT/harness/commands/retired.md
+L .dotfiles-backups/harness/<stamp>/.claude/commands/renamed.md -> $CHECKOUT/commands/ship.md
+L .dotfiles-backups/harness/<stamp>/.claude/commands/retired.md -> $CHECKOUT/commands/retired.md
 F .dotfiles-backups/harness/<stamp>/.claude/settings.json.pre-reconcile
   |{
   |  "env": {

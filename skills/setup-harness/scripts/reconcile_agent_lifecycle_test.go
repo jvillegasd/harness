@@ -539,7 +539,7 @@ func TestDeployedCopyMatchesHarnessCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployed := filepath.Join("..", "..", "..", "..", ".github", "scripts", "reconcile-agent-lifecycle.go")
+	deployed := filepath.Join("..", "..", "..", ".github", "scripts", "reconcile-agent-lifecycle.go")
 	deployedCopy, err := os.ReadFile(deployed)
 	if err != nil {
 		t.Fatal(err)

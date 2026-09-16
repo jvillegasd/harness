@@ -59,7 +59,7 @@ func TestInstallerGolden(t *testing.T) {
 			b.WriteString("== home\n")
 			tree(t, &b, filepath.Join(base, "home"), true)
 			b.WriteString("== generated\n")
-			tree(t, &b, filepath.Join(base, "checkout", "harness", ".generated"), false)
+			tree(t, &b, filepath.Join(base, "checkout", ".generated"), false)
 			golden(t, sc.name, normalize(base, b.String()))
 		})
 	}
@@ -97,7 +97,7 @@ func sandbox(t *testing.T) string {
 		t.Fatal(err)
 	}
 	root := filepath.Join("..", "..")
-	out, err := exec.Command("git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "harness", "cmd", "internal", "go.mod", "go.sum").Output()
+	out, err := exec.Command("git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "POLICY.md", "aliases.sh", "bench", "clients", "commands", "roles", "scenarios", "skills", "cmd", "internal", "go.mod", "go.sum").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ fi`,
 
 // seedLived is a machine with history: private entries beside managed ones, collisions, stale and foreign links, hand-written aliases, and the client config Engram writes.
 func seedLived(t *testing.T, base string) {
-	home, harness := filepath.Join(base, "home"), filepath.Join(base, "checkout", "harness")
+	home, checkoutRoot := filepath.Join(base, "home"), filepath.Join(base, "checkout")
 	for rel, text := range map[string]string{
 		".claude/settings.json": `{
   "env": {
@@ -199,10 +199,10 @@ func seedLived(t *testing.T, base string) {
 		t.Fatal(err)
 	}
 	for rel, target := range map[string]string{
-		".claude/commands/retired.md": harness + "/commands/retired.md",
-		".claude/commands/renamed.md": harness + "/commands/ship.md",
+		".claude/commands/retired.md": checkoutRoot + "/commands/retired.md",
+		".claude/commands/renamed.md": checkoutRoot + "/commands/ship.md",
 		".claude/commands/foreign.md": "/nonexistent/foreign.md",
-		".claude/agents/retired.md":   harness + "/.generated/agents/claude/retired.md",
+		".claude/agents/retired.md":   checkoutRoot + "/.generated/agents/claude/retired.md",
 		".config/opencode/command":    elsewhere,
 	} {
 		path := filepath.Join(home, rel)

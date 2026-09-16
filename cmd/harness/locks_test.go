@@ -24,7 +24,7 @@ func newLockRun(t *testing.T) lockRun {
 		shims: filepath.Join(base, "shims"),
 		home:  filepath.Join(base, "home"),
 	}
-	for _, dir := range []string{"harness/skills", "harness/commands", ".claude/skills"} {
+	for _, dir := range []string{"skills", "commands", ".claude/skills"} {
 		if err := os.MkdirAll(filepath.Join(lr.root, dir), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -34,7 +34,7 @@ func newLockRun(t *testing.T) lockRun {
 			t.Fatal(err)
 		}
 	}
-	writeMode(t, filepath.Join(lr.root, "harness", "POLICY.md"), "# policy\n", 0o644)
+	writeMode(t, filepath.Join(lr.root, "POLICY.md"), "# policy\n", 0o644)
 	writeMode(t, filepath.Join(lr.root, "go.mod"), "module github.com/jvillegasd/harness\n", 0o644)
 	writeMode(t, filepath.Join(lr.root, "skills-lock.json"), "{\n  \"version\": 1,\n  \"skills\": {}\n}\n", 0o644)
 	return lr
@@ -57,8 +57,8 @@ while [ $# -gt 0 ]; do
     *) shift ;;
   esac
 done
-mkdir -p "$root/harness/skills/$name"
-echo "# $name" > "$root/harness/skills/$name/SKILL.md"
+mkdir -p "$root/skills/$name"
+echo "# $name" > "$root/skills/$name/SKILL.md"
 cat > "$root/skills-lock.json" <<EOF
 {
   "version": 1,
@@ -131,7 +131,7 @@ func TestLocksAddDrivesNpxAndLinks(t *testing.T) {
 	if got := lr.npxLog(t); !strings.Contains(got, "npx skills@1 add owner/repo --skill myskill --agent universal -y") {
 		t.Fatalf("npx log = %q", got)
 	}
-	if _, err := os.Stat(filepath.Join(lr.root, "harness/skills/myskill/SKILL.md")); err != nil {
+	if _, err := os.Stat(filepath.Join(lr.root, "skills/myskill/SKILL.md")); err != nil {
 		t.Fatalf("skill body not installed: %v", err)
 	}
 	target, err := os.Readlink(filepath.Join(lr.root, ".claude/skills/myskill"))
@@ -162,10 +162,10 @@ func TestLocksAddRefusesBeforeNpx(t *testing.T) {
 			writeMode(t, filepath.Join(lr.root, "skills-lock.json"), "{\n  \"version\": 1,\n  \"skills\": {\"myskill\": {}}\n}\n", 0o644)
 		}, "already locked"},
 		{"existing skill path", []string{"locks", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
-			os.MkdirAll(filepath.Join(lr.root, "harness/skills/myskill"), 0o755)
+			os.MkdirAll(filepath.Join(lr.root, "skills/myskill"), 0o755)
 		}, "skill path already exists"},
 		{"existing command", []string{"locks", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
-			writeMode(t, filepath.Join(lr.root, "harness/commands/myskill.md"), "x\n", 0o644)
+			writeMode(t, filepath.Join(lr.root, "commands/myskill.md"), "x\n", 0o644)
 		}, "command name already exists"},
 		{"existing claude path", []string{"locks", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
 			writeMode(t, filepath.Join(lr.root, ".claude/skills/myskill"), "x\n", 0o644)
@@ -213,7 +213,7 @@ func TestLocksRemoveDeletesEntryBodyAndLink(t *testing.T) {
 	lr := newLockRun(t)
 	seedLockedSkill(t, lr, "myskill")
 	ok(t, lr.harness(t, "locks", "remove", "myskill"), "locks remove")
-	if _, err := os.Lstat(filepath.Join(lr.root, "harness/skills/myskill")); !os.IsNotExist(err) {
+	if _, err := os.Lstat(filepath.Join(lr.root, "skills/myskill")); !os.IsNotExist(err) {
 		t.Fatalf("body survived: %v", err)
 	}
 	if _, err := os.Lstat(filepath.Join(lr.root, ".claude/skills/myskill")); !os.IsNotExist(err) {
@@ -226,7 +226,7 @@ func TestLocksRemoveDeletesEntryBodyAndLink(t *testing.T) {
 
 func TestLocksRemovePreservesUnknownTopLevelKeys(t *testing.T) {
 	lr := newLockRun(t)
-	writeMode(t, filepath.Join(lr.root, "harness/skills/myskill/SKILL.md"), "# x\n", 0o644)
+	writeMode(t, filepath.Join(lr.root, "skills/myskill/SKILL.md"), "# x\n", 0o644)
 	writeMode(t, filepath.Join(lr.root, "skills-lock.json"), `{
   "version": 1,
   "future": {"keep": true},
@@ -253,7 +253,7 @@ func TestLocksRemovePreservesUnknownTopLevelKeys(t *testing.T) {
 
 func TestLocksRemoveKeepsEntryOrder(t *testing.T) {
 	lr := newLockRun(t)
-	writeMode(t, filepath.Join(lr.root, "harness/skills/aaa/SKILL.md"), "# x\n", 0o644)
+	writeMode(t, filepath.Join(lr.root, "skills/aaa/SKILL.md"), "# x\n", 0o644)
 	writeMode(t, filepath.Join(lr.root, "skills-lock.json"), `{
   "version": 1,
   "skills": {
@@ -288,15 +288,15 @@ func TestLocksRemoveRefusesUnsafeRemovals(t *testing.T) {
 		{"invalid name", []string{"locks", "remove", "Bad_Name"}, nil, "invalid skill name"},
 		{"body is a file", []string{"locks", "remove", "myskill"}, func(t *testing.T, lr lockRun) {
 			seedLockedSkill(t, lr, "myskill")
-			os.RemoveAll(filepath.Join(lr.root, "harness/skills/myskill"))
-			writeMode(t, filepath.Join(lr.root, "harness/skills/myskill"), "x\n", 0o644)
+			os.RemoveAll(filepath.Join(lr.root, "skills/myskill"))
+			writeMode(t, filepath.Join(lr.root, "skills/myskill"), "x\n", 0o644)
 		}, "refusing to remove non-directory skill path"},
 		{"body is a symlink", []string{"locks", "remove", "myskill"}, func(t *testing.T, lr lockRun) {
 			seedLockedSkill(t, lr, "myskill")
-			target := filepath.Join(lr.root, "harness/skills/myskill-real")
+			target := filepath.Join(lr.root, "skills/myskill-real")
 			os.MkdirAll(target, 0o755)
-			os.RemoveAll(filepath.Join(lr.root, "harness/skills/myskill"))
-			os.Symlink(target, filepath.Join(lr.root, "harness/skills/myskill"))
+			os.RemoveAll(filepath.Join(lr.root, "skills/myskill"))
+			os.Symlink(target, filepath.Join(lr.root, "skills/myskill"))
 		}, "refusing to remove non-directory skill path"},
 		{"link is a file", []string{"locks", "remove", "myskill"}, func(t *testing.T, lr lockRun) {
 			seedLockedSkill(t, lr, "myskill")
@@ -325,7 +325,7 @@ func TestLocksRemoveRefusesUnsafeRemovals(t *testing.T) {
 
 func seedLockedSkill(t *testing.T, lr lockRun, name string) {
 	t.Helper()
-	writeMode(t, filepath.Join(lr.root, "harness/skills", name, "SKILL.md"), "# "+name+"\n", 0o644)
+	writeMode(t, filepath.Join(lr.root, "skills", name, "SKILL.md"), "# "+name+"\n", 0o644)
 	writeMode(t, filepath.Join(lr.root, "skills-lock.json"), `{
   "version": 1,
   "skills": {
@@ -355,7 +355,7 @@ func TestLocksVerifyMatchesThePinnedLock(t *testing.T) {
 
 func TestLocksVerifyReportsDriftForTheEditedBodyOnly(t *testing.T) {
 	lr := locksVerifySandbox(t)
-	body := filepath.Join(lr.root, "harness/skills/tdd/SKILL.md")
+	body := filepath.Join(lr.root, "skills/tdd/SKILL.md")
 	data, err := os.ReadFile(body)
 	if err != nil {
 		t.Fatal(err)
@@ -390,7 +390,7 @@ func TestLocksVerifyReportsUnverifiableNotDrift(t *testing.T) {
 	skills["handoff"].(map[string]any)["computedHash"] = strings.Repeat("a", 40)
 	// An entry whose body is gone cannot be recomputed either.
 	skills["ponytail"].(map[string]any)["computedHash"] = strings.Repeat("b", 64)
-	if err := os.RemoveAll(filepath.Join(lr.root, "harness/skills/ponytail")); err != nil {
+	if err := os.RemoveAll(filepath.Join(lr.root, "skills/ponytail")); err != nil {
 		t.Fatal(err)
 	}
 	out, err := json.MarshalIndent(lf, "", "  ")
@@ -411,7 +411,7 @@ func TestLocksVerifyReportsUnverifiableNotDrift(t *testing.T) {
 
 func TestLocksCheckSyntaxAndWhitespace(t *testing.T) {
 	valid := map[string]string{
-		"harness/aliases.sh": "#!/bin/sh\necho aliases\n",
+		"aliases.sh": "#!/bin/sh\necho aliases\n",
 	}
 	for _, c := range []struct {
 		name    string
@@ -423,11 +423,11 @@ func TestLocksCheckSyntaxAndWhitespace(t *testing.T) {
 		{name: "clean", wantErr: false},
 		{name: "not a work tree", noRepo: true, wantErr: true, want: "git diff --check"},
 		{name: "missing entry point", mutate: func(t *testing.T, lr lockRun) {
-			os.Remove(filepath.Join(lr.root, "harness", "aliases.sh"))
+			os.Remove(filepath.Join(lr.root, "aliases.sh"))
 		}, wantErr: true, want: "shell entry point missing"},
 		{name: "syntax error", mutate: func(t *testing.T, lr lockRun) {
-			writeMode(t, filepath.Join(lr.root, "harness", "aliases.sh"), "#!/bin/sh\nif true; then\n", 0o755)
-		}, wantErr: true, want: "bash -n harness/aliases.sh"},
+			writeMode(t, filepath.Join(lr.root, "aliases.sh"), "#!/bin/sh\nif true; then\n", 0o755)
+		}, wantErr: true, want: "bash -n aliases.sh"},
 		{name: "whitespace", mutate: func(t *testing.T, lr lockRun) {
 			writeMode(t, filepath.Join(lr.root, "tracked.txt"), "clean\n", 0o644)
 			git(t, lr.root, "add", "tracked.txt")
@@ -464,7 +464,7 @@ func locksVerifySandbox(t *testing.T) lockRun {
 	t.Helper()
 	lr := newLockRun(t)
 	repo := filepath.Join("..", "..")
-	if err := copyTree(t, filepath.Join(repo, "harness", "skills"), filepath.Join(lr.root, "harness", "skills")); err != nil {
+	if err := copyTree(t, filepath.Join(repo, "skills"), filepath.Join(lr.root, "skills")); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(filepath.Join(repo, "skills-lock.json"))

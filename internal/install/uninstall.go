@@ -319,13 +319,13 @@ func (in *installer) checkRemoved() {
 			continue
 		}
 		for _, entry := range entries(root) {
-			if isLink(entry) && strings.HasPrefix(realpath(entry), in.dir.Assets()+"/") {
+			if isLink(entry) && in.dir.Manages(realpath(entry)) {
 				die("Managed link survived the uninstall: %s", entry)
 			}
 		}
 	}
 	for _, entry := range []string{filepath.Join(in.home, ".claude", "CLAUDE.md"), filepath.Join(in.config, "opencode", "AGENTS.md")} {
-		if isLink(entry) && strings.HasPrefix(readlink(entry), in.dir.Assets()+"/") {
+		if isLink(entry) && in.dir.Manages(readlink(entry)) {
 			die("Managed link survived the uninstall: %s", entry)
 		}
 	}

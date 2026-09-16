@@ -46,6 +46,19 @@ func assertGolden(t *testing.T, name, got string) {
 	}
 }
 
+// TestScenariosResolveTheCheckoutFromANestedDirectory runs with no --root from a nested directory, where the matrix default has to resolve the enclosing checkout rather than the invocation directory.
+func TestScenariosResolveTheCheckoutFromANestedDirectory(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	nested := filepath.Join(root, "internal", "scenarios")
+	r := runBinary(t, nested, "scenarios", "validate", "--out", t.TempDir())
+	if r.code != 0 || !strings.Contains(r.stdout, "local-tooling: pass") {
+		t.Fatalf("scenarios from a nested directory exited %d with stdout %q, stderr %q", r.code, r.stdout, r.stderr)
+	}
+}
+
 func TestScenariosValidateRejectsABadMatrix(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

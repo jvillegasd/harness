@@ -213,8 +213,8 @@ func TestPaidCapIsRetainedAcrossRuns(t *testing.T) {
 func TestMatrixRunsOfflineAndReviewPromotesToPass(t *testing.T) {
 	out := t.TempDir()
 	root := testRepoRoot()
-	matrix := loadTestMatrixAt(t, filepath.Join(root, "harness", "scenarios", "matrix.json"))
-	fixtures := filepath.Join(root, "harness", "scenarios", "fixtures")
+	matrix := loadTestMatrixAt(t, filepath.Join(root, "scenarios", "matrix.json"))
+	fixtures := filepath.Join(root, "scenarios", "fixtures")
 	for _, raw := range list(matrix, "scenarios") {
 		declaration, _ := raw.(map[string]any)
 		state, where, err := runOne(declaration, root, out, fixtures, false, nil)
@@ -237,7 +237,7 @@ func TestMatrixRunsOfflineAndReviewPromotesToPass(t *testing.T) {
 func TestFailingCheckFailsTheAttempt(t *testing.T) {
 	out := t.TempDir()
 	declaration := testScenario(map[string]any{"id": "bad-check", "mode": "offline", "check": "exit 3"})
-	state, where, err := runOne(declaration, testRepoRoot(), out, filepath.Join(testRepoRoot(), "harness", "scenarios", "fixtures"), false, nil)
+	state, where, err := runOne(declaration, testRepoRoot(), out, filepath.Join(testRepoRoot(), "scenarios", "fixtures"), false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +248,7 @@ func TestFailingCheckFailsTheAttempt(t *testing.T) {
 
 func TestReportSeparatesLocalTooling(t *testing.T) {
 	root := testRepoRoot()
-	text := report(loadTestMatrixAt(t, filepath.Join(root, "harness", "scenarios", "matrix.json")), t.TempDir(), root)
+	text := report(loadTestMatrixAt(t, filepath.Join(root, "scenarios", "matrix.json")), t.TempDir(), root)
 	for _, want := range []string{"local-tooling: pass", "behavioral-acceptance:", "incomplete (no attempt)"} {
 		if !contains(text, want) {
 			t.Fatalf("report missing %q:\n%s", want, text)
@@ -288,7 +288,7 @@ func TestCompare(t *testing.T) {
 	tmp := t.TempDir()
 	declaration := testScenario(map[string]any{"id": "ask-read-only"})
 	matrix := map[string]any{"scenarios": []any{declaration}}
-	fixtures := filepath.Join(tmp, "harness", "scenarios", "fixtures")
+	fixtures := filepath.Join(tmp, "scenarios", "fixtures")
 	digest := scenarioDigest(declaration, tmp, fixtures)
 
 	batch := func(side string, specs []map[string]any) {
@@ -360,7 +360,7 @@ func TestCompareCrossVersionAndDrift(t *testing.T) {
 	tmp := t.TempDir()
 	declaration := testScenario(map[string]any{"id": "ask-read-only"})
 	matrix := map[string]any{"scenarios": []any{declaration}}
-	fixtures := filepath.Join(tmp, "harness", "scenarios", "fixtures")
+	fixtures := filepath.Join(tmp, "scenarios", "fixtures")
 	digest := scenarioDigest(declaration, tmp, fixtures)
 
 	batch := func(side, at string, specs []map[string]any) {
@@ -492,7 +492,7 @@ func testRepoRoot() string {
 
 func loadTestMatrix(t *testing.T) map[string]any {
 	t.Helper()
-	return loadTestMatrixAt(t, filepath.Join(testRepoRoot(), "harness", "scenarios", "matrix.json"))
+	return loadTestMatrixAt(t, filepath.Join(testRepoRoot(), "scenarios", "matrix.json"))
 }
 
 func loadTestMatrixAt(t *testing.T, path string) map[string]any {

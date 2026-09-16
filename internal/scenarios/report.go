@@ -28,7 +28,7 @@ func report(matrix map[string]any, outRoot, root string) string {
 			lines = append(lines, "  "+getString(scenario, "id")+": incomplete (no attempt)")
 			continue
 		}
-		state, reasons := evaluate(attempts[len(attempts)-1], scenario, scenarioDigest(scenario, root, filepath.Join(root, "harness", "scenarios", "fixtures")))
+		state, reasons := evaluate(attempts[len(attempts)-1], scenario, scenarioDigest(scenario, root, filepath.Join(root, "scenarios", "fixtures")))
 		detail := ""
 		if len(reasons) > 0 {
 			detail = " (" + strings.Join(reasons, "; ") + ")"
@@ -149,7 +149,7 @@ func compare(beforeRoot, afterRoot string, matrix map[string]any, root string) s
 	var pairs []pair
 	for _, raw := range list(matrix, "scenarios") {
 		scenario, _ := raw.(map[string]any)
-		digest := scenarioDigest(scenario, root, filepath.Join(root, "harness", "scenarios", "fixtures"))
+		digest := scenarioDigest(scenario, root, filepath.Join(root, "scenarios", "fixtures"))
 		beforeCounts, beforePass := batchCounts(beforeRoot, scenario, digest)
 		afterCounts, afterPass := batchCounts(afterRoot, scenario, digest)
 		lines = append(lines, "  "+getString(scenario, "id"))

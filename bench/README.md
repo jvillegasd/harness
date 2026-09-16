@@ -1,6 +1,6 @@
 # bench
 
-`harness bench` answers one question: did a change to `harness/` move cost and friction in the sessions it actually produced? `POLICY.md` makes this the oracle for a harness change, because re-reading prose and judging it plausible proves nothing. Quality stays a human read of the transcripts.
+`harness bench` answers one question: did a change to the harness move cost and friction in the sessions it actually produced? `POLICY.md` makes this the oracle for a harness change, because re-reading prose and judging it plausible proves nothing. Quality stays a human read of the transcripts.
 
 Deliberately not a synthetic task battery. Synthetic control tasks can swing between identical runs and contaminate their own fixture. Real sessions cost something else, arriving slowly and mixing variables no experiment controls, which is what `THIN` and the caveats below are for.
 
@@ -10,7 +10,7 @@ Deliberately not a synthetic task battery. Synthetic control tasks can swing bet
 harness bench --split <commit-date> --since <window-start>
 ```
 
-Run it from inside the checkout; the work patterns come from `harness/bench/cohorts.json` there. That file is gitignored, so a fresh worktree carries only the committed empty `cohorts.example.json` until you copy it in, and the report splits nothing until a pattern matches.
+Run it from inside the checkout; the work patterns come from `bench/cohorts.json` there. That file is gitignored, so a fresh worktree carries only the committed empty `cohorts.example.json` until you copy it in, and the report splits nothing until a pattern matches.
 
 | Flag | Meaning |
 | --- | --- |

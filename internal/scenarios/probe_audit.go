@@ -26,7 +26,7 @@ var auditKeys = []string{
 
 const transcriptScanCap = 200
 
-var auditCommandPath = filepath.Join("harness", "commands", "harness-audit.md")
+var auditCommandPath = filepath.Join("commands", "harness-audit.md")
 
 func probeAuditBlock(root string) (map[string]any, error) {
 	text, err := readText(joinPath(root, auditCommandPath))
