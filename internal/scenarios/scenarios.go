@@ -78,9 +78,11 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness scenarios: unknown command %q; run harness scenarios --help\n", sub)
 		return 2
 	}
-	if len(rest) > 0 && (rest[0] == "-h" || rest[0] == "--help") {
-		fmt.Fprint(stdout, usageText)
-		return 0
+	for _, arg := range rest {
+		if arg == "-h" || arg == "--help" {
+			fmt.Fprint(stdout, usageText)
+			return 0
+		}
 	}
 	if err := flags.Parse(rest); err != nil {
 		fmt.Fprintf(stderr, "harness scenarios: %v; run harness scenarios --help\n", err)
@@ -94,7 +96,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 	case "run":
-		if isFlagSet(flags, "allow-paid") != isFlagSet(flags, "max-sessions") {
+		if *allowPaid != isFlagSet(flags, "max-sessions") {
 			fmt.Fprintln(stderr, "harness scenarios: run takes --allow-paid and --max-sessions together; a paid batch retains its cap.")
 			return 2
 		}

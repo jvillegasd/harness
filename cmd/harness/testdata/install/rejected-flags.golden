@@ -5,7 +5,7 @@ harness install: --clear-backups runs on its own; it neither installs nor uninst
 run [--links-only --clear-backups]: exit 2
 harness install: --clear-backups runs on its own; it neither installs nor uninstalls.
 run [--bogus]: exit 2
-harness install: unknown argument --bogus; run harness install --help
+harness install: unknown argument "--bogus"; run harness install --help
 == commands
 == home
 D .local

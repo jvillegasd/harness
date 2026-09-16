@@ -98,7 +98,7 @@ func Render(configPath string) (map[string]string, map[string]string, []string, 
 	return outputs, accesses, report, nil
 }
 
-// resolve returns the roles and {(client, role): {field: (value, source)}} for every assigned role, or an exit-4 fault on the first invalid assignment.
+// resolve returns the roles and {(client, role): {field: (value, source)}} for every assigned role, or a failure on the first invalid assignment.
 func resolve(config map[string]any) (map[string]any, map[string]map[string][2]string, error) {
 	clients, clientsOK := config["clients"].(map[string]any)
 	roles, rolesOK := config["roles"].(map[string]any)

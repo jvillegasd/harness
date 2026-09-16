@@ -35,9 +35,11 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness locks: unknown command %q; run harness locks --help\n", sub)
 		return 2
 	}
-	if len(rest) > 0 && (rest[0] == "-h" || rest[0] == "--help") {
-		fmt.Fprint(stdout, usage)
-		return 0
+	for _, arg := range rest {
+		if arg == "-h" || arg == "--help" {
+			fmt.Fprint(stdout, usage)
+			return 0
+		}
 	}
 	// The whole invocation is validated before the checkout is resolved, so a malformed one touches nothing.
 	if err := validateInvocation(sub, rest); err != nil {

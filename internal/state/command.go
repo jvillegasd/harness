@@ -34,11 +34,16 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	op, n := args[0], len(args)
+	if isOperation(op) {
+		for _, arg := range args[1:] {
+			if arg == "-h" || arg == "--help" {
+				fmt.Fprint(stdout, stateUsage)
+				return 0
+			}
+		}
+	}
 	switch {
 	case n == 1 && (op == "-h" || op == "--help" || op == "help"):
-		fmt.Fprint(stdout, stateUsage)
-		return 0
-	case n == 2 && (args[1] == "-h" || args[1] == "--help") && isOperation(op):
 		fmt.Fprint(stdout, stateUsage)
 		return 0
 	case n == 1 && op == "prune":

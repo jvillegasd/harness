@@ -73,7 +73,7 @@ func verify(c checkout.Checkout, stdout, stderr io.Writer) error {
 		}
 	}
 	if unverifiable > 0 {
-		fmt.Fprintf(stderr, "[warn] %d skill(s) unverifiable\n", unverifiable)
+		fmt.Fprintf(stderr, "harness locks: %d skill(s) unverifiable\n", unverifiable)
 	}
 	if drifted > 0 {
 		return fmt.Errorf("%d skill(s) drifted", drifted)

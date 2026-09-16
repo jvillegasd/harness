@@ -149,7 +149,7 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 			fmt.Fprint(stdout, usage)
 			return 0
 		default:
-			fmt.Fprintf(stderr, "harness install: unknown argument %s; run harness install --help\n", arg)
+			fmt.Fprintf(stderr, "harness install: unknown argument %q; run harness install --help\n", arg)
 			return 2
 		}
 	}

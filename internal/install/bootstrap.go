@@ -31,7 +31,7 @@ func Bootstrap(args []string, stdout, stderr io.Writer) (code int) {
 			fmt.Fprint(stdout, bootstrapUsage)
 			return 0
 		default:
-			fmt.Fprintf(stderr, "harness bootstrap: unknown argument %s; run harness bootstrap --help\n", arg)
+			fmt.Fprintf(stderr, "harness bootstrap: unknown argument %q; run harness bootstrap --help\n", arg)
 			return 2
 		}
 	}

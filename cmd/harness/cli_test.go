@@ -14,15 +14,6 @@ import (
 // shimTools are the external tools a harness command could reach for. Every one is replaced by a logging shim on the controlled PATH, so a run that spawns any of them is caught.
 var shimTools = []string{"git", "gh", "npx", "brew", "wt", "go", "claude", "opencode", "bash", "sh", "mv", "du", "security", "secret-tool", "curl"}
 
-// matrixRun is one invocation in the command matrix: the expected exit status and a substring each stream must carry, empty meaning the stream must be empty.
-type matrixRun struct {
-	name           string
-	args           []string
-	code           int
-	stdoutContains string
-	stderrContains string
-}
-
 // cliResult is what one harness invocation produced, with timedOut set when holding stdin open stopped it.
 type cliResult struct {
 	stdout, stderr string
@@ -103,51 +94,57 @@ func (c matrixCase) assertClean(t *testing.T) {
 	}
 }
 
-// TestCommandHelpMatrix drives every command and leaf command's help through the real executable and asserts status 0, usage on stdout, an untouched stderr, no subprocess, no write, and no stdin read.
+// TestCommandHelpMatrix drives every command and leaf command's help, in both spellings, through the real executable and asserts status 0, usage on stdout, an untouched stderr, no subprocess, no write, and no stdin read.
 func TestCommandHelpMatrix(t *testing.T) {
-	args := [][]string{
-		{"--help"}, {"-h"},
-		{"bootstrap", "--help"},
-		{"install", "--help"},
-		{"agents", "--help"},
-		{"scenarios", "--help"}, {"scenarios", "-h"},
-		{"scenarios", "validate", "--help"},
-		{"scenarios", "run", "--help"},
-		{"scenarios", "report", "--help"},
-		{"scenarios", "compare", "--help"},
-		{"bench", "--help"},
-		{"locks", "--help"},
-		{"locks", "add", "--help"},
-		{"locks", "update", "--help"},
-		{"locks", "remove", "--help"},
-		{"locks", "check", "--help"},
-		{"locks", "verify", "--help"},
-		{"state", "--help"},
-		{"state", "ladder", "--help"},
-		{"state", "incr", "--help"},
-		{"state", "escalate", "--help"},
-		{"state", "get", "--help"},
-		{"state", "prune", "--help"},
-		{"dash", "--help"},
-		{"statusline", "--help"},
+	commands := [][]string{
+		{},
+		{"bootstrap"},
+		{"install"},
+		{"agents"},
+		{"agents", "--check"},
+		{"scenarios"},
+		{"scenarios", "validate"},
+		{"scenarios", "run"},
+		{"scenarios", "report"},
+		{"scenarios", "compare"},
+		{"bench"},
+		{"locks"},
+		{"locks", "add"},
+		{"locks", "add", "owner/repo", "myskill"},
+		{"locks", "update"},
+		{"locks", "remove"},
+		{"locks", "check"},
+		{"locks", "verify"},
+		{"state"},
+		{"state", "ladder"},
+		{"state", "ladder", "set"},
+		{"state", "incr"},
+		{"state", "escalate", "--reason", "why"},
+		{"state", "get", "--json"},
+		{"state", "prune"},
+		{"dash"},
+		{"statusline"},
 	}
-	for _, want := range args {
-		t.Run(strings.Join(want, " "), func(t *testing.T) {
-			c := runMatrixCase(t, want)
-			if c.result.timedOut {
-				t.Fatalf("help read stdin and hung")
-			}
-			if c.result.code != 0 {
-				t.Fatalf("help exited %d: %s", c.result.code, c.result.stderr)
-			}
-			if c.result.stdout == "" {
-				t.Fatal("help printed no usage to stdout")
-			}
-			if c.result.stderr != "" {
-				t.Fatalf("help wrote to stderr: %q", c.result.stderr)
-			}
-			c.assertClean(t)
-		})
+	for _, command := range commands {
+		for _, flag := range []string{"--help", "-h"} {
+			want := append(append([]string{}, command...), flag)
+			t.Run(strings.Join(want, " "), func(t *testing.T) {
+				c := runMatrixCase(t, want)
+				if c.result.timedOut {
+					t.Fatalf("help read stdin and hung")
+				}
+				if c.result.code != 0 {
+					t.Fatalf("help exited %d: %s", c.result.code, c.result.stderr)
+				}
+				if c.result.stdout == "" {
+					t.Fatal("help printed no usage to stdout")
+				}
+				if c.result.stderr != "" {
+					t.Fatalf("help wrote to stderr: %q", c.result.stderr)
+				}
+				c.assertClean(t)
+			})
+		}
 	}
 }
 
@@ -251,8 +248,8 @@ func TestAgentsNoOpReportsUnchangedAndExitsZero(t *testing.T) {
 	}
 	config := filepath.Join(root, "clients", "assignments.json")
 	out := resolvedTemp(t)
-	if r := runBinary(t, root, "agents", config, out); r.code != 0 {
-		t.Fatalf("first generate exited %d: %s", r.code, r.stderr)
+	if r := runBinary(t, root, "agents", config, out); r.code != 0 || !strings.Contains(r.stdout, "changed") {
+		t.Fatalf("first generate exited %d with stdout %q, want 0 and a changed report", r.code, r.stdout)
 	}
 	r := runBinary(t, root, "agents", config, out)
 	if r.code != 0 || !strings.Contains(r.stdout, "unchanged") {

@@ -3,6 +3,7 @@ package agents
 import (
 	"fmt"
 	"io"
+	"strings"
 )
 
 const usageText = `Usage: harness agents [--check] <assignments.json> <output-dir>
@@ -12,16 +13,18 @@ Render every assigned role into one agent definition per client. Generation exit
 
 // Command runs `harness agents` and returns the exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
-	if len(args) > 0 && (args[0] == "-h" || args[0] == "--help") {
-		fmt.Fprint(stdout, usageText)
-		return 0
+	for _, arg := range args {
+		if arg == "-h" || arg == "--help" {
+			fmt.Fprint(stdout, usageText)
+			return 0
+		}
 	}
 	checking := len(args) > 0 && args[0] == "--check"
 	rest := args
 	if checking {
 		rest = args[1:]
 	}
-	if len(rest) != 2 {
+	if len(rest) != 2 || strings.HasPrefix(rest[0], "-") {
 		fmt.Fprint(stderr, usageText)
 		return 2
 	}
