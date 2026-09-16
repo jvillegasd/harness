@@ -18,7 +18,7 @@ harness scenarios compare --before <dir> --after <dir>
 | `report` | Print `local-tooling` and `behavioral-acceptance` as separate lines. |
 | `compare` | Report behavioral pass rates first, then efficiency among passing runs only. |
 
-`--matrix`, `--out`, and `--root` override the declaration file, the attempts directory, and the repository root. `run --scenario <id>` narrows to one scenario.
+`--matrix`, `--out`, and `--root` override the declaration file, the attempts directory, and the repository root. `run --scenario <id>` narrows to one scenario; an id that matches no declared scenario is rejected before any attempt is written, and `compare` requires both `--before` and `--after`.
 
 ## Attempts
 
@@ -77,7 +77,7 @@ Every scenario runs in a fresh temporary repository with no git remote. A `gh` s
 
 ## Paid execution
 
-A `live` scenario needs a recording under `fixtures/<id>/` or `--allow-paid`. Paid execution additionally needs `--max-sessions`, which is retained in `attempts/batch.json` and refuses a session beyond the cap. Changing the cap mid-batch is refused; start a new batch.
+A `live` scenario needs a recording under `fixtures/<id>/` or `--allow-paid`. Paid execution additionally needs `--max-sessions`, which is retained in `attempts/batch.json` and refuses a session beyond the cap. Changing the cap mid-batch is refused; start a new batch. `--max-sessions` is required exactly when `--allow-paid` is set and rejected otherwise; either mismatch is an incompatible invocation rejected before any attempt is written.
 
 ## Fixtures
 

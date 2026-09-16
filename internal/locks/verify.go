@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -55,10 +54,7 @@ func Verify(c checkout.Checkout) ([]LockResult, error) {
 	return results, nil
 }
 
-func verify(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
-	if len(args) != 0 {
-		return errors.New("verify expects 0 argument(s)")
-	}
+func verify(c checkout.Checkout, stdout, stderr io.Writer) error {
 	results, err := Verify(c)
 	if err != nil {
 		return err
@@ -77,7 +73,7 @@ func verify(c checkout.Checkout, args []string, stdout, stderr io.Writer) error 
 		}
 	}
 	if unverifiable > 0 {
-		fmt.Fprintf(stderr, "[warn] %d skill(s) unverifiable\n", unverifiable)
+		fmt.Fprintf(stderr, "harness locks: %d skill(s) unverifiable\n", unverifiable)
 	}
 	if drifted > 0 {
 		return fmt.Errorf("%d skill(s) drifted", drifted)
@@ -134,10 +130,7 @@ func folderHash(dir string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func check(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
-	if len(args) != 0 {
-		return errors.New("check expects 0 argument(s)")
-	}
+func check(c checkout.Checkout, stdout, stderr io.Writer) error {
 	aliases, err := filepath.Rel(c.Root, c.Aliases())
 	if err != nil {
 		return err

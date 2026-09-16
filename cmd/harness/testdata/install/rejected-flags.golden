@@ -1,11 +1,11 @@
-run [--uninstall --links-only]: exit 1
-[err] --uninstall and --links-only are contradictory; --uninstall removes every link.
-run [--clear-backups --uninstall]: exit 1
-[err] --clear-backups runs on its own; it neither installs nor uninstalls.
-run [--links-only --clear-backups]: exit 1
-[err] --clear-backups runs on its own; it neither installs nor uninstalls.
-run [--bogus]: exit 1
-[err] Unknown argument: --bogus
+run [--uninstall --links-only]: exit 2
+harness install: --uninstall and --links-only are contradictory; --uninstall removes every link.
+run [--clear-backups --uninstall]: exit 2
+harness install: --clear-backups runs on its own; it neither installs nor uninstalls.
+run [--links-only --clear-backups]: exit 2
+harness install: --clear-backups runs on its own; it neither installs nor uninstalls.
+run [--bogus]: exit 2
+harness install: unknown argument "--bogus"; run harness install --help
 == commands
 == home
 D .local

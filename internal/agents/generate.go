@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func generate(outputs map[string]string, output string, report []string, stdout io.Writer) int {
+func generate(outputs map[string]string, output string, report []string, stdout, stderr io.Writer) int {
 	changed := false
 	for relative, path := range existing(output) {
 		if _, ok := outputs[relative]; !ok {
@@ -29,19 +29,21 @@ func generate(outputs map[string]string, output string, report []string, stdout 
 			continue
 		}
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			fmt.Fprintln(stdout, err)
-			return 4
+			fmt.Fprintf(stderr, "harness agents: %v\n", err)
+			return 1
 		}
 		if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
-			fmt.Fprintln(stdout, err)
-			return 4
+			fmt.Fprintf(stderr, "harness agents: %v\n", err)
+			return 1
 		}
 		changed = true
 	}
-	lines := append(append(append([]string{}, report...), gaps...), unverified...)
-	fmt.Fprintln(stdout, strings.Join(lines, "\n"))
+	result := "unchanged"
 	if changed {
-		return 0
+		result = "changed"
 	}
-	return 3
+	lines := append(append(append([]string{}, report...), gaps...), unverified...)
+	lines = append(lines, "output: "+result)
+	fmt.Fprintln(stdout, strings.Join(lines, "\n"))
+	return 0
 }

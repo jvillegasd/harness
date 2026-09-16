@@ -271,7 +271,7 @@ func (in *installer) pruneTUI(path string) {
 	doc, err := parseObject(data)
 	if err != nil {
 		if !json.Valid(data) {
-			fmt.Fprintf(in.stderr, "Could not parse it, so its %s entry was left\n", subagentStatusline)
+			fmt.Fprintf(in.stderr, "harness install: could not parse it, so its %s entry was left\n", subagentStatusline)
 		}
 		return
 	}

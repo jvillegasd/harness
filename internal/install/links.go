@@ -299,7 +299,7 @@ func (in *installer) sweepAgentLinks() {
 
 // installAgents renders the role agents and links them into each client, refusing an unowned root or collision before linking anything. The renderer prints every enforcement gap, so what a client cannot restrict is never reported as enforced.
 func (in *installer) installAgents() {
-	if code := agents.GenerateCommand(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 && code != 3 {
+	if code := agents.GenerateCommand(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 {
 		die("Generating the role agents failed with status %d.", code)
 	}
 	for _, pair := range in.agentRoots() {

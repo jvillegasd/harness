@@ -144,9 +144,12 @@ func TestGenerationIsIdempotent(t *testing.T) {
 		t.Fatalf("first generate exited %d: %s", code, stderr)
 	}
 	first := treeOf(t, out)
-	code, _, stderr := runCommand(t, configPath(), out)
-	if code != 3 {
-		t.Fatalf("second generate exited %d, want 3: %s", code, stderr)
+	code, stdout, stderr := runCommand(t, configPath(), out)
+	if code != 0 {
+		t.Fatalf("second generate exited %d, want 0: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "unchanged") {
+		t.Fatalf("second generate did not report its output as unchanged: %s", stdout)
 	}
 	if len(treeOf(t, out)) != len(first) {
 		t.Fatal("idempotent generation changed the tree")
@@ -220,9 +223,9 @@ func TestOnlyTheExecutorMayImplement(t *testing.T) {
 		name, target, access string
 		want                 int
 	}{
-		{"review-refuter", "review-refuter", "implement", 4},
+		{"review-refuter", "review-refuter", "implement", 1},
 		{"review-refuter", "review-refuter", "read-search", 0},
-		{"executor", "executor", "read-search", 4},
+		{"executor", "executor", "read-search", 1},
 	}
 	for _, c := range cases {
 		t.Run(c.name+"-"+c.access, func(t *testing.T) {
@@ -446,7 +449,7 @@ func TestMissingDroppedAndMisnamedRolesPreserveOutputs(t *testing.T) {
 			for _, flags := range [][]string{{}, {"--check"}} {
 				args := append(append([]string{}, flags...), config, out)
 				code, _, stderr := runCommand(t, args...)
-				if code != 4 || !strings.Contains(stderr, "reviewer-b") {
+				if code != 1 || !strings.Contains(stderr, "reviewer-b") {
 					t.Fatalf("flags %v: exit %d, stderr %q", flags, code, stderr)
 				}
 				if !deepEqualStrings(treeOf(t, out), before) {
@@ -475,7 +478,7 @@ func TestIncompleteOrWidenedRoleRefused(t *testing.T) {
 			}
 			output := filepath.Join(dir, "out")
 			code, _, stderr := runCommand(t, config, output)
-			if code != 4 || !strings.Contains(stderr, "reviewer-b.md") {
+			if code != 1 || !strings.Contains(stderr, "reviewer-b.md") {
 				t.Fatalf("exit %d, stderr %q", code, stderr)
 			}
 			if _, err := os.Stat(output); err == nil {
@@ -589,7 +592,7 @@ func TestAssignments(t *testing.T) {
 				for _, flags := range [][]string{{}, {"--check"}} {
 					args := append(append([]string{}, flags...), config, out)
 					code, _, stderr := runCommand(t, args...)
-					if code != 4 || !strings.Contains(stderr, expected) {
+					if code != 1 || !strings.Contains(stderr, expected) {
 						t.Fatalf("flags %v: exit %d, stderr %q; want %q", flags, code, stderr, expected)
 					}
 					if !deepEqualStrings(treeOf(t, out), before) {
@@ -609,7 +612,7 @@ func TestAssignments(t *testing.T) {
 		}
 		out := filepath.Join(dir, "out")
 		code, _, stderr := runCommand(t, config, out)
-		if code != 4 || !strings.Contains(stderr, "duplicate") {
+		if code != 1 || !strings.Contains(stderr, "duplicate") {
 			t.Fatalf("exit %d, stderr %q", code, stderr)
 		}
 		if _, err := os.Stat(out); err == nil {
@@ -661,7 +664,7 @@ func TestAssignments(t *testing.T) {
 			delete(data["roles"].(map[string]any)["review-refuter"].(map[string]any), "definition")
 		})
 		code, _, stderr := runCommand(t, config, filepath.Join(dir, "out"))
-		if code != 4 || !strings.Contains(stderr, "review-refuter must be assigned with a definition") {
+		if code != 1 || !strings.Contains(stderr, "review-refuter must be assigned with a definition") {
 			t.Fatalf("exit %d, stderr %q", code, stderr)
 		}
 	})

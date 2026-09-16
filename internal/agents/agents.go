@@ -2,12 +2,14 @@
 //
 // The assignments file is the one source for roles and their model and effort. `clients` sets each client's default model and effort, and `inherit` there means the session's own choice. Each entry under `roles` names its canonical definition, relative to the assignments file, and may override either field per client. A field resolves from the role's override, else the client default, and generation prints every resolution with its source. A role with no definition is an assignment waiting for its role: it is validated and reported, and nothing is generated for it.
 //
-// Generation writes <output-dir>/<client>/<role>.md for every defined role and client, removes any other file under <output-dir>, and prints the resolved assignments, the enforcement gaps, and the unverified capabilities. It exits 0 when it wrote or removed something and 3 when the output already matched, so a crash cannot pass for "nothing to do". An invalid or unsupported assignment, an incomplete role, a role asking for other access than its own, or a missing required role exits 4 before anything is written; nothing is substituted.
+// Generation writes <output-dir>/<client>/<role>.md for every defined role and client, removes any other file under <output-dir>, and prints the resolved assignments, whether the output changed, the enforcement gaps, and the unverified capabilities. It exits 0 whether or not it had to change anything, and reports whether the output was already current. An invalid or unsupported assignment, an incomplete role, a role asking for other access than its own, or a missing required role exits 1 before anything is written; nothing is substituted.
 //
 // Output paths and their ancestors must not be symlinks; both generation and checking refuse them before reconciliation.
 //
 // --check writes nothing. It reports each output that is missing, drifted, unmanaged, or no longer carries its access level's restrictions, and exits 1 when it found any.
 package agents
+
+import "errors"
 
 // adversarial-review launches the reviewers and the refuter and POLICY.md names the executor, so each must exist with exactly this access. Every other role is read-search: only the executor may implement.
 var required = map[string]string{
@@ -77,12 +79,5 @@ var unverified = []string{
 	"unverified: claude disallowedTools: Agent and opencode task: deny stopping the executor from delegating",
 }
 
-// fault carries the exit code a validation failure demands.
-type fault struct {
-	code int
-	msg  string
-}
-
-func (e *fault) Error() string { return e.msg }
-
-func fail(msg string, code int) error { return &fault{code: code, msg: msg} }
+// fail reports an invalid or unsupported assignment, which the command surfaces as an operational failure.
+func fail(msg string) error { return errors.New(msg) }

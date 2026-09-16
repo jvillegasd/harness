@@ -16,15 +16,15 @@ import (
 func Render(configPath string) (map[string]string, map[string]string, []string, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, nil, nil, fail(fmt.Sprintf("%s: %v", configPath, err), 4)
+		return nil, nil, nil, fail(fmt.Sprintf("%s: %v", configPath, err))
 	}
 	decoded, err := decodeUnique(data)
 	if err != nil {
-		return nil, nil, nil, fail(fmt.Sprintf("%s: %v", configPath, err), 4)
+		return nil, nil, nil, fail(fmt.Sprintf("%s: %v", configPath, err))
 	}
 	config, ok := decoded.(map[string]any)
 	if !ok {
-		return nil, nil, nil, fail(fmt.Sprintf("%s: config must be an object", configPath), 4)
+		return nil, nil, nil, fail(fmt.Sprintf("%s: config must be an object", configPath))
 	}
 	roles, resolved, err := resolve(config)
 	if err != nil {
@@ -98,7 +98,7 @@ func Render(configPath string) (map[string]string, map[string]string, []string, 
 	return outputs, accesses, report, nil
 }
 
-// resolve returns the roles and {(client, role): {field: (value, source)}} for every assigned role, or an exit-4 fault on the first invalid assignment.
+// resolve returns the roles and {(client, role): {field: (value, source)}} for every assigned role, or a failure on the first invalid assignment.
 func resolve(config map[string]any) (map[string]any, map[string]map[string][2]string, error) {
 	clients, clientsOK := config["clients"].(map[string]any)
 	roles, rolesOK := config["roles"].(map[string]any)
@@ -108,10 +108,10 @@ func resolve(config map[string]any) (map[string]any, map[string]map[string][2]st
 	}
 	sort.Strings(clientNames)
 	if !clientsOK || len(clients) != len(supported) || !containsAll(clients, clientNames) {
-		return nil, nil, fail("clients must set exactly "+strings.Join(clientNames, ", "), 4)
+		return nil, nil, fail("clients must set exactly " + strings.Join(clientNames, ", "))
 	}
 	if !rolesOK {
-		return nil, nil, fail("roles must be an object", 4)
+		return nil, nil, fail("roles must be an object")
 	}
 	resolved := map[string]map[string][2]string{}
 	roleNames := make([]string, 0, len(roles))
@@ -123,20 +123,20 @@ func resolve(config map[string]any) (map[string]any, map[string]map[string][2]st
 		role := roles[name]
 		// The name becomes an output path, so nothing but a plain file name gets through.
 		if !roleName.MatchString(name) {
-			return nil, nil, fail(fmt.Sprintf("roles.%s: a role name is lowercase letters, digits, and hyphens", repr(name)), 4)
+			return nil, nil, fail(fmt.Sprintf("roles.%s: a role name is lowercase letters, digits, and hyphens", repr(name)))
 		}
 		roleObj, ok := role.(map[string]any)
 		if !ok {
-			return nil, nil, fail(fmt.Sprintf("roles.%s must be an object", name), 4)
+			return nil, nil, fail(fmt.Sprintf("roles.%s must be an object", name))
 		}
 		allowed := []string{"definition", "claude", "opencode"}
 		if unknown := unknownKeys(roleObj, allowed); len(unknown) > 0 {
-			return nil, nil, fail(fmt.Sprintf("roles.%s: unknown keys %s; a role takes definition, %s", name, strings.Join(unknown, ", "), strings.Join(clientNames, ", ")), 4)
+			return nil, nil, fail(fmt.Sprintf("roles.%s: unknown keys %s; a role takes definition, %s", name, strings.Join(unknown, ", "), strings.Join(clientNames, ", ")))
 		}
 		if def, ok := roleObj["definition"]; ok {
 			text, isString := def.(string)
 			if !isString || text == "" {
-				return nil, nil, fail(fmt.Sprintf("roles.%s.definition must be a path; leave it out for a role with no definition yet", name), 4)
+				return nil, nil, fail(fmt.Sprintf("roles.%s.definition must be a path; leave it out for a role with no definition yet", name))
 			}
 		}
 		for _, client := range clientNames {
@@ -156,7 +156,7 @@ func resolve(config map[string]any) (map[string]any, map[string]map[string][2]st
 			settings := map[string][2]string{}
 			for _, f := range supported[client] {
 				if _, ok := defBlock[f.name]; !ok {
-					return nil, nil, fail(fmt.Sprintf("clients.%s must set %s; write inherit to use the session's", client, f.name), 4)
+					return nil, nil, fail(fmt.Sprintf("clients.%s must set %s; write inherit to use the session's", client, f.name))
 				}
 				value, source := defBlock[f.name], "client default"
 				if v, ok := override[f.name]; ok {
@@ -164,12 +164,12 @@ func resolve(config map[string]any) (map[string]any, map[string]map[string][2]st
 				}
 				text, isString := value.(string)
 				if !isString || !regexp.MustCompile("^(?:"+f.pattern+")$").MatchString(text) {
-					return nil, nil, fail(fmt.Sprintf("%s %s %s for %s is unsupported; %s accepts %s", client, f.name, reprValue(value), name, client, strings.ReplaceAll(f.pattern, "|", ", ")), 4)
+					return nil, nil, fail(fmt.Sprintf("%s %s %s for %s is unsupported; %s accepts %s", client, f.name, reprValue(value), name, client, strings.ReplaceAll(f.pattern, "|", ", ")))
 				}
 				settings[f.name] = [2]string{text, source}
 			}
 			if client == "opencode" && settings["effort"][0] != "inherit" && !strings.HasPrefix(settings["model"][0], "openai/") {
-				return nil, nil, fail(fmt.Sprintf("opencode effort for %s is passed as OpenAI's reasoningEffort, so it needs an openai/ model, not %s", name, settings["model"][0]), 4)
+				return nil, nil, fail(fmt.Sprintf("opencode effort for %s is passed as OpenAI's reasoningEffort, so it needs an openai/ model, not %s", name, settings["model"][0]))
 			}
 			resolved[client+"/"+name] = settings
 		}
@@ -191,7 +191,7 @@ func resolve(config map[string]any) (map[string]any, map[string]map[string][2]st
 		}
 	}
 	if len(missing) > 0 {
-		return nil, nil, fail(strings.Join(missing, ", ")+" must be assigned with a definition", 4)
+		return nil, nil, fail(strings.Join(missing, ", ") + " must be assigned with a definition")
 	}
 	return roles, resolved, nil
 }
@@ -225,10 +225,10 @@ func unknownKeys(m map[string]any, allowed []string) []string {
 func assignmentBlock(block any, label string) (map[string]any, error) {
 	obj, ok := block.(map[string]any)
 	if !ok {
-		return nil, fail(label+" must be an object", 4)
+		return nil, fail(label + " must be an object")
 	}
 	if unknown := unknownKeys(obj, []string{"model", "effort"}); len(unknown) > 0 {
-		return nil, fail(fmt.Sprintf("%s: unknown keys %s; only model and effort are assigned", label, strings.Join(unknown, ", ")), 4)
+		return nil, fail(fmt.Sprintf("%s: unknown keys %s; only model and effort are assigned", label, strings.Join(unknown, ", ")))
 	}
 	return obj, nil
 }
@@ -238,11 +238,11 @@ var frontmatter = regexp.MustCompile(`(?s)^---\n(.*?)\n---\n(.*)$`)
 func load(path, name string) (string, string, string, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return "", "", "", fail(fmt.Sprintf("%s: unreadable definition for %s: %v", path, name, err), 4)
+		return "", "", "", fail(fmt.Sprintf("%s: unreadable definition for %s: %v", path, name, err))
 	}
 	match := frontmatter.FindStringSubmatch(string(raw))
 	if match == nil {
-		return "", "", "", fail(path+": missing frontmatter", 4)
+		return "", "", "", fail(path + ": missing frontmatter")
 	}
 	front := map[string]string{}
 	for _, line := range strings.Split(match[1], "\n") {
@@ -252,10 +252,10 @@ func load(path, name string) (string, string, string, error) {
 	}
 	body := strings.TrimSpace(match[2])
 	if front["name"] != name {
-		return "", "", "", fail(fmt.Sprintf("%s: name must be %s, the role it is assigned to", path, name), 4)
+		return "", "", "", fail(fmt.Sprintf("%s: name must be %s, the role it is assigned to", path, name))
 	}
 	if front["description"] == "" {
-		return "", "", "", fail(path+": missing description", 4)
+		return "", "", "", fail(path + ": missing description")
 	}
 	level := front["access"]
 	expected, ok := required[name]
@@ -263,7 +263,7 @@ func load(path, name string) (string, string, string, error) {
 		expected = "read-search"
 	}
 	if level != expected {
-		return "", "", "", fail(fmt.Sprintf("%s: access must be %s", path, expected), 4)
+		return "", "", "", fail(fmt.Sprintf("%s: access must be %s", path, expected))
 	}
 	if level == "read-search" {
 		found := false
@@ -274,11 +274,11 @@ func load(path, name string) (string, string, string, error) {
 			}
 		}
 		if !found {
-			return "", "", "", fail(path+": missing the canonical Access line", 4)
+			return "", "", "", fail(path + ": missing the canonical Access line")
 		}
 	}
 	if body == "" || strings.Contains(body, "'''") {
-		return "", "", "", fail(path+": body must be non-empty and free of '''", 4)
+		return "", "", "", fail(path + ": body must be non-empty and free of '''")
 	}
 	return front["description"], level, body, nil
 }

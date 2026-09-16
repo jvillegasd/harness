@@ -34,6 +34,14 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	op, n := args[0], len(args)
+	if isOperation(op) {
+		for _, arg := range args[1:] {
+			if arg == "-h" || arg == "--help" {
+				fmt.Fprint(stdout, stateUsage)
+				return 0
+			}
+		}
+	}
 	switch {
 	case n == 1 && (op == "-h" || op == "--help" || op == "help"):
 		fmt.Fprint(stdout, stateUsage)
@@ -85,6 +93,15 @@ func Command(args []string, stdout, stderr io.Writer) int {
 			s.Branch, s.Store, s.Ladder, counter(s.Attempts, s.Legacy["attempts"]), counter(s.Escalations, s.Legacy["escalations"]), s.Reason)
 	}
 	return 0
+}
+
+// isOperation reports whether op names a leaf of harness state, each of which answers --help.
+func isOperation(op string) bool {
+	switch op {
+	case "ladder", "incr", "escalate", "get", "prune":
+		return true
+	}
+	return false
 }
 
 // counted reports a counter write, naming any legacy text it replaced.

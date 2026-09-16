@@ -79,11 +79,7 @@ func existing(output string) map[string]string {
 	return found
 }
 
-func checkSymlinks(outputs map[string]string, output string, checking bool, stderr io.Writer) int {
-	code := 4
-	if checking {
-		code = 1
-	}
+func checkSymlinks(outputs map[string]string, output string, stderr io.Writer) int {
 	names := make([]string, 0, len(outputs))
 	for relative := range outputs {
 		names = append(names, relative)
@@ -94,8 +90,8 @@ func checkSymlinks(outputs map[string]string, output string, checking bool, stde
 		entries := append([]string{path}, parents(path)...)
 		for _, entry := range entries {
 			if info, err := os.Lstat(entry); err == nil && info.Mode()&os.ModeSymlink != 0 {
-				fmt.Fprintf(stderr, "%s: symlink in role agent output path\n", entry)
-				return code
+				fmt.Fprintf(stderr, "harness agents: %s: symlink in role agent output path\n", entry)
+				return 1
 			}
 		}
 	}
