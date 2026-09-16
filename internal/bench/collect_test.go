@@ -89,6 +89,12 @@ func TestCollectSinceIsDateGranular(t *testing.T) {
 	}
 }
 
+func TestCollectRejectsUnknownClient(t *testing.T) {
+	if _, err := collect(t.TempDir(), []string{"codex"}, nil, nil); err == nil {
+		t.Fatal("an unknown client was accepted")
+	}
+}
+
 func TestCollectSkipsExcludedParentSidecar(t *testing.T) {
 	home := t.TempDir()
 	dir := filepath.Join(home, ".claude", "projects", "-tmp-acme-app")
@@ -165,6 +171,14 @@ func TestReportCallableDirectly(t *testing.T) {
 	}
 	if !strings.Contains(out, "claude  work") {
 		t.Fatalf("report did not split the configured cohort:\n%s", out)
+	}
+	noon := time.Date(2026, 1, 3, 12, 0, 0, 0, time.UTC)
+	noonOut, err := Report(Options{Home: home, Clients: []string{"claude"}, Work: []string{"acme"}, Split: &noon})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if noonOut != out {
+		t.Fatalf("a split with a time of day changed the report:\n--- midnight\n%s\n--- noon\n%s", out, noonOut)
 	}
 	rows, err := Report(Options{Home: home, Clients: []string{"claude"}, Work: []string{"acme"}, Rows: true})
 	if err != nil {

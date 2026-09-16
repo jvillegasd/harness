@@ -117,8 +117,8 @@ func (s *session) metric(name string) (float64, bool) {
 // collect builds the population for the requested clients and window. Repeating
 // a client is a set, so a duplicate selection never doubles a population or its
 // rows, and since drops sessions before their metrics are aggregated. Since is
-// a date, so its time of day is truncated here: that is what keeps the Claude
-// day comparison and the OpenCode instant comparison in agreement.
+// a date, so its time of day is truncated here: both readers then compare
+// against one boundary, whatever instant a direct consumer passes.
 func collect(home string, clients []string, work []string, since *time.Time) ([]*session, error) {
 	if since != nil {
 		day := startOfDay(*since)
@@ -138,6 +138,8 @@ func collect(home string, clients []string, work []string, since *time.Time) ([]
 			found, err = claudeSessions(home, since)
 		case "opencode":
 			found, err = opencodeSessions(home, since)
+		default:
+			return nil, fmt.Errorf("unknown client %q", client)
 		}
 		if err != nil {
 			return nil, err

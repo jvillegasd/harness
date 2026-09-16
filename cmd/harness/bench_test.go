@@ -86,8 +86,8 @@ func TestBenchRowsMatchRecordedRows(t *testing.T) {
 // the recorded baseline.
 func TestBenchRowsWithoutSplit(t *testing.T) {
 	dir := benchDir(t)
-	without := ok(t, harness(t, dir, "", "bench", "--rows", "--home", benchHome(t)), "bench --rows")
-	with := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--rows", "--home", benchHome(t)), "bench --split --rows")
+	without := ok(t, harness(t, dir, "", "bench", "--rows", "--since", "2026-09-01", "--home", benchHome(t)), "bench --rows")
+	with := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--rows", "--since", "2026-09-01", "--home", benchHome(t)), "bench --split --rows")
 	if without.stdout != with.stdout {
 		t.Fatalf("adding --split changed the rows:\n--- without\n%s\n--- with\n%s", without.stdout, with.stdout)
 	}

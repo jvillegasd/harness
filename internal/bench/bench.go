@@ -96,9 +96,9 @@ func Command(args []string, stdout, stderr io.Writer) int {
 }
 
 // Options is the resolved population request behind one benchmark run: the
-// inputs after flag parsing, with Work already read from a checkout. Split is
-// nil for a row export, which does not need one, and Since is a date whose
-// time of day is ignored.
+// inputs after flag parsing, with Work already read from a checkout. Split
+// partitions the report and is ignored for a row export; Since and Split are
+// dates whose time of day is ignored.
 type Options struct {
 	Home    string
 	Clients []string
@@ -122,7 +122,8 @@ func Report(opts Options) (string, error) {
 	if opts.Rows {
 		return renderRows(sessions), nil
 	}
-	return renderReport(sessions, *opts.Split, opts.Since) + "\n", nil
+	split := startOfDay(*opts.Split)
+	return renderReport(sessions, split, opts.Since) + "\n", nil
 }
 
 // clientList is the repeatable --client flag, restricted to the supported readers.
