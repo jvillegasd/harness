@@ -4,12 +4,9 @@
 package dash
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
-	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -113,36 +110,4 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
-}
-
-func headDate(root string) (string, error) {
-	out, err := capture(root, "git", "log", "-1", "--format=%cs")
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(out)), nil
-}
-
-// capture runs a helper and returns its stdout, folding stderr's first line into any error so a panel shows one actionable line.
-func capture(dir, name string, args ...string) ([]byte, error) {
-	cmd := exec.Command(name, args...)
-	cmd.Dir = dir
-	var stderr strings.Builder
-	cmd.Stderr = &stderr
-	out, err := cmd.Output()
-	if err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return nil, errors.New(firstLine(msg))
-	}
-	return out, nil
-}
-
-func firstLine(s string) string {
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return s[:i]
-	}
-	return s
 }
