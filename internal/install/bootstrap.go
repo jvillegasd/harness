@@ -22,7 +22,7 @@ Build harness into ~/.local/bin and run a full harness install.
 // Bootstrap runs `harness bootstrap` with its arguments and returns the exit code.
 func Bootstrap(args []string, stdout, stderr io.Writer) (code int) {
 	defer recoverFatal("bootstrap", stderr, &code)
-	in := &installer{stdout: stdout, stderr: stderr}
+	in := &installer{stdout: stdout, stderr: stderr, command: "bootstrap"}
 	for _, arg := range args {
 		switch arg {
 		case "--no-backup":

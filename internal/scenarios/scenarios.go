@@ -132,7 +132,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	case "validate":
 		errors := validateMatrix(declaration)
 		for _, problem := range errors {
-			fmt.Fprintln(stderr, problem)
+			fmt.Fprintf(stderr, "harness scenarios: %s\n", problem)
 		}
 		if len(errors) > 0 {
 			fmt.Fprintln(stdout, "local-tooling: fail")
@@ -162,7 +162,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		errors := validateMatrix(declaration)
 		if len(errors) > 0 {
 			for _, problem := range errors {
-				fmt.Fprintln(stderr, problem)
+				fmt.Fprintf(stderr, "harness scenarios: %s\n", problem)
 			}
 			return 1
 		}

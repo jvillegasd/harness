@@ -99,6 +99,7 @@ type installer struct {
 	linksOnly, noBackup, uninstall bool
 	backupRoot                     string
 	stdout, stderr                 io.Writer
+	command                        string
 }
 
 func (in *installer) log(format string, args ...any) {
@@ -106,7 +107,7 @@ func (in *installer) log(format string, args ...any) {
 }
 
 func (in *installer) warn(format string, args ...any) {
-	fmt.Fprintf(in.stderr, "\033[1;33m[warn]\033[0m "+format+"\n", args...)
+	fmt.Fprintf(in.stderr, "\033[1;33mharness %s:\033[0m "+format+"\n", append([]any{in.command}, args...)...)
 }
 
 // recoverFatal turns a die into one red error line with the command's context and exit 1. It works only when deferred directly.
@@ -133,7 +134,7 @@ func (in *installer) setPaths(dir checkout.Checkout) {
 // Command runs `harness install` with its arguments and returns the exit code.
 func Command(args []string, stdout, stderr io.Writer) (code int) {
 	defer recoverFatal("install", stderr, &code)
-	in := &installer{stdout: stdout, stderr: stderr}
+	in := &installer{stdout: stdout, stderr: stderr, command: "install"}
 	clearBackups := false
 	for _, arg := range args {
 		switch arg {
@@ -257,10 +258,7 @@ func (in *installer) warnUnlessZsh() {
 	if shell == "" {
 		shell = "unknown"
 	}
-	in.warn("Your login shell is %s, not zsh. The yolo aliases go into", shell)
-	in.warn("~/.zshrc and Worktrunk gets its zsh integration. Source")
-	in.warn("%s from your own shell rc, and run", in.dir.Aliases())
-	in.warn("`wt config shell install` for the shell you use.")
+	in.warn("Your login shell is %s, not zsh. The yolo aliases go into\n~/.zshrc and Worktrunk gets its zsh integration. Source\n%s from your own shell rc, and run\n`wt config shell install` for the shell you use.", shell, in.dir.Aliases())
 }
 
 var description = regexp.MustCompile(`(?m)^description:`)
