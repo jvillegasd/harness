@@ -97,7 +97,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		}
 	case "run":
 		if *allowPaid != isFlagSet(flags, "max-sessions") {
-			fmt.Fprintln(stderr, "harness scenarios: run takes --allow-paid and --max-sessions together; a paid batch retains its cap.")
+			fmt.Fprintln(stderr, "harness scenarios: --allow-paid requires --max-sessions, and --max-sessions requires --allow-paid.")
 			return 2
 		}
 	}
@@ -174,7 +174,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 			}
 			state, where, err := runOne(entry, root, *out, fixturesPath, *allowPaid, cap)
 			if err != nil {
-				fmt.Fprintf(stderr, "%s: %v\n", getString(entry, "id"), err)
+				fmt.Fprintf(stderr, "harness scenarios: %s: %v\n", getString(entry, "id"), err)
 				exitCode = 1
 				continue
 			}

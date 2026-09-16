@@ -60,14 +60,14 @@ func patterns(c checkout.Checkout, stderr io.Writer) []string {
 			if errors.Is(err, fs.ErrNotExist) {
 				continue
 			}
-			fmt.Fprintf(stderr, "%s: %v\n", name, err)
+			fmt.Fprintf(stderr, "harness bench: %s: %v\n", name, err)
 			return nil
 		}
 		var doc struct {
 			Work []string `json:"work"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
-			fmt.Fprintf(stderr, "%s: %v\n", name, err)
+			fmt.Fprintf(stderr, "harness bench: %s: %v\n", name, err)
 			return nil
 		}
 		return doc.Work

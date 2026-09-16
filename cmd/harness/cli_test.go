@@ -102,6 +102,7 @@ func TestCommandHelpMatrix(t *testing.T) {
 		{"install"},
 		{"agents"},
 		{"agents", "--check"},
+		{"agents", "config.json", "--check"},
 		{"scenarios"},
 		{"scenarios", "validate"},
 		{"scenarios", "run"},
@@ -163,6 +164,7 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"install", "--clear-backups", "--links-only"},
 		{"agents"},
 		{"agents", "--check"},
+		{"agents", "config.json", "--check"},
 		{"scenarios"},
 		{"scenarios", "bogus"},
 		{"scenarios", "compare", "--root", root},
@@ -248,11 +250,11 @@ func TestAgentsNoOpReportsUnchangedAndExitsZero(t *testing.T) {
 	}
 	config := filepath.Join(root, "clients", "assignments.json")
 	out := resolvedTemp(t)
-	if r := runBinary(t, root, "agents", config, out); r.code != 0 || !strings.Contains(r.stdout, "changed") {
+	if r := runBinary(t, root, "agents", config, out); r.code != 0 || !strings.Contains(r.stdout, "output: changed") {
 		t.Fatalf("first generate exited %d with stdout %q, want 0 and a changed report", r.code, r.stdout)
 	}
 	r := runBinary(t, root, "agents", config, out)
-	if r.code != 0 || !strings.Contains(r.stdout, "unchanged") {
+	if r.code != 0 || !strings.Contains(r.stdout, "output: unchanged") {
 		t.Fatalf("no-op generate exited %d with stdout %q, want 0 and an unchanged report", r.code, r.stdout)
 	}
 }

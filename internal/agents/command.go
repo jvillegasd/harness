@@ -24,9 +24,15 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	if checking {
 		rest = args[1:]
 	}
-	if len(rest) != 2 || strings.HasPrefix(rest[0], "-") {
+	if len(rest) != 2 {
 		fmt.Fprint(stderr, usageText)
 		return 2
+	}
+	for _, operand := range rest {
+		if strings.HasPrefix(operand, "-") {
+			fmt.Fprint(stderr, usageText)
+			return 2
+		}
 	}
 	outputs, accesses, report, err := Render(rest[0])
 	if err != nil {
