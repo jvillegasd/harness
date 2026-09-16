@@ -1,6 +1,7 @@
 package bench
 
 import (
+	"bufio"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -35,7 +36,9 @@ var claudeNonTurn = []string{claudeInterrupt, "<command-name>", "<command-messag
 
 // opencodeQuery is a row per top-level session. OpenCode gives a subagent a
 // session of its own carrying the parent's id, so the parents are the
-// population and the children are that population's delegation.
+// population and the children are that population's delegation. The parameter
+// drops parents created before the requested window before the aggregate
+// subqueries count anything.
 const opencodeQuery = `
 select s.time_created,
        s.time_updated,
@@ -47,7 +50,7 @@ select s.time_created,
        (select count(*) from message m join session c on c.id = m.session_id
          where c.parent_id = s.id)
 from session s
-where s.parent_id is null
+where s.parent_id is null and s.time_created >= ?
 `
 
 // patterns reads the project patterns that mark a session as work, from the
@@ -88,10 +91,16 @@ type session struct {
 func newSession(client string, started time.Time, project *string, values map[string]any) *session {
 	return &session{
 		client:  client,
-		date:    time.Date(started.Year(), started.Month(), started.Day(), 0, 0, 0, 0, time.UTC),
+		date:    startOfDay(started),
 		project: project,
 		values:  values,
 	}
+}
+
+// startOfDay is the session's UTC date, which is what the since boundary and
+// the report's split compare against.
+func startOfDay(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
 
 func (s *session) metric(name string) (float64, bool) {
@@ -104,16 +113,24 @@ func (s *session) metric(name string) (float64, bool) {
 	return 0, false
 }
 
-func collect(home string, clients []string, work []string) ([]*session, error) {
+// collect builds the population for the requested clients and window. Repeating
+// a client is a set, so a duplicate selection never doubles a population or its
+// rows, and since drops sessions before their metrics are aggregated.
+func collect(home string, clients []string, work []string, since *time.Time) ([]*session, error) {
 	var sessions []*session
+	seen := make(map[string]bool, len(clients))
 	for _, client := range clients {
+		if seen[client] {
+			continue
+		}
+		seen[client] = true
 		var found []*session
 		var err error
 		switch client {
 		case "claude":
-			found, err = claudeSessions(home)
+			found, err = claudeSessions(home, since)
 		case "opencode":
-			found, err = opencodeSessions(home)
+			found, err = opencodeSessions(home, since)
 		}
 		if err != nil {
 			return nil, err
@@ -128,7 +145,7 @@ func collect(home string, clients []string, work []string) ([]*session, error) {
 
 // --- Claude Code: ~/.claude/projects/<slug>/<session>.jsonl -------------------
 
-func claudeSessions(home string) ([]*session, error) {
+func claudeSessions(home string, since *time.Time) ([]*session, error) {
 	root := filepath.Join(home, ".claude", "projects")
 	if !isDir(root) {
 		return nil, nil
@@ -139,7 +156,7 @@ func claudeSessions(home string) ([]*session, error) {
 	sort.Strings(paths)
 	var sessions []*session
 	for _, path := range paths {
-		s, err := readClaude(path)
+		s, err := readClaude(path, since)
 		if err != nil {
 			return nil, err
 		}
@@ -150,19 +167,22 @@ func claudeSessions(home string) ([]*session, error) {
 	return sessions, nil
 }
 
-func readClaude(path string) (*session, error) {
-	lines, err := entries(path)
-	if err != nil {
-		return nil, err
-	}
+func readClaude(path string, since *time.Time) (*session, error) {
 	var first, last time.Time
-	seen := false
+	seen, excluded := false, false
 	turns, tools, commands, interrupts, denials, failures := 0, 0, 0, 0, 0, 0
-	for _, entry := range lines {
+	err := forEachEntry(path, func(entry map[string]any) bool {
 		if stamp, ok := parseStamp(entry["timestamp"]); ok {
 			if !seen {
 				first = stamp
 				seen = true
+				// The session's date is its first stamp. Once it falls outside
+				// the window the whole transcript is dropped, so stop before
+				// aggregating anything and before its sidecars are read.
+				if since != nil && startOfDay(first).Before(*since) {
+					excluded = true
+					return false
+				}
 			}
 			last = stamp
 		}
@@ -173,10 +193,10 @@ func readClaude(path string) (*session, error) {
 					tools++
 				}
 			}
-			continue
+			return true
 		}
 		if entry["type"] != "user" {
-			continue
+			return true
 		}
 		// An entry is a turn when it carries at least one block a human typed.
 		// Anything the client injected can ride along in the same entry, so this
@@ -200,8 +220,12 @@ func readClaude(path string) (*session, error) {
 		if typed && !truthy(entry["isMeta"]) {
 			turns++
 		}
+		return true
+	})
+	if err != nil {
+		return nil, err
 	}
-	if !seen {
+	if excluded || !seen {
 		return nil, nil
 	}
 	delegation, err := claudeDelegation(path)
@@ -223,14 +247,14 @@ func claudeDelegation(path string) (int, error) {
 	sort.Strings(sidecars)
 	total := 0
 	for _, sidecar := range sidecars {
-		lines, err := entries(sidecar)
-		if err != nil {
-			return 0, err
-		}
-		for _, entry := range lines {
+		err := forEachEntry(sidecar, func(entry map[string]any) bool {
 			if entry["type"] == "user" || entry["type"] == "assistant" {
 				total++
 			}
+			return true
+		})
+		if err != nil {
+			return 0, err
 		}
 	}
 	return total, nil
@@ -339,34 +363,43 @@ func parseStamp(value any) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-// entries yields the parsed dict lines of a JSONL transcript, skipping damage.
-// A file that cannot be read is an error: the pre-port bench raised on it, and a
+// maxRecordBytes bounds one streamed JSONL record, far above anything a client
+// writes. Records are decoded one at a time, so the transcript as a whole is
+// never held in memory.
+const maxRecordBytes = 64 << 20
+
+// forEachEntry streams a JSONL transcript's decoded records to fn, one at a
+// time, skipping lines that do not decode. fn returns false to stop early. A
+// file that cannot be read is an error: the pre-port bench raised on it, and a
 // silently dropped transcript would bias every median.
-func entries(path string) ([]map[string]any, error) {
-	data, err := os.ReadFile(path)
+func forEachEntry(path string, fn func(entry map[string]any) bool) error {
+	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	var out []map[string]any
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxRecordBytes)
+	for scanner.Scan() {
 		var value any
-		if json.Unmarshal([]byte(line), &value) != nil {
+		// A line the decoder rejects is damage and is skipped, the same as the
+		// whole-file reader skipped it. Surrounding whitespace needs no trim:
+		// the decoder tolerates it.
+		if json.Unmarshal(scanner.Bytes(), &value) != nil {
 			continue
 		}
 		if entry, ok := value.(map[string]any); ok {
-			out = append(out, entry)
+			if !fn(entry) {
+				return nil
+			}
 		}
 	}
-	return out, nil
+	return scanner.Err()
 }
 
 // --- OpenCode: ~/.local/share/opencode/opencode.db ---------------------------
 
-func opencodeSessions(home string) ([]*session, error) {
+func opencodeSessions(home string, since *time.Time) ([]*session, error) {
 	path := filepath.Join(home, ".local", "share", "opencode", "opencode.db")
 	if !isFile(path) {
 		return nil, nil
@@ -377,7 +410,14 @@ func opencodeSessions(home string) ([]*session, error) {
 		return nil, err
 	}
 	defer db.Close()
-	rows, err := db.Query(opencodeQuery)
+	// time_created is the session's start in milliseconds, so a session is in
+	// the window when it is not older than the boundary; no boundary includes
+	// every parent.
+	boundary := int64(math.MinInt64)
+	if since != nil {
+		boundary = since.UnixMilli()
+	}
+	rows, err := db.Query(opencodeQuery, boundary)
 	if err != nil {
 		return nil, err
 	}
