@@ -1,6 +1,6 @@
 // Package dash renders the live terminal dashboard over the harness state, lock,
 // bench, and tracker data the CLI already reads. It writes no harness state:
-// only the bench refresh persists its own report under the user cache directory.
+// every result lives only for the dashboard session.
 package dash
 
 import (
@@ -20,13 +20,13 @@ import (
 const usage = `Usage: harness dash
 
 A live terminal dashboard: worktrees and their typed state, lock verification,
-the cached bench result, and the tracker's lifecycle frontier. It writes no
-harness state; only the bench refresh caches its report under the user cache.
+the in-session bench result, and the tracker's lifecycle frontier. It writes no
+harness state; every result lives only for the dashboard session.
 
-Keys: r refresh bench, t refresh tracker, q quit.
+Keys: r refresh bench, l refresh locks, t refresh tracker, q quit.
 `
 
-// refreshEvery is how often the local panels reload from git config, wt list, and the lock bodies.
+// refreshEvery is how often the local panels reload from git config and wt list.
 const refreshEvery = 3 * time.Second
 
 // labelOrder is the lifecycle label order the tracker panel renders, keyed by the mapping keys in docs/agents/harness.json.
@@ -43,7 +43,8 @@ type Snapshot struct {
 	WorktreesErr string
 	Locks        []locks.LockResult
 	LocksErr     string
-	Bench        *BenchCache
+	LocksAt      time.Time
+	Bench        *BenchReport
 	Tracker      Tracker
 }
 
@@ -55,8 +56,8 @@ type Worktree struct {
 	Err    string
 }
 
-// BenchCache is the last cached bench report. Age is derived from At at render time, so it advances without another read.
-type BenchCache struct {
+// BenchReport is this session's bench result. At is when it was computed; the age derives from it at render time.
+type BenchReport struct {
 	Report string
 	At     time.Time
 }
@@ -73,19 +74,48 @@ type LabelCount struct {
 	Count int
 }
 
+// collectors are the dashboard's outside reads, so a recording test can assert
+// the model's work without spawning git, wt, or gh.
+type collectors struct {
+	worktrees func(checkout.Checkout) ([]Worktree, string)
+	states    func(checkout.Checkout, []string) (map[string]state.State, error)
+	locks     func(checkout.Checkout) ([]locks.LockResult, error)
+	bench     func(checkout.Checkout) (string, error)
+	tracker   func(checkout.Checkout) Tracker
+}
+
 // Model is the dashboard's whole state. Its rendering and key handling are pure, so seam-3 tests never touch terminal I/O.
 type Model struct {
 	dir            checkout.Checkout
+	cols           collectors
 	snap           Snapshot
 	benchErr       string
 	localRunning   bool
+	locksRunning   bool
 	benchRunning   bool
 	trackerRunning bool
 }
 
-// New builds the model over one snapshot of a checkout rooted at root.
+// New builds the model over one snapshot of a checkout rooted at root. The model
+// starts with the startup loads in flight, so Init must run for the local, lock,
+// and tracker panels to fill.
 func New(root string, snap Snapshot) Model {
-	return Model{dir: checkout.Checkout{Root: root}, snap: snap}
+	return newModel(root, snap, realCollectors())
+}
+
+// newModel is the seam tests use to record the dashboard's outside reads. The
+// three in-flight guards are the startup loads Init issues: until a load's
+// result arrives its key is ignored, and the lock and tracker panels show the
+// load in progress.
+func newModel(root string, snap Snapshot, cols collectors) Model {
+	return Model{
+		dir:            checkout.Checkout{Root: root},
+		cols:           cols,
+		snap:           snap,
+		localRunning:   true,
+		locksRunning:   true,
+		trackerRunning: true,
+	}
 }
 
 // Command runs `harness dash` and returns the process exit code.
@@ -104,7 +134,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness dash: %v\n", err)
 		return 1
 	}
-	program := tea.NewProgram(New(dir.Root, loadLocal(dir)), tea.WithOutput(stdout), tea.WithInput(os.Stdin))
+	program := tea.NewProgram(New(dir.Root, Snapshot{}), tea.WithOutput(stdout), tea.WithInput(os.Stdin))
 	if _, err := program.Run(); err != nil {
 		fmt.Fprintf(stderr, "harness dash: %v\n", err)
 		return 1

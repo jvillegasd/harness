@@ -26,6 +26,72 @@ type Branch struct {
 	Dir, Name, Store string
 }
 
+// Snapshot is one repository's branch-state configuration, read in a single git call. Keys are the config keys git stores.
+type Snapshot map[string]string
+
+// ReadSnapshot reads every branch-state key from dir's repository-local configuration in one call, so resolving many branches costs one read rather than one per key. A repository with no branch state yields an empty snapshot.
+func ReadSnapshot(dir string) (Snapshot, error) {
+	out, err := git(dir, "config", "--local", "-z", "--get-regexp", `^(worktrunk\.state|harness)\.`)
+	if exitCode(err) == 1 {
+		return Snapshot{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	snap := Snapshot{}
+	for _, record := range strings.Split(out, "\x00") {
+		if record == "" {
+			continue
+		}
+		k, v, _ := strings.Cut(record, "\n")
+		snap[k] = v
+	}
+	return snap, nil
+}
+
+// State resolves one branch's typed state from the snapshot, using the same store selection and fallback precedence Branch.Get uses: the branch's store first, then the other store.
+func (s Snapshot) State(store, branch string) State {
+	out := State{Branch: branch, Store: store}
+	read := func(name string) (string, bool) {
+		if value, ok := s[key(store, branch, name)]; ok {
+			return value, true
+		}
+		value, ok := s[key(otherStore(store), branch, name)]
+		return value, ok
+	}
+	out.Ladder, _ = read("ladder")
+	out.Reason, _ = read("reason")
+	for _, c := range []struct {
+		name  string
+		field **int
+	}{{"attempts", &out.Attempts}, {"escalations", &out.Escalations}} {
+		raw, ok := read(c.name)
+		if !ok {
+			n := 0
+			*c.field = &n
+			continue
+		}
+		n, legacy := parseCounter(raw)
+		if legacy != nil {
+			if out.Legacy == nil {
+				out.Legacy = map[string]string{}
+			}
+			out.Legacy[c.name] = *legacy
+			continue
+		}
+		*c.field = &n
+	}
+	return out
+}
+
+// otherStore names the store a branch falls back to when its own store holds no value.
+func otherStore(store string) string {
+	if store == "worktrunk" {
+		return "harness"
+	}
+	return "worktrunk"
+}
+
 func Open(dir string) (*Branch, error) {
 	name, err := git(dir, "symbolic-ref", "--short", "HEAD")
 	if err != nil {
@@ -70,10 +136,7 @@ func key(store, branch, name string) string {
 }
 
 func (b *Branch) other() string {
-	if b.Store == "worktrunk" {
-		return "harness"
-	}
-	return "worktrunk"
+	return otherStore(b.Store)
 }
 
 // read finds a key in this branch's store, then in the other one, so state written before `wt` detection flipped is still found. Every write removes the other store's copy, so at most one exists.
@@ -104,40 +167,26 @@ func (b *Branch) counter(name string) (n int, legacy *string, err error) {
 	if err != nil || !found {
 		return 0, nil, err
 	}
-	n, convErr := strconv.Atoi(raw)
-	if convErr != nil || n < 0 || strconv.Itoa(n) != raw {
-		return 0, &raw, nil
-	}
-	return n, nil, nil
+	n, legacy = parseCounter(raw)
+	return n, legacy, nil
 }
 
+// parseCounter reads a counter value: a canonical non-negative integer is itself, and anything else is legacy text.
+func parseCounter(raw string) (int, *string) {
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 0 || strconv.Itoa(n) != raw {
+		return 0, &raw
+	}
+	return n, nil
+}
+
+// Get resolves this branch's state from one configuration snapshot, so the CLI and the dashboard share one resolution path.
 func (b *Branch) Get() (State, error) {
-	s := State{Branch: b.Name, Store: b.Store}
-	var err error
-	if s.Ladder, _, err = b.read("ladder"); err != nil {
-		return s, err
+	snap, err := ReadSnapshot(b.Dir)
+	if err != nil {
+		return State{Branch: b.Name, Store: b.Store}, err
 	}
-	if s.Reason, _, err = b.read("reason"); err != nil {
-		return s, err
-	}
-	for _, c := range []struct {
-		name  string
-		field **int
-	}{{"attempts", &s.Attempts}, {"escalations", &s.Escalations}} {
-		n, legacy, err := b.counter(c.name)
-		if err != nil {
-			return s, err
-		}
-		if legacy != nil {
-			if s.Legacy == nil {
-				s.Legacy = map[string]string{}
-			}
-			s.Legacy[c.name] = *legacy
-			continue
-		}
-		*c.field = &n
-	}
-	return s, nil
+	return snap.State(b.Store, b.Name), nil
 }
 
 // Incr adds one to the attempts or escalations counter. A legacy value counts as zero, and replaced then carries the text it overwrote.

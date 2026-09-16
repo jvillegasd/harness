@@ -32,28 +32,55 @@ func TestWorktreesSortAndMarkLegacy(t *testing.T) {
 	}
 }
 
-func TestLocksPanelShowsEveryVerifyResult(t *testing.T) {
-	m := New("", Snapshot{Locks: []locks.LockResult{
-		{Name: "impeccable", Status: "match"},
-		{Name: "tdd", Status: "drift", Detail: "recorded a, computed b"},
-		{Name: "handoff", Status: "unverifiable"},
-	}})
+func TestLocksPanelShowsEveryVerifyResultAndItsAge(t *testing.T) {
+	m := New("", Snapshot{
+		Locks: []locks.LockResult{
+			{Name: "impeccable", Status: "match"},
+			{Name: "tdd", Status: "drift", Detail: "recorded a, computed b"},
+			{Name: "handoff", Status: "unverifiable"},
+		},
+		LocksAt: time.Now().Add(-90 * time.Second),
+	})
+	m.locksRunning = false
 	view := m.render()
-	for _, want := range []string{"impeccable: match", "tdd: drift (recorded a, computed b)", "handoff: unverifiable"} {
+	for _, want := range []string{"impeccable: match", "tdd: drift (recorded a, computed b)", "handoff: unverifiable", "verified 1m30s ago"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("locks panel missing %q\n%s", want, view)
 		}
 	}
 }
 
-func TestBenchPanelShowsCacheAgeOrHowToRefresh(t *testing.T) {
-	empty := New("", Snapshot{}).render()
-	if !strings.Contains(empty, "no cached result") || !strings.Contains(empty, "press r") {
-		t.Fatalf("empty bench panel does not point at the refresh key\n%s", empty)
+func TestLocksPanelSaysNotVerifiedUntilTheStartupResult(t *testing.T) {
+	m := New("", Snapshot{})
+	if !strings.Contains(m.render(), "verifying...") {
+		t.Fatalf("the startup verification is not shown as running\n%s", m.render())
 	}
-	cached := New("", Snapshot{Bench: &BenchCache{At: time.Now().Add(-90 * time.Second), Report: "split 2026-09-15\n  turns 3.0"}}).render()
-	if !strings.Contains(cached, "age 1m30s") || !strings.Contains(cached, "split 2026-09-15") {
-		t.Fatalf("cached bench panel missing age or report\n%s", cached)
+	m.locksRunning = false
+	if !strings.Contains(m.render(), "(not verified)") {
+		t.Fatalf("an unverified panel does not say so\n%s", m.render())
+	}
+}
+
+func TestLocksPanelShowsAnEmptyVerifiedSet(t *testing.T) {
+	m := New("", Snapshot{
+		Worktrees: []Worktree{{Branch: "main", State: state.State{Attempts: ptr(0), Escalations: ptr(0)}}},
+		LocksAt:   time.Now(),
+	})
+	m.locksRunning = false
+	view := m.render()
+	if !strings.Contains(view, "verified ") || !strings.Contains(view, "(none)") || strings.Contains(view, "(not verified)") {
+		t.Fatalf("a verified checkout with no locked skills is not shown as verified\n%s", view)
+	}
+}
+
+func TestBenchPanelShowsRefreshOrNotComputed(t *testing.T) {
+	empty := New("", Snapshot{}).render()
+	if !strings.Contains(empty, "not computed") || !strings.Contains(empty, "press r") {
+		t.Fatalf("an empty bench panel does not point at the refresh key\n%s", empty)
+	}
+	computed := New("", Snapshot{Bench: &BenchReport{At: time.Now().Add(-90 * time.Second), Report: "split 2026-09-15\n  turns 3.0"}}).render()
+	if !strings.Contains(computed, "age 1m30s") || !strings.Contains(computed, "split 2026-09-15") {
+		t.Fatalf("a computed bench panel missing age or report\n%s", computed)
 	}
 }
 
@@ -61,9 +88,11 @@ func TestTrackerPanelCountsAndDegradesToOneLine(t *testing.T) {
 	counts := New("", Snapshot{Tracker: Tracker{Labels: []LabelCount{
 		{Label: "in-progress", Count: 1},
 		{Label: "ready-for-agent", Count: 2},
-	}}}).render()
-	if !strings.Contains(counts, "in-progress: 1") || !strings.Contains(counts, "ready-for-agent: 2") {
-		t.Fatalf("tracker panel missing counts\n%s", counts)
+	}}})
+	counts.trackerRunning = false
+	view := counts.render()
+	if !strings.Contains(view, "in-progress: 1") || !strings.Contains(view, "ready-for-agent: 2") {
+		t.Fatalf("tracker panel missing counts\n%s", view)
 	}
 	failed := New("", Snapshot{
 		Worktrees: []Worktree{{Branch: "main", State: state.State{Attempts: ptr(0), Escalations: ptr(0)}}},
@@ -107,6 +136,7 @@ func TestParseWorktreesReadsTheDirtyFlags(t *testing.T) {
 
 func TestTickerClearsItsInFlightGuard(t *testing.T) {
 	m := New("", Snapshot{})
+	m.localRunning = false
 	next, first := m.Update(tickMsg(time.Now()))
 	if first == nil || !next.(Model).localRunning {
 		t.Fatalf("a tick did not start a guarded local reload: %v", first)
@@ -119,7 +149,8 @@ func TestTickerClearsItsInFlightGuard(t *testing.T) {
 
 func TestTrackerRetryClearsStaleError(t *testing.T) {
 	m := New("", Snapshot{Tracker: Tracker{Err: "gh unavailable: old"}})
-	next, cmd := m.press("t")
+	started, _ := m.Update(trackerMsg{tracker: Tracker{Err: "gh unavailable: old"}})
+	next, cmd := started.(Model).press("t")
 	if cmd == nil {
 		t.Fatal("t did not start a tracker query")
 	}
@@ -138,6 +169,7 @@ func TestBenchPanelShowsRefreshErrors(t *testing.T) {
 
 func TestKeysRefreshInBackgroundAndQuit(t *testing.T) {
 	m := New("", Snapshot{})
+	m.trackerRunning = false
 	next, cmd := m.press("r")
 	if !next.benchRunning || cmd == nil {
 		t.Fatalf("r did not start the bench refresh: running=%v cmd=%v", next.benchRunning, cmd)
@@ -148,11 +180,9 @@ func TestKeysRefreshInBackgroundAndQuit(t *testing.T) {
 	if still, _ := next.press("t"); !still.trackerRunning {
 		t.Fatal("the tracker key stopped working while the bench was refreshing")
 	}
-	_, quit := next.press("q")
-	if quit == nil {
+	if _, quit := next.press("q"); quit == nil {
 		t.Fatal("q did not quit while a refresh was running")
-	}
-	if _, ok := quit().(tea.QuitMsg); !ok {
+	} else if _, ok := quit().(tea.QuitMsg); !ok {
 		t.Fatalf("q returned %T, want tea.QuitMsg", quit())
 	}
 	if _, none := m.press("x"); none != nil {
@@ -163,7 +193,7 @@ func TestKeysRefreshInBackgroundAndQuit(t *testing.T) {
 func TestMessagesReachTheViewAndTickReloads(t *testing.T) {
 	m, _ := New("", Snapshot{}).press("r")
 	running, _ := m.press("r")
-	model, _ := running.Update(benchMsg{cache: &BenchCache{At: time.Now(), Report: "split 2026-09-15"}})
+	model, _ := running.Update(benchMsg{report: &BenchReport{At: time.Now(), Report: "split 2026-09-15"}})
 	done := model.(Model)
 	if done.benchRunning {
 		t.Fatal("a bench result did not clear the running flag")
@@ -171,6 +201,7 @@ func TestMessagesReachTheViewAndTickReloads(t *testing.T) {
 	if !strings.Contains(done.render(), "split 2026-09-15") {
 		t.Fatal("a bench result did not reach the view")
 	}
+	done.localRunning = false
 	_, tickCmd := done.Update(tickMsg(time.Now()))
 	if tickCmd == nil {
 		t.Fatal("a tick did not request a local reload")

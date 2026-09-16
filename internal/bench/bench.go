@@ -79,7 +79,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		sinceDate = &date
 	}
 	if len(clients) == 0 {
-		clients = clientList{"claude", "opencode"}
+		clients = clientList(defaultClients)
 	}
 	c, err := checkout.Find(".")
 	if err != nil {
@@ -126,8 +126,35 @@ func Report(opts Options) (string, error) {
 	return renderReport(sessions, split, opts.Since) + "\n", nil
 }
 
+// ReportFor collects and renders the report for a checkout: the current session
+// store, both clients, and the checkout's own work patterns. The dashboard calls
+// it with its resolved checkout, so reporting never re-enters argument parsing
+// and never re-discovers a directory. A cohort file that cannot be read or
+// parsed reports a warning, exactly as the command does, and still yields the
+// report.
+func ReportFor(c checkout.Checkout, split time.Time) (string, error) {
+	var warn strings.Builder
+	work := patterns(c, &warn)
+	out, err := Report(Options{
+		Home:    homeDir(),
+		Clients: defaultClients,
+		Work:    work,
+		Split:   &split,
+	})
+	if err != nil {
+		return "", err
+	}
+	if warn.Len() > 0 {
+		out = strings.TrimSuffix(warn.String(), "\n") + "\n" + out
+	}
+	return out, nil
+}
+
 // clientList is the repeatable --client flag, restricted to the supported readers.
 type clientList []string
+
+// defaultClients is the population the command and the dashboard both read when no selection is given.
+var defaultClients = []string{"claude", "opencode"}
 
 func (c *clientList) String() string { return strings.Join(*c, ",") }
 
