@@ -24,6 +24,8 @@
         "internal/scenarios/execute.go",
         "internal/scenarios/flags.go",
         "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
@@ -49,6 +51,8 @@
         "internal/scenarios/execute.go",
         "internal/scenarios/flags.go",
         "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
@@ -110,6 +114,8 @@
         "internal/scenarios/execute.go",
         "internal/scenarios/flags.go",
         "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
@@ -143,6 +149,8 @@
         "internal/scenarios/execute.go",
         "internal/scenarios/flags.go",
         "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
@@ -212,6 +220,8 @@
         "internal/scenarios/execute.go",
         "internal/scenarios/flags.go",
         "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
@@ -270,6 +280,8 @@
         "internal/scenarios/execute.go",
         "internal/scenarios/flags.go",
         "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
@@ -337,6 +349,8 @@
         "internal/scenarios/execute.go",
         "internal/scenarios/flags.go",
         "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
@@ -438,6 +452,8 @@
         "internal/scenarios/execute.go",
         "internal/scenarios/flags.go",
         "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
@@ -504,6 +520,8 @@
         "internal/scenarios/execute.go",
         "internal/scenarios/flags.go",
         "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
@@ -676,6 +694,8 @@
         "internal/scenarios/execute.go",
         "internal/scenarios/flags.go",
         "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
