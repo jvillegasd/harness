@@ -15,10 +15,10 @@ func (m Model) render() string {
 	b.WriteString(titleStyle.Render("harness dash"))
 	b.WriteString("\n\n")
 	worktreesPanel(&b, m.snap.Worktrees, m.snap.WorktreesErr)
-	locksPanel(&b, m.snap.Locks, m.snap.LocksErr)
+	locksPanel(&b, m.snap.Locks, m.snap.LocksErr, m.snap.LocksAt, m.locksRunning)
 	benchPanel(&b, m.snap.Bench, m.benchRunning, m.benchErr)
 	trackerPanel(&b, m.snap.Tracker, m.trackerRunning)
-	b.WriteString("r refresh bench   t refresh tracker   q quit\n")
+	b.WriteString("r refresh bench   l refresh locks   t refresh tracker   q quit\n")
 	return b.String()
 }
 
@@ -110,16 +110,24 @@ func clip(s string, n int) string {
 	return string(r[:n-1]) + "~"
 }
 
-func locksPanel(b *strings.Builder, results []locks.LockResult, loadErr string) {
+func locksPanel(b *strings.Builder, results []locks.LockResult, loadErr string, at time.Time, running bool) {
+	if running {
+		panel(b, "locks", []string{"verifying..."})
+		return
+	}
 	if loadErr != "" {
 		panel(b, "locks", []string{loadErr})
 		return
 	}
-	if len(results) == 0 {
-		panel(b, "locks", []string{"(none)"})
+	if at.IsZero() {
+		panel(b, "locks", []string{"(not verified)"})
 		return
 	}
-	lines := make([]string, 0, len(results))
+	lines := make([]string, 1, len(results)+1)
+	lines[0] = "verified " + time.Since(at).Round(time.Second).String() + " ago"
+	if len(results) == 0 {
+		lines = append(lines, "(none)")
+	}
 	for _, r := range results {
 		line := r.Name + ": " + r.Status
 		if r.Detail != "" {
@@ -130,7 +138,7 @@ func locksPanel(b *strings.Builder, results []locks.LockResult, loadErr string) 
 	panel(b, "locks", lines)
 }
 
-func benchPanel(b *strings.Builder, cache *BenchCache, running bool, loadErr string) {
+func benchPanel(b *strings.Builder, report *BenchReport, running bool, loadErr string) {
 	if running {
 		panel(b, "bench", []string{"refreshing..."})
 		return
@@ -139,14 +147,14 @@ func benchPanel(b *strings.Builder, cache *BenchCache, running bool, loadErr str
 	if loadErr != "" {
 		lines = append(lines, loadErr)
 	}
-	if cache != nil {
-		lines = append(lines, "age "+time.Since(cache.At).Round(time.Second).String())
-		for _, line := range strings.Split(strings.TrimRight(cache.Report, "\n"), "\n") {
+	if report != nil {
+		lines = append(lines, "age "+time.Since(report.At).Round(time.Second).String())
+		for _, line := range strings.Split(strings.TrimRight(report.Report, "\n"), "\n") {
 			lines = append(lines, line)
 		}
 	}
 	if len(lines) == 0 {
-		lines = []string{"no cached result; press r to compute"}
+		lines = []string{"not computed; press r to compute"}
 	}
 	panel(b, "bench", lines)
 }

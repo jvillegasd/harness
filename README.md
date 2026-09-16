@@ -12,7 +12,7 @@ The harness this machine's Claude Code and OpenCode installations run: one vendo
 | `internal/bench/` | The session-population comparison behind `harness bench`. Cohort config and manual in `bench/`. |
 | `internal/agents/` | The role-agent renderer behind `harness agents`, called in-process by the installer. |
 | `internal/scenarios/` | The artifact-based scenario runner and its probes behind `harness scenarios`. |
-| `internal/dash/` | The live terminal dashboard behind `harness dash`: worktrees and typed state, lock verification, the cached bench result, and the tracker frontier. |
+| `internal/dash/` | The live terminal dashboard behind `harness dash`: worktrees and typed state, lock verification and its age, the in-session bench result, and the tracker frontier. |
 | `clients/` | The client settings this harness owns: `claude.json` declares them, `assignments.json` gives every role its definition, model, and effort, and `harness agents` renders the role agents. |
 | `roles/` | Canonical roles no skill owns, currently the executor. |
 

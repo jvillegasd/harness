@@ -4,10 +4,13 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/jvillegasd/harness/internal/locks"
 )
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.refreshTracker(), tick())
+	// Order is fixed: local, locks, tracker, then the periodic tick.
+	return tea.Batch(m.refreshLocal(), m.refreshLocks(), m.refreshTracker(), tick())
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -17,16 +20,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return next, cmd
 	case localMsg:
 		m.localRunning = false
-		m.snap.Worktrees = msg.Worktrees
-		m.snap.WorktreesErr = msg.WorktreesErr
-		m.snap.Locks = msg.Locks
-		m.snap.LocksErr = msg.LocksErr
+		m.snap.Worktrees = msg.worktrees
+		m.snap.WorktreesErr = msg.worktreesErr
+		return m, nil
+	case locksMsg:
+		m.locksRunning = false
+		m.snap.Locks = msg.results
+		m.snap.LocksErr = msg.err
+		m.snap.LocksAt = msg.at
 		return m, nil
 	case benchMsg:
 		m.benchRunning = false
 		m.benchErr = msg.err
-		if msg.cache != nil {
-			m.snap.Bench = msg.cache
+		if msg.report != nil {
+			m.snap.Bench = msg.report
 		}
 		return m, nil
 	case trackerMsg:
@@ -61,6 +68,12 @@ func (m Model) press(key string) (Model, tea.Cmd) {
 		m.benchRunning = true
 		m.benchErr = ""
 		return m, m.refreshBench()
+	case "l":
+		if m.locksRunning {
+			return m, nil
+		}
+		m.locksRunning = true
+		return m, m.refreshLocks()
 	case "t":
 		if m.trackerRunning {
 			return m, nil
@@ -75,10 +88,18 @@ func (m Model) press(key string) (Model, tea.Cmd) {
 // --- messages and commands -----------------------------------------------------
 
 type tickMsg time.Time
-type localMsg Snapshot
+type localMsg struct {
+	worktrees    []Worktree
+	worktreesErr string
+}
+type locksMsg struct {
+	results []locks.LockResult
+	err     string
+	at      time.Time
+}
 type benchMsg struct {
-	cache *BenchCache
-	err   string
+	report *BenchReport
+	err    string
 }
 type trackerMsg struct{ tracker Tracker }
 
@@ -86,17 +107,60 @@ func tick() tea.Cmd {
 	return tea.Tick(refreshEvery, func(t time.Time) tea.Msg { return tickMsg(t) })
 }
 
+// refreshLocal lists the worktrees and resolves every displayed branch from one
+// branch-state configuration read.
 func (m Model) refreshLocal() tea.Cmd {
-	dir := m.dir
-	return func() tea.Msg { return localMsg(localData(dir)) }
+	dir, cols := m.dir, m.cols
+	return func() tea.Msg {
+		trees, loadErr := cols.worktrees(dir)
+		if loadErr != "" {
+			return localMsg{worktreesErr: loadErr}
+		}
+		branches := make([]string, len(trees))
+		for i := range trees {
+			branches[i] = trees[i].Branch
+		}
+		states, err := cols.states(dir, branches)
+		if err != nil {
+			if len(trees) == 0 {
+				return localMsg{worktreesErr: err.Error()}
+			}
+			for i := range trees {
+				trees[i].Err = firstLine(err.Error())
+			}
+			return localMsg{worktrees: trees}
+		}
+		for i := range trees {
+			trees[i].State = states[trees[i].Branch]
+		}
+		return localMsg{worktrees: trees}
+	}
+}
+
+func (m Model) refreshLocks() tea.Cmd {
+	dir, cols := m.dir, m.cols
+	return func() tea.Msg {
+		results, err := cols.locks(dir)
+		msg := locksMsg{results: results, at: time.Now()}
+		if err != nil {
+			msg.err = err.Error()
+		}
+		return msg
+	}
 }
 
 func (m Model) refreshBench() tea.Cmd {
-	dir := m.dir
-	return func() tea.Msg { return computeBench(dir) }
+	dir, cols := m.dir, m.cols
+	return func() tea.Msg {
+		report, err := cols.bench(dir)
+		if err != nil {
+			return benchMsg{err: "bench: " + firstLine(err.Error())}
+		}
+		return benchMsg{report: &BenchReport{Report: report, At: time.Now()}}
+	}
 }
 
 func (m Model) refreshTracker() tea.Cmd {
-	dir := m.dir
-	return func() tea.Msg { return loadTracker(dir) }
+	dir, cols := m.dir, m.cols
+	return func() tea.Msg { return trackerMsg{tracker: cols.tracker(dir)} }
 }

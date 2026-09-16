@@ -1,7 +1,6 @@
 package dash
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,20 +16,17 @@ import (
 	"github.com/jvillegasd/harness/internal/state"
 )
 
-// --- loaders -------------------------------------------------------------------
+// --- collectors ----------------------------------------------------------------
 
-func loadLocal(dir checkout.Checkout) Snapshot {
-	snap := localData(dir)
-	snap.Bench = loadBenchCache()
-	return snap
-}
-
-// localData loads the panels that reload on the tick. The bench cache is not among them: its age is derived from its timestamp at render time.
-func localData(dir checkout.Checkout) Snapshot {
-	snap := Snapshot{}
-	snap.Worktrees, snap.WorktreesErr = loadWorktrees(dir)
-	snap.Locks, snap.LocksErr = loadLocks(dir)
-	return snap
+// realCollectors is the subprocess-backed set the dashboard runs in production.
+func realCollectors() collectors {
+	return collectors{
+		worktrees: loadWorktrees,
+		states:    loadStates,
+		locks:     loadLocks,
+		bench:     loadBench,
+		tracker:   loadTracker,
+	}
 }
 
 func loadWorktrees(dir checkout.Checkout) ([]Worktree, string) {
@@ -42,16 +38,21 @@ func loadWorktrees(dir checkout.Checkout) ([]Worktree, string) {
 	if err != nil {
 		return nil, err.Error()
 	}
-	for i := range trees {
-		// listing the branch in wt list is what makes Worktrunk its state store; a legacy harness.* value still reads through the fallback.
-		br := &state.Branch{Dir: dir.Root, Name: trees[i].Branch, Store: "worktrunk"}
-		if st, err := br.Get(); err != nil {
-			trees[i].Err = err.Error()
-		} else {
-			trees[i].State = st
-		}
-	}
 	return trees, ""
+}
+
+// loadStates resolves every displayed branch from one branch-state configuration
+// read: listing the branch in wt list is what makes Worktrunk its state store.
+func loadStates(dir checkout.Checkout, branches []string) (map[string]state.State, error) {
+	snap, err := state.ReadSnapshot(dir.Root)
+	if err != nil {
+		return nil, err
+	}
+	resolved := make(map[string]state.State, len(branches))
+	for _, name := range branches {
+		resolved[name] = snap.State("worktrunk", name)
+	}
+	return resolved, nil
 }
 
 // parseWorktrees reads a `wt list --format=json --config-set list.json-schema=2` listing. The dirty flags come from the worktree.changes object.
@@ -85,43 +86,28 @@ func parseWorktrees(data []byte) ([]Worktree, error) {
 	return trees, nil
 }
 
-func loadLocks(dir checkout.Checkout) ([]locks.LockResult, string) {
-	results, err := locks.Verify(dir)
-	if err != nil {
-		return nil, err.Error()
-	}
-	return results, ""
+func loadLocks(dir checkout.Checkout) ([]locks.LockResult, error) {
+	return locks.Verify(dir)
 }
 
-func computeBench(dir checkout.Checkout) benchMsg {
+// loadBench reports for the dashboard's resolved checkout through the shared
+// reporting operation, so no report from another checkout can be shown.
+func loadBench(dir checkout.Checkout) (string, error) {
 	split, err := headDate(dir.Root)
 	if err != nil {
-		return benchMsg{err: "bench: " + err.Error()}
+		return "", err
 	}
-	var out, errText bytes.Buffer
-	if code := bench.Command([]string{"--split", split}, &out, &errText); code != 0 {
-		msg := strings.TrimSpace(errText.String())
-		if msg == "" {
-			msg = "bench exited non-zero"
-		}
-		return benchMsg{err: "bench: " + firstLine(msg)}
-	}
-	now := time.Now()
-	report := out.String()
-	if err := writeBenchCache(now, report); err != nil {
-		return benchMsg{cache: &BenchCache{Report: report, At: now}, err: "bench cache write failed: " + err.Error()}
-	}
-	return benchMsg{cache: &BenchCache{Report: report, At: now}}
+	return bench.ReportFor(dir, split)
 }
 
-func loadTracker(dir checkout.Checkout) trackerMsg {
+func loadTracker(dir checkout.Checkout) Tracker {
 	labels, err := readLabels(filepath.Join(dir.Root, "docs", "agents", "harness.json"))
 	if err != nil {
-		return trackerMsg{tracker: Tracker{Err: err.Error()}}
+		return Tracker{Err: err.Error()}
 	}
 	out, err := capture(dir.Root, "gh", "issue", "list", "--state", "open", "--limit", "1000", "--json", "number,labels")
 	if err != nil {
-		return trackerMsg{tracker: Tracker{Err: "gh unavailable: " + err.Error()}}
+		return Tracker{Err: "gh unavailable: " + err.Error()}
 	}
 	var issues []struct {
 		Labels []struct {
@@ -129,7 +115,7 @@ func loadTracker(dir checkout.Checkout) trackerMsg {
 		} `json:"labels"`
 	}
 	if json.Unmarshal(out, &issues) != nil {
-		return trackerMsg{tracker: Tracker{Err: "gh: cannot parse issue list"}}
+		return Tracker{Err: "gh: cannot parse issue list"}
 	}
 	counts := map[string]int{}
 	for _, issue := range issues {
@@ -145,7 +131,7 @@ func loadTracker(dir checkout.Checkout) trackerMsg {
 	for _, key := range labelOrder {
 		tracker.Labels = append(tracker.Labels, LabelCount{Label: labels[key], Count: counts[key]})
 	}
-	return trackerMsg{tracker: tracker}
+	return tracker
 }
 
 // readLabels reads the repository's lifecycle label mapping and requires every key the tracker panel renders.
@@ -168,12 +154,12 @@ func readLabels(path string) (map[string]string, error) {
 	return doc.Labels, nil
 }
 
-func headDate(root string) (string, error) {
+func headDate(root string) (time.Time, error) {
 	out, err := capture(root, "git", "log", "-1", "--format=%cs")
 	if err != nil {
-		return "", err
+		return time.Time{}, err
 	}
-	return strings.TrimSpace(string(out)), nil
+	return time.Parse("2006-01-02", strings.TrimSpace(string(out)))
 }
 
 // capture runs a helper and returns its stdout, folding stderr's first line into any error so a panel shows one actionable line.
