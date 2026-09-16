@@ -81,6 +81,65 @@ func TestBenchRowsMatchRecordedRows(t *testing.T) {
 	}
 }
 
+// TestBenchRowsWithoutSplit pins the split date to the report: a row export
+// needs no split, adding one changes nothing, and the population still matches
+// the recorded baseline.
+func TestBenchRowsWithoutSplit(t *testing.T) {
+	dir := benchDir(t)
+	without := ok(t, harness(t, dir, "", "bench", "--rows", "--since", "2026-09-01", "--home", benchHome(t)), "bench --rows")
+	with := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--rows", "--since", "2026-09-01", "--home", benchHome(t)), "bench --split --rows")
+	if without.stdout != with.stdout {
+		t.Fatalf("adding --split changed the rows:\n--- without\n%s\n--- with\n%s", without.stdout, with.stdout)
+	}
+	if want := readGolden(t, "rows.golden"); without.stdout != want {
+		t.Fatalf("rows without a split differ from the recorded baseline:\n--- want\n%s\n--- got\n%s", want, without.stdout)
+	}
+}
+
+func TestBenchReportRequiresSplit(t *testing.T) {
+	r := harness(t, benchDir(t), "", "bench", "--home", benchHome(t))
+	if r.code != 2 {
+		t.Fatalf("a report without --split exited %d, want 2", r.code)
+	}
+	if !strings.Contains(r.stderr, "--split") {
+		t.Fatalf("stderr did not name --split: %q", r.stderr)
+	}
+}
+
+func TestBenchInvalidSplitIsUsageError(t *testing.T) {
+	r := harness(t, benchDir(t), "", "bench", "--split", "not-a-date", "--home", benchHome(t))
+	if r.code != 2 {
+		t.Fatalf("an invalid --split exited %d, want 2", r.code)
+	}
+}
+
+// TestBenchSinceFilteredMatchesRecorded compares a windowed run, before and
+// after the change, byte for byte against the baseline recorded on the same
+// fixture population.
+func TestBenchSinceFilteredMatchesRecorded(t *testing.T) {
+	dir := benchDir(t)
+	report := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--since", "2026-09-02", "--home", benchHome(t)), "bench --since report")
+	if want := readGolden(t, "report-since.golden"); !sameReport(report.stdout, want) {
+		t.Fatalf("windowed report differs from the recorded baseline:\n--- want\n%s\n--- got\n%s", want, report.stdout)
+	}
+	rows := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--rows", "--since", "2026-09-02", "--home", benchHome(t)), "bench --since rows")
+	if want := readGolden(t, "rows-since.golden"); rows.stdout != want {
+		t.Fatalf("windowed rows differ from the recorded baseline:\n--- want\n%s\n--- got\n%s", want, rows.stdout)
+	}
+}
+
+func TestBenchRepeatedClientIsIdempotent(t *testing.T) {
+	dir := benchDir(t)
+	once := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--since", "2026-09-01", "--client", "claude", "--rows", "--home", benchHome(t)), "bench one client")
+	repeated := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--since", "2026-09-01", "--client", "claude", "--client", "claude", "--rows", "--home", benchHome(t)), "bench repeated client")
+	if once.stdout != repeated.stdout {
+		t.Fatalf("repeating --client changed the rows:\n--- once\n%s\n--- repeated\n%s", once.stdout, repeated.stdout)
+	}
+	if !strings.Contains(repeated.stdout, `"client": "claude"`) {
+		t.Fatalf("the row export carried no claude session: %q", repeated.stdout)
+	}
+}
+
 func TestBenchEmptyHomeReportsNoSessions(t *testing.T) {
 	r := ok(t, harness(t, benchDir(t), "", "bench", "--split", "2026-01-01", "--since", "2026-01-01", "--home", t.TempDir()), "bench on an empty home")
 	if !strings.Contains(r.stdout, "no sessions found") {

@@ -15,16 +15,6 @@ var metrics = []string{"turns", "tool_calls", "minutes", "commands", "delegation
 
 const thin = 20
 
-func filterSince(sessions []*session, since time.Time) []*session {
-	var out []*session
-	for _, s := range sessions {
-		if !s.date.Before(since) {
-			out = append(out, s)
-		}
-	}
-	return out
-}
-
 func median(sessions []*session, metric string) *float64 {
 	var values []float64
 	for _, s := range sessions {
@@ -85,9 +75,7 @@ func block(label string, cohort []*session, split time.Time) []string {
 }
 
 func renderReport(sessions []*session, split time.Time, since *time.Time) string {
-	if since != nil {
-		sessions = filterSince(sessions, *since)
-	}
+	// The population is already filtered to the window; since only labels it.
 	header := fmt.Sprintf("split %s", split.Format("2006-01-02"))
 	if since != nil {
 		header += fmt.Sprintf("  since %s", since.Format("2006-01-02"))

@@ -14,11 +14,11 @@ Run it from inside the checkout; the work patterns come from `bench/cohorts.json
 
 | Flag | Meaning |
 | --- | --- |
-| `--split` | Required. Commit date of the change under test, `YYYY-MM-DD`. Sessions before it are `before`, on or after it `after`. |
-| `--since` | Ignore sessions older than this. Cuts off a period whose harness bears no resemblance to today's. |
-| `--client` | Limit to `claude` or `opencode`. Repeatable. |
+| `--split` | Commit date of the change under test, `YYYY-MM-DD`. Sessions before it are `before`, on or after it `after`. Required for the report, not for `--rows`. |
+| `--since` | Ignore sessions older than this. Cuts off a period whose harness bears no resemblance to today's. Sessions outside the window are dropped before their metrics are aggregated. |
+| `--client` | Limit to `claude` or `opencode`. Repeatable; a repeat adds nothing, so a client is never counted twice. |
 | `--home` | Session-store root. Defaults to the current home; point it at any directory laid out like a home to read a captured or another machine's session stores. |
-| `--rows` | One JSON object per session instead of the report, honouring `--since`, for the distribution behind a median. |
+| `--rows` | One JSON object per session instead of the report, honouring `--since`, for the distribution behind a median. Needs no `--split`. |
 
 ## Metrics
 

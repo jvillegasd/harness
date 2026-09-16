@@ -16,12 +16,13 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-const usage = `Usage: harness bench --split <date> [--since <date>] [--client <name>] [--home <dir>] [--rows]
+const usage = `Usage: harness bench [--split <date>] [--since <date>] [--client <name>] [--home <dir>] [--rows]
 
 Compare the session population before and after a harness change.
 
   --split   Commit date of the change under test, YYYY-MM-DD. Sessions before
-            it are before, on or after it after. Required.
+            it are before, on or after it after. Required for the report, not
+            for --rows.
   --since   Ignore sessions older than this date.
   --client  Limit to claude or opencode; repeatable (default: both).
   --home    Session-store root (default: the current home).
@@ -56,13 +57,16 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness bench: unexpected argument %q; run harness bench --help\n", flags.Arg(0))
 		return 2
 	}
-	if split == "" {
-		fmt.Fprintln(stderr, "harness bench: --split is required")
-		return 2
-	}
-	splitDate, err := parseDate(split)
-	if err != nil {
-		fmt.Fprintf(stderr, "harness bench: --split: %v\n", err)
+	var splitDate *time.Time
+	if split != "" {
+		date, err := parseDate(split)
+		if err != nil {
+			fmt.Fprintf(stderr, "harness bench: --split: %v\n", err)
+			return 2
+		}
+		splitDate = &date
+	} else if !rows {
+		fmt.Fprintln(stderr, "harness bench: --split is required unless --rows is set")
 		return 2
 	}
 	var sinceDate *time.Time
@@ -82,20 +86,44 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness bench: %v\n", err)
 		return 1
 	}
-	sessions, err := collect(home, clients, patterns(c, stderr))
+	out, err := Report(Options{Home: home, Clients: clients, Work: patterns(c, stderr), Since: sinceDate, Split: splitDate, Rows: rows})
 	if err != nil {
 		fmt.Fprintf(stderr, "harness bench: %v\n", err)
 		return 1
 	}
-	if rows {
-		if sinceDate != nil {
-			sessions = filterSince(sessions, *sinceDate)
-		}
-		fmt.Fprint(stdout, renderRows(sessions))
-		return 0
-	}
-	fmt.Fprintln(stdout, renderReport(sessions, splitDate, sinceDate))
+	fmt.Fprint(stdout, out)
 	return 0
+}
+
+// Options is the resolved population request behind one benchmark run: the
+// inputs after flag parsing, with Work already read from a checkout. Split
+// partitions the report and is ignored for a row export; Since and Split are
+// dates whose time of day is ignored.
+type Options struct {
+	Home    string
+	Clients []string
+	Work    []string
+	Since   *time.Time
+	Split   *time.Time
+	Rows    bool
+}
+
+// Report collects the requested population and renders it. It is the narrow
+// operation the command shares with any other consumer, so a caller reaches
+// reporting without re-entering argument parsing.
+func Report(opts Options) (string, error) {
+	if !opts.Rows && opts.Split == nil {
+		return "", errors.New("a report needs a split date")
+	}
+	sessions, err := collect(opts.Home, opts.Clients, opts.Work, opts.Since)
+	if err != nil {
+		return "", err
+	}
+	if opts.Rows {
+		return renderRows(sessions), nil
+	}
+	split := startOfDay(*opts.Split)
+	return renderReport(sessions, split, opts.Since) + "\n", nil
 }
 
 // clientList is the repeatable --client flag, restricted to the supported readers.
