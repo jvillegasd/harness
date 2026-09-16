@@ -18,6 +18,15 @@
       "harness_inputs": [
         "harness/commands/ask.md",
         "harness/POLICY.md",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
     },
@@ -36,6 +45,15 @@
         "contains": []
       },
       "harness_inputs": [
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
     },
@@ -90,6 +108,15 @@
       "harness_inputs": [
         "harness/commands/land.md",
         "internal/scenarios/probe_landing.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
     },
@@ -116,6 +143,15 @@
       "harness_inputs": [
         "harness/skills/setup-harness/scripts/reconcile-agent-lifecycle.go",
         "harness/skills/setup-harness/scripts/reconcile_agent_lifecycle_test.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
     },
@@ -178,6 +214,15 @@
       "harness_inputs": [
         "harness/skills/workflow-checkpoint/SKILL.md",
         "internal/scenarios/probe_checkpoint.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
     },
@@ -229,6 +274,15 @@
         "harness/skills/workflow-checkpoint/SKILL.md",
         "internal/scenarios/probe_checkpoint_two_session.go",
         "internal/scenarios/probe_checkpoint.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
     },
@@ -289,6 +343,15 @@
         "harness/skills/local-tracker/SKILL.md",
         "docs/agents/harness.json",
         "internal/scenarios/probe_spec.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
     },
@@ -383,6 +446,15 @@
       "harness_inputs": [
         "harness/commands/harness-audit.md",
         "internal/scenarios/probe_audit.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
     },
@@ -442,6 +514,15 @@
         "harness/commands/triage.md",
         "harness/commands/research.md",
         "internal/scenarios/probe_recon.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
     },
@@ -607,6 +688,15 @@
         "harness/skills/adversarial-review/roles/reviewer-b.md",
         "harness/skills/adversarial-review/roles/review-refuter.md",
         "internal/scenarios/probe_review.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
     }
