@@ -322,7 +322,7 @@ func (in *installer) reconcileAliases(remove bool) {
 func (in *installer) installEngram() {
 	in.log("Reconciling Engram")
 	if _, err := exec.LookPath("engram"); err != nil {
-		die("Engram is missing; run without --links-only to install it.")
+		die("Engram is missing; run without --skip-packages to install it.")
 	}
 	in.run(strings.NewReader("y\n"), "engram", "setup", "claude-code")
 	in.run(nil, "engram", "setup", "opencode")
@@ -333,10 +333,10 @@ func (in *installer) installAgentBrowser() {
 	in.log("Reconciling agent-browser")
 	binary, err := exec.LookPath("agent-browser")
 	if err != nil {
-		die("agent-browser is missing; run without --links-only to install it.")
+		die("agent-browser is missing; run without --skip-packages to install it.")
 	}
 	if _, err := exec.LookPath("claude"); err != nil {
-		die("Claude Code is missing; run without --links-only to install it.")
+		die("Claude Code is missing; run without --skip-packages to install it.")
 	}
 	// OpenCode's config is read and validated before either client is touched, so a config this run refuses leaves both registrations as they were.
 	path := filepath.Join(in.config, "opencode", "opencode.json")

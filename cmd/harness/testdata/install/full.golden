@@ -2,22 +2,12 @@ run []: exit 0
 == commands
 brew tap anomalyco/tap <>
 brew tap gentleman-programming/tap <>
-brew list --formula node <>
-brew upgrade node <>
-brew list --formula gh <>
-brew upgrade gh <>
-brew list --formula uv <>
-brew upgrade uv <>
-brew list --formula worktrunk <>
-brew upgrade worktrunk <>
-brew list --formula agent-browser <>
-brew upgrade agent-browser <>
-brew list --formula anomalyco/tap/opencode <>
-brew upgrade anomalyco/tap/opencode <>
-brew list --formula gentleman-programming/tap/engram <>
-brew upgrade gentleman-programming/tap/engram <>
+brew list --formula <>
+brew install uv <>
+brew install worktrunk <>
+brew install agent-browser <>
+brew install gentleman-programming/tap/engram <>
 agent-browser install <>
-curl -fsSL https://claude.ai/install.sh <>
 engram setup claude-code <y>
 engram setup opencode <>
 wt config shell install --yes zsh <>
@@ -28,6 +18,7 @@ claude mcp get agent-browser <>
 opencode debug config <>
 claude plugin validate $CHECKOUT/skills <>
 wt switch --help <>
+wt list --help <>
 == home
 D .agents
 D .agents/skills

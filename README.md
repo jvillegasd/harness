@@ -170,7 +170,7 @@ flowchart TD
 | Claude Code | `model:` an alias, `sonnet`, `opus`, `haiku`, or `fable`, or a `claude-` model ID | `effort:` `low`, `medium`, `high`, `xhigh`, or `max` | `model: inherit` and no `effort:` line, so the session's model and effort apply |
 | OpenCode | `model:` a `provider/model` ID | `reasoningEffort:` `none`, `minimal`, `low`, `medium`, `high`, or `xhigh`, only beside an `openai/` model, since OpenCode passes it to the provider | neither line, so the invoking agent's model applies |
 
-A value outside those sets, an unknown or duplicate key, a missing client default, or effort beside a non-OpenAI OpenCode model fails generation before anything is written, and nothing is substituted. A set model or effort prints as `unverified:` until that account is observed running it, because a client's documentation is not proof of access. A role with an assignment and no definition is validated and prints as `pending:`, and no agent is generated until its definition lands. Change an assignment by editing its entry and rerunning `go run ./cmd/harness install --links-only`; never edit a generated file, which `--check` reports as changed.
+A value outside those sets, an unknown or duplicate key, a missing client default, or effort beside a non-OpenAI OpenCode model fails generation before anything is written, and nothing is substituted. A set model or effort prints as `unverified:` until that account is observed running it, because a client's documentation is not proof of access. A role with an assignment and no definition is validated and prints as `pending:`, and no agent is generated until its definition lands. Change an assignment by editing its entry and rerunning `go run ./cmd/harness install --skip-packages`; never edit a generated file, which `--check` reports as changed.
 
 Acceptance on 2026-09-14 made no model request. `claude plugin validate` in Claude Code 2.1.270 parsed generated agents carrying `model: sonnet`, `effort: high`, and `disallowedTools: Agent`, which proves the frontmatter parses, not that Claude Code applies those fields. `opencode debug agent` in OpenCode 1.18.30 resolved `openai/gpt-5.5` with `reasoningEffort` from both a client default and a role override, and resolved the reviewer and executor denies. Neither proves a request runs on the assigned model or that the account can reach it.
 
@@ -205,18 +205,20 @@ git diff --check
 
 ## Install
 
-`harness bootstrap`, run through `go run` from this checkout, builds `harness` into `~/.local/bin` and runs a full install. `harness install` installs the harness of the checkout it runs from, so run it from the checkout root, and through `go run` so the install code matches that checkout: the `harness` on PATH is whatever `harness bootstrap` last built. Every install mode points the Claude Code status line at `~/.local/bin/harness` and verifies that binary, so run `harness bootstrap` first; a run without a working binary there fails instead of leaving the status line silently empty. To reconcile only policy, commands, and skills:
+`harness bootstrap`, run through `go run` from this checkout, builds `harness` into `~/.local/bin` and runs a full install. `harness install` installs the harness of the checkout it runs from, so run it from the checkout root, and through `go run` so the install code matches that checkout: the `harness` on PATH is whatever `harness bootstrap` last built. Every install mode points the Claude Code status line at `~/.local/bin/harness` and verifies that binary, so run `harness bootstrap` first; a run without a working binary there fails instead of leaving the status line silently empty. To reconcile links, generated roles, client settings, and MCP registrations without calling a package manager:
 
 ```sh
-go run ./cmd/harness install --links-only
+go run ./cmd/harness install --skip-packages
 ```
 
 | Flag | Effect |
 | --- | --- |
-| `--links-only` | Reconcile links without installing packages. Engram and agent-browser are still reconciled, so both must already be installed. |
+| `--skip-packages` | Reconcile the policy, command, skill, and role agent links, the generated role definitions, the tracked client settings, and the Engram and agent-browser registrations, without installing packages or configuring Worktrunk's shell integration. No package manager is called, so Engram, agent-browser, and Claude Code must already be installed. |
 | `--no-backup` | Delete what is in the way instead of archiving it. Destructive and unrecoverable. |
-| `--uninstall` | Remove every managed link, the generated role agents, the alias block, the tracked client keys, Engram, and agent-browser. Keeps `~/.engram` and `~/.agent-browser`. |
+| `--uninstall` | Remove every managed skill and command link, both `POLICY.md` links, the generated role agents and their links, the `~/.zshrc` alias block, the tracked keys in `~/.claude/settings.json`, Engram (its Claude Code plugin and marketplace, its registration in both clients including the OpenCode subagent status line, and its formula), and agent-browser (its registration in both clients and its formula). Keeps `~/.engram`, `~/.agent-browser`, `~/.dotfiles-backups`, and every untracked client key. |
 | `--clear-backups` | Delete every archive under `~/.dotfiles-backups/harness/`. Runs on its own. |
+
+Every mode validates `HOME` and `XDG_CONFIG_HOME` and refuses a relative one before writing anything, so a managed path is never written relative to the invocation directory.
 
 Reconciliation removes as well as adds. A symlink in a managed root is backed up and removed when its target is gone, points into a managed asset namespace at something no longer installed, or carries a name differing from its target's, so a retired entry cannot outlive the change that retired it. A real directory shadowing a managed name is backed up too, since the sweep cannot see it. One defect is left in place and tracked separately: the dangling branch removes a dangling symlink whoever wrote it, because a target resolving to nothing cannot be tested for ownership.
 
@@ -240,7 +242,7 @@ The formula is homebrew-core. It publishes no x86_64 macOS bottle, so an Intel M
 
 ### Packages
 
-Homebrew carries every tool on both platforms, because three of them (OpenCode, Engram, Worktrunk) ship only as taps. Claude Code comes from Anthropic's native latest channel. The installer never starts an interactive client or authenticates for you.
+Homebrew carries every tool on both platforms, because three of them (OpenCode, Engram, Worktrunk) ship only as taps. A full install inventories the installed formulae once and installs only what is missing: an already-installed dependency keeps whatever version it has, never upgraded implicitly. Claude Code comes from Anthropic's native latest channel and is installed only when it is absent. The installer never starts an interactive client or authenticates for you.
 
 Python is machine tooling rather than a harness dependency: the platform scripts install uv's managed interpreters, and `harness install` asserts no Python at all.
 
@@ -290,7 +292,7 @@ harness locks verify
 
 Review every upstream body, security report, and diff, then commit only the approved change. Locked bodies stay pristine; behavior changes belong in a command or in `POLICY.md`. Provisioning never runs the helper or a lockfile restore. A copied skill with unknown provenance stays an attributed local fork until its upstream is identified. Engram and Orca-provided skills are runtime managed and never belong in `skills-lock.json`.
 
-Binaries are the deliberate exception. Every prose body has its hash in `skills-lock.json`, while the clients arrive unpinned: `curl -fsSL https://claude.ai/install.sh | bash` and two Homebrew taps. A locked body is a reviewed instruction this harness executes forever, so a change to one has to be read; a client is a moving target whose next version is the point of re-running the installer. The trade is a supply chain that trusts Anthropic and two tap owners at install time.
+Binaries are the deliberate exception. Every prose body has its hash in `skills-lock.json`, while the clients arrive unpinned: `curl -fsSL https://claude.ai/install.sh | bash` and two Homebrew taps. A locked body is a reviewed instruction this harness executes forever, so a change to one has to be read; a client is a moving target, installed only when missing and left at whatever version is already present. The trade is a supply chain that trusts Anthropic and two tap owners at install time.
 
 ## Roster
 

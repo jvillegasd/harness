@@ -23,24 +23,30 @@ const (
 	agentBrowserFormula = "agent-browser"
 )
 
-const usage = `Usage: harness install [--links-only] [--no-backup]
+const usage = `Usage: harness install [--skip-packages] [--no-backup]
        harness install --uninstall
        harness install --clear-backups
 
-  --links-only   Reconcile policy, command, and skill links without installing
-                 packages. Engram and agent-browser are still reconciled,
-                 so both have to be installed already; a full run is what
-                 installs them.
+  --skip-packages
+                 Reconcile the policy, command, skill, and role agent links, the
+                 generated role definitions, the tracked client settings, and
+                 the Engram and agent-browser registrations, without installing
+                 packages or configuring Worktrunk's shell integration. No
+                 package manager is called, so Engram, agent-browser, and Claude
+                 Code have to be installed already; a full run is what installs
+                 them.
   --no-backup    Delete whatever is in the way instead of moving it to
                  ~/.dotfiles-backups. Destructive and unrecoverable: a private
                  skill or a hand-edited config sitting at a managed path is
                  gone, not archived.
   --uninstall    Remove what this installer writes: every managed link, the
-                 ~/.zshrc alias block, and the tracked keys in the Claude
-                 config. It reverses the installer, it does not uninstall
-                 your tools, with one exception: Engram, which a full install
-                 installs and registers, is removed here too, formula
-                 included. Your ~/.engram memory database is kept.
+                 generated role agents, the ~/.zshrc alias block, and the
+                 tracked keys in the Claude config. It reverses the installer,
+                 it does not uninstall your tools, with one exception: Engram
+                 and agent-browser, which a full install installs and registers,
+                 are removed here too, both formulae included, along with the
+                 OpenCode subagent status line Engram's setup enabled. Your
+                 ~/.engram and ~/.agent-browser directories are kept.
                  The other packages, ~/.dotfiles-backups, this checkout, and
                  every untracked key in the Claude config are left alone.
                  Destructive and unrecoverable: what it removes is deleted,
@@ -94,12 +100,12 @@ func must(err error) {
 }
 
 type installer struct {
-	home, config                   string
-	dir                            checkout.Checkout
-	linksOnly, noBackup, uninstall bool
-	backupRoot                     string
-	stdout, stderr                 io.Writer
-	command                        string
+	home, config                      string
+	dir                               checkout.Checkout
+	skipPackages, noBackup, uninstall bool
+	backupRoot                        string
+	stdout, stderr                    io.Writer
+	command                           string
 }
 
 func (in *installer) log(format string, args ...any) {
@@ -122,12 +128,20 @@ func recoverFatal(command string, stderr io.Writer, code *int) {
 	}
 }
 
-func (in *installer) setPaths(dir checkout.Checkout) {
+// resolveLocations reads the two roots every managed path hangs from and refuses a relative one before anything writes: a relative HOME turns each destination into a write inside the invocation directory. XDG_CONFIG_HOME falls back to $HOME/.config, so an absolute HOME makes it absolute too.
+func (in *installer) resolveLocations() {
 	in.home = os.Getenv("HOME")
 	in.config = os.Getenv("XDG_CONFIG_HOME")
 	if in.config == "" {
 		in.config = filepath.Join(in.home, ".config")
 	}
+	if !filepath.IsAbs(in.home) || !filepath.IsAbs(in.config) {
+		die("HOME and XDG_CONFIG_HOME must be absolute paths; got HOME=%q and XDG_CONFIG_HOME=%q.", in.home, in.config)
+	}
+}
+
+func (in *installer) setPaths(dir checkout.Checkout) {
+	in.resolveLocations()
 	in.dir = dir
 }
 
@@ -138,8 +152,8 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 	clearBackups := false
 	for _, arg := range args {
 		switch arg {
-		case "--links-only":
-			in.linksOnly = true
+		case "--skip-packages":
+			in.skipPackages = true
 		case "--no-backup":
 			in.noBackup = true
 		case "--uninstall":
@@ -154,19 +168,19 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 			return 2
 		}
 	}
-	// Contradictory rather than redundant: --links-only names a subset of the install to write, and --uninstall writes none of it. An uninstall deletes rather than archives, so --no-backup beside it is redundant and allowed.
-	if in.uninstall && in.linksOnly {
-		fmt.Fprintln(stderr, "harness install: --uninstall and --links-only are contradictory; --uninstall removes every link.")
+	// Contradictory rather than redundant: --skip-packages names a subset of the install to write, and --uninstall writes none of it. An uninstall deletes rather than archives, so --no-backup beside it is redundant and allowed.
+	if in.uninstall && in.skipPackages {
+		fmt.Fprintln(stderr, "harness install: --uninstall and --skip-packages are contradictory; --uninstall removes every link.")
 		return 2
 	}
-	if clearBackups && (in.uninstall || in.linksOnly) {
+	if clearBackups && (in.uninstall || in.skipPackages) {
 		fmt.Fprintln(stderr, "harness install: --clear-backups runs on its own; it neither installs nor uninstalls.")
 		return 2
 	}
 	in.noBackup = in.noBackup || in.uninstall
 	if clearBackups {
 		// It reads only $HOME, so it runs from anywhere.
-		in.home = os.Getenv("HOME")
+		in.resolveLocations()
 		in.clearBackups()
 		return 0
 	}
@@ -184,21 +198,21 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 func (in *installer) install() {
 	// First, so the warning precedes the two steps it is about.
 	in.warnUnlessZsh()
-	if !in.linksOnly {
+	if !in.skipPackages {
 		in.installPackages()
 		in.installIntegrations()
 	}
 	in.installLinks()
 	in.reconcileAliases(false)
-	// A links-only run skips package work, so it reconciles Engram unconditionally: setup rewrites the absolute binary path each client pins, which a presence probe never checked.
-	if in.linksOnly {
+	// A package-skipping run skips the package work, so it reconciles Engram unconditionally: setup rewrites the absolute binary path each client pins, which a presence probe never checked.
+	if in.skipPackages {
 		in.installEngram()
 	}
 	// Both after Engram, whose setup rewrites settings.json and opencode.json from its own template: the harness is the last writer, which is what makes the tracked values the ones a client reads.
 	in.installAgentBrowser()
 	in.reconcileClaudeSettings()
 	in.checkLinks()
-	if !in.linksOnly {
+	if !in.skipPackages {
 		in.checkTools()
 	}
 	in.summary()
@@ -213,7 +227,7 @@ func (in *installer) run(stdin io.Reader, name string, args ...string) {
 	}
 }
 
-// installPackages installs every tool through Homebrew on both platforms, because three of them (opencode, engram, worktrunk) ship only as taps.
+// installPackages installs every tool through Homebrew on both platforms, because three of them (opencode, engram, worktrunk) ship only as taps. It inventories the installed formulae once and installs only what is missing: an already-installed dependency keeps whatever version it has, never upgraded behind the user's back.
 func (in *installer) installPackages() {
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		die("The harness installer supports macOS and Linux, not %s.", runtime.GOOS)
@@ -221,13 +235,14 @@ func (in *installer) installPackages() {
 	if _, err := exec.LookPath("brew"); err != nil {
 		die("Homebrew is required; run the root ./macos.sh or ./linux.sh first.")
 	}
-	in.log("Installing current AI clients and harness tools")
+	// ~/.local/bin joins PATH first, because that is where this installer and a prior run's Claude Code put their binaries, and the presence check below has to see them.
+	must(os.Setenv("PATH", filepath.Join(in.home, ".local", "bin")+string(os.PathListSeparator)+os.Getenv("PATH")))
+	in.log("Installing missing AI clients and harness tools")
 	in.run(nil, "brew", "tap", "anomalyco/tap")
 	in.run(nil, "brew", "tap", "gentleman-programming/tap")
+	installed := in.installedFormulae()
 	for _, formula := range []string{"node", "gh", "uv", "worktrunk", agentBrowserFormula, "anomalyco/tap/opencode", engramFormula} {
-		if exec.Command("brew", "list", "--formula", formula).Run() == nil {
-			in.run(nil, "brew", "upgrade", formula)
-		} else {
+		if !installed[shortName(formula)] {
 			in.run(nil, "brew", "install", formula)
 		}
 	}
@@ -238,9 +253,39 @@ func (in *installer) installPackages() {
 	} else {
 		in.run(nil, "agent-browser", "install", "--with-deps")
 	}
-	in.log("Installing Claude Code from Anthropic's latest native channel")
-	in.run(nil, "bash", "-c", "set -o pipefail; curl -fsSL https://claude.ai/install.sh | bash")
-	must(os.Setenv("PATH", filepath.Join(in.home, ".local", "bin")+string(os.PathListSeparator)+os.Getenv("PATH")))
+	// Only when absent: Anthropic's installer would put a newer channel over whatever the user already runs, the same implicit upgrade the formulae no longer get.
+	if _, err := exec.LookPath("claude"); err != nil {
+		in.log("Installing Claude Code from Anthropic's latest native channel")
+		in.run(nil, "bash", "-c", "set -o pipefail; curl -fsSL https://claude.ai/install.sh | bash")
+	}
+}
+
+// installedFormulae inventories Homebrew once, so a full install decides what to add without probing per formula. It returns the short names `brew list` reports, which is what a tap formula is known by there.
+func (in *installer) installedFormulae() map[string]bool {
+	cmd := exec.Command("brew", "list", "--formula")
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		// Without a readable inventory the run cannot tell missing from present, so it stops with brew's own diagnostic rather than reinstalling everything, which would upgrade what the contract says to leave alone.
+		detail := strings.TrimSpace(stderr.String())
+		if detail == "" {
+			detail = "no diagnostic"
+		}
+		die("Could not inventory the installed Homebrew formulae: %v: %s", err, detail)
+	}
+	installed := map[string]bool{}
+	for _, name := range strings.Fields(string(out)) {
+		// Both forms: brew prints the bare name unless an ambiguity makes it qualify the tap.
+		installed[name] = true
+		installed[shortName(name)] = true
+	}
+	return installed
+}
+
+// shortName is the name `brew list` reports a formula by, dropping a tap prefix the list never carries.
+func shortName(formula string) string {
+	return formula[strings.LastIndex(formula, "/")+1:]
 }
 
 func (in *installer) installIntegrations() {
@@ -360,6 +405,14 @@ func (in *installer) checkTools() {
 	}
 	if help, _ := exec.Command("wt", "switch", "--help").Output(); !strings.Contains(string(help), "--no-cd") {
 		die("Worktrunk's wt switch has no --no-cd flag; upgrade Worktrunk.")
+	}
+	// state and dash pass --config-set to `wt list`, so an older Worktrunk that lacks it fails here rather than inside a later command. The flag is probed where it is used, because a global option may be hidden from the subcommand that needs it.
+	help, err := exec.Command("wt", "list", "--help").Output()
+	if err != nil {
+		die("Could not read Worktrunk's wt list help: %v", err)
+	}
+	if !strings.Contains(string(help), "--config-set") {
+		die("Worktrunk's wt list has no --config-set flag; upgrade Worktrunk to 0.61 or newer.")
 	}
 }
 
