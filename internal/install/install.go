@@ -73,7 +73,7 @@ Status line: harness statusline, which Claude Code runs on every draw.
 OpenCode exposes no status line surface, so it gets none.
 
 Commands use /name in Claude Code and OpenCode.
-Yolo aliases (ccyolo, ocyolo) are sourced from harness/aliases.sh; open a
+Yolo aliases (ccyolo, ocyolo) are sourced from aliases.sh; open a
 new shell or run: source ~/.zshrc
 
 Standalone third-party skills were not downloaded or updated. Their committed

@@ -33,7 +33,7 @@ func repoRoot() string {
 	return abs
 }
 
-func configPath() string { return filepath.Join(repoRoot(), "harness", "clients", "assignments.json") }
+func configPath() string { return filepath.Join(repoRoot(), "clients", "assignments.json") }
 
 func runCommand(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
@@ -159,7 +159,7 @@ func TestEachClientGetsItsControlsAndTheWholeRole(t *testing.T) {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
 	for _, role := range []string{"reviewer-a", "reviewer-b", "review-refuter"} {
-		raw, err := os.ReadFile(filepath.Join(repoRoot(), "harness", "skills", "adversarial-review", "roles", role+".md"))
+		raw, err := os.ReadFile(filepath.Join(repoRoot(), "skills", "adversarial-review", "roles", role+".md"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -183,7 +183,7 @@ func TestExecutorKeepsImplementationAccess(t *testing.T) {
 	if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
-	raw, err := os.ReadFile(filepath.Join(repoRoot(), "harness", "roles", "executor.md"))
+	raw, err := os.ReadFile(filepath.Join(repoRoot(), "roles", "executor.md"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -11,7 +11,7 @@ import (
 	"unicode/utf8"
 )
 
-var reconCommandPath = filepath.Join("harness", "commands", "triage.md")
+var reconCommandPath = filepath.Join("commands", "triage.md")
 
 var reconShapePattern = regexp.MustCompile("(?ms)^## Recon citations\n.*?in the shape `([^`]+)`")
 

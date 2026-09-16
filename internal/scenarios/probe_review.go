@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-var reviewSkillPath = filepath.Join("harness", "skills", "adversarial-review", "SKILL.md")
-var reviewRolesPath = filepath.Join("harness", "skills", "adversarial-review", "roles")
+var reviewSkillPath = filepath.Join("skills", "adversarial-review", "SKILL.md")
+var reviewRolesPath = filepath.Join("skills", "adversarial-review", "roles")
 
 var reviewTriageKeys = []string{"severities", "second_round"}
 var reviewInputsKeys = []string{"inputs", "loaded_prefix"}

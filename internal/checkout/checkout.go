@@ -12,8 +12,8 @@ import (
 // module is the Go module path that identifies a Harness checkout, so a directory holding a file at the root policy marker's path is not mistaken for this checkout.
 const module = "github.com/jvillegasd/harness"
 
-// assets is the checkout-relative directory holding the canonical product assets. The flatten moves it to the checkout root; that move lands here.
-const assets = "harness"
+// policyMarker is the checkout-relative root policy file that marks a Harness checkout: the product assets live at the repository root, so the marker sits beside the module.
+const policyMarker = "POLICY.md"
 
 // ErrNotFound names the requirement when no Harness checkout encloses the invocation directory.
 var ErrNotFound = errors.New("run harness from inside a Harness checkout")
@@ -32,7 +32,7 @@ func Find(dir string) (Checkout, error) {
 		return Checkout{}, err
 	}
 	for {
-		_, err := os.Stat(filepath.Join(abs, assets, "POLICY.md"))
+		_, err := os.Stat(filepath.Join(abs, policyMarker))
 		if err == nil {
 			return findRoot(abs)
 		}
@@ -85,32 +85,44 @@ func moduleOf(gomod []byte) string {
 	return ""
 }
 
-// Assets is the directory holding the canonical product assets: the policy, skills, commands, aliases, client templates, generated agents, and bench.
-func (c Checkout) Assets() string { return filepath.Join(c.Root, assets) }
-
 // Policy is the root policy marker that links into each client's global instruction path.
-func (c Checkout) Policy() string { return filepath.Join(c.Assets(), "POLICY.md") }
+func (c Checkout) Policy() string { return filepath.Join(c.Root, policyMarker) }
 
 // Skills is the directory of harness skills.
-func (c Checkout) Skills() string { return filepath.Join(c.Assets(), "skills") }
+func (c Checkout) Skills() string { return filepath.Join(c.Root, "skills") }
 
 // Commands is the directory of harness commands.
-func (c Checkout) Commands() string { return filepath.Join(c.Assets(), "commands") }
+func (c Checkout) Commands() string { return filepath.Join(c.Root, "commands") }
 
 // Aliases is the shell file holding the managed yolo aliases.
-func (c Checkout) Aliases() string { return filepath.Join(c.Assets(), "aliases.sh") }
+func (c Checkout) Aliases() string { return filepath.Join(c.Root, "aliases.sh") }
 
 // Clients is the directory of client templates and role assignments.
-func (c Checkout) Clients() string { return filepath.Join(c.Assets(), "clients") }
+func (c Checkout) Clients() string { return filepath.Join(c.Root, "clients") }
 
 // Generated is the untracked directory of rendered role agents.
-func (c Checkout) Generated() string { return filepath.Join(c.Assets(), ".generated") }
+func (c Checkout) Generated() string { return filepath.Join(c.Root, ".generated") }
 
 // Bench is the directory of benchmark cohorts and assets.
-func (c Checkout) Bench() string { return filepath.Join(c.Assets(), "bench") }
+func (c Checkout) Bench() string { return filepath.Join(c.Root, "bench") }
 
-// Lock is the reviewed third-party skill lock, which stays at the checkout root through the flatten.
+// Lock is the reviewed third-party skill lock at the checkout root.
 func (c Checkout) Lock() string { return filepath.Join(c.Root, "skills-lock.json") }
 
-// ClaudeSkills is the checkout's Claude skill link directory, which stays at the checkout root through the flatten.
+// ClaudeSkills is the checkout's Claude skill link directory.
 func (c Checkout) ClaudeSkills() string { return filepath.Join(c.Root, ".claude", "skills") }
+
+// Managed names the assets the installer owns as link sources. Ownership is these namespaces alone, never everything beneath the checkout, so promoting the assets to the repository root does not make an unrelated repository file, a private skill, or private data installer-owned.
+func (c Checkout) Managed() []string {
+	return []string{c.Skills(), c.Commands(), c.Policy(), c.Generated()}
+}
+
+// Manages reports whether path is a managed asset or sits beneath one, which is the only predicate an install or uninstall may use to claim a link.
+func (c Checkout) Manages(path string) bool {
+	for _, root := range c.Managed() {
+		if path == root || strings.HasPrefix(path, root+"/") {
+			return true
+		}
+	}
+	return false
+}

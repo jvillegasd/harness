@@ -16,8 +16,8 @@
         "contains": []
       },
       "harness_inputs": [
-        "harness/commands/ask.md",
-        "harness/POLICY.md",
+        "commands/ask.md",
+        "POLICY.md",
         "internal/scenarios/artifacts.go",
         "internal/scenarios/digest.go",
         "internal/scenarios/evidence.go",
@@ -106,7 +106,7 @@
         ]
       },
       "harness_inputs": [
-        "harness/commands/land.md",
+        "commands/land.md",
         "internal/scenarios/probe_landing.go",
         "internal/scenarios/artifacts.go",
         "internal/scenarios/digest.go",
@@ -126,7 +126,7 @@
       "command": "reconcile-agent-lifecycle",
       "prompt": "Apply the frontier decision: a blocked ticket whose blocker is closed by a merged pull request becomes ready-for-agent.",
       "mode": "offline",
-      "check": "cd \"$HARNESS_ROOT\" && go test ./harness/skills/setup-harness/scripts -run TestBlockedTicketBecomesReadyWhenBlockerCloses -count=1",
+      "check": "cd \"$HARNESS_ROOT\" && go test ./skills/setup-harness/scripts -run TestBlockedTicketBecomesReadyWhenBlockerCloses -count=1",
       "artifacts": {
         "tree_unchanged": false,
         "present": [
@@ -141,8 +141,8 @@
         ]
       },
       "harness_inputs": [
-        "harness/skills/setup-harness/scripts/reconcile-agent-lifecycle.go",
-        "harness/skills/setup-harness/scripts/reconcile_agent_lifecycle_test.go",
+        "skills/setup-harness/scripts/reconcile-agent-lifecycle.go",
+        "skills/setup-harness/scripts/reconcile_agent_lifecycle_test.go",
         "internal/scenarios/artifacts.go",
         "internal/scenarios/digest.go",
         "internal/scenarios/evidence.go",
@@ -212,7 +212,7 @@
         ]
       },
       "harness_inputs": [
-        "harness/skills/workflow-checkpoint/SKILL.md",
+        "skills/workflow-checkpoint/SKILL.md",
         "internal/scenarios/probe_checkpoint.go",
         "internal/scenarios/artifacts.go",
         "internal/scenarios/digest.go",
@@ -271,7 +271,7 @@
         ]
       },
       "harness_inputs": [
-        "harness/skills/workflow-checkpoint/SKILL.md",
+        "skills/workflow-checkpoint/SKILL.md",
         "internal/scenarios/probe_checkpoint_two_session.go",
         "internal/scenarios/probe_checkpoint.go",
         "internal/scenarios/artifacts.go",
@@ -339,8 +339,8 @@
         ]
       },
       "harness_inputs": [
-        "harness/commands/create-ticket.md",
-        "harness/skills/local-tracker/SKILL.md",
+        "commands/create-ticket.md",
+        "skills/local-tracker/SKILL.md",
         "docs/agents/harness.json",
         "internal/scenarios/probe_spec.go",
         "internal/scenarios/artifacts.go",
@@ -444,7 +444,7 @@
         ]
       },
       "harness_inputs": [
-        "harness/commands/harness-audit.md",
+        "commands/harness-audit.md",
         "internal/scenarios/probe_audit.go",
         "internal/scenarios/artifacts.go",
         "internal/scenarios/digest.go",
@@ -511,8 +511,8 @@
         ]
       },
       "harness_inputs": [
-        "harness/commands/triage.md",
-        "harness/commands/research.md",
+        "commands/triage.md",
+        "commands/research.md",
         "internal/scenarios/probe_recon.go",
         "internal/scenarios/artifacts.go",
         "internal/scenarios/digest.go",
@@ -683,10 +683,10 @@
         ]
       },
       "harness_inputs": [
-        "harness/skills/adversarial-review/SKILL.md",
-        "harness/skills/adversarial-review/roles/reviewer-a.md",
-        "harness/skills/adversarial-review/roles/reviewer-b.md",
-        "harness/skills/adversarial-review/roles/review-refuter.md",
+        "skills/adversarial-review/SKILL.md",
+        "skills/adversarial-review/roles/reviewer-a.md",
+        "skills/adversarial-review/roles/reviewer-b.md",
+        "skills/adversarial-review/roles/review-refuter.md",
         "internal/scenarios/probe_review.go",
         "internal/scenarios/artifacts.go",
         "internal/scenarios/digest.go",

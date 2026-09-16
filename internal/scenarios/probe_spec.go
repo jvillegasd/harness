@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 )
 
-var slicingCommandPath = filepath.Join("harness", "commands", "create-ticket.md")
+var slicingCommandPath = filepath.Join("commands", "create-ticket.md")
 var slicingManifestPath = filepath.Join("docs", "agents", "harness.json")
 
 var routeKeys = []string{

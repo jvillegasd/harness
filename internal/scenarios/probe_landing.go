@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 )
 
-var landingCommandPath = filepath.Join("harness", "commands", "land.md")
+var landingCommandPath = filepath.Join("commands", "land.md")
 
 var landingKeys = []string{
 	"invocation_required",

@@ -28,7 +28,7 @@ Compare the session population before and after a harness change.
   --rows    Print one JSON object per session instead of the report.
 
 Run it from inside the checkout, where the work patterns live in
-harness/bench/cohorts.json.
+bench/cohorts.json.
 `
 
 // Command runs `harness bench` and returns the process exit code.

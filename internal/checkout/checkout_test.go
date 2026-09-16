@@ -22,7 +22,7 @@ func write(t *testing.T, path, body string) {
 // checkoutAt lays out a checkout: the root policy marker beside the Harness module.
 func checkoutAt(t *testing.T, root string) string {
 	t.Helper()
-	write(t, filepath.Join(root, "harness", "POLICY.md"), "# policy\n")
+	write(t, filepath.Join(root, "POLICY.md"), "# policy\n")
 	write(t, filepath.Join(root, "go.mod"), "module github.com/jvillegasd/harness\n\ngo 1.26.0\n")
 	return root
 }
@@ -68,7 +68,7 @@ func TestFindResolvesTheNearestCheckout(t *testing.T) {
 func TestFindRejectsADifferentModule(t *testing.T) {
 	outer := checkoutAt(t, t.TempDir())
 	inner := filepath.Join(outer, "fork")
-	write(t, filepath.Join(inner, "harness", "POLICY.md"), "# policy\n")
+	write(t, filepath.Join(inner, "POLICY.md"), "# policy\n")
 	write(t, filepath.Join(inner, "go.mod"), "module example.com/other\n")
 	nested := filepath.Join(inner, "sub")
 	if err := os.MkdirAll(nested, 0o755); err != nil {
@@ -89,7 +89,7 @@ func TestFindRejectsADifferentModule(t *testing.T) {
 // TestFindRejectsAMarkerWithoutTheModule pins the contract that a checkout is the marker together with the module, so a marker-only tree is not one.
 func TestFindRejectsAMarkerWithoutTheModule(t *testing.T) {
 	dir := t.TempDir()
-	write(t, filepath.Join(dir, "harness", "POLICY.md"), "# policy\n")
+	write(t, filepath.Join(dir, "POLICY.md"), "# policy\n")
 
 	_, err := Find(dir)
 	if !errors.Is(err, ErrNotFound) {
@@ -114,20 +114,50 @@ func TestAssetLocations(t *testing.T) {
 	root := "/repo"
 	c := Checkout{Root: root}
 	cases := map[string]string{
-		c.Assets():       filepath.Join(root, "harness"),
-		c.Policy():       filepath.Join(root, "harness", "POLICY.md"),
-		c.Skills():       filepath.Join(root, "harness", "skills"),
-		c.Commands():     filepath.Join(root, "harness", "commands"),
-		c.Aliases():      filepath.Join(root, "harness", "aliases.sh"),
-		c.Clients():      filepath.Join(root, "harness", "clients"),
-		c.Generated():    filepath.Join(root, "harness", ".generated"),
-		c.Bench():        filepath.Join(root, "harness", "bench"),
+		c.Policy():       filepath.Join(root, "POLICY.md"),
+		c.Skills():       filepath.Join(root, "skills"),
+		c.Commands():     filepath.Join(root, "commands"),
+		c.Aliases():      filepath.Join(root, "aliases.sh"),
+		c.Clients():      filepath.Join(root, "clients"),
+		c.Generated():    filepath.Join(root, ".generated"),
+		c.Bench():        filepath.Join(root, "bench"),
 		c.Lock():         filepath.Join(root, "skills-lock.json"),
 		c.ClaudeSkills(): filepath.Join(root, ".claude", "skills"),
 	}
 	for got, want := range cases {
 		if got != want {
 			t.Errorf("asset = %s, want %s", got, want)
+		}
+	}
+}
+
+// TestManagedIsExplicitNamespaces pins the ownership predicate: a managed asset and everything beneath it is the installer's, while the repository's own tooling at the promoted root is not.
+func TestManagedIsExplicitNamespaces(t *testing.T) {
+	c := Checkout{Root: "/repo"}
+	managed := []string{
+		"/repo/skills",
+		"/repo/skills/tdd/SKILL.md",
+		"/repo/commands/ship.md",
+		"/repo/POLICY.md",
+		"/repo/.generated/agents/claude/executor.md",
+	}
+	unmanaged := []string{
+		"/repo",
+		"/repo/cmd/harness/main.go",
+		"/repo/internal/install/links.go",
+		"/repo/README.md",
+		"/repo/docs/agents/harness.json",
+		"/repo/skills-lock.json",
+		"/repo/elsewhere/POLICY.md",
+	}
+	for _, path := range managed {
+		if !c.Manages(path) {
+			t.Errorf("Manages(%s) = false, want true", path)
+		}
+	}
+	for _, path := range unmanaged {
+		if c.Manages(path) {
+			t.Errorf("Manages(%s) = true, want false: an unrelated repository file is not installer-owned", path)
 		}
 	}
 }

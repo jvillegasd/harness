@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var checkpointSkillPath = filepath.Join("harness", "skills", "workflow-checkpoint", "SKILL.md")
+var checkpointSkillPath = filepath.Join("skills", "workflow-checkpoint", "SKILL.md")
 
 // probeCheckpointProtocol reads the canonical protocol block from the workflow-checkpoint skill.
 func probeCheckpointProtocol(root string) (map[string]any, error) {
