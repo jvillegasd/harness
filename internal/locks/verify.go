@@ -155,5 +155,6 @@ func check(c checkout.Checkout, stdout, stderr io.Writer) error {
 			return fmt.Errorf("git %s: %w", strings.Join(args[2:], " "), err)
 		}
 	}
+	fmt.Fprintf(stdout, "check passed: %s syntax, diff hygiene\n", aliases)
 	return nil
 }

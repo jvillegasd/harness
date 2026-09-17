@@ -456,6 +456,9 @@ func TestLocksCheckSyntaxAndWhitespace(t *testing.T) {
 			if r.code != 0 {
 				t.Fatalf("check exited %d: %s", r.code, r.stderr)
 			}
+			if !strings.Contains(r.stdout, "check passed") {
+				t.Fatalf("check stdout %q carries no pass status", r.stdout)
+			}
 		})
 	}
 }
