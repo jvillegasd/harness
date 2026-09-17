@@ -315,7 +315,7 @@ It arrives only through `harness skills`. Four of its own routes are forbidden, 
 
 ### Security audit
 
-Locked `cloudflare/security-audit-skill` is the one security body, MIT licensed. Like `impeccable` it is description-matchable, so the control is scope rather than a guard: no command or local skill loads it. It is guidance only: it never substitutes for `adversarial-review` or the review passes of `/ship`, `/feedback`, `/address-review`, and `/proto`, never counts as a ladder rung, and never produces a review of a pull request or diff. Its full audit mode runs only on the body's own explicit triggers and writes artifacts under `~/security-audit-skill/<repo>/run-<N>`, outside every worktree, so removing them is the human's job. It is updated only through `harness skills update`.
+Locked `cloudflare/security-audit-skill` is the one security body, MIT licensed. Like `impeccable` it is description-matchable, so the control is scope rather than a guard: no command or local skill loads it, and `POLICY.md` keeps it guidance only, out of every review pass and ladder rung. Its full audit mode runs only on the body's own explicit triggers and by default writes artifacts under `~/security-audit-skill/<repo>/run-<N>`, outside the worktree, so removing them is the human's job. It is updated only through `harness skills update`.
 
 Its two validators, `validate-findings.cjs` and `validate-coverage-ledger.cjs`, use only Node's `fs`, `path`, and `util`, with no network or child processes. The bundled `*.test.cjs` files spawn Node and `mkfifo` and write temporary files; nothing in the harness runs them.
 
