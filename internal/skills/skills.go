@@ -1,4 +1,4 @@
-package locks
+package skills
 
 import (
 	"errors"
@@ -172,7 +172,7 @@ func reviewPaths(p paths, stdout io.Writer) error {
 		cmd.Stderr = io.Discard
 		_ = cmd.Run()
 	}
-	fmt.Fprint(stdout, "\nReview the upstream body and run: harness locks check\n")
+	fmt.Fprint(stdout, "\nReview the upstream body, then commit only the approved change\n")
 	return nil
 }
 

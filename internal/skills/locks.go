@@ -1,5 +1,5 @@
-// Package locks manages the reviewed third-party skill locks: the skills.sh calls behind add, update, and remove, the repository hygiene checks, and an offline verification of every locked body against its recorded folder hash.
-package locks
+// Package skills manages the reviewed third-party skill locks: the skills.sh calls behind add, update, and remove, and an offline verification of every locked body against its recorded folder hash.
+package skills
 
 import (
 	"fmt"
@@ -8,17 +8,16 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-const usage = `Usage: harness locks <command> [arguments]
+const usage = `Usage: harness skills <command> [arguments]
 
 Commands:
   add <owner/repo> <name>  Install and lock one upstream skill
   update                   Update every locked skill from upstream
   remove <name>            Remove one locked body, lock entry, and Claude link
-  check                    Run shell syntax and diff hygiene checks
   verify                   Recompute every locked body's folder hash offline
 `
 
-// Command runs `harness locks` and returns the process exit code.
+// Command runs `harness skills` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)
@@ -30,9 +29,9 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	switch sub {
-	case "add", "update", "remove", "check", "verify":
+	case "add", "update", "remove", "verify":
 	default:
-		fmt.Fprintf(stderr, "harness locks: unknown command %q; run harness locks --help\n", sub)
+		fmt.Fprintf(stderr, "harness skills: unknown command %q; run harness skills --help\n", sub)
 		return 2
 	}
 	for _, arg := range rest {
@@ -43,12 +42,12 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	}
 	// The whole invocation is validated before the checkout is resolved, so a malformed one touches nothing.
 	if err := validateInvocation(sub, rest); err != nil {
-		fmt.Fprintf(stderr, "harness locks: %v; run harness locks --help\n", err)
+		fmt.Fprintf(stderr, "harness skills: %v; run harness skills --help\n", err)
 		return 2
 	}
 	c, err := checkout.Find(".")
 	if err != nil {
-		fmt.Fprintf(stderr, "harness locks: %v\n", err)
+		fmt.Fprintf(stderr, "harness skills: %v\n", err)
 		return 1
 	}
 	var runErr error
@@ -59,13 +58,11 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		runErr = update(c, stdout, stderr)
 	case "remove":
 		runErr = remove(c, rest, stdout, stderr)
-	case "check":
-		runErr = check(c, stdout, stderr)
 	case "verify":
 		runErr = verify(c, stdout, stderr)
 	}
 	if runErr != nil {
-		fmt.Fprintf(stderr, "harness locks: %v\n", runErr)
+		fmt.Fprintf(stderr, "harness skills: %v\n", runErr)
 		return 1
 	}
 	return 0

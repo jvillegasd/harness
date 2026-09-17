@@ -9,7 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/jvillegasd/harness/internal/checkout"
-	"github.com/jvillegasd/harness/internal/locks"
+	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/state"
 )
 
@@ -31,9 +31,9 @@ func recording() (collectors, *[]string) {
 			}
 			return out, nil
 		},
-		locks: func(checkout.Checkout) ([]locks.LockResult, error) {
-			add("locks")
-			return []locks.LockResult{{Name: "tdd", Status: "match"}}, nil
+		skills: func(checkout.Checkout) ([]skills.LockResult, error) {
+			add("skills")
+			return []skills.LockResult{{Name: "tdd", Status: "match"}}, nil
 		},
 		bench: func(checkout.Checkout) (string, error) {
 			add("bench")
@@ -75,8 +75,8 @@ func TestLocalRefreshReadsBranchStateOnce(t *testing.T) {
 	if got := count(*calls, "states"); got != 1 {
 		t.Fatalf("local refresh read branch state %d times, want 1: %v", got, *calls)
 	}
-	if got := count(*calls, "locks"); got != 0 {
-		t.Fatalf("a local refresh verified locks: %v", *calls)
+	if got := count(*calls, "skills"); got != 0 {
+		t.Fatalf("a local refresh verified skills: %v", *calls)
 	}
 	if len(*calls) != 2 {
 		t.Fatalf("local refresh did %v, want worktrees then states", *calls)
@@ -86,13 +86,13 @@ func TestLocalRefreshReadsBranchStateOnce(t *testing.T) {
 	}
 }
 
-// TestTicksReloadLocallyWithoutVerifyingLocks pins that a routine tick runs the
-// local reload, which verifies no locks.
-func TestTicksReloadLocallyWithoutVerifyingLocks(t *testing.T) {
+// TestTicksReloadLocallyWithoutVerifyingSkills pins that a routine tick runs the
+// local reload, which verifies no skills.
+func TestTicksReloadLocallyWithoutVerifyingSkills(t *testing.T) {
 	cols, calls := recording()
 	m := newModel("", Snapshot{}, cols)
-	m = feed(t, m, m.refreshLocks())
-	before := count(*calls, "locks")
+	m = feed(t, m, m.refreshSkills())
+	before := count(*calls, "skills")
 	m.localRunning = false
 	next, cmd := m.Update(tickMsg(time.Now()))
 	m2 := next.(Model)
@@ -104,18 +104,18 @@ func TestTicksReloadLocallyWithoutVerifyingLocks(t *testing.T) {
 		t.Fatalf("a tick must reload locally and re-arm, got %T", cmd())
 	}
 	after := feed(t, m2, batch[0]) // batch[1] is the periodic re-arm
-	if got := count(*calls, "locks"); got != before {
-		t.Fatalf("a tick's local reload verified locks: %v", *calls)
+	if got := count(*calls, "skills"); got != before {
+		t.Fatalf("a tick's local reload verified skills: %v", *calls)
 	}
 	if got := count(*calls, "states"); got != 1 {
 		t.Fatalf("the tick's local reload read branch state %d times: %v", got, *calls)
 	}
-	if after.snap.LocksAt.IsZero() {
+	if after.snap.SkillsAt.IsZero() {
 		t.Fatal("the tick dropped the startup verification")
 	}
 }
 
-// TestInitStartsEveryStartupLoad pins that Init verifies locks, loads the
+// TestInitStartsEveryStartupLoad pins that Init verifies skills, loads the
 // tracker, and reloads locally. The periodic tick is the batch's last command.
 func TestInitStartsEveryStartupLoad(t *testing.T) {
 	cols, calls := recording()
@@ -128,7 +128,7 @@ func TestInitStartsEveryStartupLoad(t *testing.T) {
 	for _, cmd := range batch[:3] {
 		m = feed(t, m, cmd)
 	}
-	for _, want := range []string{"worktrees", "states", "locks", "tracker"} {
+	for _, want := range []string{"worktrees", "states", "skills", "tracker"} {
 		if count(*calls, want) != 1 {
 			t.Fatalf("Init did not start %s exactly once: %v", want, *calls)
 		}
@@ -150,35 +150,38 @@ func TestStateReadFailureKeepsTheRowsRendered(t *testing.T) {
 	}
 }
 
-// TestExplicitLockRefreshVerifiesAndStampsTime pins that startup verifies, the
+// TestExplicitSkillsRefreshVerifiesAndStampsTime pins that startup verifies, the
 // explicit action verifies again, and the displayed time advances.
-func TestExplicitLockRefreshVerifiesAndStampsTime(t *testing.T) {
+func TestExplicitSkillsRefreshVerifiesAndStampsTime(t *testing.T) {
 	cols, calls := recording()
 	m := newModel("", Snapshot{}, cols)
-	if !m.locksRunning {
-		t.Fatal("startup did not begin a lock verification")
+	if !m.skillsRunning {
+		t.Fatal("startup did not begin a skills verification")
 	}
-	m = feed(t, m, m.refreshLocks())
-	if m.snap.LocksAt.IsZero() || len(m.snap.Locks) != 1 {
-		t.Fatalf("startup verification = %v bytes at %v", m.snap.Locks, m.snap.LocksAt)
+	m = feed(t, m, m.refreshSkills())
+	if m.snap.SkillsAt.IsZero() || len(m.snap.Skills) != 1 {
+		t.Fatalf("startup verification = %v bytes at %v", m.snap.Skills, m.snap.SkillsAt)
 	}
-	first := m.snap.LocksAt
+	first := m.snap.SkillsAt
 	time.Sleep(2 * time.Millisecond)
-	next, cmd := m.press("l")
+	next, cmd := m.press("s")
 	if cmd == nil {
-		t.Fatal("l did not verify")
+		t.Fatal("s did not verify")
 	}
 	m = feed(t, next, cmd)
-	if !m.snap.LocksAt.After(first) {
-		t.Fatalf("explicit refresh did not advance the verification time: %v then %v", first, m.snap.LocksAt)
+	if !m.snap.SkillsAt.After(first) {
+		t.Fatalf("explicit refresh did not advance the verification time: %v then %v", first, m.snap.SkillsAt)
 	}
-	if got := count(*calls, "locks"); got != 2 {
-		t.Fatalf("locks verified %d times, want 2: %v", got, *calls)
+	if got := count(*calls, "skills"); got != 2 {
+		t.Fatalf("skills verified %d times, want 2: %v", got, *calls)
 	}
 	running := m
-	running.locksRunning = true
-	if _, again := running.press("l"); again != nil {
-		t.Fatal("an overlapping lock refresh ran")
+	running.skillsRunning = true
+	if _, again := running.press("s"); again != nil {
+		t.Fatal("an overlapping skills refresh ran")
+	}
+	if _, old := m.press("l"); old != nil {
+		t.Fatal("the retired l key still refreshes skills")
 	}
 }
 

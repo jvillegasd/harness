@@ -8,11 +8,11 @@ The harness this machine's Claude Code and OpenCode installations run: one vendo
 | `commands/` | The workflows, invoked as `/name` in Claude Code and OpenCode. |
 | `skills/` | Protocol, vocabulary, and locked third-party bodies. |
 | `internal/install/` | The installer behind `harness install`: installs clients and integrations, copies the managed assets and records them in `~/.harness/state.json`, preserves mutable client state. |
-| `internal/locks/` | The third-party skill locks behind `harness locks`: add, update, remove, check, and offline verify. |
+| `internal/skills/` | The third-party skill locks behind `harness skills`: add, update, remove, and offline verify. |
 | `internal/bench/` | The session-population comparison behind `harness bench`. Cohort config and manual in `bench/`. |
 | `internal/agents/` | The role-agent renderer the installer calls in-process. |
 | `internal/scenarios/` | The artifact-based scenario runner and its probes behind `harness scenarios`. |
-| `internal/dash/` | The live terminal dashboard behind `harness dash`, for any git repository `setup-harness` configured: worktrees and typed state and the tracker frontier (GitHub issues or local-markdown tickets), plus lock verification and the in-session bench result inside the harness checkout. |
+| `internal/dash/` | The live terminal dashboard behind `harness dash`, for any git repository `setup-harness` configured: worktrees and typed state and the tracker frontier (GitHub issues or local-markdown tickets), plus skill lock verification and the in-session bench result inside the harness checkout. |
 | `clients/` | The client settings this harness owns: `claude.json` declares them, `assignments.json` gives every role its definition, model, and effort, and the installer renders the role agents from it. |
 | `roles/` | Canonical roles no skill owns, currently the executor. |
 
@@ -197,8 +197,8 @@ go vet ./...
 test -z "$(gofmt -l .)"
 go test ./...
 go build ./...
-go run ./cmd/harness locks check
 git diff --check
+git diff --cached --check
 ```
 
 `AGENTS.md` explains each rung, the installer goldens, and the behavioral acceptance that a static check cannot settle.
@@ -278,17 +278,16 @@ The two clients expose different amounts of surface, so one renderer cannot serv
 
 ## Third-party skill updates
 
-`.agents/skills` points to `skills`. `harness locks` keeps the skills.sh call, `skills-lock.json`, and the Claude bookkeeping link in one reviewed workflow:
+`.agents/skills` points to `skills`. `harness skills` keeps the skills.sh call, `skills-lock.json`, and the Claude bookkeeping link in one reviewed workflow:
 
 ```sh
-harness locks add <owner/repo> <name>
-harness locks update
-harness locks remove <name>
-harness locks check
-harness locks verify
+harness skills add <owner/repo> <name>
+harness skills update
+harness skills remove <name>
+harness skills verify
 ```
 
-`add` refuses invalid sources and existing paths before delegating. `update` updates every locked body. `remove` accepts only a current lock entry. Every mutation prints the affected paths; `check` runs syntax and diff hygiene; `verify` recomputes each locked body's folder hash offline and reports match, drift, or unverifiable. Every subcommand's `--help` is side-effect free, and its arguments are validated before the checkout is read, but do not probe the upstream update subcommand with `--help`: skills.sh treats that as a full update.
+`add` refuses invalid sources and existing paths before delegating. `update` updates every locked body. `remove` accepts only a current lock entry. Every mutation prints the affected paths; `verify` recomputes each locked body's folder hash offline and reports match, drift, or unverifiable. Every subcommand's `--help` is side-effect free, and its arguments are validated before the checkout is read, but do not probe the upstream update subcommand with `--help`: skills.sh treats that as a full update.
 
 Review every upstream body, security report, and diff, then commit only the approved change. Locked bodies stay pristine; behavior changes belong in a command or in `POLICY.md`. Provisioning never runs the helper or a lockfile restore. A copied skill with unknown provenance stays an attributed local fork until its upstream is identified. Engram and Orca-provided skills are runtime managed and never belong in `skills-lock.json`.
 
@@ -312,7 +311,7 @@ Locked Matt Pocock skills provide domain and module vocabulary, `improve-codebas
 
 Locked `pbakaus/impeccable` is the one frontend design body. It is description-matchable, so the control is scope rather than a guard: no command or local skill loads it, and `POLICY.md` keeps the project's existing styling layer winning inside `/proto` and `/ship`.
 
-It arrives only through `harness locks`. Four of its own routes are forbidden, because each writes outside the lock: `npx impeccable install` and `$impeccable hooks on` wire `PostToolUse` and `Stop` hooks into a project unasked, `npx impeccable update` rewrites the locked directory out from under `skills-lock.json`, and `scripts/pin.mjs` mints a `$<command>` shortcut as a real skill directory that `harness install` would link everywhere and neither sweep would reclaim. The lock covers the body's bytes, not its runtime egress: several scripts call the author's site. At 4.8 MB across 168 files it is the largest thing in `skills/`, against about 99 KB for everything else combined.
+It arrives only through `harness skills`. Four of its own routes are forbidden, because each writes outside the lock: `npx impeccable install` and `$impeccable hooks on` wire `PostToolUse` and `Stop` hooks into a project unasked, `npx impeccable update` rewrites the locked directory out from under `skills-lock.json`, and `scripts/pin.mjs` mints a `$<command>` shortcut as a real skill directory that `harness install` would link everywhere and neither sweep would reclaim. The lock covers the body's bytes, not its runtime egress: several scripts call the author's site. At 4.8 MB across 168 files it is the largest thing in `skills/`, against about 99 KB for everything else combined.
 
 ### Ponytail
 
@@ -402,6 +401,6 @@ Do not enable the Worktrunk Claude Code plugin. Its `UserPromptSubmit` hook rewr
 
 The flatten and the CLI simplification were verified through a clean removal and reinstall on 2026-09-16, from the pre-flatten checkout's uninstall to the refactored `harness bootstrap`. The pre-flatten checkout no longer existed on disk, so it was reconstructed from git history at the same root the installed links targeted, because its uninstall recognizes a link by that root and reads the old client templates. The removal took every managed skill, command, policy, and role-agent link, the retired `~/.claude/statusline.sh`, the `~/.zshrc` alias block, the tracked Claude settings, and Engram and agent-browser with their registrations and formulae. Kept were `~/.engram`, `~/.agent-browser`, the private skills beside the harness ones, and the credential and history stores: `~/.claude.json`, `~/.claude/history.jsonl`, `~/.claude/projects`, `~/.local/share/opencode/auth.json`, and `~/.local/share/opencode/opencode.db`. The reinstall wrote the 17 skills into `~/.agents/skills` and `~/.claude/skills`, the 12 commands into each client's command root, both policy links, and the four generated role definitions per client, pointed the tracked status line at `~/.local/bin/harness statusline`, and re-registered Engram and agent-browser in both clients. The installed code carries no legacy path: `checkout.Manages` owns only `skills/`, `commands/`, `POLICY.md`, and `.generated/`, so the removal stays the old checkout's one-time procedure rather than a compatibility fallback the new CLI ships. Every skill, command, policy, and agent path resolves in both clients; OpenCode enumerated the harness skills and the reviewer and executor agents through `opencode debug skill` and `opencode debug agent` and showed both MCP servers in its resolved config, while Claude Code connected the agent-browser MCP, enabled the Engram plugin, and parsed the skills directory through `claude plugin validate`. Whether Claude Code loads a role definition through the symlink stays unverified, as the role agent table records. An inventory of the existing links, settings, and data preceded the removal, and each preserved path was read again after the reinstall.
 
-The deterministic suite passed on the final tree: `go vet ./...`, `gofmt -l .` empty, `go test ./...` (which carries the reconciler byte-identical identity check and the module-free smoke run), `go build ./...`, `go run ./cmd/harness locks check`, offline `go run ./cmd/harness locks verify`, `go run ./cmd/harness scenarios validate`, and `git diff --check`.
+The deterministic suite passed on the final tree: `go vet ./...`, `gofmt -l .` empty, `go test ./...` (which carries the reconciler byte-identical identity check and the module-free smoke run), `go build ./...`, offline skill lock verification, `go run ./cmd/harness scenarios validate`, and `git diff --check`.
 
 The measured work reductions, each recorded by its own ticket, all held with no regression. Dependency provisioning replaced 7 per-formula `brew list` probes and 7 `brew upgrade` calls with a single `brew list --formula` and no upgrades, still installing only the missing formulae. Benchmark collection at 5000 records went from 399.9 to 299.1 ms and 224.7 to 139.1 MB, and a 100-session window keeping 10 from 179.0 to 22.9 ms, 89.7 to 12.3 MB, and 1.20M to 0.12M allocations. A dashboard local refresh went from 33 subprocesses in 795-882 ms to 2 in 31 ms. The session-population comparison stays pending until post-change sessions exist.

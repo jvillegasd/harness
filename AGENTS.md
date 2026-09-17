@@ -18,7 +18,7 @@ The Harness AI installation that serves Claude Code and OpenCode, extracted from
 | `internal/state/` | The per-branch oracle ladder and rabbit-hole counters behind `harness state` |
 | `internal/checkout/` | Checkout discovery and canonical asset locations, shared by the commands that resolve a checkout |
 | `internal/install/` | The installer behind `harness install` |
-| `internal/locks/` | The third-party skill locks behind `harness locks` |
+| `internal/skills/` | The third-party skill locks behind `harness skills` |
 | `internal/bench/` | The session-population comparison behind `harness bench` |
 | `internal/agents/` | The role-agent renderer the installer calls in-process |
 | `internal/scenarios/` | The artifact-based scenario runner and probes behind `harness scenarios` |
@@ -53,11 +53,11 @@ go vet ./...
 test -z "$(gofmt -l .)"
 go test ./...
 go build ./...
-go run ./cmd/harness locks check
 git diff --check
+git diff --cached --check
 ```
 
-The first four are the Go rungs: vet, formatting, the command tests that build `harness` and run it against throwaway repositories and home directories, and a compile of every package. The installer tests compare every mode against the goldens in `cmd/harness/testdata/install/`, which list each managed link, so adding or removing a skill or command means rerecording them with `go test ./cmd/harness -run TestInstallerGolden -update` and reading the diff. The Go suite also carries the reconciler regression suite, including the byte-identical check between the harness copy and the deployed copy and a `go run` smoke run with no Go module. `go run ./cmd/harness locks check` syntax-checks the remaining repo shell, `aliases.sh`, and runs diff-hygiene checks over tracked files, built from this checkout rather than whatever the last install placed on PATH. `git diff --check` catches whitespace errors and conflict markers. The lifecycle workflow in `.github/workflows/agent-lifecycle.yml` installs Go and runs the reconciler remotely; the unit suite is its local equivalent.
+The first four are the Go rungs: vet, formatting, the command tests that build `harness` and run it against throwaway repositories and home directories, and a compile of every package. The installer tests compare every mode against the goldens in `cmd/harness/testdata/install/`, which list each managed link, so adding or removing a skill or command means rerecording them with `go test ./cmd/harness -run TestInstallerGolden -update` and reading the diff. The Go suite also carries the reconciler regression suite, including the byte-identical check between the harness copy and the deployed copy and a `go run` smoke run with no Go module. `TestAliasesShellSyntax` runs `bash -n` over `aliases.sh`, the remaining repo shell. `git diff --check` and `git diff --cached --check` catch whitespace errors and conflict markers in unstaged and staged changes. The lifecycle workflow in `.github/workflows/agent-lifecycle.yml` installs Go and runs the reconciler remotely; the unit suite is its local equivalent.
 
 ## Behavioral acceptance
 
@@ -75,4 +75,4 @@ Session-population measurement for a harness change is `harness bench --split <c
 
 Markdown prose is never hard-wrapped. `.editorconfig` owns indentation: two spaces for Markdown, JSON, and YAML.
 
-Locked skill bodies under `skills/` are not edited in place; use `harness locks` and commit only the reviewed change. This repository's tracker is GitHub, and its lifecycle configuration lives in `docs/agents/harness.json`.
+Locked skill bodies under `skills/` are not edited in place; use `harness skills` and commit only the reviewed change. This repository's tracker is GitHub, and its lifecycle configuration lives in `docs/agents/harness.json`.

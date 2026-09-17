@@ -5,12 +5,12 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/jvillegasd/harness/internal/locks"
+	"github.com/jvillegasd/harness/internal/skills"
 )
 
 func (m Model) Init() tea.Cmd {
-	// Order is fixed: local, locks, tracker, then the periodic tick.
-	return tea.Batch(m.refreshLocal(), m.refreshLocks(), m.refreshTracker(), tick())
+	// Order is fixed: local, skills, tracker, then the periodic tick.
+	return tea.Batch(m.refreshLocal(), m.refreshSkills(), m.refreshTracker(), tick())
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -23,11 +23,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.snap.Worktrees = msg.worktrees
 		m.snap.WorktreesErr = msg.worktreesErr
 		return m, nil
-	case locksMsg:
-		m.locksRunning = false
-		m.snap.Locks = msg.results
-		m.snap.LocksErr = msg.err
-		m.snap.LocksAt = msg.at
+	case skillsMsg:
+		m.skillsRunning = false
+		m.snap.Skills = msg.results
+		m.snap.SkillsErr = msg.err
+		m.snap.SkillsAt = msg.at
 		return m, nil
 	case benchMsg:
 		m.benchRunning = false
@@ -68,12 +68,12 @@ func (m Model) press(key string) (Model, tea.Cmd) {
 		m.benchRunning = true
 		m.benchErr = ""
 		return m, m.refreshBench()
-	case "l":
-		if m.locksRunning {
+	case "s":
+		if m.skillsRunning {
 			return m, nil
 		}
-		m.locksRunning = true
-		return m, m.refreshLocks()
+		m.skillsRunning = true
+		return m, m.refreshSkills()
 	case "t":
 		if m.trackerRunning {
 			return m, nil
@@ -92,8 +92,8 @@ type localMsg struct {
 	worktrees    []Worktree
 	worktreesErr string
 }
-type locksMsg struct {
-	results []locks.LockResult
+type skillsMsg struct {
+	results []skills.LockResult
 	err     string
 	at      time.Time
 }
@@ -137,11 +137,11 @@ func (m Model) refreshLocal() tea.Cmd {
 	}
 }
 
-func (m Model) refreshLocks() tea.Cmd {
+func (m Model) refreshSkills() tea.Cmd {
 	dir, cols := m.dir, m.cols
 	return func() tea.Msg {
-		results, err := cols.locks(dir)
-		msg := locksMsg{results: results, at: time.Now()}
+		results, err := cols.skills(dir)
+		msg := skillsMsg{results: results, at: time.Now()}
 		if err != nil {
 			msg.err = err.Error()
 		}

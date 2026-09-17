@@ -7,7 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/jvillegasd/harness/internal/locks"
+	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/state"
 )
 
@@ -32,41 +32,41 @@ func TestWorktreesSortAndMarkLegacy(t *testing.T) {
 	}
 }
 
-func TestLocksPanelShowsEveryVerifyResultAndItsAge(t *testing.T) {
+func TestSkillsPanelShowsEveryVerifyResultAndItsAge(t *testing.T) {
 	m := New("", Snapshot{
-		Locks: []locks.LockResult{
+		Skills: []skills.LockResult{
 			{Name: "impeccable", Status: "match"},
 			{Name: "tdd", Status: "drift", Detail: "recorded a, computed b"},
 			{Name: "handoff", Status: "unverifiable"},
 		},
-		LocksAt: time.Now().Add(-90 * time.Second),
+		SkillsAt: time.Now().Add(-90 * time.Second),
 	})
-	m.locksRunning = false
+	m.skillsRunning = false
 	view := m.render()
 	for _, want := range []string{"impeccable: match", "tdd: drift (recorded a, computed b)", "handoff: unverifiable", "verified 1m30s ago"} {
 		if !strings.Contains(view, want) {
-			t.Fatalf("locks panel missing %q\n%s", want, view)
+			t.Fatalf("skills panel missing %q\n%s", want, view)
 		}
 	}
 }
 
-func TestLocksPanelSaysNotVerifiedUntilTheStartupResult(t *testing.T) {
+func TestSkillsPanelSaysNotVerifiedUntilTheStartupResult(t *testing.T) {
 	m := New("", Snapshot{})
 	if !strings.Contains(m.render(), "verifying...") {
 		t.Fatalf("the startup verification is not shown as running\n%s", m.render())
 	}
-	m.locksRunning = false
+	m.skillsRunning = false
 	if !strings.Contains(m.render(), "(not verified)") {
 		t.Fatalf("an unverified panel does not say so\n%s", m.render())
 	}
 }
 
-func TestLocksPanelShowsAnEmptyVerifiedSet(t *testing.T) {
+func TestSkillsPanelShowsAnEmptyVerifiedSet(t *testing.T) {
 	m := New("", Snapshot{
 		Worktrees: []Worktree{{Branch: "main", State: state.State{Attempts: ptr(0), Escalations: ptr(0)}}},
-		LocksAt:   time.Now(),
+		SkillsAt:  time.Now(),
 	})
-	m.locksRunning = false
+	m.skillsRunning = false
 	view := m.render()
 	if !strings.Contains(view, "verified ") || !strings.Contains(view, "(none)") || strings.Contains(view, "(not verified)") {
 		t.Fatalf("a verified checkout with no locked skills is not shown as verified\n%s", view)

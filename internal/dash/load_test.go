@@ -58,11 +58,11 @@ func TestProjectRootNeedsTheSetupHarnessConfig(t *testing.T) {
 	}
 }
 
-// Outside the harness checkout the lock and bench panels say so instead of reading files the project does not have.
+// Outside the harness checkout the skills and bench panels say so instead of reading files the project does not have.
 func TestHarnessOnlyPanelsOutsideTheCheckout(t *testing.T) {
 	dir := checkout.Checkout{Root: project(t, localConfig)}
-	if _, err := loadLocks(dir); !errors.Is(err, errHarnessOnly) {
-		t.Errorf("loadLocks = %v, want %v", err, errHarnessOnly)
+	if _, err := loadSkills(dir); !errors.Is(err, errHarnessOnly) {
+		t.Errorf("loadSkills = %v, want %v", err, errHarnessOnly)
 	}
 	if _, err := loadBench(dir); !errors.Is(err, errHarnessOnly) {
 		t.Errorf("loadBench = %v, want %v", err, errHarnessOnly)

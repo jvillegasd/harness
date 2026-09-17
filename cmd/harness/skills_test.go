@@ -124,10 +124,10 @@ func (lr lockRun) locked(t *testing.T) map[string]json.RawMessage {
 	return lf.Skills
 }
 
-func TestLocksAddDrivesNpxAndLinks(t *testing.T) {
+func TestSkillsAddDrivesNpxAndLinks(t *testing.T) {
 	lr := newLockRun(t)
 	lr.setNpx(t, true)
-	r := ok(t, lr.harness(t, "locks", "add", "owner/repo", "myskill"), "locks add")
+	r := ok(t, lr.harness(t, "skills", "add", "owner/repo", "myskill"), "skills add")
 	if got := lr.npxLog(t); !strings.Contains(got, "npx skills@1 add owner/repo --skill myskill --agent universal -y") {
 		t.Fatalf("npx log = %q", got)
 	}
@@ -141,33 +141,33 @@ func TestLocksAddDrivesNpxAndLinks(t *testing.T) {
 	if _, ok := lr.locked(t)["myskill"]; !ok {
 		t.Fatal("myskill missing from the lock")
 	}
-	if !strings.Contains(r.stdout, "harness locks check") {
+	if !strings.Contains(r.stdout, "commit only the approved change") {
 		t.Fatalf("add did not print the review hint: %q", r.stdout)
 	}
 }
 
-func TestLocksAddRefusesBeforeNpx(t *testing.T) {
+func TestSkillsAddRefusesBeforeNpx(t *testing.T) {
 	cases := []struct {
 		name string
 		args []string
 		seed func(t *testing.T, lr lockRun)
 		want string
 	}{
-		{"source without slash", []string{"locks", "add", "owner", "myskill"}, nil, "source must be owner/repo"},
-		{"invalid owner", []string{"locks", "add", "-bad/repo", "myskill"}, nil, "invalid GitHub owner"},
-		{"invalid repo", []string{"locks", "add", "owner/..", "myskill"}, nil, "invalid GitHub repository"},
-		{"invalid name", []string{"locks", "add", "owner/repo", "Bad_Name"}, nil, "invalid skill name"},
-		{"wrong count", []string{"locks", "add", "owner/repo"}, nil, "add expects 2"},
-		{"already locked", []string{"locks", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
+		{"source without slash", []string{"skills", "add", "owner", "myskill"}, nil, "source must be owner/repo"},
+		{"invalid owner", []string{"skills", "add", "-bad/repo", "myskill"}, nil, "invalid GitHub owner"},
+		{"invalid repo", []string{"skills", "add", "owner/..", "myskill"}, nil, "invalid GitHub repository"},
+		{"invalid name", []string{"skills", "add", "owner/repo", "Bad_Name"}, nil, "invalid skill name"},
+		{"wrong count", []string{"skills", "add", "owner/repo"}, nil, "add expects 2"},
+		{"already locked", []string{"skills", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
 			writeMode(t, filepath.Join(lr.root, "skills-lock.json"), "{\n  \"version\": 1,\n  \"skills\": {\"myskill\": {}}\n}\n", 0o644)
 		}, "already locked"},
-		{"existing skill path", []string{"locks", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
+		{"existing skill path", []string{"skills", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
 			os.MkdirAll(filepath.Join(lr.root, "skills/myskill"), 0o755)
 		}, "skill path already exists"},
-		{"existing command", []string{"locks", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
+		{"existing command", []string{"skills", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
 			writeMode(t, filepath.Join(lr.root, "commands/myskill.md"), "x\n", 0o644)
 		}, "command name already exists"},
-		{"existing claude path", []string{"locks", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
+		{"existing claude path", []string{"skills", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
 			writeMode(t, filepath.Join(lr.root, ".claude/skills/myskill"), "x\n", 0o644)
 		}, "claude path already exists"},
 	}
@@ -188,31 +188,31 @@ func TestLocksAddRefusesBeforeNpx(t *testing.T) {
 	}
 }
 
-func TestLocksAddFailsWhenSkillsShDoesNotInstall(t *testing.T) {
+func TestSkillsAddFailsWhenSkillsShDoesNotInstall(t *testing.T) {
 	lr := newLockRun(t)
 	lr.setNpx(t, false)
-	r := lr.harness(t, "locks", "add", "owner/repo", "myskill")
+	r := lr.harness(t, "skills", "add", "owner/repo", "myskill")
 	if r.code == 0 || !strings.Contains(r.stderr, "did not install") {
 		t.Fatalf("exited %d with stderr %q", r.code, r.stderr)
 	}
 }
 
-func TestLocksUpdateDrivesNpx(t *testing.T) {
+func TestSkillsUpdateDrivesNpx(t *testing.T) {
 	lr := newLockRun(t)
 	lr.setNpx(t, false)
-	if r := lr.harness(t, "locks", "update", "extra"); r.code == 0 {
+	if r := lr.harness(t, "skills", "update", "extra"); r.code == 0 {
 		t.Fatal("update with an argument should fail")
 	}
-	ok(t, lr.harness(t, "locks", "update"), "locks update")
+	ok(t, lr.harness(t, "skills", "update"), "skills update")
 	if got := lr.npxLog(t); !strings.Contains(got, "npx skills@1 update --project --yes") {
 		t.Fatalf("npx log = %q", got)
 	}
 }
 
-func TestLocksRemoveDeletesEntryBodyAndLink(t *testing.T) {
+func TestSkillsRemoveDeletesEntryBodyAndLink(t *testing.T) {
 	lr := newLockRun(t)
 	seedLockedSkill(t, lr, "myskill")
-	ok(t, lr.harness(t, "locks", "remove", "myskill"), "locks remove")
+	ok(t, lr.harness(t, "skills", "remove", "myskill"), "skills remove")
 	if _, err := os.Lstat(filepath.Join(lr.root, "skills/myskill")); !os.IsNotExist(err) {
 		t.Fatalf("body survived: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestLocksRemoveDeletesEntryBodyAndLink(t *testing.T) {
 	}
 }
 
-func TestLocksRemovePreservesUnknownTopLevelKeys(t *testing.T) {
+func TestSkillsRemovePreservesUnknownTopLevelKeys(t *testing.T) {
 	lr := newLockRun(t)
 	writeMode(t, filepath.Join(lr.root, "skills/myskill/SKILL.md"), "# x\n", 0o644)
 	writeMode(t, filepath.Join(lr.root, "skills-lock.json"), `{
@@ -236,7 +236,7 @@ func TestLocksRemovePreservesUnknownTopLevelKeys(t *testing.T) {
   }
 }
 `, 0o644)
-	ok(t, lr.harness(t, "locks", "remove", "myskill"), "locks remove")
+	ok(t, lr.harness(t, "skills", "remove", "myskill"), "skills remove")
 	data, err := os.ReadFile(filepath.Join(lr.root, "skills-lock.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -251,7 +251,7 @@ func TestLocksRemovePreservesUnknownTopLevelKeys(t *testing.T) {
 	}
 }
 
-func TestLocksRemoveKeepsEntryOrder(t *testing.T) {
+func TestSkillsRemoveKeepsEntryOrder(t *testing.T) {
 	lr := newLockRun(t)
 	writeMode(t, filepath.Join(lr.root, "skills/aaa/SKILL.md"), "# x\n", 0o644)
 	writeMode(t, filepath.Join(lr.root, "skills-lock.json"), `{
@@ -263,7 +263,7 @@ func TestLocksRemoveKeepsEntryOrder(t *testing.T) {
   }
 }
 `, 0o644)
-	ok(t, lr.harness(t, "locks", "remove", "aaa"), "locks remove")
+	ok(t, lr.harness(t, "skills", "remove", "aaa"), "skills remove")
 	data, err := os.ReadFile(filepath.Join(lr.root, "skills-lock.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -277,33 +277,33 @@ func TestLocksRemoveKeepsEntryOrder(t *testing.T) {
 	}
 }
 
-func TestLocksRemoveRefusesUnsafeRemovals(t *testing.T) {
+func TestSkillsRemoveRefusesUnsafeRemovals(t *testing.T) {
 	cases := []struct {
 		name string
 		args []string
 		seed func(t *testing.T, lr lockRun)
 		want string
 	}{
-		{"not locked", []string{"locks", "remove", "myskill"}, nil, "not in skills-lock.json"},
-		{"invalid name", []string{"locks", "remove", "Bad_Name"}, nil, "invalid skill name"},
-		{"body is a file", []string{"locks", "remove", "myskill"}, func(t *testing.T, lr lockRun) {
+		{"not locked", []string{"skills", "remove", "myskill"}, nil, "not in skills-lock.json"},
+		{"invalid name", []string{"skills", "remove", "Bad_Name"}, nil, "invalid skill name"},
+		{"body is a file", []string{"skills", "remove", "myskill"}, func(t *testing.T, lr lockRun) {
 			seedLockedSkill(t, lr, "myskill")
 			os.RemoveAll(filepath.Join(lr.root, "skills/myskill"))
 			writeMode(t, filepath.Join(lr.root, "skills/myskill"), "x\n", 0o644)
 		}, "refusing to remove non-directory skill path"},
-		{"body is a symlink", []string{"locks", "remove", "myskill"}, func(t *testing.T, lr lockRun) {
+		{"body is a symlink", []string{"skills", "remove", "myskill"}, func(t *testing.T, lr lockRun) {
 			seedLockedSkill(t, lr, "myskill")
 			target := filepath.Join(lr.root, "skills/myskill-real")
 			os.MkdirAll(target, 0o755)
 			os.RemoveAll(filepath.Join(lr.root, "skills/myskill"))
 			os.Symlink(target, filepath.Join(lr.root, "skills/myskill"))
 		}, "refusing to remove non-directory skill path"},
-		{"link is a file", []string{"locks", "remove", "myskill"}, func(t *testing.T, lr lockRun) {
+		{"link is a file", []string{"skills", "remove", "myskill"}, func(t *testing.T, lr lockRun) {
 			seedLockedSkill(t, lr, "myskill")
 			os.Remove(filepath.Join(lr.root, ".claude/skills/myskill"))
 			writeMode(t, filepath.Join(lr.root, ".claude/skills/myskill"), "x\n", 0o644)
 		}, "refusing to remove non-symlink Claude path"},
-		{"link points elsewhere", []string{"locks", "remove", "myskill"}, func(t *testing.T, lr lockRun) {
+		{"link points elsewhere", []string{"skills", "remove", "myskill"}, func(t *testing.T, lr lockRun) {
 			seedLockedSkill(t, lr, "myskill")
 			os.Remove(filepath.Join(lr.root, ".claude/skills/myskill"))
 			os.Symlink("../../.agents/skills/other", filepath.Join(lr.root, ".claude/skills/myskill"))
@@ -344,16 +344,16 @@ func seedLockedSkill(t *testing.T, lr lockRun, name string) {
 	}
 }
 
-// TestLocksVerifyMatchesThePinnedLock recomputes the real committed bodies against the lock skills.sh wrote, so a Go collation that diverged from localeCompare would show drift.
-func TestLocksVerifyMatchesThePinnedLock(t *testing.T) {
+// TestSkillsVerifyMatchesThePinnedLock recomputes the real committed bodies against the lock skills.sh wrote, so a Go collation that diverged from localeCompare would show drift.
+func TestSkillsVerifyMatchesThePinnedLock(t *testing.T) {
 	lr := locksVerifySandbox(t)
-	r := ok(t, lr.harness(t, "locks", "verify"), "locks verify")
+	r := ok(t, lr.harness(t, "skills", "verify"), "skills verify")
 	if got := strings.Count(r.stdout, ": match"); got != 10 {
 		t.Fatalf("verify matched %d skills, want 10:\n%s", got, r.stdout)
 	}
 }
 
-func TestLocksVerifyReportsDriftForTheEditedBodyOnly(t *testing.T) {
+func TestSkillsVerifyReportsDriftForTheEditedBodyOnly(t *testing.T) {
 	lr := locksVerifySandbox(t)
 	body := filepath.Join(lr.root, "skills/tdd/SKILL.md")
 	data, err := os.ReadFile(body)
@@ -363,7 +363,7 @@ func TestLocksVerifyReportsDriftForTheEditedBodyOnly(t *testing.T) {
 	if err := os.WriteFile(body, append(data, '\n'), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	r := lr.harness(t, "locks", "verify")
+	r := lr.harness(t, "skills", "verify")
 	if r.code == 0 {
 		t.Fatal("verify exited 0 with a drifted body")
 	}
@@ -375,7 +375,7 @@ func TestLocksVerifyReportsDriftForTheEditedBodyOnly(t *testing.T) {
 	}
 }
 
-func TestLocksVerifyReportsUnverifiableNotDrift(t *testing.T) {
+func TestSkillsVerifyReportsUnverifiableNotDrift(t *testing.T) {
 	lr := locksVerifySandbox(t)
 	var lf map[string]any
 	data, err := os.ReadFile(filepath.Join(lr.root, "skills-lock.json"))
@@ -400,7 +400,7 @@ func TestLocksVerifyReportsUnverifiableNotDrift(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(lr.root, "skills-lock.json"), append(out, '\n'), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	r := ok(t, lr.harness(t, "locks", "verify"), "locks verify")
+	r := ok(t, lr.harness(t, "skills", "verify"), "skills verify")
 	if got := strings.Count(r.stdout, ": unverifiable"); got != 2 {
 		t.Fatalf("verify reported %d unverifiable, want 2:\n%s", got, r.stdout)
 	}
@@ -409,57 +409,10 @@ func TestLocksVerifyReportsUnverifiableNotDrift(t *testing.T) {
 	}
 }
 
-func TestLocksCheckSyntaxAndWhitespace(t *testing.T) {
-	valid := map[string]string{
-		"aliases.sh": "#!/bin/sh\necho aliases\n",
-	}
-	for _, c := range []struct {
-		name    string
-		noRepo  bool
-		mutate  func(t *testing.T, lr lockRun)
-		wantErr bool
-		want    string
-	}{
-		{name: "clean", wantErr: false},
-		{name: "not a work tree", noRepo: true, wantErr: true, want: "git diff --check"},
-		{name: "missing entry point", mutate: func(t *testing.T, lr lockRun) {
-			os.Remove(filepath.Join(lr.root, "aliases.sh"))
-		}, wantErr: true, want: "shell entry point missing"},
-		{name: "syntax error", mutate: func(t *testing.T, lr lockRun) {
-			writeMode(t, filepath.Join(lr.root, "aliases.sh"), "#!/bin/sh\nif true; then\n", 0o755)
-		}, wantErr: true, want: "bash -n aliases.sh"},
-		{name: "whitespace", mutate: func(t *testing.T, lr lockRun) {
-			writeMode(t, filepath.Join(lr.root, "tracked.txt"), "clean\n", 0o644)
-			git(t, lr.root, "add", "tracked.txt")
-			git(t, lr.root, "commit", "-q", "-m", "init")
-			writeMode(t, filepath.Join(lr.root, "tracked.txt"), "dirty   \n", 0o644)
-		}, wantErr: true, want: "git diff --check"},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			lr := newLockRun(t)
-			for rel, text := range valid {
-				writeMode(t, filepath.Join(lr.root, rel), text, 0o755)
-			}
-			if !c.noRepo {
-				git(t, lr.root, "init", "-q", "-b", "main")
-			}
-			if c.mutate != nil {
-				c.mutate(t, lr)
-			}
-			r := lr.harness(t, "locks", "check")
-			if c.wantErr {
-				if r.code == 0 || !strings.Contains(r.stderr, c.want) {
-					t.Fatalf("check exited %d with stderr %q, want %q", r.code, r.stderr, c.want)
-				}
-				return
-			}
-			if r.code != 0 {
-				t.Fatalf("check exited %d: %s", r.code, r.stderr)
-			}
-			if !strings.Contains(r.stdout, "check passed") {
-				t.Fatalf("check stdout %q carries no pass status", r.stdout)
-			}
-		})
+// TestAliasesShellSyntax keeps the shipped shell entry point parseable.
+func TestAliasesShellSyntax(t *testing.T) {
+	if out, err := exec.Command("bash", "-n", filepath.Join("..", "..", "aliases.sh")).CombinedOutput(); err != nil {
+		t.Fatalf("bash -n aliases.sh: %v\n%s", err, out)
 	}
 }
 
