@@ -198,7 +198,7 @@ func probeCheckpointRun(root string) (map[string]any, error) {
 	store := map[string]string{}
 	branch := "feat/83-centralize-checkpoint-protocol"
 	tip := "abc123"
-	contract := []string{"https://github.com/jvillegasd/dotfiles/issues/83"}
+	contract := []string{"https://github.com/jvillegasd/harness/issues/83"}
 	resolve := func(ref string) bool { return strings.HasPrefix(ref, "https://") }
 	active := getString(protocol, "active_state")
 
@@ -250,7 +250,7 @@ func probeCheckpointRun(root string) (map[string]any, error) {
 	empty, emptyReasons := checkpointRecover(protocol, store, branch, tip, resolve)
 	emptyContractRejected := empty == nil && equalStrings(emptyReasons, []string{"required field contract is empty"})
 
-	checkpointMutate(protocol, store, branch, map[string]any{"contract": "https://github.com/jvillegasd/dotfiles/issues/83"})
+	checkpointMutate(protocol, store, branch, map[string]any{"contract": "https://github.com/jvillegasd/harness/issues/83"})
 	badShape, shapeReasons := checkpointRecover(protocol, store, branch, tip, resolve)
 	shapeRejected := badShape == nil && equalStrings(shapeReasons, []string{"a field is missing or has the wrong shape"})
 

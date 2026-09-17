@@ -8,7 +8,7 @@ A nested `AGENTS.md` in a subtree, when one is added, scopes to that subtree and
 
 ## What this repository is
 
-The Harness AI installation that serves Claude Code and OpenCode, extracted from the author's dotfiles into a repository of its own. `README.md` is the user-facing overview of the workflow, the skill supply chain, and validation, and `POLICY.md` is the vendor-neutral global policy linked into each client. The product assets live at the repository root; there is no nested product directory.
+The Harness AI installation that serves Claude Code and OpenCode. `README.md` is the user-facing overview of the workflow, the skill supply chain, and validation, and `POLICY.md` is the vendor-neutral global policy linked into each client. The product assets live at the repository root; there is no nested product directory.
 
 ## Directories
 

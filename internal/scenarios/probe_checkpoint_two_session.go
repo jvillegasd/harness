@@ -10,7 +10,7 @@ const (
 	twoSessionOther       = "feat/99-unrelated-work"
 	twoSessionRequirement = "wire /ship continuation retrieval at its worktree step"
 	twoSessionRationale   = "the branch, not the ticket, scopes recovery across sessions"
-	twoSessionTicket      = "https://github.com/jvillegasd/dotfiles/issues/77"
+	twoSessionTicket      = "https://github.com/jvillegasd/harness/issues/77"
 )
 
 func cloneStore(store map[string]string) map[string]string {
