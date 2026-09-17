@@ -15,10 +15,10 @@ func (m Model) render() string {
 	b.WriteString(titleStyle.Render("harness dash"))
 	b.WriteString("\n\n")
 	worktreesPanel(&b, m.snap.Worktrees, m.snap.WorktreesErr)
-	locksPanel(&b, m.snap.Locks, m.snap.LocksErr, m.snap.LocksAt, m.locksRunning)
+	skillsPanel(&b, m.snap.Skills, m.snap.SkillsErr, m.snap.SkillsAt, m.skillsRunning)
 	benchPanel(&b, m.snap.Bench, m.benchRunning, m.benchErr)
 	trackerPanel(&b, m.snap.Tracker, m.trackerRunning)
-	b.WriteString("r refresh bench   l refresh locks   t refresh tracker   q quit\n")
+	b.WriteString("r refresh bench   s refresh skills   t refresh tracker   q quit\n")
 	return b.String()
 }
 
@@ -110,17 +110,17 @@ func clip(s string, n int) string {
 	return string(r[:n-1]) + "~"
 }
 
-func locksPanel(b *strings.Builder, results []skills.LockResult, loadErr string, at time.Time, running bool) {
+func skillsPanel(b *strings.Builder, results []skills.LockResult, loadErr string, at time.Time, running bool) {
 	if running {
-		panel(b, "locks", []string{"verifying..."})
+		panel(b, "skills", []string{"verifying..."})
 		return
 	}
 	if loadErr != "" {
-		panel(b, "locks", []string{loadErr})
+		panel(b, "skills", []string{loadErr})
 		return
 	}
 	if at.IsZero() {
-		panel(b, "locks", []string{"(not verified)"})
+		panel(b, "skills", []string{"(not verified)"})
 		return
 	}
 	lines := make([]string, 1, len(results)+1)
@@ -135,7 +135,7 @@ func locksPanel(b *strings.Builder, results []skills.LockResult, loadErr string,
 		}
 		lines = append(lines, line)
 	}
-	panel(b, "locks", lines)
+	panel(b, "skills", lines)
 }
 
 func benchPanel(b *strings.Builder, report *BenchReport, running bool, loadErr string) {

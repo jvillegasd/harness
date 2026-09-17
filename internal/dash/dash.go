@@ -1,4 +1,4 @@
-// Package dash renders the live terminal dashboard over the harness state, lock,
+// Package dash renders the live terminal dashboard over the harness state, skills,
 // bench, and tracker data the CLI already reads. It writes no harness state:
 // every result lives only for the dashboard session.
 package dash
@@ -21,11 +21,11 @@ const usage = `Usage: harness dash
 
 A live terminal dashboard for the repository you are in, once setup-harness has
 written its docs/agents/harness.json: worktrees and their typed state, and the
-tracker's lifecycle frontier from GitHub issues or local-markdown tickets. Lock
+tracker's lifecycle frontier from GitHub issues or local-markdown tickets. Skills
 verification and the bench result show inside the harness checkout only. It
 writes no harness state; every result lives only for the dashboard session.
 
-Keys: r refresh bench, l refresh locks, t refresh tracker, q quit.
+Keys: r refresh bench, s refresh skills, t refresh tracker, q quit.
 `
 
 // refreshEvery is how often the local panels reload from git config and wt list.
@@ -43,9 +43,9 @@ var (
 type Snapshot struct {
 	Worktrees    []Worktree
 	WorktreesErr string
-	Locks        []skills.LockResult
-	LocksErr     string
-	LocksAt      time.Time
+	Skills       []skills.LockResult
+	SkillsErr    string
+	SkillsAt     time.Time
 	Bench        *BenchReport
 	Tracker      Tracker
 }
@@ -81,7 +81,7 @@ type LabelCount struct {
 type collectors struct {
 	worktrees func(checkout.Checkout) ([]Worktree, string)
 	states    func(checkout.Checkout, []string) (map[string]state.State, error)
-	locks     func(checkout.Checkout) ([]skills.LockResult, error)
+	skills    func(checkout.Checkout) ([]skills.LockResult, error)
 	bench     func(checkout.Checkout) (string, error)
 	tracker   func(checkout.Checkout) Tracker
 }
@@ -93,13 +93,13 @@ type Model struct {
 	snap           Snapshot
 	benchErr       string
 	localRunning   bool
-	locksRunning   bool
+	skillsRunning  bool
 	benchRunning   bool
 	trackerRunning bool
 }
 
 // New builds the model over one snapshot of a checkout rooted at root. The model
-// starts with the startup loads in flight, so Init must run for the local, lock,
+// starts with the startup loads in flight, so Init must run for the local, skills,
 // and tracker panels to fill.
 func New(root string, snap Snapshot) Model {
 	return newModel(root, snap, realCollectors())
@@ -107,7 +107,7 @@ func New(root string, snap Snapshot) Model {
 
 // newModel is the seam tests use to record the dashboard's outside reads. The
 // three in-flight guards are the startup loads Init issues: until a load's
-// result arrives its key is ignored, and the lock and tracker panels show the
+// result arrives its key is ignored, and the skills and tracker panels show the
 // load in progress.
 func newModel(root string, snap Snapshot, cols collectors) Model {
 	return Model{
@@ -115,7 +115,7 @@ func newModel(root string, snap Snapshot, cols collectors) Model {
 		cols:           cols,
 		snap:           snap,
 		localRunning:   true,
-		locksRunning:   true,
+		skillsRunning:  true,
 		trackerRunning: true,
 	}
 }

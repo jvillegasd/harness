@@ -23,7 +23,7 @@ func realCollectors() collectors {
 	return collectors{
 		worktrees: loadWorktrees,
 		states:    loadStates,
-		locks:     loadLocks,
+		skills:    loadSkills,
 		bench:     loadBench,
 		tracker:   loadTracker,
 	}
@@ -111,7 +111,7 @@ func isHarness(dir checkout.Checkout) bool {
 	return err == nil && c.Root == dir.Root
 }
 
-func loadLocks(dir checkout.Checkout) ([]skills.LockResult, error) {
+func loadSkills(dir checkout.Checkout) ([]skills.LockResult, error) {
 	if !isHarness(dir) {
 		return nil, errHarnessOnly
 	}
