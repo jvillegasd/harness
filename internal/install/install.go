@@ -223,8 +223,9 @@ func (in *installer) install() {
 	if in.skipPackages {
 		in.installEngram()
 	}
-	// Both after Engram, whose setup rewrites settings.json and opencode.json from its own template: the harness is the last writer, which is what makes the tracked values the ones a client reads.
+	// All three after Engram, whose setup rewrites settings.json and opencode.json from its own template: the harness is the last writer, which is what makes the tracked values the ones a client reads. Engram's own Claude Code MCP entry comes after installAgentBrowser, because that is what validates OpenCode's config, and a config this run refuses must leave both clients as they were.
 	in.installAgentBrowser()
+	in.registerEngramClaudeMCP()
 	in.reconcileClaudeSettings()
 	in.checkInstall()
 	if !in.skipPackages {
@@ -362,14 +363,13 @@ func (in *installer) checkTools() {
 		}
 	}
 	in.assertPluginCount("engram", 1)
-	// The scope too: a leftover project-scoped entry would satisfy a bare get while the user scope stayed empty. Engram reaches Claude Code as a plugin plus this file rather than an mcp entry.
-	get := exec.Command("claude", "mcp", "get", "agent-browser")
-	get.Stderr = in.stderr
-	if scope, err := get.Output(); err != nil || !strings.Contains(string(scope), "Scope: User config") {
-		die("agent-browser is not registered in the Claude Code user scope.")
-	}
-	if engram := filepath.Join(in.home, ".claude", "mcp", "engram.json"); !isFile(engram) {
-		die("Engram's Claude Code MCP file is missing: %s", engram)
+	// The scope too: a leftover project-scoped entry would satisfy a bare get while the user scope stayed empty. Engram reaches Claude Code as a plugin for its hooks and skill, plus this mcp entry for its tools.
+	for _, server := range []string{"agent-browser", "engram"} {
+		get := exec.Command("claude", "mcp", "get", server)
+		get.Stderr = in.stderr
+		if scope, err := get.Output(); err != nil || !strings.Contains(string(scope), "Scope: User config") {
+			die("%s is not registered in the Claude Code user scope.", server)
+		}
 	}
 	// Through a file: `opencode debug config` stops at the 64 KiB pipe capacity whenever stdout is not a regular file, and this config is past it.
 	resolved, err := os.CreateTemp("", "harness-opencode-*")

@@ -139,12 +139,19 @@ func sandbox(t *testing.T) string {
 	}
 	// The status line binary a prior `harness install` left in place, which every install mode now probes.
 	writeMode(t, filepath.Join(base, "home", ".local/bin/harness"), "#!/bin/sh\n", 0o755)
-	shims, log := filepath.Join(base, "shims"), filepath.Join(base, "shims.log")
+	shims := filepath.Join(base, "shims")
 	for name, body := range shimScripts(shims) {
-		script := "#!/bin/sh\ninput=$(cat)\nprintf '%s\\n' \"" + name + " $* <$input>\" >> '" + log + "'\n" + body + "\nexit 0\n"
-		writeMode(t, filepath.Join(shims, name), script, 0o755)
+		writeShim(t, base, name, body)
 	}
 	return base
+}
+
+// writeShim writes one fake tool with the recording wrapper every shim shares, so a test that overrides a body still logs its invocations.
+func writeShim(t *testing.T, base, name, body string) {
+	t.Helper()
+	log := filepath.Join(base, "shims.log")
+	script := "#!/bin/sh\ninput=$(cat)\nprintf '%s\\n' \"" + name + " $* <$input>\" >> '" + log + "'\n" + body + "\nexit 0\n"
+	writeMode(t, filepath.Join(base, "shims", name), script, 0o755)
 }
 
 // shimScripts fake every external tool the installer calls. Each records its arguments and stdin, and prints only what the installer parses.
@@ -159,7 +166,7 @@ func shimScripts(shims string) map[string]string {
 		"npx":    "",
 		"claude": `case "$*" in
 "plugin list --json") echo '[{"id": "engram@engram"}]' ;;
-"mcp get agent-browser") echo 'Scope: User config' ;;
+"mcp get agent-browser"|"mcp get engram") echo 'Scope: User config' ;;
 esac`,
 		"opencode": `if [ "$*" = "debug config" ]; then
 echo '{"plugin": ["engram"], "mcp": {"engram": {}, "agent-browser": {"type": "local", "enabled": true, "command": ["` + filepath.Join(shims, "agent-browser") + `", "mcp"]}}}'

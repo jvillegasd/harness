@@ -296,6 +296,33 @@ func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
 	}
 }
 
+// A registration that landed outside the user scope fails the run, so the scope check cannot pass on a server Claude Code would not load for every project. Only a full run reaches checkTools.
+func TestInstallRefusesANonUserScopeEngramMCP(t *testing.T) {
+	base := sandbox(t)
+	seedLived(t, base)
+	writeShim(t, base, "claude", `case "$*" in
+"plugin list --json") echo '[{"id": "engram@engram"}]' ;;
+"mcp get agent-browser") echo 'Scope: User config' ;;
+"mcp get engram") echo 'Scope: Project config' ;;
+esac`)
+	r := runInstaller(t, base)
+	if r.code == 0 || !strings.Contains(r.stderr, "engram is not registered in the Claude Code user scope") {
+		t.Fatalf("exit %d, stderr %q; want the engram scope refusal", r.code, r.stderr)
+	}
+}
+
+// A surviving engram entry fails the uninstall's own sweep, so the removal at removeClaudeMCP cannot pass vacuously.
+func TestUninstallRefusesASurvivingEngramMCP(t *testing.T) {
+	base := sandbox(t)
+	seedLived(t, base)
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	writeMode(t, filepath.Join(base, "home", ".claude.json"), `{"mcpServers": {"engram": {}}}`+"\n", 0o644)
+	r := runInstaller(t, base, "--uninstall", "--yes")
+	if r.code == 0 || !strings.Contains(r.stderr, "The engram MCP survived the uninstall") {
+		t.Fatalf("exit %d, stderr %q; want the engram survivor refusal", r.code, r.stderr)
+	}
+}
+
 // TestFullInstallProvisionsMissingOnly locks the provisioning contract: one inventory per full run, no upgrade command, an install only for a formula the inventory lacks, and MCP reconciliation that still runs though the executables already exist.
 func TestFullInstallProvisionsMissingOnly(t *testing.T) {
 	base := sandbox(t)
@@ -318,7 +345,7 @@ func TestFullInstallProvisionsMissingOnly(t *testing.T) {
 			t.Errorf("full install skipped the missing %q:\n%s", want, log)
 		}
 	}
-	for _, want := range []string{"engram setup claude-code", "engram setup opencode", "claude mcp add --scope user agent-browser"} {
+	for _, want := range []string{"engram setup claude-code", "engram setup opencode", "claude mcp add --scope user agent-browser", "claude mcp add --scope user engram"} {
 		if !strings.Contains(log, want) {
 			t.Errorf("full install skipped reconciliation though the tools exist, missing %q", want)
 		}
@@ -334,7 +361,7 @@ func TestSkipPackagesCallsNoPackageManager(t *testing.T) {
 	if strings.Contains(log, "brew ") {
 		t.Errorf("--skip-packages called the package manager:\n%s", log)
 	}
-	for _, want := range []string{"engram setup claude-code", "claude mcp add --scope user agent-browser"} {
+	for _, want := range []string{"engram setup claude-code", "claude mcp add --scope user agent-browser", "claude mcp add --scope user engram"} {
 		if !strings.Contains(log, want) {
 			t.Errorf("--skip-packages skipped reconciliation, missing %q", want)
 		}

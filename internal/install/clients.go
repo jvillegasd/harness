@@ -320,7 +320,7 @@ func (in *installer) reconcileAliases(remove bool) {
 	}
 }
 
-// installEngram runs one `engram setup <agent>` per client, exactly as engram's docs/AGENT-SETUP.md documents. The claude-code setup is answered yes to allowlist engram's tools, because declining prompts on every memory call; the opencode setup gets a closed stdin, since a blind yes to a future question is not the same answer. Setup also rewrites the pinned absolute path of the engram binary.
+// installEngram runs one `engram setup <agent>` per client, exactly as engram's docs/AGENT-SETUP.md documents. The claude-code setup is answered yes to allowlist engram's tools, because declining prompts on every memory call; the opencode setup gets a closed stdin, since a blind yes to a future question is not the same answer. Setup registers and pins OpenCode's MCP server; Claude Code's is registerEngramClaudeMCP's job.
 func (in *installer) installEngram() {
 	in.log("Reconciling Engram")
 	if _, err := exec.LookPath("engram"); err != nil {
@@ -328,6 +328,24 @@ func (in *installer) installEngram() {
 	}
 	in.run(strings.NewReader("y\n"), "engram", "setup", "claude-code")
 	in.run(nil, "engram", "setup", "opencode")
+}
+
+// registerEngramClaudeMCP registers Engram's Claude Code MCP server, which engram's own claude-code setup does not leave anywhere Claude Code reads. Remove then add, so a re-run rewrites the pinned path. README's MCP servers section records why setup is not enough.
+func (in *installer) registerEngramClaudeMCP() {
+	in.log("Reconciling Engram's Claude Code MCP")
+	binary, err := exec.LookPath("engram")
+	if err != nil {
+		die("Engram is missing; run without --skip-packages to install it.")
+	}
+	if _, err := exec.LookPath("claude"); err != nil {
+		die("Claude Code is missing; run without --skip-packages to install it.")
+	}
+	_ = exec.Command("claude", "mcp", "remove", "--scope", "user", "engram").Run()
+	add := exec.Command("claude", "mcp", "add", "--scope", "user", "engram", "--", binary, "mcp", "--tools=agent")
+	add.Stderr = in.stderr
+	if err := add.Run(); err != nil {
+		die("claude mcp add engram failed: %v", err)
+	}
 }
 
 // installAgentBrowser registers agent-browser in both clients, since it ships no registrar of its own. Remove then add, so a re-run rewrites the pinned path; OpenCode takes a JSON edit because `opencode mcp add` is interactive.
