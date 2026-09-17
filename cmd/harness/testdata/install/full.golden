@@ -36,6 +36,7 @@ C .agents/skills/improve-codebase-architecture
 C .agents/skills/local-tracker
 C .agents/skills/ponytail
 C .agents/skills/resolving-merge-conflicts
+C .agents/skills/security-audit
 C .agents/skills/setup-harness
 C .agents/skills/tdd
 C .agents/skills/workflow-checkpoint
@@ -121,6 +122,7 @@ C .claude/skills/improve-codebase-architecture
 C .claude/skills/local-tracker
 C .claude/skills/ponytail
 C .claude/skills/resolving-merge-conflicts
+C .claude/skills/security-audit
 C .claude/skills/setup-harness
 C .claude/skills/tdd
 C .claude/skills/workflow-checkpoint
@@ -425,6 +427,23 @@ F .harness/state.json
   |    },
   |    {
   |      "path": "$HOME/.claude/skills/resolving-merge-conflicts",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.agents/skills/security-audit",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/security-audit",
   |      "component": "skills",
   |      "clients": [
   |        "claude"

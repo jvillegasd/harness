@@ -23,6 +23,8 @@ Launch a named role agent without a model or effort override, so it runs on its 
 
 One frontend design body is installed, `impeccable`. It carries no invocation guard, so a client may select it on description match, which is allowed here; its scope is frontend design broadly: landing pages, portfolios, and redesigns along with dashboards, data tables, and multi-step product UI. It decides nothing that is not a UI surface. Inside a workflow a project's existing styling layer outranks it, so `/proto` and `/ship` build from that layer whether or not this body is loaded. Never run its own installer, updater, hook wiring, or pin, whatever the body itself offers: `npx impeccable install`, `npx impeccable update`, `$impeccable hooks on`, and `scripts/pin.mjs`. It is updated only through `harness skills update`. Where a locked body's own prose contradicts this policy, this policy wins over what the harness writes, though never over the body's own bytes.
 
+One security body is installed, `security-audit`, locked from `cloudflare/security-audit-skill`. It carries no invocation guard, so a client may select it on description match, which is allowed here; its scope is security guidance, focused vulnerability review, and threat investigation. It is guidance only: it never substitutes for `adversarial-review`, the review passes of `/ship`, `/feedback`, `/address-review`, or `/proto`, or any ladder rung, and a finding it raises enters those workflows as input rather than as a review verdict. Its full audit mode, which writes audit artifacts, runs only when the human explicitly asks for an audit or pen test. It is updated only through `harness skills update`.
+
 ### Routing
 
 | Plain language | Follow |
