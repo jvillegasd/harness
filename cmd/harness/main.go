@@ -23,7 +23,6 @@ func main() {
 const usage = `Usage: harness <command> [arguments]
 
 Commands:
-  bootstrap  Build harness into ~/.local/bin and install it
   install    Install, reconcile, or remove the harness on this machine
   agents     Render and check the role agent definitions
   scenarios  Validate, run, and compare the artifact-based scenarios
@@ -40,8 +39,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	switch args[0] {
-	case "bootstrap":
-		return install.Bootstrap(args[1:], stdout, stderr)
 	case "install":
 		return install.Command(args[1:], stdout, stderr)
 	case "agents":
