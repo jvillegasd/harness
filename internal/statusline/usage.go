@@ -35,7 +35,7 @@ type usage struct {
 
 // loadUsage reads the sixty-second cache, refreshing it from the OAuth usage endpoint when it is stale and a token is available. A missing token and a failed fetch both fall back to whatever the cache still holds, and no cache at all renders no bars.
 func loadUsage(now time.Time) *usage {
-	path := CachePath()
+	path := cachePath()
 	var data []byte
 	if info, err := os.Stat(path); err == nil && now.Sub(info.ModTime()) < usageCacheAge {
 		data, _ = os.ReadFile(path)
@@ -57,8 +57,8 @@ func loadUsage(now time.Time) *usage {
 	return parseUsage(data)
 }
 
-// CachePath puts the sixty-second cache in the system temporary directory. The shell renderer hardcoded /tmp/claude, which on macOS is not os.TempDir(), so the first draw after an upgrade warms a fresh cache.
-func CachePath() string {
+// cachePath puts the sixty-second cache in the system temporary directory. The shell renderer hardcoded /tmp/claude, which on macOS is not os.TempDir(), so the first draw after an upgrade warms a fresh cache.
+func cachePath() string {
 	return filepath.Join(os.TempDir(), "claude", "statusline-usage-cache.json")
 }
 

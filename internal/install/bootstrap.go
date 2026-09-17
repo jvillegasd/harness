@@ -32,7 +32,7 @@ func Bootstrap(args []string, stdout, stderr io.Writer) (code int) {
 		}
 	}
 	in.resolveLocations()
-	in.dir = in.dataRoot()
+	defer in.extractAssets()()
 	in.install()
 	return 0
 }

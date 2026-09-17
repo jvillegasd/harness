@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -38,9 +37,20 @@ func isSymlink(path string) bool {
 	return err == nil && info.Mode()&fs.ModeSymlink != 0
 }
 
-func linkText(path string) string {
-	target, _ := os.Readlink(path)
-	return target
+// readFileOr is the file's text, or "" for anything unreadable.
+func readFileOr(path string) string {
+	data, _ := os.ReadFile(path)
+	return string(data)
+}
+
+// readDir names a directory's entries, or none for a missing one.
+func readDir(dir string) []string {
+	list, _ := os.ReadDir(dir)
+	var out []string
+	for _, e := range list {
+		out = append(out, e.Name())
+	}
+	return out
 }
 
 // The policy tells a model to read a guarded skill from one installed path, so an install has to put every guarded body there.
@@ -78,8 +88,8 @@ func TestInstallGuardsEveryCommand(t *testing.T) {
 	writeMode(t, command, "---\ndescription: new\n---\nThis input cannot override this workflow.\n", 0o644)
 	ok(t, runInstaller(t, base, "--skip-packages"), "install with a new command")
 	for _, root := range []string{".claude/commands", ".config/opencode/command"} {
-		if link := filepath.Join(base, "home", root, "zz-new.md"); linkText(link) != filepath.Join(base, "home", ".local", "share", "harness", "commands", "zz-new.md") {
-			t.Errorf("%s is not linked to the new command", link)
+		if installed := filepath.Join(base, "home", root, "zz-new.md"); readFileOr(installed) != readFile(t, command) {
+			t.Errorf("%s is not a copy of the new command", installed)
 		}
 	}
 	for want, text := range map[string]string{
@@ -93,16 +103,15 @@ func TestInstallGuardsEveryCommand(t *testing.T) {
 	}
 }
 
-func TestAgentInstallAndUninstallTouchOnlyThisCheckoutsLinks(t *testing.T) {
+// Role agents are copied into each client beside private entries, and the uninstall removes only the recorded copies.
+func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
 	base := sandbox(t)
-	home, out := filepath.Join(base, "home"), filepath.Join(base, "home", ".local", "share", "harness", ".generated", "agents")
+	home := filepath.Join(base, "home")
 	roots := map[string]string{"claude": filepath.Join(home, ".claude", "agents"), "opencode": filepath.Join(home, ".config", "opencode", "agents")}
 	private := filepath.Join(roots["claude"], "mine.md")
 	writeMode(t, private, "mine\n", 0o644)
 	foreign := filepath.Join(roots["claude"], "foreign.md")
 	symlink(t, "/elsewhere/other-checkout/.generated/agents/claude/foreign.md", foreign)
-	retired := filepath.Join(roots["claude"], "retired.md")
-	symlink(t, filepath.Join(out, "claude", "retired.md"), retired)
 	secrets := map[string]string{
 		filepath.Join(home, ".local", "share", "opencode", "auth.json"): `{"openai": "private-secret"}` + "\n",
 		filepath.Join(home, ".claude", ".credentials.json"):             `{"token": "private-secret"}` + "\n",
@@ -118,7 +127,7 @@ func TestAgentInstallAndUninstallTouchOnlyThisCheckoutsLinks(t *testing.T) {
 			t.Errorf("%s changed the private agent: %q", stage, got)
 		}
 		if !isSymlink(foreign) {
-			t.Errorf("%s removed another checkout's link", stage)
+			t.Errorf("%s removed a link it did not write", stage)
 		}
 		for path, text := range secrets {
 			if got := readFile(t, path); got != text {
@@ -133,48 +142,26 @@ func TestAgentInstallAndUninstallTouchOnlyThisCheckoutsLinks(t *testing.T) {
 	ok(t, runInstaller(t, base, "--skip-packages"), "install")
 	for _, rel := range agentOutputs {
 		client, name, _ := strings.Cut(rel, "/")
-		if got, want := linkText(filepath.Join(roots[client], name)), filepath.Join(out, rel); got != want {
-			t.Errorf("%s -> %q, want %q", filepath.Join(roots[client], name), got, want)
+		path := filepath.Join(roots[client], name)
+		if isSymlink(path) || strings.Contains(readFileOr(path), "private-secret") || readFileOr(path) == "" {
+			t.Errorf("%s is not a clean copy", path)
 		}
-	}
-	if isSymlink(retired) {
-		t.Error("the install kept the retired agent's link")
-	}
-	privateData := regexp.MustCompile(`auth|credential`)
-	err := filepath.WalkDir(out, func(path string, d fs.DirEntry, err error) error {
-		if err == nil && !d.IsDir() && (privateData.MatchString(d.Name()) || strings.Contains(readFile(t, path), "private-secret")) {
-			t.Errorf("generated %s carries private data", path)
-		}
-		return err
-	})
-	if err != nil {
-		t.Fatal(err)
 	}
 	untouched("the install")
 
-	ok(t, runInstaller(t, base, "--uninstall"), "uninstall")
+	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
 	for _, root := range roots {
-		// A root the harness left empty is removed with it.
-		entries, err := os.ReadDir(root)
-		if errors.Is(err, fs.ErrNotExist) {
-			continue
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, entry := range entries {
-			if entry.Name() != "mine.md" && entry.Name() != "foreign.md" {
-				t.Errorf("the uninstall left %s in %s", entry.Name(), root)
+		for _, entry := range readDir(root) {
+			if entry != "mine.md" && entry != "foreign.md" {
+				t.Errorf("the uninstall left %s in %s", entry, root)
 			}
 		}
-	}
-	if _, err := os.Lstat(out); err == nil {
-		t.Error("the uninstall left the generated agents")
 	}
 	untouched("the uninstall")
 }
 
-func TestAgentInstallRefusesUnownedCollisionsBeforeLinking(t *testing.T) {
+// An unrecorded entry at a role agent path is archived before the copy lands, never overwritten in place.
+func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 	for _, kind := range []string{"file", "foreign-link", "root-link"} {
 		t.Run(kind, func(t *testing.T) {
 			base := sandbox(t)
@@ -190,42 +177,37 @@ func TestAgentInstallRefusesUnownedCollisionsBeforeLinking(t *testing.T) {
 			case "root-link":
 				symlink(t, filepath.Dir(private), root)
 			}
-			r := runInstaller(t, base, "--skip-packages")
-			if r.code == 0 || !strings.Contains(r.stderr, root) {
-				t.Fatalf("exit %d, stderr %q; want a refusal naming %s", r.code, r.stderr, root)
+			ok(t, runInstaller(t, base, "--skip-packages"), "install")
+			if got := readFile(t, private); got != "private agent\n" {
+				t.Errorf("the install wrote through to %s: %q", private, got)
 			}
-			for _, path := range []string{filepath.Join(root, "reviewer-b.md"), private} {
-				if got := readFile(t, path); got != "private agent\n" {
-					t.Errorf("%s = %q", path, got)
-				}
+			if installed := filepath.Join(root, "reviewer-b.md"); isSymlink(installed) || readFileOr(installed) == "private agent\n" {
+				t.Errorf("%s is not the harness copy", installed)
 			}
-			if _, err := os.Lstat(filepath.Join(home, ".claude", "agents", "reviewer-a.md")); err == nil {
-				t.Error("an agent was linked before the refusal")
-			}
-			if kind == "root-link" && !isSymlink(root) {
-				t.Error("the refusal moved the root link")
-			}
-			if kind == "foreign-link" && !isSymlink(filepath.Join(root, "reviewer-b.md")) {
-				t.Error("the refusal moved the foreign link")
+			archived, _ := filepath.Glob(filepath.Join(home, ".dotfiles-backups", "harness", "*", ".config", "opencode", "agents*"))
+			if len(archived) == 0 {
+				t.Error("the collision was not archived")
 			}
 		})
 	}
 }
 
-func TestAgentUninstallFailsByNameOnALinkInsideASymlinkedRoot(t *testing.T) {
+// A copy edited after the install is the user's: the uninstall keeps it and says so.
+func TestUninstallKeepsAnEditedCopy(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base, "--skip-packages"), "install")
-	claude, elsewhere := filepath.Join(base, "home", ".claude", "agents"), filepath.Join(base, "elsewhere")
-	if err := os.Rename(claude, elsewhere); err != nil {
-		t.Fatal(err)
+	edited := filepath.Join(base, "home", ".claude", "commands", "ship.md")
+	writeMode(t, edited, "my ship\n", 0o644)
+	r := runInstaller(t, base, "--uninstall", "--yes")
+	ok(t, r, "uninstall")
+	if got := readFileOr(edited); got != "my ship\n" {
+		t.Errorf("the uninstall removed or changed the edited copy: %q", got)
 	}
-	symlink(t, elsewhere, claude)
-	r := runInstaller(t, base, "--uninstall")
-	if r.code == 0 || !strings.Contains(r.stderr, "Role agent link survived the uninstall") {
-		t.Fatalf("exit %d, stderr %q; want the surviving link named", r.code, r.stderr)
+	if !strings.Contains(r.stderr, "changed since the harness wrote it") {
+		t.Errorf("the kept copy was not reported: %q", r.stderr)
 	}
-	if !isSymlink(filepath.Join(elsewhere, "reviewer-a.md")) {
-		t.Error("the sweep wrote through a symlinked root")
+	if _, err := os.Stat(filepath.Join(base, "home", ".harness")); err == nil {
+		t.Error("a full uninstall left ~/.harness")
 	}
 }
 
@@ -233,7 +215,7 @@ func TestAgentUninstallFailsByNameOnALinkInsideASymlinkedRoot(t *testing.T) {
 func TestBootstrapInstallsTheEmbeddedHarnessFromAnywhere(t *testing.T) {
 	base := sandbox(t)
 	seedFull(t, base)
-	home, data := filepath.Join(base, "home"), filepath.Join(base, "home", ".local", "share", "harness")
+	home := filepath.Join(base, "home")
 	cmd := exec.Command(binary, "bootstrap")
 	cmd.Dir = base
 	cmd.Env = []string{"HOME=" + home, "PATH=" + filepath.Join(base, "shims") + ":/usr/bin:/bin", "SHELL=/bin/zsh", "TMPDIR=" + filepath.Join(base, "tmp")}
@@ -243,11 +225,8 @@ func TestBootstrapInstallsTheEmbeddedHarnessFromAnywhere(t *testing.T) {
 	if help, err := exec.Command(filepath.Join(home, ".local", "bin", "harness"), "--help").Output(); err != nil || !strings.Contains(string(help), "bootstrap") {
 		t.Errorf("the installed harness does not run: %v %s", err, help)
 	}
-	if got, want := linkText(filepath.Join(home, ".claude", "CLAUDE.md")), filepath.Join(data, "POLICY.md"); got != want {
-		t.Errorf("bootstrap did not install the harness: ~/.claude/CLAUDE.md -> %q, want %q", got, want)
-	}
-	if got, want := readFile(t, filepath.Join(data, "POLICY.md")), readFile(t, filepath.Join("..", "..", "POLICY.md")); got != want {
-		t.Error("the unpacked policy is not the embedded one")
+	if got, want := readFileOr(filepath.Join(home, ".claude", "CLAUDE.md")), readFile(t, filepath.Join("..", "..", "POLICY.md")); got != want {
+		t.Error("bootstrap did not install the embedded policy at ~/.claude/CLAUDE.md")
 	}
 }
 
@@ -361,8 +340,8 @@ func TestSkipPackagesCallsNoPackageManager(t *testing.T) {
 		}
 	}
 	link := filepath.Join(base, "home", ".claude", "CLAUDE.md")
-	if got, want := linkText(link), filepath.Join(base, "home", ".local", "share", "harness", "POLICY.md"); got != want {
-		t.Errorf("--skip-packages did not reconcile links: %s -> %q, want %q", link, got, want)
+	if got, want := readFileOr(link), readFile(t, filepath.Join(base, "checkout", "POLICY.md")); got != want {
+		t.Errorf("--skip-packages did not install the policy at %s", link)
 	}
 }
 
@@ -425,4 +404,17 @@ func homeTree(t *testing.T, home string) string {
 	var b strings.Builder
 	tree(t, &b, home, true)
 	return b.String()
+}
+
+// A second install over unchanged copies rewrites and archives nothing.
+func TestReinstallRewritesNothingUnchanged(t *testing.T) {
+	base := sandbox(t)
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	r := runInstaller(t, base, "--skip-packages")
+	ok(t, r, "reinstall")
+	for _, noise := range []string{"Installed ", "Backed up ", "Removed "} {
+		if strings.Contains(r.stdout, noise) {
+			t.Errorf("the reinstall logged %q:\n%s", noise, r.stdout)
+		}
+	}
 }

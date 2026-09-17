@@ -263,7 +263,7 @@ var (
 	lineBreak = regexp.MustCompile(`\r\n|\r|\n`)
 )
 
-// reconcileAliases writes the one managed line that sources aliases.sh into ~/.zshrc, or with remove strips it, so the committed file stays the only definition. Hand-written copies of the managed aliases go either way, the retired oyolo included. A removal never creates a missing ~/.zshrc, and one that finds nothing writes nothing.
+// reconcileAliases writes the one managed line that sources the installed aliases.sh into ~/.zshrc, or with remove strips it, so the committed file stays the only definition. Hand-written copies of the managed aliases go either way, the retired oyolo included. A removal never creates a missing ~/.zshrc, and one that finds nothing writes nothing.
 func (in *installer) reconcileAliases(remove bool) {
 	rc := filepath.Join(in.home, ".zshrc")
 	if !isFile(rc) {
@@ -279,7 +279,7 @@ func (in *installer) reconcileAliases(remove bool) {
 		die("Could not reconcile aliases in %s.", rc)
 	}
 	current := string(data)
-	source := in.dir.Aliases()
+	source := in.aliasesPath()
 	// No empty entry after a final line break.
 	lines := lineBreak.Split(current, -1)
 	if lines[len(lines)-1] == "" {
@@ -287,10 +287,12 @@ func (in *installer) reconcileAliases(remove bool) {
 	}
 	var kept []string
 	dropped := false
-	for _, line := range lines {
+	for i, line := range lines {
 		alias := aliasLine.FindStringSubmatch(line)
 		managed := alias != nil && (alias[1] == "ccyolo" || alias[1] == "oyolo" || alias[1] == "ocyolo")
-		if managed || strings.Contains(line, aliasMarker) || strings.Contains(line, source) {
+		// The line after the marker is the managed source line whatever path an earlier install wrote into it.
+		afterMarker := i > 0 && strings.Contains(lines[i-1], aliasMarker)
+		if managed || afterMarker || strings.Contains(line, aliasMarker) || strings.Contains(line, source) {
 			dropped = true
 			continue
 		}

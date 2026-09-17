@@ -11,4 +11,3 @@ D .local/bin
 F .local/bin/harness
   |#!/bin/sh
   |
-== generated
