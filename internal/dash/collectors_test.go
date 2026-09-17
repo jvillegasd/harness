@@ -166,7 +166,7 @@ func TestExplicitSkillsRefreshVerifiesAndStampsTime(t *testing.T) {
 	time.Sleep(2 * time.Millisecond)
 	next, cmd := m.press("s")
 	if cmd == nil {
-		t.Fatal("l did not verify")
+		t.Fatal("s did not verify")
 	}
 	m = feed(t, next, cmd)
 	if !m.snap.SkillsAt.After(first) {
@@ -179,6 +179,9 @@ func TestExplicitSkillsRefreshVerifiesAndStampsTime(t *testing.T) {
 	running.skillsRunning = true
 	if _, again := running.press("s"); again != nil {
 		t.Fatal("an overlapping skills refresh ran")
+	}
+	if _, old := m.press("l"); old != nil {
+		t.Fatal("the retired l key still refreshes skills")
 	}
 }
 
