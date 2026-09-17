@@ -418,3 +418,12 @@ func TestReinstallRewritesNothingUnchanged(t *testing.T) {
 		}
 	}
 }
+
+// A TMPDIR reached through a symlink, as macOS /var is, still extracts assets the role agent renderer accepts.
+func TestInstallWithSymlinkedTmpdir(t *testing.T) {
+	base := sandbox(t)
+	link := filepath.Join(base, "tmp-link")
+	symlink(t, filepath.Join(base, "tmp"), link)
+	r := runHarnessInput(t, base, "", []string{"TMPDIR=" + link, "HARNESS_ASSETS=" + filepath.Join(base, "checkout")}, "install", "--skip-packages")
+	ok(t, r, "install")
+}
