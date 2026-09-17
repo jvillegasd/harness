@@ -3,16 +3,12 @@ package install
 import (
 	"fmt"
 	"io"
-	"os"
-	"os/exec"
-	"path/filepath"
-
-	"github.com/jvillegasd/harness/internal/checkout"
 )
 
 const bootstrapUsage = `Usage: harness bootstrap [--no-backup]
 
-Build harness into ~/.local/bin and run a full harness install.
+Copy this harness binary into ~/.local/bin and run a full harness install,
+the same as harness install.
 
   --no-backup  Delete what is in the way instead of renaming it to
                <path>.backup.<timestamp>, and apply the same choice to the
@@ -35,20 +31,8 @@ func Bootstrap(args []string, stdout, stderr io.Writer) (code int) {
 			return 2
 		}
 	}
-	dir, err := checkout.Find(".")
-	if err != nil {
-		die("%v", err)
-	}
-	in.setPaths(dir)
-
-	bin := filepath.Join(in.home, ".local", "bin", "harness")
-	in.log("Building %s", bin)
-	must(os.MkdirAll(filepath.Dir(bin), 0o755))
-	build := exec.Command("go", "build", "-o", bin, "./cmd/harness")
-	build.Dir, build.Stdout, build.Stderr = dir.Root, stdout, stderr
-	if err := build.Run(); err != nil {
-		die("Building harness failed: %v", err)
-	}
+	in.resolveLocations()
+	in.dir = in.dataRoot()
 	in.install()
 	return 0
 }

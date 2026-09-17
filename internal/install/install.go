@@ -1,4 +1,4 @@
-// Package install reconciles the harness of the checkout into the home directory: the managed links, the zsh alias block, the tracked Claude settings, and the Engram and agent-browser registrations.
+// Package install unpacks the harness the binary carries and reconciles it into the home directory: the managed links, the zsh alias block, the tracked Claude settings, and the Engram and agent-browser registrations.
 package install
 
 import (
@@ -49,7 +49,7 @@ const usage = `Usage: harness install [--skip-packages] [--no-backup]
                  the other packages a full install adds when missing (node,
                  gh, uv, worktrunk, opencode, native Claude Code); anything but
                  yes keeps them. Untracked Claude config keys, Worktrunk's
-                 shell integration, and this checkout are left alone.
+                 shell integration, and any checkout are left alone.
                  Destructive and unrecoverable, your Engram memories
                  included: run engram export <file> first to keep them.
   --clear-backups
@@ -60,10 +60,11 @@ const usage = `Usage: harness install [--skip-packages] [--no-backup]
                  nothing else in ~/.dotfiles-backups and installs nothing;
                  runs on its own.
 
-Every install mode points the Claude Code status line at
-~/.local/bin/harness and verifies it, so run harness bootstrap first to
-build the binary there. A run without it fails rather than leaving the
-status line silently empty.
+Install and uninstall run from any directory. An install copies this binary
+to ~/.local/bin/harness, where the Claude Code status line runs it, and
+unpacks the assets it was built with into $XDG_DATA_HOME/harness (default
+~/.local/share/harness), which every managed link points into. Set
+HARNESS_ASSETS to a directory to unpack that tree instead.
 `
 
 const summaryText = `Next steps (interactive; not run by this installer):
@@ -139,11 +140,6 @@ func (in *installer) resolveLocations() {
 	}
 }
 
-func (in *installer) setPaths(dir checkout.Checkout) {
-	in.resolveLocations()
-	in.dir = dir
-}
-
 // Command runs `harness install` with its arguments and returns the exit code.
 func Command(args []string, stdout, stderr io.Writer) (code int) {
 	defer recoverFatal("install", stderr, &code)
@@ -183,9 +179,8 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 		in.clearBackups()
 		return 0
 	}
-	dir, err := checkout.Find(".")
-	must(err)
-	in.setPaths(dir)
+	in.resolveLocations()
+	in.dir = in.dataRoot()
 	if in.uninstall {
 		in.uninstallAll()
 	} else {
@@ -197,6 +192,8 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 func (in *installer) install() {
 	// First, so the warning precedes the two steps it is about.
 	in.warnUnlessZsh()
+	in.installBinary()
+	in.unpack()
 	if !in.skipPackages {
 		in.installPackages()
 		in.installIntegrations()

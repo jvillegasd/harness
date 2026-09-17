@@ -205,7 +205,7 @@ git diff --check
 
 ## Install
 
-`harness bootstrap`, run through `go run` from this checkout, builds `harness` into `~/.local/bin` and runs a full install. `harness install` installs the harness of the checkout it runs from, so run it from the checkout root, and through `go run` so the install code matches that checkout: the `harness` on PATH is whatever `harness bootstrap` last built. Every install mode points the Claude Code status line at `~/.local/bin/harness` and verifies that binary, so run `harness bootstrap` first; a run without a working binary there fails instead of leaving the status line silently empty. To reconcile links, generated roles, client settings, and MCP registrations without calling a package manager:
+The `harness` binary carries the policy, commands, skills, roles, client settings, and aliases it was built from, so install and uninstall run from any directory. `harness install` copies the running binary to `~/.local/bin/harness`, where the Claude Code status line runs it, unpacks those assets into `$XDG_DATA_HOME/harness` (default `~/.local/share/harness`), and links every managed path into that directory. `harness bootstrap` is the same full install. From a checkout, `go run ./cmd/harness install` builds a binary from the working tree, so a local edit reaches the clients on the next install rather than live; `HARNESS_ASSETS=<dir>` unpacks a tree instead of the embedded one. To reconcile links, generated roles, client settings, and MCP registrations without calling a package manager:
 
 ```sh
 go run ./cmd/harness install --skip-packages
@@ -228,7 +228,7 @@ Both run modes verify what they wrote. The link check asserts every skill, comma
 
 ### Clean reinstall
 
-This layout replaced one whose assets lived in a nested `harness/` directory, and the clean reinstall is the supported transition. The new installer claims a link only when it resolves into a managed asset namespace (`skills/`, `commands/`, `POLICY.md`, or `.generated/`), so it does not sweep a link left pointing into the old nested directory: a plain install replaces each destination it writes and refuses an unowned role-agent collision instead, and the orphan sweep's dangling branch is the only thing that archives a stale link. Remove the previous installation before installing from this checkout: run `harness install --uninstall` from the old checkout while it still exists, and its sweep removes the retired `~/.claude/statusline.sh` and the skill, command, policy, and role-agent links under `~/.claude`, `~/.agents`, and `$XDG_CONFIG_HOME/opencode` that targeted `<old-checkout>/harness/`. The new code ships no old-layout detection, migration, or compatibility sweep.
+A machine installed before the assets moved into the binary has links pointing into its checkout, which the embedded installer does not own: it claims a link only when it resolves into the unpacked data directory, so a plain install replaces each destination it writes and refuses an unowned role-agent collision. Remove the previous installation first, with `harness install --uninstall` run from that checkout by the binary that installed it, then run `harness install` from the new binary. The new code ships no old-layout detection, migration, or compatibility sweep.
 
 ### MCP servers
 

@@ -33,12 +33,12 @@ MCP registration in both clients, the OpenCode subagent status line it enables,
 the formula, and ~/.engram, agent-browser: its MCP registration in both
 clients, the formula, and ~/.agent-browser, every archive under
 ~/.dotfiles-backups/harness, the status line cache, the client directories the
-harness left empty, and ~/.local/bin/harness.
+harness left empty, the unpacked harness, and ~/.local/bin/harness.
 `
 
 const uninstallLeft = `
 Left alone: every untracked key in the Claude config, the rest of
-~/.dotfiles-backups, Worktrunk's shell integration, and this checkout.
+~/.dotfiles-backups, Worktrunk's shell integration, and any harness checkout.
 
 Nothing was archived: an uninstall deletes what it removes.
 
@@ -67,7 +67,7 @@ func (in *installer) uninstallAll() {
 		fmt.Fprint(in.stdout, "\nThe agent-browser formula could not be removed and is still installed; the\nwarning above says so. Its configuration is gone either way.\n")
 	}
 	fmt.Fprint(in.stdout, uninstallLeft)
-	fmt.Fprintf(in.stdout, "Reinstall with: cd %s && go run ./cmd/harness bootstrap\n", in.dir.Root)
+	fmt.Fprint(in.stdout, "Reinstall with a harness binary: harness install\n")
 }
 
 // removeLeftovers deletes what the harness brought onto the machine outside the managed roots: both tools' data, the backups, the status line cache and binary, and the directories only the harness filled. A directory goes only when empty, so a private entry keeps its parent.
@@ -80,6 +80,7 @@ func (in *installer) removeLeftovers() {
 		}
 	}
 	in.clearBackups()
+	must(os.RemoveAll(in.dir.Root))
 	cache := statusline.CachePath()
 	removeFile(cache)
 	_ = os.Remove(filepath.Dir(cache))
@@ -101,7 +102,7 @@ func (in *installer) removeLeftovers() {
 	// Last, since the status line setting that ran it is already gone and this may be the running binary.
 	bin := filepath.Join(in.home, ".local", "bin", "harness")
 	removeFile(bin)
-	for _, path := range []string{filepath.Join(in.home, ".engram"), filepath.Join(in.home, ".agent-browser"), filepath.Join(in.home, ".dotfiles-backups", "harness"), bin} {
+	for _, path := range []string{filepath.Join(in.home, ".engram"), filepath.Join(in.home, ".agent-browser"), filepath.Join(in.home, ".dotfiles-backups", "harness"), in.dir.Root, bin} {
 		if exists(path) || isLink(path) {
 			die("Survived the uninstall: %s", path)
 		}
@@ -392,7 +393,7 @@ func realpath(path string) string {
 	return filepath.Clean(target)
 }
 
-// checkRemoved confirms the uninstall the way checkLinks confirms an install, so a root it silently skipped fails here rather than surfacing later as a client loading a policy from a moved checkout.
+// checkRemoved confirms the uninstall the way checkLinks confirms an install, so a root it silently skipped fails here rather than surfacing later as a client loading a policy that is gone.
 func (in *installer) checkRemoved() {
 	in.checkAgentsRemoved()
 	for _, root := range append(in.skillRoots(), in.commandRoots()...) {

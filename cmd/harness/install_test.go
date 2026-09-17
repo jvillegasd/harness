@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/install goldens from the installer under test")
@@ -62,7 +63,7 @@ func TestInstallerGolden(t *testing.T) {
 			b.WriteString("== home\n")
 			tree(t, &b, filepath.Join(base, "home"), true)
 			b.WriteString("== generated\n")
-			tree(t, &b, filepath.Join(base, "checkout", ".generated"), false)
+			tree(t, &b, filepath.Join(base, "home", ".local", "share", "harness", ".generated"), false)
 			golden(t, sc.name, normalize(base, b.String()))
 		})
 	}
@@ -77,7 +78,7 @@ func runInstaller(t *testing.T, base string, args ...string) result {
 // runInstallerInput runs `harness install` with stdin, and TMPDIR inside the sandbox so the uninstall's cache removal never reaches the real one.
 func runInstallerInput(t *testing.T, base, stdin string, args ...string) result {
 	t.Helper()
-	return runHarnessInput(t, base, stdin, []string{"TMPDIR=" + filepath.Join(base, "tmp")}, append([]string{"install"}, args...)...)
+	return runHarnessInput(t, base, stdin, []string{"TMPDIR=" + filepath.Join(base, "tmp"), "HARNESS_ASSETS=" + filepath.Join(base, "checkout")}, append([]string{"install"}, args...)...)
 }
 
 // runHarness runs the built binary from the sandbox checkout, with only the shims and the system directories on PATH, plus any extra environment.
@@ -171,7 +172,7 @@ esac`,
 
 // seedLived is a machine with history: private entries beside managed ones, collisions, stale and foreign links, hand-written aliases, and the client config Engram writes.
 func seedLived(t *testing.T, base string) {
-	home, checkoutRoot := filepath.Join(base, "home"), filepath.Join(base, "checkout")
+	home, checkoutRoot := filepath.Join(base, "home"), filepath.Join(base, "home", ".local", "share", "harness")
 	for rel, text := range map[string]string{
 		".claude/settings.json": `{
   "env": {
@@ -275,6 +276,10 @@ func tree(t *testing.T, b *strings.Builder, root string, contents bool) {
 		rel, _ := filepath.Rel(root, path)
 		switch {
 		case rel == ".":
+		case rel == ".local/share/harness" && d.IsDir():
+			// The unpacked assets are the sandbox checkout's copy; the generated section lists what the install adds.
+			fmt.Fprintf(b, "D %s\n", rel)
+			return filepath.SkipDir
 		case rel == "Library" && d.IsDir():
 			// macOS's system Python writes its bytecode cache here, stamped differently on every run.
 			return filepath.SkipDir
@@ -294,6 +299,11 @@ func tree(t *testing.T, b *strings.Builder, root string, contents bool) {
 				return err
 			}
 			fmt.Fprintf(b, "F %s\n", rel)
+			if !utf8.Valid(data) {
+				// The harness binary an install copies into place.
+				b.WriteString("  |<binary>\n")
+				return nil
+			}
 			for _, line := range strings.Split(string(data), "\n") {
 				fmt.Fprintf(b, "  |%s\n", line)
 			}
@@ -312,7 +322,7 @@ var (
 
 // normalize replaces the sandbox paths and the backup timestamps, which differ on every run.
 func normalize(base, s string) string {
-	s = strings.NewReplacer(base+"/checkout", "$CHECKOUT", base+"/home", "$HOME", base+"/shims", "$SHIMS", base, "$BASE").Replace(s)
+	s = strings.NewReplacer(base+"/checkout", "$CHECKOUT", base+"/home/.local/share/harness", "$DATA", base+"/home", "$HOME", base+"/shims", "$SHIMS", base, "$BASE").Replace(s)
 	return stamp.ReplaceAllString(s, "<stamp>")
 }
 

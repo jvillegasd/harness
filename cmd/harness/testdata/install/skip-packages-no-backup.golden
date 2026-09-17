@@ -12,46 +12,46 @@ F .agent-browser/browsers/chrome
   |
 D .agents
 D .agents/skills
-L .agents/skills/adversarial-review -> $CHECKOUT/skills/adversarial-review
-L .agents/skills/caveman-commit -> $CHECKOUT/skills/caveman-commit
-L .agents/skills/codebase-design -> $CHECKOUT/skills/codebase-design
-L .agents/skills/diagnosing-bugs -> $CHECKOUT/skills/diagnosing-bugs
-L .agents/skills/domain-modeling -> $CHECKOUT/skills/domain-modeling
-L .agents/skills/evidence -> $CHECKOUT/skills/evidence
-L .agents/skills/grill-with-docs -> $CHECKOUT/skills/grill-with-docs
-L .agents/skills/grilling -> $CHECKOUT/skills/grilling
-L .agents/skills/handoff -> $CHECKOUT/skills/handoff
-L .agents/skills/impeccable -> $CHECKOUT/skills/impeccable
-L .agents/skills/improve-codebase-architecture -> $CHECKOUT/skills/improve-codebase-architecture
-L .agents/skills/local-tracker -> $CHECKOUT/skills/local-tracker
-L .agents/skills/ponytail -> $CHECKOUT/skills/ponytail
-L .agents/skills/resolving-merge-conflicts -> $CHECKOUT/skills/resolving-merge-conflicts
-L .agents/skills/setup-harness -> $CHECKOUT/skills/setup-harness
-L .agents/skills/tdd -> $CHECKOUT/skills/tdd
-L .agents/skills/workflow-checkpoint -> $CHECKOUT/skills/workflow-checkpoint
+L .agents/skills/adversarial-review -> $DATA/skills/adversarial-review
+L .agents/skills/caveman-commit -> $DATA/skills/caveman-commit
+L .agents/skills/codebase-design -> $DATA/skills/codebase-design
+L .agents/skills/diagnosing-bugs -> $DATA/skills/diagnosing-bugs
+L .agents/skills/domain-modeling -> $DATA/skills/domain-modeling
+L .agents/skills/evidence -> $DATA/skills/evidence
+L .agents/skills/grill-with-docs -> $DATA/skills/grill-with-docs
+L .agents/skills/grilling -> $DATA/skills/grilling
+L .agents/skills/handoff -> $DATA/skills/handoff
+L .agents/skills/impeccable -> $DATA/skills/impeccable
+L .agents/skills/improve-codebase-architecture -> $DATA/skills/improve-codebase-architecture
+L .agents/skills/local-tracker -> $DATA/skills/local-tracker
+L .agents/skills/ponytail -> $DATA/skills/ponytail
+L .agents/skills/resolving-merge-conflicts -> $DATA/skills/resolving-merge-conflicts
+L .agents/skills/setup-harness -> $DATA/skills/setup-harness
+L .agents/skills/tdd -> $DATA/skills/tdd
+L .agents/skills/workflow-checkpoint -> $DATA/skills/workflow-checkpoint
 D .claude
-L .claude/CLAUDE.md -> $CHECKOUT/POLICY.md
+L .claude/CLAUDE.md -> $DATA/POLICY.md
 D .claude/agents
-L .claude/agents/executor.md -> $CHECKOUT/.generated/agents/claude/executor.md
+L .claude/agents/executor.md -> $DATA/.generated/agents/claude/executor.md
 F .claude/agents/mine.md
   |private agent
   |
-L .claude/agents/review-refuter.md -> $CHECKOUT/.generated/agents/claude/review-refuter.md
-L .claude/agents/reviewer-a.md -> $CHECKOUT/.generated/agents/claude/reviewer-a.md
-L .claude/agents/reviewer-b.md -> $CHECKOUT/.generated/agents/claude/reviewer-b.md
+L .claude/agents/review-refuter.md -> $DATA/.generated/agents/claude/review-refuter.md
+L .claude/agents/reviewer-a.md -> $DATA/.generated/agents/claude/reviewer-a.md
+L .claude/agents/reviewer-b.md -> $DATA/.generated/agents/claude/reviewer-b.md
 D .claude/commands
-L .claude/commands/abandon.md -> $CHECKOUT/commands/abandon.md
-L .claude/commands/address-review.md -> $CHECKOUT/commands/address-review.md
-L .claude/commands/ask.md -> $CHECKOUT/commands/ask.md
-L .claude/commands/create-ticket.md -> $CHECKOUT/commands/create-ticket.md
-L .claude/commands/feedback.md -> $CHECKOUT/commands/feedback.md
-L .claude/commands/harness-audit.md -> $CHECKOUT/commands/harness-audit.md
-L .claude/commands/land.md -> $CHECKOUT/commands/land.md
-L .claude/commands/proto.md -> $CHECKOUT/commands/proto.md
-L .claude/commands/research.md -> $CHECKOUT/commands/research.md
-L .claude/commands/ship.md -> $CHECKOUT/commands/ship.md
-L .claude/commands/spec.md -> $CHECKOUT/commands/spec.md
-L .claude/commands/triage.md -> $CHECKOUT/commands/triage.md
+L .claude/commands/abandon.md -> $DATA/commands/abandon.md
+L .claude/commands/address-review.md -> $DATA/commands/address-review.md
+L .claude/commands/ask.md -> $DATA/commands/ask.md
+L .claude/commands/create-ticket.md -> $DATA/commands/create-ticket.md
+L .claude/commands/feedback.md -> $DATA/commands/feedback.md
+L .claude/commands/harness-audit.md -> $DATA/commands/harness-audit.md
+L .claude/commands/land.md -> $DATA/commands/land.md
+L .claude/commands/proto.md -> $DATA/commands/proto.md
+L .claude/commands/research.md -> $DATA/commands/research.md
+L .claude/commands/ship.md -> $DATA/commands/ship.md
+L .claude/commands/spec.md -> $DATA/commands/spec.md
+L .claude/commands/triage.md -> $DATA/commands/triage.md
 D .claude/mcp
 F .claude/mcp/engram.json
   |{}
@@ -116,51 +116,51 @@ F .claude/settings.json
   |}
   |
 D .claude/skills
-L .claude/skills/adversarial-review -> $CHECKOUT/skills/adversarial-review
-L .claude/skills/caveman-commit -> $CHECKOUT/skills/caveman-commit
-L .claude/skills/codebase-design -> $CHECKOUT/skills/codebase-design
-L .claude/skills/diagnosing-bugs -> $CHECKOUT/skills/diagnosing-bugs
-L .claude/skills/domain-modeling -> $CHECKOUT/skills/domain-modeling
-L .claude/skills/evidence -> $CHECKOUT/skills/evidence
-L .claude/skills/grill-with-docs -> $CHECKOUT/skills/grill-with-docs
-L .claude/skills/grilling -> $CHECKOUT/skills/grilling
-L .claude/skills/handoff -> $CHECKOUT/skills/handoff
-L .claude/skills/impeccable -> $CHECKOUT/skills/impeccable
-L .claude/skills/improve-codebase-architecture -> $CHECKOUT/skills/improve-codebase-architecture
-L .claude/skills/local-tracker -> $CHECKOUT/skills/local-tracker
+L .claude/skills/adversarial-review -> $DATA/skills/adversarial-review
+L .claude/skills/caveman-commit -> $DATA/skills/caveman-commit
+L .claude/skills/codebase-design -> $DATA/skills/codebase-design
+L .claude/skills/diagnosing-bugs -> $DATA/skills/diagnosing-bugs
+L .claude/skills/domain-modeling -> $DATA/skills/domain-modeling
+L .claude/skills/evidence -> $DATA/skills/evidence
+L .claude/skills/grill-with-docs -> $DATA/skills/grill-with-docs
+L .claude/skills/grilling -> $DATA/skills/grilling
+L .claude/skills/handoff -> $DATA/skills/handoff
+L .claude/skills/impeccable -> $DATA/skills/impeccable
+L .claude/skills/improve-codebase-architecture -> $DATA/skills/improve-codebase-architecture
+L .claude/skills/local-tracker -> $DATA/skills/local-tracker
 D .claude/skills/mine
 F .claude/skills/mine/SKILL.md
   |private skill
   |
-L .claude/skills/ponytail -> $CHECKOUT/skills/ponytail
-L .claude/skills/resolving-merge-conflicts -> $CHECKOUT/skills/resolving-merge-conflicts
-L .claude/skills/setup-harness -> $CHECKOUT/skills/setup-harness
-L .claude/skills/tdd -> $CHECKOUT/skills/tdd
-L .claude/skills/workflow-checkpoint -> $CHECKOUT/skills/workflow-checkpoint
+L .claude/skills/ponytail -> $DATA/skills/ponytail
+L .claude/skills/resolving-merge-conflicts -> $DATA/skills/resolving-merge-conflicts
+L .claude/skills/setup-harness -> $DATA/skills/setup-harness
+L .claude/skills/tdd -> $DATA/skills/tdd
+L .claude/skills/workflow-checkpoint -> $DATA/skills/workflow-checkpoint
 F .claude.json
   |{"mcpServers": {"other": {}}}
   |
 D .config
 D .config/opencode
-L .config/opencode/AGENTS.md -> $CHECKOUT/POLICY.md
+L .config/opencode/AGENTS.md -> $DATA/POLICY.md
 D .config/opencode/agents
-L .config/opencode/agents/executor.md -> $CHECKOUT/.generated/agents/opencode/executor.md
-L .config/opencode/agents/review-refuter.md -> $CHECKOUT/.generated/agents/opencode/review-refuter.md
-L .config/opencode/agents/reviewer-a.md -> $CHECKOUT/.generated/agents/opencode/reviewer-a.md
-L .config/opencode/agents/reviewer-b.md -> $CHECKOUT/.generated/agents/opencode/reviewer-b.md
+L .config/opencode/agents/executor.md -> $DATA/.generated/agents/opencode/executor.md
+L .config/opencode/agents/review-refuter.md -> $DATA/.generated/agents/opencode/review-refuter.md
+L .config/opencode/agents/reviewer-a.md -> $DATA/.generated/agents/opencode/reviewer-a.md
+L .config/opencode/agents/reviewer-b.md -> $DATA/.generated/agents/opencode/reviewer-b.md
 D .config/opencode/command
-L .config/opencode/command/abandon.md -> $CHECKOUT/commands/abandon.md
-L .config/opencode/command/address-review.md -> $CHECKOUT/commands/address-review.md
-L .config/opencode/command/ask.md -> $CHECKOUT/commands/ask.md
-L .config/opencode/command/create-ticket.md -> $CHECKOUT/commands/create-ticket.md
-L .config/opencode/command/feedback.md -> $CHECKOUT/commands/feedback.md
-L .config/opencode/command/harness-audit.md -> $CHECKOUT/commands/harness-audit.md
-L .config/opencode/command/land.md -> $CHECKOUT/commands/land.md
-L .config/opencode/command/proto.md -> $CHECKOUT/commands/proto.md
-L .config/opencode/command/research.md -> $CHECKOUT/commands/research.md
-L .config/opencode/command/ship.md -> $CHECKOUT/commands/ship.md
-L .config/opencode/command/spec.md -> $CHECKOUT/commands/spec.md
-L .config/opencode/command/triage.md -> $CHECKOUT/commands/triage.md
+L .config/opencode/command/abandon.md -> $DATA/commands/abandon.md
+L .config/opencode/command/address-review.md -> $DATA/commands/address-review.md
+L .config/opencode/command/ask.md -> $DATA/commands/ask.md
+L .config/opencode/command/create-ticket.md -> $DATA/commands/create-ticket.md
+L .config/opencode/command/feedback.md -> $DATA/commands/feedback.md
+L .config/opencode/command/harness-audit.md -> $DATA/commands/harness-audit.md
+L .config/opencode/command/land.md -> $DATA/commands/land.md
+L .config/opencode/command/proto.md -> $DATA/commands/proto.md
+L .config/opencode/command/research.md -> $DATA/commands/research.md
+L .config/opencode/command/ship.md -> $DATA/commands/ship.md
+L .config/opencode/command/spec.md -> $DATA/commands/spec.md
+L .config/opencode/command/triage.md -> $DATA/commands/triage.md
 F .config/opencode/opencode.json
   |{
   |  "$schema": "https://opencode.ai/config.json",
@@ -214,14 +214,14 @@ F .local/bin/claude
   |#!/bin/sh
   |
 F .local/bin/harness
-  |#!/bin/sh
-  |
+  |<binary>
 D .local/share
 D .local/share/claude
 D .local/share/claude/versions
 F .local/share/claude/versions/1
   |binary
   |
+D .local/share/harness
 D .local/share/opencode
 F .local/share/opencode/auth.json
   |{"openai": "private-secret"}
@@ -230,7 +230,7 @@ F .zshrc
   |export KEEP=1
   |alias ll='ls -l'
   |# portable-harness aliases
-  |[ -f "$CHECKOUT/aliases.sh" ] && source "$CHECKOUT/aliases.sh"
+  |[ -f "$DATA/aliases.sh" ] && source "$DATA/aliases.sh"
   |
 == generated
 D agents
