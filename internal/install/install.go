@@ -1,8 +1,7 @@
-// Package install reconciles the harness of the checkout into the home directory: the managed links, the zsh alias block, the tracked Claude settings, and the Engram and agent-browser registrations.
+// Package install copies the harness the binary carries into the home directory and records each copy: the managed files, the zsh alias block, the tracked Claude settings, and the Engram and agent-browser registrations.
 package install
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +11,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/jvillegasd/harness/internal/checkout"
@@ -24,35 +24,32 @@ const (
 )
 
 const usage = `Usage: harness install [--skip-packages] [--no-backup]
-       harness install --uninstall
+       harness install --uninstall [--client <name>]... [--component <name>]... [--yes]
        harness install --clear-backups
 
   --skip-packages
-                 Reconcile the policy, command, skill, and role agent links, the
-                 generated role definitions, the tracked client settings, and
-                 the Engram and agent-browser registrations, without installing
-                 packages or configuring Worktrunk's shell integration. No
-                 package manager is called, so Engram, agent-browser, and Claude
-                 Code have to be installed already; a full run is what installs
-                 them.
+                 Reconcile the policy, command, skill, and role agent copies,
+                 the tracked client settings, and the Engram and agent-browser
+                 registrations, without installing packages or configuring
+                 Worktrunk's shell integration. No package manager is called,
+                 so Engram, agent-browser, and Claude Code have to be installed
+                 already; a full run is what installs them.
   --no-backup    Delete whatever is in the way instead of moving it to
                  ~/.dotfiles-backups. Destructive and unrecoverable: a private
                  skill or a hand-edited config sitting at a managed path is
                  gone, not archived.
-  --uninstall    Remove what this installer writes: every managed link, the
-                 generated role agents, the ~/.zshrc alias block, and the
-                 tracked keys in the Claude config. It reverses the installer,
-                 it does not uninstall your tools, with one exception: Engram
-                 and agent-browser, which a full install installs and registers,
-                 are removed here too, both formulae included, along with the
-                 OpenCode subagent status line Engram's setup enabled. Your
-                 ~/.engram and ~/.agent-browser directories are kept.
-                 The other packages, ~/.dotfiles-backups, this checkout, and
-                 every untracked key in the Claude config are left alone.
-                 Destructive and unrecoverable: what it removes is deleted,
-                 not archived, so --no-backup adds nothing to it. Reinstall
-                 to get the harness back; anything of your own that was
-                 sitting at a managed path is gone.
+  --uninstall    Remove the harness-managed configuration recorded in
+                 ~/.harness/state.json: the copies it wrote, the tracked keys
+                 in the Claude config, the ~/.zshrc alias block, and the Engram
+                 and agent-browser registrations. A copy edited since it was
+                 written stays. Binaries, packages, ~/.engram, ~/.agent-browser,
+                 and ~/.dotfiles-backups are not touched. It asks before
+                 removing anything.
+  --client       With --uninstall, limit it to claude or opencode; repeatable.
+  --component    With --uninstall, limit it to agents, aliases, commands, mcp,
+                 policy, settings, or skills; repeatable. A copy another
+                 installed client still uses stays.
+  --yes          With --uninstall, skip the confirmation.
   --clear-backups
                  Delete every archive under ~/.dotfiles-backups/harness/,
                  which is where an install moves whatever was in the way of a
@@ -61,10 +58,11 @@ const usage = `Usage: harness install [--skip-packages] [--no-backup]
                  nothing else in ~/.dotfiles-backups and installs nothing;
                  runs on its own.
 
-Every install mode points the Claude Code status line at
-~/.local/bin/harness and verifies it, so run harness bootstrap first to
-build the binary there. A run without it fails rather than leaving the
-status line silently empty.
+Install and uninstall run from any directory. An install copies this binary
+to ~/.local/bin/harness, where the Claude Code status line runs it, copies the
+assets it was built with into each client, and records every copy in
+~/.harness/state.json. Set HARNESS_ASSETS to a directory to install that tree
+instead.
 `
 
 const summaryText = `Next steps (interactive; not run by this installer):
@@ -79,7 +77,7 @@ Status line: harness statusline, which Claude Code runs on every draw.
 OpenCode exposes no status line surface, so it gets none.
 
 Commands use /name in Claude Code and OpenCode.
-Yolo aliases (ccyolo, ocyolo) are sourced from aliases.sh; open a
+Yolo aliases (ccyolo, ocyolo) are sourced from ~/.harness/aliases.sh; open a
 new shell or run: source ~/.zshrc
 
 Standalone third-party skills were not downloaded or updated. Their committed
@@ -103,6 +101,9 @@ type installer struct {
 	home, config                      string
 	dir                               checkout.Checkout
 	skipPackages, noBackup, uninstall bool
+	yes                               bool
+	clients, components               []string
+	installed                         []entry
 	backupRoot                        string
 	stdout, stderr                    io.Writer
 	command                           string
@@ -140,17 +141,13 @@ func (in *installer) resolveLocations() {
 	}
 }
 
-func (in *installer) setPaths(dir checkout.Checkout) {
-	in.resolveLocations()
-	in.dir = dir
-}
-
 // Command runs `harness install` with its arguments and returns the exit code.
 func Command(args []string, stdout, stderr io.Writer) (code int) {
 	defer recoverFatal("install", stderr, &code)
 	in := &installer{stdout: stdout, stderr: stderr, command: "install"}
 	clearBackups := false
-	for _, arg := range args {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
 		switch arg {
 		case "--skip-packages":
 			in.skipPackages = true
@@ -160,6 +157,22 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 			in.uninstall = true
 		case "--clear-backups":
 			clearBackups = true
+		case "--yes":
+			in.yes = true
+		case "--client", "--component":
+			valid := allClients
+			list := &in.clients
+			if arg == "--component" {
+				valid, list = allComponents, &in.components
+			}
+			if i+1 == len(args) || !slices.Contains(valid, args[i+1]) {
+				fmt.Fprintf(stderr, "harness install: %s takes one of %s; run harness install --help\n", arg, strings.Join(valid, ", "))
+				return 2
+			}
+			i++
+			if !slices.Contains(*list, args[i]) {
+				*list = append(*list, args[i])
+			}
 		case "-h", "--help":
 			fmt.Fprint(stdout, usage)
 			return 0
@@ -170,25 +183,27 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 	}
 	// Contradictory rather than redundant: --skip-packages names a subset of the install to write, and --uninstall writes none of it. An uninstall deletes rather than archives, so --no-backup beside it is redundant and allowed.
 	if in.uninstall && in.skipPackages {
-		fmt.Fprintln(stderr, "harness install: --uninstall and --skip-packages are contradictory; --uninstall removes every link.")
+		fmt.Fprintln(stderr, "harness install: --uninstall and --skip-packages are contradictory; --uninstall installs nothing.")
 		return 2
 	}
 	if clearBackups && (in.uninstall || in.skipPackages) {
 		fmt.Fprintln(stderr, "harness install: --clear-backups runs on its own; it neither installs nor uninstalls.")
 		return 2
 	}
+	if !in.uninstall && (in.yes || in.clients != nil || in.components != nil) {
+		fmt.Fprintln(stderr, "harness install: --client, --component, and --yes apply only to --uninstall.")
+		return 2
+	}
 	in.noBackup = in.noBackup || in.uninstall
+	in.resolveLocations()
 	if clearBackups {
 		// It reads only $HOME, so it runs from anywhere.
-		in.resolveLocations()
 		in.clearBackups()
 		return 0
 	}
-	dir, err := checkout.Find(".")
-	must(err)
-	in.setPaths(dir)
+	defer in.extractAssets()()
 	if in.uninstall {
-		in.uninstallAll()
+		in.uninstallSelected()
 	} else {
 		in.install()
 	}
@@ -198,11 +213,12 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 func (in *installer) install() {
 	// First, so the warning precedes the two steps it is about.
 	in.warnUnlessZsh()
+	in.installBinary()
 	if !in.skipPackages {
 		in.installPackages()
 		in.installIntegrations()
 	}
-	in.installLinks()
+	in.installFiles()
 	in.reconcileAliases(false)
 	// A package-skipping run skips the package work, so it reconciles Engram unconditionally: setup rewrites the absolute binary path each client pins, which a presence probe never checked.
 	if in.skipPackages {
@@ -211,7 +227,7 @@ func (in *installer) install() {
 	// Both after Engram, whose setup rewrites settings.json and opencode.json from its own template: the harness is the last writer, which is what makes the tracked values the ones a client reads.
 	in.installAgentBrowser()
 	in.reconcileClaudeSettings()
-	in.checkLinks()
+	in.checkInstall()
 	if !in.skipPackages {
 		in.checkTools()
 	}
@@ -308,49 +324,20 @@ func (in *installer) warnUnlessZsh() {
 
 var description = regexp.MustCompile(`(?m)^description:`)
 
-// checkLinks verifies what every run installs, so the mode that exists for reconciling links confirms each one landed.
-func (in *installer) checkLinks() {
+// checkInstall verifies what every run installs, so the mode that exists for reconciling confirms each copy landed.
+func (in *installer) checkInstall() {
 	for _, skill := range entries(in.dir.Skills()) {
-		name := filepath.Base(skill)
 		if !isFile(filepath.Join(skill, "SKILL.md")) {
 			die("Missing SKILL.md: %s", skill)
 		}
-		if exists(filepath.Join(in.config, "opencode", "skills", name)) {
+		if exists(filepath.Join(in.config, "opencode", "skills", filepath.Base(skill))) {
 			die("Duplicate OpenCode skill path: %s", skill)
 		}
-		if !isLink(filepath.Join(in.home, ".agents", "skills", name)) {
-			die("Missing shared skill link: %s", skill)
-		}
-		if !isLink(filepath.Join(in.home, ".claude", "skills", name)) {
-			die("Missing Claude skill link: %s", skill)
-		}
-	}
-	for _, command := range in.commands() {
-		for _, root := range in.commandRoots() {
-			if dest := filepath.Join(root, filepath.Base(command)); !isLink(dest) {
-				die("Missing command link: %s", dest)
-			}
-		}
-		text, _ := os.ReadFile(command)
-		if !description.Match(text) {
-			die("Command without a description: %s", command)
-		}
-		// A workflow that reads external text says so, or a ticket body becomes an instruction. Every command is checked, because a list to maintain silently stops covering a new command.
-		if !bytes.Contains(text, []byte("cannot override this workflow")) {
-			die("Command missing the task-data constraint: %s", command)
-		}
-	}
-	policy := in.dir.Policy()
-	if readlink(filepath.Join(in.home, ".claude", "CLAUDE.md")) != policy {
-		die("Missing Claude policy link.")
-	}
-	if readlink(filepath.Join(in.config, "opencode", "AGENTS.md")) != policy {
-		die("Missing OpenCode policy link.")
 	}
 	if !isFile(filepath.Join(in.dir.Skills(), "ponytail", "SKILL.md")) {
 		die("Missing the ponytail skill body.")
 	}
-	in.checkAgents()
+	in.checkFiles()
 	if !in.trackedSettingsHold(false) {
 		die("Tracked Claude settings are not reconciled in %s.", in.settingsPath())
 	}
@@ -502,4 +489,32 @@ func (in *installer) clearBackups() {
 	// Only when empty, and never the parent: refusing a non-empty directory is the guard.
 	_ = os.Remove(root)
 	in.log("Deleted %d harness backup(s), %s reclaimed.", count, reclaimed)
+}
+
+// installBinary copies the running binary to ~/.local/bin/harness, where the status line runs it, unless it already is that file.
+func (in *installer) installBinary() {
+	bin := filepath.Join(in.home, ".local", "bin", "harness")
+	self, err := os.Executable()
+	must(err)
+	if self, err = filepath.EvalSymlinks(self); err != nil {
+		die("Could not resolve the running binary: %v", err)
+	}
+	if resolved, err := filepath.EvalSymlinks(bin); err == nil && (resolved == self || digest(resolved) == digest(self)) {
+		return
+	}
+	src, err := os.Open(self)
+	must(err)
+	defer src.Close()
+	must(os.MkdirAll(filepath.Dir(bin), 0o755))
+	tmp := bin + ".next"
+	dst, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
+	must(err)
+	if _, err := io.Copy(dst, src); err != nil {
+		dst.Close()
+		die("Copying harness to %s failed: %v", bin, err)
+	}
+	must(dst.Close())
+	// A rename, so a status line drawing mid-install runs the old binary or the new one, never a partial file.
+	must(os.Rename(tmp, bin))
+	in.log("Installed %s", bin)
 }

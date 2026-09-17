@@ -69,7 +69,6 @@ var gaps = []string{
 
 var unverified = []string{
 	"unverified: every restriction above is static configuration until an installed client is probed at runtime",
-	"unverified: claude loading an agent definition through a symlink",
 	"unverified: claude reading a diff or standards file outside the project without a permission prompt",
 	"unverified: opencode applying the * deny to MCP tools",
 	"unverified: the ccyolo and ocyolo launchers leaving agent restrictions in force, since each bypasses or overrides the parent's permissions",

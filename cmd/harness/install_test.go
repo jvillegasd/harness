@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/install goldens from the installer under test")
@@ -22,12 +24,17 @@ var installScenarios = []struct {
 	darwinOnly bool
 	seed       func(*testing.T, string)
 	runs       [][]string
+	stdin      string
 }{
 	{name: "skip-packages", seed: seedLived, runs: [][]string{{"--skip-packages"}}},
 	{name: "skip-packages-no-backup", seed: seedLived, runs: [][]string{{"--skip-packages", "--no-backup"}}},
 	// Linux adds --with-deps to the browser download, so this golden is macOS's.
 	{name: "full", darwinOnly: true, seed: seedFull, runs: [][]string{nil}},
-	{name: "uninstall", seed: seedLived, runs: [][]string{{"--skip-packages"}, {"--uninstall"}}},
+	{name: "uninstall", seed: seedLived, runs: [][]string{{"--skip-packages"}, {"--uninstall", "--yes"}}},
+	// OpenCode alone: its copies and registrations go, and ~/.agents/skills stays because Claude Code still reads guarded bodies there.
+	{name: "uninstall-partial", seed: seedLived, runs: [][]string{{"--skip-packages"}, {"--uninstall", "--client", "opencode", "--yes"}}},
+	// Declining the confirmation removes nothing.
+	{name: "uninstall-declined", seed: seedLived, runs: [][]string{{"--skip-packages"}, {"--uninstall"}}, stdin: "n\n"},
 	{name: "clear-backups", seed: seedBackups, runs: [][]string{{"--clear-backups"}}},
 	{name: "rejected-flags", runs: [][]string{{"--uninstall", "--skip-packages"}, {"--clear-backups", "--uninstall"}, {"--skip-packages", "--clear-backups"}, {"--bogus"}}},
 }
@@ -44,7 +51,7 @@ func TestInstallerGolden(t *testing.T) {
 			}
 			var b strings.Builder
 			for _, args := range sc.runs {
-				r := runInstaller(t, base, args...)
+				r := runInstallerInput(t, base, sc.stdin, args...)
 				fmt.Fprintf(&b, "run [%s]: exit %d\n", strings.Join(args, " "), r.code)
 				if r.code != 0 {
 					b.WriteString(ansi.ReplaceAllString(r.stderr, ""))
@@ -58,8 +65,6 @@ func TestInstallerGolden(t *testing.T) {
 			b.Write(log)
 			b.WriteString("== home\n")
 			tree(t, &b, filepath.Join(base, "home"), true)
-			b.WriteString("== generated\n")
-			tree(t, &b, filepath.Join(base, "checkout", ".generated"), false)
 			golden(t, sc.name, normalize(base, b.String()))
 		})
 	}
@@ -68,13 +73,25 @@ func TestInstallerGolden(t *testing.T) {
 // runInstaller runs `harness install` from the sandbox checkout.
 func runInstaller(t *testing.T, base string, args ...string) result {
 	t.Helper()
-	return runHarness(t, base, nil, append([]string{"install"}, args...)...)
+	return runInstallerInput(t, base, "", args...)
+}
+
+// runInstallerInput runs `harness install` with stdin, and TMPDIR inside the sandbox so the uninstall's cache removal never reaches the real one.
+func runInstallerInput(t *testing.T, base, stdin string, args ...string) result {
+	t.Helper()
+	return runHarnessInput(t, base, stdin, []string{"TMPDIR=" + filepath.Join(base, "tmp"), "HARNESS_ASSETS=" + filepath.Join(base, "checkout")}, append([]string{"install"}, args...)...)
 }
 
 // runHarness runs the built binary from the sandbox checkout, with only the shims and the system directories on PATH, plus any extra environment.
 func runHarness(t *testing.T, base string, extra []string, args ...string) result {
 	t.Helper()
+	return runHarnessInput(t, base, "", extra, args...)
+}
+
+func runHarnessInput(t *testing.T, base, stdin string, extra []string, args ...string) result {
+	t.Helper()
 	cmd := exec.Command(binary, args...)
+	cmd.Stdin = strings.NewReader(stdin)
 	cmd.Dir = filepath.Join(base, "checkout")
 	cmd.Env = append([]string{"HOME=" + filepath.Join(base, "home"), "PATH=" + filepath.Join(base, "shims") + ":/usr/bin:/bin", "SHELL=/bin/zsh"}, extra...)
 	var stdout, stderr strings.Builder
@@ -115,8 +132,10 @@ func sandbox(t *testing.T) string {
 		}
 		writeMode(t, filepath.Join(base, "checkout", rel), string(data), info.Mode().Perm())
 	}
-	if err := os.MkdirAll(filepath.Join(base, "home"), 0o755); err != nil {
-		t.Fatal(err)
+	for _, dir := range []string{"home", "tmp"} {
+		if err := os.MkdirAll(filepath.Join(base, dir), 0o755); err != nil {
+			t.Fatal(err)
+		}
 	}
 	// The status line binary a prior `harness bootstrap` left in place, which every install mode now probes.
 	writeMode(t, filepath.Join(base, "home", ".local/bin/harness"), "#!/bin/sh\n", 0o755)
@@ -192,6 +211,8 @@ func seedLived(t *testing.T, base string) {
 		".config/opencode/tui.json":                 `{"plugin": ["opencode-subagent-statusline", "keep"]}` + "\n",
 		".config/opencode/plugins/engram.ts":        "export {}\n",
 		".local/bin/claude-seo":                     "#!/bin/sh\n",
+		".engram/engram.db":                         "memories\n",
+		".agent-browser/browsers/chrome":            "browser\n",
 		".local/share/opencode/auth.json":           `{"openai": "private-secret"}` + "\n",
 		".zshrc":                                    "export KEEP=1\nalias ccyolo='claude'\nalias ll='ls -l'\n\n\n",
 		".dotfiles-backups/other/keep.txt":          "not the harness's\n",
@@ -205,6 +226,8 @@ func seedLived(t *testing.T, base string) {
 	for rel, target := range map[string]string{
 		".claude/commands/retired.md": checkoutRoot + "/commands/retired.md",
 		".claude/commands/renamed.md": checkoutRoot + "/commands/ship.md",
+		// A link an install from before the copies left at a managed path: archived, then replaced by a copy.
+		".claude/commands/ship.md":    checkoutRoot + "/commands/ship.md",
 		".claude/commands/foreign.md": "/nonexistent/foreign.md",
 		".claude/agents/retired.md":   checkoutRoot + "/.generated/agents/claude/retired.md",
 		".config/opencode/command":    elsewhere,
@@ -244,6 +267,16 @@ func writeMode(t *testing.T, path, text string, mode fs.FileMode) {
 // tree writes one line per entry under root: links with their text, directories, and files with their content when contents is set.
 func tree(t *testing.T, b *strings.Builder, root string, contents bool) {
 	t.Helper()
+	copies := map[string]bool{}
+	if data, err := os.ReadFile(filepath.Join(root, ".harness", "state.json")); err == nil {
+		var s struct{ Files []struct{ Path string } }
+		if err := json.Unmarshal(data, &s); err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range s.Files {
+			copies[f.Path] = true
+		}
+	}
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			if path == root && errors.Is(err, fs.ErrNotExist) {
@@ -254,6 +287,12 @@ func tree(t *testing.T, b *strings.Builder, root string, contents bool) {
 		rel, _ := filepath.Rel(root, path)
 		switch {
 		case rel == ".":
+		case copies[path]:
+			// A managed copy of a checkout asset: the state file records its digest, so the golden names it rather than repeating the asset.
+			fmt.Fprintf(b, "C %s\n", rel)
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
 		case rel == "Library" && d.IsDir():
 			// macOS's system Python writes its bytecode cache here, stamped differently on every run.
 			return filepath.SkipDir
@@ -273,6 +312,11 @@ func tree(t *testing.T, b *strings.Builder, root string, contents bool) {
 				return err
 			}
 			fmt.Fprintf(b, "F %s\n", rel)
+			if !utf8.Valid(data) {
+				// The harness binary an install copies into place.
+				b.WriteString("  |<binary>\n")
+				return nil
+			}
 			for _, line := range strings.Split(string(data), "\n") {
 				fmt.Fprintf(b, "  |%s\n", line)
 			}
@@ -290,8 +334,15 @@ var (
 )
 
 // normalize replaces the sandbox paths and the backup timestamps, which differ on every run.
+var (
+	digestText = regexp.MustCompile(`sha256:[0-9a-f]{64}`)
+	assetsDir  = regexp.MustCompile(`harness-assets-[0-9]+`)
+)
+
 func normalize(base, s string) string {
 	s = strings.NewReplacer(base+"/checkout", "$CHECKOUT", base+"/home", "$HOME", base+"/shims", "$SHIMS", base, "$BASE").Replace(s)
+	s = digestText.ReplaceAllString(s, "sha256:<digest>")
+	s = assetsDir.ReplaceAllString(s, "harness-assets-<n>")
 	return stamp.ReplaceAllString(s, "<stamp>")
 }
 
