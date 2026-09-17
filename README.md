@@ -198,6 +198,7 @@ test -z "$(gofmt -l .)"
 go test ./...
 go build ./...
 git diff --check
+git diff --cached --check
 ```
 
 `AGENTS.md` explains each rung, the installer goldens, and the behavioral acceptance that a static check cannot settle.

@@ -141,7 +141,7 @@ func TestSkillsAddDrivesNpxAndLinks(t *testing.T) {
 	if _, ok := lr.locked(t)["myskill"]; !ok {
 		t.Fatal("myskill missing from the lock")
 	}
-	if !strings.Contains(r.stdout, "harness skills verify") {
+	if !strings.Contains(r.stdout, "commit only the approved change") {
 		t.Fatalf("add did not print the review hint: %q", r.stdout)
 	}
 }

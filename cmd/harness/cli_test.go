@@ -148,6 +148,7 @@ func TestCommandHelpMatrix(t *testing.T) {
 func TestCommandInvocationMatrix(t *testing.T) {
 	args := [][]string{
 		{"bogus"},
+		{"locks", "verify"},
 		{"install", "--bogus"},
 		{"install", "--uninstall", "--skip-packages"},
 		{"install", "--clear-backups", "--uninstall"},
@@ -171,7 +172,6 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"skills", "add", "bad-source", "name"},
 		{"skills", "update", "extra"},
 		{"skills", "remove"},
-		{"locks"},
 		{"skills", "check"},
 		{"skills", "verify", "extra"},
 		{"state"},
