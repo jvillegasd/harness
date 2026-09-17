@@ -18,7 +18,7 @@ harness scenarios compare --before <dir> --after <dir>
 | `report` | Print `local-tooling` and `behavioral-acceptance` as separate lines. |
 | `compare` | Report behavioral pass rates first, then efficiency among passing runs only. |
 
-`--matrix`, `--out`, and `--root` override the declaration file, the attempts directory, and the repository root. `run --scenario <id>` narrows to one scenario; an id that matches no declared scenario is rejected before any attempt is written, and `compare` requires both `--before` and `--after`.
+`harness scenarios` runs inside a harness checkout, from any directory in it. `--matrix` and `--out` override the declaration file and the attempts directory. `run --scenario <id>` narrows to one scenario; an id that matches no declared scenario is rejected before any attempt is written, and `compare` requires both `--before` and `--after`.
 
 ## Attempts
 

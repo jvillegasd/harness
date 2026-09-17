@@ -19,9 +19,11 @@ import (
 
 const usage = `Usage: harness dash
 
-A live terminal dashboard: worktrees and their typed state, lock verification,
-the in-session bench result, and the tracker's lifecycle frontier. It writes no
-harness state; every result lives only for the dashboard session.
+A live terminal dashboard for the repository you are in, once setup-harness has
+written its docs/agents/harness.json: worktrees and their typed state, and the
+tracker's lifecycle frontier from GitHub issues or local-markdown tickets. Lock
+verification and the bench result show inside the harness checkout only. It
+writes no harness state; every result lives only for the dashboard session.
 
 Keys: r refresh bench, l refresh locks, t refresh tracker, q quit.
 `
@@ -129,12 +131,12 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness dash: unknown argument %q; run harness dash --help\n", args[0])
 		return 2
 	}
-	dir, err := checkout.Find(".")
+	root, err := projectRoot(".")
 	if err != nil {
 		fmt.Fprintf(stderr, "harness dash: %v\n", err)
 		return 1
 	}
-	program := tea.NewProgram(New(dir.Root, Snapshot{}), tea.WithOutput(stdout), tea.WithInput(os.Stdin))
+	program := tea.NewProgram(New(root, Snapshot{}), tea.WithOutput(stdout), tea.WithInput(os.Stdin))
 	if _, err := program.Run(); err != nil {
 		fmt.Fprintf(stderr, "harness dash: %v\n", err)
 		return 1
