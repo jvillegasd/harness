@@ -69,6 +69,24 @@ type result struct {
 	code           int
 }
 
+// runBinary runs the built harness in dir with the inherited environment, which the scenario runner needs for git and go.
+func runBinary(t *testing.T, dir string, args ...string) result {
+	t.Helper()
+	cmd := exec.Command(binary, args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "HOME="+t.TempDir())
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err := cmd.Run()
+	code := 0
+	if exit, ok := err.(*exec.ExitError); ok {
+		code = exit.ExitCode()
+	} else if err != nil {
+		t.Fatal(err)
+	}
+	return result{stdout.String(), stderr.String(), code}
+}
+
 // schema1 is the shape `wt list --format=json` prints when a config pins json-schema 1, as the tracked Worktrunk config does.
 const schema1 = `[{"branch":"` + branch + `","path":"/tmp/x","kind":"worktree"}]`
 

@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/jvillegasd/harness/internal/agents"
 	"github.com/jvillegasd/harness/internal/bench"
 	"github.com/jvillegasd/harness/internal/dash"
 	"github.com/jvillegasd/harness/internal/install"
@@ -24,7 +23,6 @@ const usage = `Usage: harness <command> [arguments]
 
 Commands:
   install    Install, reconcile, or remove the harness on this machine
-  agents     Render and check the role agent definitions
   scenarios  Validate, run, and compare the artifact-based scenarios
   bench      Compare the session population before and after a harness change
   locks      Manage the reviewed third-party skill locks
@@ -41,8 +39,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "install":
 		return install.Command(args[1:], stdout, stderr)
-	case "agents":
-		return agents.Command(args[1:], stdout, stderr)
 	case "scenarios":
 		return scenarios.Command(args[1:], stdout, stderr)
 	case "bench":

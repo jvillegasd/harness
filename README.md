@@ -10,10 +10,10 @@ The harness this machine's Claude Code and OpenCode installations run: one vendo
 | `internal/install/` | The installer behind `harness install`: installs clients and integrations, copies the managed assets and records them in `~/.harness/state.json`, preserves mutable client state. |
 | `internal/locks/` | The third-party skill locks behind `harness locks`: add, update, remove, check, and offline verify. |
 | `internal/bench/` | The session-population comparison behind `harness bench`. Cohort config and manual in `bench/`. |
-| `internal/agents/` | The role-agent renderer behind `harness agents`, called in-process by the installer. |
+| `internal/agents/` | The role-agent renderer the installer calls in-process. |
 | `internal/scenarios/` | The artifact-based scenario runner and its probes behind `harness scenarios`. |
 | `internal/dash/` | The live terminal dashboard behind `harness dash`, for any git repository `setup-harness` configured: worktrees and typed state and the tracker frontier (GitHub issues or local-markdown tickets), plus lock verification and the in-session bench result inside the harness checkout. |
-| `clients/` | The client settings this harness owns: `claude.json` declares them, `assignments.json` gives every role its definition, model, and effort, and `harness agents` renders the role agents. |
+| `clients/` | The client settings this harness owns: `claude.json` declares them, `assignments.json` gives every role its definition, model, and effort, and the installer renders the role agents from it. |
 | `roles/` | Canonical roles no skill owns, currently the executor. |
 
 `clients/` declares rather than symlinks, because the live file is mostly machine state: hook manifests and generated absolute paths. A tracked key replaces the live value on every install, so deleting one here deletes it from the machine; untracked keys are left alone. `permissions` merges a level down, so `deny` stays owned while the Engram allowlist survives. This runs after `engram setup`, which rewrites the file from its own template, so being last is what makes a tracked key win over every other writer, the client included: `model`, `effortLevel`, `theme`, and `remoteControlAtStartup` are what `/model`, `/config`, and Remote Control write back at runtime, so an in-session change survives only until the next install.
@@ -110,7 +110,7 @@ Every command and leaf command answers `--help` and `-h` with its usage on stdou
 
 ## Role agents
 
-`adversarial-review` launches Reviewer A, Reviewer B, and the review refuter as named agents, and a workflow that chooses to delegate implementation launches the `executor`. The reviewers' and the refuter's standing instructions, output format, and read-search intent live once, in `skills/adversarial-review/roles/`; the skill keeps orchestration, scaling, diff delivery, triage, refuter adjudication, and the loop cap. The executor lives in `roles/executor.md` and keeps implementation access: it edits and runs commands inside the slice it was handed, while the delegating workflow keeps scope, commits, review, conformance, and every gate. `harness agents <assignments> <output>` renders one definition per role per client and rewrites nothing that already matches, printing whether the output changed and exiting 0 either way; `--check` reports a missing, drifted, unmanaged, or widened definition.
+`adversarial-review` launches Reviewer A, Reviewer B, and the review refuter as named agents, and a workflow that chooses to delegate implementation launches the `executor`. The reviewers' and the refuter's standing instructions, output format, and read-search intent live once, in `skills/adversarial-review/roles/`; the skill keeps orchestration, scaling, diff delivery, triage, refuter adjudication, and the loop cap. The executor lives in `roles/executor.md` and keeps implementation access: it edits and runs commands inside the slice it was handed, while the delegating workflow keeps scope, commits, review, conformance, and every gate.
 
 The installer renders the role definitions during each run and copies each into its client's agent directory, recording the copy in `~/.harness/state.json`. Only a recorded copy is the harness's: an install replaces an unchanged recorded copy, archives anything unrecorded or edited in its way, and removes a recorded copy whose definition was retired, and an uninstall removes the recorded copies while a private agent beside them is left alone. The install's check fails on a missing or changed copy or on a definition that lost its restrictions.
 
@@ -129,7 +129,7 @@ A `bug:` or `risk:` the implementer would reject goes to `review-refuter` first,
 
 ```mermaid
 flowchart TD
-    assign["clients/assignments.json<br>model and effort per role and client"] --> roles["roles/reviewer-a.md, roles/reviewer-b.md,<br>roles/review-refuter.md<br>rendered per client by harness agents"]
+    assign["clients/assignments.json<br>model and effort per role and client"] --> roles["roles/reviewer-a.md, roles/reviewer-b.md,<br>roles/review-refuter.md<br>rendered per client by harness install"]
     roles --> a["Reviewer A<br>does it do the job"]
     roles --> b["Reviewer B<br>is it wrong"]
     req["requirements"] --> a

@@ -29,11 +29,11 @@ func generate(outputs map[string]string, output string, report []string, stdout,
 			continue
 		}
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			fmt.Fprintf(stderr, "harness agents: %v\n", err)
+			fmt.Fprintf(stderr, "agents: %v\n", err)
 			return 1
 		}
 		if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
-			fmt.Fprintf(stderr, "harness agents: %v\n", err)
+			fmt.Fprintf(stderr, "agents: %v\n", err)
 			return 1
 		}
 		changed = true

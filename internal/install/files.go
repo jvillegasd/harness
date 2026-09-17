@@ -186,7 +186,7 @@ func (in *installer) installFiles() {
 	for _, pair := range in.agentRoots() {
 		in.ensureManagedDir(pair[1], true)
 	}
-	if code := agents.GenerateCommand(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 {
+	if code := agents.Generate(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 {
 		die("Generating the role agents failed with status %d.", code)
 	}
 
@@ -255,7 +255,7 @@ func (in *installer) checkFiles() {
 			die("Managed copy missing or changed: %s", e.Path)
 		}
 	}
-	if code := agents.CheckCommand(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 {
+	if code := agents.Check(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 {
 		die("Role agents in %s are missing, drifted, or widened.", in.agentOut())
 	}
 }

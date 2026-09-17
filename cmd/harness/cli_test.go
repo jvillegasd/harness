@@ -99,9 +99,6 @@ func TestCommandHelpMatrix(t *testing.T) {
 	commands := [][]string{
 		{},
 		{"install"},
-		{"agents"},
-		{"agents", "--check"},
-		{"agents", "config.json", "--check"},
 		{"scenarios"},
 		{"scenarios", "validate"},
 		{"scenarios", "run"},
@@ -159,9 +156,6 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"install", "--client", "claude"},
 		{"install", "--uninstall", "--client", "cursor"},
 		{"install", "--uninstall", "--component"},
-		{"agents"},
-		{"agents", "--check"},
-		{"agents", "config.json", "--check"},
 		{"scenarios"},
 		{"scenarios", "bogus"},
 		{"scenarios", "compare"},
@@ -241,19 +235,12 @@ func TestOperationalFailuresExitOne(t *testing.T) {
 	}
 }
 
-// TestAgentsNoOpReportsUnchangedAndExitsZero keeps the generator's changed-versus-unchanged report after the specialized statuses left: a second identical run is a successful no-op.
-func TestAgentsNoOpReportsUnchangedAndExitsZero(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
+// TestAgentsCommandIsGone keeps role-agent rendering an install step: the retired command is unknown and unlisted.
+func TestAgentsCommandIsGone(t *testing.T) {
+	if r := runBinary(t, t.TempDir(), "agents"); r.code != 2 || !strings.Contains(r.stderr, `unknown command "agents"`) {
+		t.Fatalf("agents exited %d with stderr %q", r.code, r.stderr)
 	}
-	config := filepath.Join(root, "clients", "assignments.json")
-	out := resolvedTemp(t)
-	if r := runBinary(t, root, "agents", config, out); r.code != 0 || !strings.Contains(r.stdout, "output: changed") {
-		t.Fatalf("first generate exited %d with stdout %q, want 0 and a changed report", r.code, r.stdout)
-	}
-	r := runBinary(t, root, "agents", config, out)
-	if r.code != 0 || !strings.Contains(r.stdout, "output: unchanged") {
-		t.Fatalf("no-op generate exited %d with stdout %q, want 0 and an unchanged report", r.code, r.stdout)
+	if r := runBinary(t, t.TempDir(), "--help"); strings.Contains(r.stdout, "  agents ") {
+		t.Fatalf("help still lists agents: %q", r.stdout)
 	}
 }
