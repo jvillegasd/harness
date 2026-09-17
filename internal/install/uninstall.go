@@ -1,6 +1,7 @@
 package install
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/jvillegasd/harness/internal/statusline"
 )
 
 // The two MCP server id prefixes engram registers. A permission entry is engram's when it starts with one, never when it merely mentions the word.
@@ -27,24 +30,23 @@ const uninstallGone = `Gone: every managed skill and command link, both POLICY.m
 agent links and their generated definitions, the ~/.zshrc alias block, the
 tracked keys in ~/.claude/settings.json, Engram: its plugin, marketplace, and
 MCP registration in both clients, the OpenCode subagent status line it enables,
-plus the formula, and agent-browser: its MCP registration in both clients, plus
-the formula.
-
-Kept: ~/.engram, which is your memory database rather than anything this
-installer wrote. Reinstalling finds it where it was. To take it with you:
-engram export <file>   (before uninstalling, while the binary still exists)
+the formula, and ~/.engram, agent-browser: its MCP registration in both
+clients, the formula, and ~/.agent-browser, every archive under
+~/.dotfiles-backups/harness, the status line cache, the client directories the
+harness left empty, and ~/.local/bin/harness.
 `
 
 const uninstallLeft = `
-Also left alone: the other packages (claude, opencode, worktrunk, gh, uv,
-node), every untracked key in the Claude config, ~/.dotfiles-backups, and this
-checkout.
+Left alone: every untracked key in the Claude config, the rest of
+~/.dotfiles-backups, Worktrunk's shell integration, and this checkout.
 
-Nothing was archived: an uninstall deletes what it removes. Everything above
-comes back from this checkout.
+Nothing was archived: an uninstall deletes what it removes.
 
 Open a new shell to drop the aliases from the one you are in.
 `
+
+// sharedPackages are what a full install adds when missing beside Engram and agent-browser. The install never records whether it added one or found it, so each goes only on the user's say-so.
+var sharedPackages = []string{"node", "gh", "uv", "worktrunk", "anomalyco/tap/opencode"}
 
 func (in *installer) uninstallAll() {
 	in.log("Removing the harness from this machine")
@@ -54,11 +56,10 @@ func (in *installer) uninstallAll() {
 	in.reconcileAliases(true)
 	in.removeClaudeSettings()
 	in.checkRemoved()
+	in.removeLeftovers()
+	in.offerPackageRemoval()
 
 	fmt.Fprint(in.stdout, "\n\033[1;32m✓ Harness AI removed.\033[0m\n\n"+uninstallGone)
-	if data := filepath.Join(in.home, ".agent-browser"); isDir(data) {
-		fmt.Fprintf(in.stdout, "\nAlso kept: ~/.agent-browser (%s),\nthe browser download and any profiles agent-browser saved beside it.\nReinstalling reuses it. Delete it yourself to reclaim the space; a fresh\nmachine gets the browser back from: agent-browser install\n", size(data))
-	}
 	if engramKept {
 		fmt.Fprint(in.stdout, "\nThe engram formula could not be removed and is still installed; the warning\nabove says so. Its configuration is gone either way.\n")
 	}
@@ -66,7 +67,86 @@ func (in *installer) uninstallAll() {
 		fmt.Fprint(in.stdout, "\nThe agent-browser formula could not be removed and is still installed; the\nwarning above says so. Its configuration is gone either way.\n")
 	}
 	fmt.Fprint(in.stdout, uninstallLeft)
-	fmt.Fprintf(in.stdout, "Reinstall with: cd %s && go run ./cmd/harness install\n", in.dir.Root)
+	fmt.Fprintf(in.stdout, "Reinstall with: cd %s && go run ./cmd/harness bootstrap\n", in.dir.Root)
+}
+
+// removeLeftovers deletes what the harness brought onto the machine outside the managed roots: both tools' data, the backups, the status line cache and binary, and the directories only the harness filled. A directory goes only when empty, so a private entry keeps its parent.
+func (in *installer) removeLeftovers() {
+	for _, data := range []string{filepath.Join(in.home, ".engram"), filepath.Join(in.home, ".agent-browser")} {
+		if exists(data) {
+			reclaimed := size(data)
+			must(os.RemoveAll(data))
+			in.log("Deleted %s (%s)", data, reclaimed)
+		}
+	}
+	in.clearBackups()
+	cache := statusline.CachePath()
+	removeFile(cache)
+	_ = os.Remove(filepath.Dir(cache))
+	empty := append(in.skillRoots(), in.commandRoots()...)
+	for _, root := range in.agentRoots() {
+		empty = append(empty, root[1])
+	}
+	empty = append(empty,
+		filepath.Join(in.home, ".agents"),
+		filepath.Join(in.home, ".claude", "mcp"),
+		filepath.Join(in.config, "opencode", "plugins"),
+		filepath.Join(in.home, ".dotfiles-backups"),
+	)
+	for _, dir := range empty {
+		if isDir(dir) && os.Remove(dir) == nil {
+			in.log("Removed empty %s", dir)
+		}
+	}
+	// Last, since the status line setting that ran it is already gone and this may be the running binary.
+	bin := filepath.Join(in.home, ".local", "bin", "harness")
+	removeFile(bin)
+	for _, path := range []string{filepath.Join(in.home, ".engram"), filepath.Join(in.home, ".agent-browser"), filepath.Join(in.home, ".dotfiles-backups", "harness"), bin} {
+		if exists(path) || isLink(path) {
+			die("Survived the uninstall: %s", path)
+		}
+	}
+}
+
+// offerPackageRemoval asks once before removing the shared packages still present. Anything but yes, an empty or closed stdin included, keeps them all.
+func (in *installer) offerPackageRemoval() {
+	var formulae []string
+	if _, err := exec.LookPath("brew"); err == nil {
+		installed := in.installedFormulae()
+		for _, formula := range sharedPackages {
+			if installed[shortName(formula)] {
+				formulae = append(formulae, formula)
+			}
+		}
+	}
+	// Only Anthropic's native install, which puts the launcher in ~/.local/bin and the versions in ~/.local/share/claude; a Claude Code installed another way is not this installer's to remove.
+	claudeBin, claudeData := filepath.Join(in.home, ".local", "bin", "claude"), filepath.Join(in.home, ".local", "share", "claude")
+	native := exists(claudeBin) || isLink(claudeBin)
+	if len(formulae) == 0 && !native {
+		return
+	}
+	listed := make([]string, 0, len(formulae)+1)
+	for _, formula := range formulae {
+		listed = append(listed, shortName(formula))
+	}
+	if native {
+		listed = append(listed, "claude (native)")
+	}
+	fmt.Fprintf(in.stdout, "\nThe full install also adds these when missing, and cannot tell whether it did:\n  %s\nUninstall them too? Anything else on this machine that uses them breaks. [y/N] ", strings.Join(listed, ", "))
+	answer, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	fmt.Fprintln(in.stdout)
+	if a := strings.ToLower(strings.TrimSpace(answer)); a != "y" && a != "yes" {
+		in.log("Keeping the packages")
+		return
+	}
+	for _, formula := range formulae {
+		in.uninstallFormula(shortName(formula), formula)
+	}
+	if native {
+		removeFile(claudeBin)
+		must(os.RemoveAll(claudeData))
+		in.log("Removed Claude Code: %s and %s", claudeBin, claudeData)
+	}
 }
 
 func removeFile(path string) {

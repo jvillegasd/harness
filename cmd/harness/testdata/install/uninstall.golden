@@ -12,16 +12,13 @@ brew uninstall gentleman-programming/tap/engram <>
 claude mcp remove --scope user agent-browser <>
 brew list --formula agent-browser <>
 brew uninstall agent-browser <>
+brew list --formula <>
 == home
-D .agents
-D .agents/skills
 D .claude
 D .claude/agents
 F .claude/agents/mine.md
   |private agent
   |
-D .claude/commands
-D .claude/mcp
 F .claude/settings.json
   |{
   |  "env": {
@@ -51,8 +48,6 @@ F .claude.json
   |
 D .config
 D .config/opencode
-D .config/opencode/agents
-D .config/opencode/command
 F .config/opencode/opencode.json
   |{
   |  "$schema": "https://opencode.ai/config.json",
@@ -71,8 +66,6 @@ F .config/opencode/opencode.json
   |  ]
   |}
   |
-D .config/opencode/plugins
-D .config/opencode/skills
 F .config/opencode/tui.json
   |{
   |  "plugin": [
@@ -81,80 +74,21 @@ F .config/opencode/tui.json
   |}
   |
 D .dotfiles-backups
-D .dotfiles-backups/harness
-D .dotfiles-backups/harness/<stamp>
-D .dotfiles-backups/harness/<stamp>/.agents
-D .dotfiles-backups/harness/<stamp>/.agents/skills
-D .dotfiles-backups/harness/<stamp>/.agents/skills/grilling
-F .dotfiles-backups/harness/<stamp>/.agents/skills/grilling/SKILL.md
-  |shadowing copy
-  |
-D .dotfiles-backups/harness/<stamp>/.claude
-F .dotfiles-backups/harness/<stamp>/.claude/CLAUDE.md
-  |a hand-written policy
-  |
-D .dotfiles-backups/harness/<stamp>/.claude/agents
-L .dotfiles-backups/harness/<stamp>/.claude/agents/retired.md -> $CHECKOUT/.generated/agents/claude/retired.md
-D .dotfiles-backups/harness/<stamp>/.claude/commands
-L .dotfiles-backups/harness/<stamp>/.claude/commands/foreign.md -> /nonexistent/foreign.md
-L .dotfiles-backups/harness/<stamp>/.claude/commands/renamed.md -> $CHECKOUT/commands/ship.md
-L .dotfiles-backups/harness/<stamp>/.claude/commands/retired.md -> $CHECKOUT/commands/retired.md
-F .dotfiles-backups/harness/<stamp>/.claude/settings.json.pre-reconcile
-  |{
-  |  "env": {
-  |    "KEEP": "café"
-  |  },
-  |  "model": "sonnet",
-  |  "permissions": {
-  |    "allow": [
-  |      "mcp__plugin_engram_engram__mem_save",
-  |      "Bash(cd ~/src/engram && cargo test)"
-  |    ],
-  |    "deny": [
-  |      "Read(stale)"
-  |    ],
-  |    "defaultMode": "plan"
-  |  },
-  |  "enabledPlugins": {
-  |    "engram@engram": true,
-  |    "other@market": true
-  |  },
-  |  "extraKnownMarketplaces": {
-  |    "engram": {},
-  |    "market": {}
-  |  }
-  |}
-  |
-D .dotfiles-backups/harness/<stamp>/.config
-D .dotfiles-backups/harness/<stamp>/.config/opencode
-L .dotfiles-backups/harness/<stamp>/.config/opencode/command.previous-link -> $BASE/elsewhere
-D .dotfiles-backups/harness/<stamp>/.config/opencode/skills
-D .dotfiles-backups/harness/<stamp>/.config/opencode/skills/grilling
-F .dotfiles-backups/harness/<stamp>/.config/opencode/skills/grilling/SKILL.md
-  |duplicate copy
-  |
-D .dotfiles-backups/harness/<stamp>/.local
-D .dotfiles-backups/harness/<stamp>/.local/bin
-F .dotfiles-backups/harness/<stamp>/.local/bin/claude-seo
-  |#!/bin/sh
-  |
-F .dotfiles-backups/harness/<stamp>/.zshrc.pre-reconcile
-  |export KEEP=1
-  |alias ccyolo='claude'
-  |alias ll='ls -l'
-  |
-  |
-  |
 D .dotfiles-backups/other
 F .dotfiles-backups/other/keep.txt
   |not the harness's
   |
 D .local
 D .local/bin
-F .local/bin/harness
+F .local/bin/claude
   |#!/bin/sh
   |
 D .local/share
+D .local/share/claude
+D .local/share/claude/versions
+F .local/share/claude/versions/1
+  |binary
+  |
 D .local/share/opencode
 F .local/share/opencode/auth.json
   |{"openai": "private-secret"}

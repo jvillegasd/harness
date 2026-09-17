@@ -39,20 +39,19 @@ const usage = `Usage: harness install [--skip-packages] [--no-backup]
                  ~/.dotfiles-backups. Destructive and unrecoverable: a private
                  skill or a hand-edited config sitting at a managed path is
                  gone, not archived.
-  --uninstall    Remove what this installer writes: every managed link, the
-                 generated role agents, the ~/.zshrc alias block, and the
-                 tracked keys in the Claude config. It reverses the installer,
-                 it does not uninstall your tools, with one exception: Engram
-                 and agent-browser, which a full install installs and registers,
-                 are removed here too, both formulae included, along with the
-                 OpenCode subagent status line Engram's setup enabled. Your
-                 ~/.engram and ~/.agent-browser directories are kept.
-                 The other packages, ~/.dotfiles-backups, this checkout, and
-                 every untracked key in the Claude config are left alone.
-                 Destructive and unrecoverable: what it removes is deleted,
-                 not archived, so --no-backup adds nothing to it. Reinstall
-                 to get the harness back; anything of your own that was
-                 sitting at a managed path is gone.
+  --uninstall    Remove everything the harness put on this machine: every
+                 managed link, the generated role agents, the ~/.zshrc alias
+                 block, the tracked keys in the Claude config, Engram and
+                 agent-browser (registrations, formulae, and their ~/.engram
+                 and ~/.agent-browser data), ~/.dotfiles-backups/harness, the
+                 status line cache, the client directories it left empty, and
+                 ~/.local/bin/harness. It then asks once whether to uninstall
+                 the other packages a full install adds when missing (node,
+                 gh, uv, worktrunk, opencode, native Claude Code); anything but
+                 yes keeps them. Untracked Claude config keys, Worktrunk's
+                 shell integration, and this checkout are left alone.
+                 Destructive and unrecoverable, your Engram memories
+                 included: run engram export <file> first to keep them.
   --clear-backups
                  Delete every archive under ~/.dotfiles-backups/harness/,
                  which is where an install moves whatever was in the way of a

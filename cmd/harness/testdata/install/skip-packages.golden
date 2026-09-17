@@ -5,6 +5,11 @@ engram setup opencode <>
 claude mcp remove --scope user agent-browser <>
 claude mcp add --scope user agent-browser -- $SHIMS/agent-browser mcp <>
 == home
+D .agent-browser
+D .agent-browser/browsers
+F .agent-browser/browsers/chrome
+  |browser
+  |
 D .agents
 D .agents/skills
 L .agents/skills/adversarial-review -> $CHECKOUT/skills/adversarial-review
@@ -263,12 +268,24 @@ D .dotfiles-backups/other
 F .dotfiles-backups/other/keep.txt
   |not the harness's
   |
+D .engram
+F .engram/engram.db
+  |memories
+  |
 D .local
 D .local/bin
+F .local/bin/claude
+  |#!/bin/sh
+  |
 F .local/bin/harness
   |#!/bin/sh
   |
 D .local/share
+D .local/share/claude
+D .local/share/claude/versions
+F .local/share/claude/versions/1
+  |binary
+  |
 D .local/share/opencode
 F .local/share/opencode/auth.json
   |{"openai": "private-secret"}

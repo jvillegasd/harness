@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -153,7 +154,11 @@ func TestAgentInstallAndUninstallTouchOnlyThisCheckoutsLinks(t *testing.T) {
 
 	ok(t, runInstaller(t, base, "--uninstall"), "uninstall")
 	for _, root := range roots {
+		// A root the harness left empty is removed with it.
 		entries, err := os.ReadDir(root)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -22,12 +22,15 @@ var installScenarios = []struct {
 	darwinOnly bool
 	seed       func(*testing.T, string)
 	runs       [][]string
+	stdin      string
 }{
 	{name: "skip-packages", seed: seedLived, runs: [][]string{{"--skip-packages"}}},
 	{name: "skip-packages-no-backup", seed: seedLived, runs: [][]string{{"--skip-packages", "--no-backup"}}},
 	// Linux adds --with-deps to the browser download, so this golden is macOS's.
 	{name: "full", darwinOnly: true, seed: seedFull, runs: [][]string{nil}},
 	{name: "uninstall", seed: seedLived, runs: [][]string{{"--skip-packages"}, {"--uninstall"}}},
+	// Answering yes removes the shared packages brew reports and the native Claude Code.
+	{name: "uninstall-packages", seed: seedLived, runs: [][]string{{"--skip-packages"}, {"--uninstall"}}, stdin: "y\n"},
 	{name: "clear-backups", seed: seedBackups, runs: [][]string{{"--clear-backups"}}},
 	{name: "rejected-flags", runs: [][]string{{"--uninstall", "--skip-packages"}, {"--clear-backups", "--uninstall"}, {"--skip-packages", "--clear-backups"}, {"--bogus"}}},
 }
@@ -44,7 +47,7 @@ func TestInstallerGolden(t *testing.T) {
 			}
 			var b strings.Builder
 			for _, args := range sc.runs {
-				r := runInstaller(t, base, args...)
+				r := runInstallerInput(t, base, sc.stdin, args...)
 				fmt.Fprintf(&b, "run [%s]: exit %d\n", strings.Join(args, " "), r.code)
 				if r.code != 0 {
 					b.WriteString(ansi.ReplaceAllString(r.stderr, ""))
@@ -68,13 +71,25 @@ func TestInstallerGolden(t *testing.T) {
 // runInstaller runs `harness install` from the sandbox checkout.
 func runInstaller(t *testing.T, base string, args ...string) result {
 	t.Helper()
-	return runHarness(t, base, nil, append([]string{"install"}, args...)...)
+	return runInstallerInput(t, base, "", args...)
+}
+
+// runInstallerInput runs `harness install` with stdin, and TMPDIR inside the sandbox so the uninstall's cache removal never reaches the real one.
+func runInstallerInput(t *testing.T, base, stdin string, args ...string) result {
+	t.Helper()
+	return runHarnessInput(t, base, stdin, []string{"TMPDIR=" + filepath.Join(base, "tmp")}, append([]string{"install"}, args...)...)
 }
 
 // runHarness runs the built binary from the sandbox checkout, with only the shims and the system directories on PATH, plus any extra environment.
 func runHarness(t *testing.T, base string, extra []string, args ...string) result {
 	t.Helper()
+	return runHarnessInput(t, base, "", extra, args...)
+}
+
+func runHarnessInput(t *testing.T, base, stdin string, extra []string, args ...string) result {
+	t.Helper()
 	cmd := exec.Command(binary, args...)
+	cmd.Stdin = strings.NewReader(stdin)
 	cmd.Dir = filepath.Join(base, "checkout")
 	cmd.Env = append([]string{"HOME=" + filepath.Join(base, "home"), "PATH=" + filepath.Join(base, "shims") + ":/usr/bin:/bin", "SHELL=/bin/zsh"}, extra...)
 	var stdout, stderr strings.Builder
@@ -115,8 +130,10 @@ func sandbox(t *testing.T) string {
 		}
 		writeMode(t, filepath.Join(base, "checkout", rel), string(data), info.Mode().Perm())
 	}
-	if err := os.MkdirAll(filepath.Join(base, "home"), 0o755); err != nil {
-		t.Fatal(err)
+	for _, dir := range []string{"home", "tmp"} {
+		if err := os.MkdirAll(filepath.Join(base, dir), 0o755); err != nil {
+			t.Fatal(err)
+		}
 	}
 	// The status line binary a prior `harness bootstrap` left in place, which every install mode now probes.
 	writeMode(t, filepath.Join(base, "home", ".local/bin/harness"), "#!/bin/sh\n", 0o755)
@@ -192,6 +209,10 @@ func seedLived(t *testing.T, base string) {
 		".config/opencode/tui.json":                 `{"plugin": ["opencode-subagent-statusline", "keep"]}` + "\n",
 		".config/opencode/plugins/engram.ts":        "export {}\n",
 		".local/bin/claude-seo":                     "#!/bin/sh\n",
+		".local/bin/claude":                         "#!/bin/sh\n",
+		".local/share/claude/versions/1":            "binary\n",
+		".engram/engram.db":                         "memories\n",
+		".agent-browser/browsers/chrome":            "browser\n",
 		".local/share/opencode/auth.json":           `{"openai": "private-secret"}` + "\n",
 		".zshrc":                                    "export KEEP=1\nalias ccyolo='claude'\nalias ll='ls -l'\n\n\n",
 		".dotfiles-backups/other/keep.txt":          "not the harness's\n",
