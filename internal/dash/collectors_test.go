@@ -9,7 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/jvillegasd/harness/internal/checkout"
-	"github.com/jvillegasd/harness/internal/locks"
+	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/state"
 )
 
@@ -31,9 +31,9 @@ func recording() (collectors, *[]string) {
 			}
 			return out, nil
 		},
-		locks: func(checkout.Checkout) ([]locks.LockResult, error) {
+		locks: func(checkout.Checkout) ([]skills.LockResult, error) {
 			add("locks")
-			return []locks.LockResult{{Name: "tdd", Status: "match"}}, nil
+			return []skills.LockResult{{Name: "tdd", Status: "match"}}, nil
 		},
 		bench: func(checkout.Checkout) (string, error) {
 			add("bench")

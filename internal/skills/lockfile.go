@@ -1,4 +1,4 @@
-package locks
+package skills
 
 import (
 	"bytes"

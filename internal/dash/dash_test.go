@@ -7,7 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/jvillegasd/harness/internal/locks"
+	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/state"
 )
 
@@ -34,7 +34,7 @@ func TestWorktreesSortAndMarkLegacy(t *testing.T) {
 
 func TestLocksPanelShowsEveryVerifyResultAndItsAge(t *testing.T) {
 	m := New("", Snapshot{
-		Locks: []locks.LockResult{
+		Locks: []skills.LockResult{
 			{Name: "impeccable", Status: "match"},
 			{Name: "tdd", Status: "drift", Detail: "recorded a, computed b"},
 			{Name: "handoff", Status: "unverifiable"},

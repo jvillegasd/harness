@@ -1,4 +1,4 @@
-package locks
+package skills
 
 import (
 	"crypto/sha256"
@@ -8,10 +8,8 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
@@ -73,7 +71,7 @@ func verify(c checkout.Checkout, stdout, stderr io.Writer) error {
 		}
 	}
 	if unverifiable > 0 {
-		fmt.Fprintf(stderr, "harness locks: %d skill(s) unverifiable\n", unverifiable)
+		fmt.Fprintf(stderr, "harness skills: %d skill(s) unverifiable\n", unverifiable)
 	}
 	if drifted > 0 {
 		return fmt.Errorf("%d skill(s) drifted", drifted)
@@ -128,33 +126,4 @@ func folderHash(dir string) (string, error) {
 		h.Write(data)
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
-}
-
-func check(c checkout.Checkout, stdout, stderr io.Writer) error {
-	aliases, err := filepath.Rel(c.Root, c.Aliases())
-	if err != nil {
-		return err
-	}
-	if _, err := os.Stat(c.Aliases()); err != nil {
-		return fmt.Errorf("shell entry point missing: %s", aliases)
-	}
-	cmd := exec.Command("bash", "-n", c.Aliases())
-	cmd.Stdout, cmd.Stderr = stdout, stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("bash -n %s: %w", aliases, err)
-	}
-	for _, cached := range []bool{false, true} {
-		args := []string{"-C", c.Root, "diff"}
-		if cached {
-			args = append(args, "--cached")
-		}
-		args = append(args, "--check")
-		cmd := exec.Command("git", args...)
-		cmd.Stdout, cmd.Stderr = stdout, stderr
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("git %s: %w", strings.Join(args[2:], " "), err)
-		}
-	}
-	fmt.Fprintf(stdout, "check passed: %s syntax, diff hygiene\n", aliases)
-	return nil
 }

@@ -13,7 +13,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/jvillegasd/harness/internal/checkout"
-	"github.com/jvillegasd/harness/internal/locks"
+	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/state"
 )
 
@@ -43,7 +43,7 @@ var (
 type Snapshot struct {
 	Worktrees    []Worktree
 	WorktreesErr string
-	Locks        []locks.LockResult
+	Locks        []skills.LockResult
 	LocksErr     string
 	LocksAt      time.Time
 	Bench        *BenchReport
@@ -81,7 +81,7 @@ type LabelCount struct {
 type collectors struct {
 	worktrees func(checkout.Checkout) ([]Worktree, string)
 	states    func(checkout.Checkout, []string) (map[string]state.State, error)
-	locks     func(checkout.Checkout) ([]locks.LockResult, error)
+	locks     func(checkout.Checkout) ([]skills.LockResult, error)
 	bench     func(checkout.Checkout) (string, error)
 	tracker   func(checkout.Checkout) Tracker
 }

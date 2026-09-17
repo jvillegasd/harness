@@ -12,7 +12,7 @@ import (
 
 	"github.com/jvillegasd/harness/internal/bench"
 	"github.com/jvillegasd/harness/internal/checkout"
-	"github.com/jvillegasd/harness/internal/locks"
+	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/state"
 )
 
@@ -111,11 +111,11 @@ func isHarness(dir checkout.Checkout) bool {
 	return err == nil && c.Root == dir.Root
 }
 
-func loadLocks(dir checkout.Checkout) ([]locks.LockResult, error) {
+func loadLocks(dir checkout.Checkout) ([]skills.LockResult, error) {
 	if !isHarness(dir) {
 		return nil, errHarnessOnly
 	}
-	return locks.Verify(dir)
+	return skills.Verify(dir)
 }
 
 // loadBench reports for the dashboard's resolved checkout through the shared

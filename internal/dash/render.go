@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jvillegasd/harness/internal/locks"
+	"github.com/jvillegasd/harness/internal/skills"
 )
 
 func (m Model) render() string {
@@ -110,7 +110,7 @@ func clip(s string, n int) string {
 	return string(r[:n-1]) + "~"
 }
 
-func locksPanel(b *strings.Builder, results []locks.LockResult, loadErr string, at time.Time, running bool) {
+func locksPanel(b *strings.Builder, results []skills.LockResult, loadErr string, at time.Time, running bool) {
 	if running {
 		panel(b, "locks", []string{"verifying..."})
 		return

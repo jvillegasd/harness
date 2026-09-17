@@ -5,7 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/jvillegasd/harness/internal/locks"
+	"github.com/jvillegasd/harness/internal/skills"
 )
 
 func (m Model) Init() tea.Cmd {
@@ -93,7 +93,7 @@ type localMsg struct {
 	worktreesErr string
 }
 type locksMsg struct {
-	results []locks.LockResult
+	results []skills.LockResult
 	err     string
 	at      time.Time
 }

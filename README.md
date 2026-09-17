@@ -8,7 +8,7 @@ The harness this machine's Claude Code and OpenCode installations run: one vendo
 | `commands/` | The workflows, invoked as `/name` in Claude Code and OpenCode. |
 | `skills/` | Protocol, vocabulary, and locked third-party bodies. |
 | `internal/install/` | The installer behind `harness install`: installs clients and integrations, copies the managed assets and records them in `~/.harness/state.json`, preserves mutable client state. |
-| `internal/locks/` | The third-party skill locks behind `harness locks`: add, update, remove, check, and offline verify. |
+| `internal/skills/` | The third-party skill locks behind `harness skills`: add, update, remove, and offline verify. |
 | `internal/bench/` | The session-population comparison behind `harness bench`. Cohort config and manual in `bench/`. |
 | `internal/agents/` | The role-agent renderer the installer calls in-process. |
 | `internal/scenarios/` | The artifact-based scenario runner and its probes behind `harness scenarios`. |
@@ -197,7 +197,6 @@ go vet ./...
 test -z "$(gofmt -l .)"
 go test ./...
 go build ./...
-go run ./cmd/harness locks check
 git diff --check
 ```
 
@@ -278,17 +277,16 @@ The two clients expose different amounts of surface, so one renderer cannot serv
 
 ## Third-party skill updates
 
-`.agents/skills` points to `skills`. `harness locks` keeps the skills.sh call, `skills-lock.json`, and the Claude bookkeeping link in one reviewed workflow:
+`.agents/skills` points to `skills`. `harness skills` keeps the skills.sh call, `skills-lock.json`, and the Claude bookkeeping link in one reviewed workflow:
 
 ```sh
-harness locks add <owner/repo> <name>
-harness locks update
-harness locks remove <name>
-harness locks check
-harness locks verify
+harness skills add <owner/repo> <name>
+harness skills update
+harness skills remove <name>
+harness skills verify
 ```
 
-`add` refuses invalid sources and existing paths before delegating. `update` updates every locked body. `remove` accepts only a current lock entry. Every mutation prints the affected paths; `check` runs syntax and diff hygiene; `verify` recomputes each locked body's folder hash offline and reports match, drift, or unverifiable. Every subcommand's `--help` is side-effect free, and its arguments are validated before the checkout is read, but do not probe the upstream update subcommand with `--help`: skills.sh treats that as a full update.
+`add` refuses invalid sources and existing paths before delegating. `update` updates every locked body. `remove` accepts only a current lock entry. Every mutation prints the affected paths; `verify` recomputes each locked body's folder hash offline and reports match, drift, or unverifiable. Every subcommand's `--help` is side-effect free, and its arguments are validated before the checkout is read, but do not probe the upstream update subcommand with `--help`: skills.sh treats that as a full update.
 
 Review every upstream body, security report, and diff, then commit only the approved change. Locked bodies stay pristine; behavior changes belong in a command or in `POLICY.md`. Provisioning never runs the helper or a lockfile restore. A copied skill with unknown provenance stays an attributed local fork until its upstream is identified. Engram and Orca-provided skills are runtime managed and never belong in `skills-lock.json`.
 
@@ -312,7 +310,7 @@ Locked Matt Pocock skills provide domain and module vocabulary, `improve-codebas
 
 Locked `pbakaus/impeccable` is the one frontend design body. It is description-matchable, so the control is scope rather than a guard: no command or local skill loads it, and `POLICY.md` keeps the project's existing styling layer winning inside `/proto` and `/ship`.
 
-It arrives only through `harness locks`. Four of its own routes are forbidden, because each writes outside the lock: `npx impeccable install` and `$impeccable hooks on` wire `PostToolUse` and `Stop` hooks into a project unasked, `npx impeccable update` rewrites the locked directory out from under `skills-lock.json`, and `scripts/pin.mjs` mints a `$<command>` shortcut as a real skill directory that `harness install` would link everywhere and neither sweep would reclaim. The lock covers the body's bytes, not its runtime egress: several scripts call the author's site. At 4.8 MB across 168 files it is the largest thing in `skills/`, against about 99 KB for everything else combined.
+It arrives only through `harness skills`. Four of its own routes are forbidden, because each writes outside the lock: `npx impeccable install` and `$impeccable hooks on` wire `PostToolUse` and `Stop` hooks into a project unasked, `npx impeccable update` rewrites the locked directory out from under `skills-lock.json`, and `scripts/pin.mjs` mints a `$<command>` shortcut as a real skill directory that `harness install` would link everywhere and neither sweep would reclaim. The lock covers the body's bytes, not its runtime egress: several scripts call the author's site. At 4.8 MB across 168 files it is the largest thing in `skills/`, against about 99 KB for everything else combined.
 
 ### Ponytail
 
