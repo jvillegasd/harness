@@ -18,17 +18,17 @@ func TestScenariosValidateAndRunAgainstRecordedFixtures(t *testing.T) {
 	}
 	out := t.TempDir()
 
-	validate := runBinary(t, root, "scenarios", "validate", "--root", root, "--out", out)
+	validate := runBinary(t, root, "scenarios", "validate", "--out", out)
 	if validate.code != 0 {
 		t.Fatalf("validate exited %d: %s", validate.code, validate.stderr)
 	}
 	assertGolden(t, "validate.golden", validate.stdout)
 
-	run := runBinary(t, root, "scenarios", "run", "--root", root, "--out", out)
+	run := runBinary(t, root, "scenarios", "run", "--out", out)
 	normalized := attemptPath.ReplaceAllString(run.stdout, " -> <attempt>")
 	assertGolden(t, "run.golden", normalized)
 
-	report := runBinary(t, root, "scenarios", "report", "--root", root, "--out", out)
+	report := runBinary(t, root, "scenarios", "report", "--out", out)
 	if report.code != 0 {
 		t.Fatalf("report exited %d: %s", report.code, report.stderr)
 	}
@@ -46,7 +46,7 @@ func assertGolden(t *testing.T, name, got string) {
 	}
 }
 
-// TestScenariosResolveTheCheckoutFromANestedDirectory runs with no --root from a nested directory, where the matrix default has to resolve the enclosing checkout rather than the invocation directory.
+// TestScenariosResolveTheCheckoutFromANestedDirectory runs from a nested directory, where the matrix default has to resolve the enclosing checkout rather than the invocation directory.
 func TestScenariosResolveTheCheckoutFromANestedDirectory(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -68,7 +68,7 @@ func TestScenariosValidateRejectsABadMatrix(t *testing.T) {
 	if err := os.WriteFile(matrix, []byte(`{"version":1,"scenarios":[{"id":"s","command":"c","prompt":"p","artifacts":{}}]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	r := runBinary(t, root, "scenarios", "validate", "--matrix", matrix, "--root", root, "--out", t.TempDir())
+	r := runBinary(t, root, "scenarios", "validate", "--matrix", matrix, "--out", t.TempDir())
 	if r.code != 1 || !strings.Contains(r.stderr, "artifacts") {
 		t.Fatalf("validate exited %d with stderr %q", r.code, r.stderr)
 	}

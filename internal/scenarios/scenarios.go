@@ -31,6 +31,9 @@ const batchFile = "batch.json"
 
 const usageText = `Usage: harness scenarios <command> [flags]
 
+Runs inside a harness checkout, which the matrix, fixtures, and attempts resolve
+against.
+
 Commands:
   validate   Reject the matrix before any session runs
   run        Execute the declared scenarios and retain one attempt each
@@ -40,8 +43,6 @@ Commands:
 Flags:
   --matrix <path>   Matrix declaration (default <root>/scenarios/matrix.json)
   --out <path>      Attempt directory (default <root>/scenarios/attempts)
-  --root <path>     Harness checkout the harness_inputs resolve against (default: the
-                    enclosing checkout, required outside one)
   run:     --scenario <id> --fixtures <path> --allow-paid --max-sessions <n>
   compare: --before <dir> --after <dir>
 `
@@ -60,7 +61,6 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	flags := newFlags()
 	matrix := flags.String("matrix", "", "")
 	out := flags.String("out", "", "")
-	rootFlag := flags.String("root", "", "")
 	var scenario, fixtures, before, after *string
 	var allowPaid *bool
 	var maxSessions *int
@@ -101,16 +101,13 @@ func Command(args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 	}
-	root := *rootFlag
-	if root == "" {
-		// The default is the enclosing checkout, not the invocation directory, so the matrix, attempts, and fixtures resolve from a nested directory the same way every other checkout-dependent command resolves them.
-		c, err := checkout.Find(".")
-		if err != nil {
-			fmt.Fprintf(stderr, "harness scenarios: %v\n", err)
-			return 1
-		}
-		root = c.Root
+	// The enclosing checkout, not the invocation directory, so the matrix, attempts, and fixtures resolve from a nested directory the same way every other checkout-dependent command resolves them.
+	c, err := checkout.Find(".")
+	if err != nil {
+		fmt.Fprintf(stderr, "harness scenarios: %v\n", err)
+		return 1
 	}
+	root := c.Root
 	if *matrix == "" {
 		*matrix = filepath.Join(root, "scenarios", "matrix.json")
 	}

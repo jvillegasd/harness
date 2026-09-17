@@ -151,10 +151,6 @@ func TestCommandHelpMatrix(t *testing.T) {
 
 // TestCommandInvocationMatrix drives the invalid invocations through the real executable and asserts status 2, a diagnostic on stderr, an empty stdout, no subprocess, and no write.
 func TestCommandInvocationMatrix(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
 	args := [][]string{
 		{"bogus"},
 		{"bootstrap", "--bogus"},
@@ -170,9 +166,10 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"agents", "config.json", "--check"},
 		{"scenarios"},
 		{"scenarios", "bogus"},
-		{"scenarios", "compare", "--root", root},
-		{"scenarios", "run", "--root", root, "--allow-paid"},
-		{"scenarios", "run", "--root", root, "--max-sessions", "2"},
+		{"scenarios", "compare"},
+		{"scenarios", "run", "--allow-paid"},
+		{"scenarios", "run", "--max-sessions", "2"},
+		{"scenarios", "validate", "--root", "."},
 		{"bench"},
 		{"bench", "--split", "2026-01-01", "extra"},
 		{"bench", "--bogus"},
@@ -221,9 +218,9 @@ func TestScenariosUnknownSelectionWritesNoAttempt(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := filepath.Join(t.TempDir(), "attempts")
-	c := runMatrixCase(t, []string{"scenarios", "run", "--root", root, "--out", out, "--scenario", "no-such-scenario"})
-	if c.result.code != 2 {
-		t.Fatalf("unknown selection exited %d, want 2: %s", c.result.code, c.result.stderr)
+	r := runBinary(t, root, "scenarios", "run", "--out", out, "--scenario", "no-such-scenario")
+	if r.code != 2 {
+		t.Fatalf("unknown selection exited %d, want 2: %s", r.code, r.stderr)
 	}
 	if _, err := os.Stat(out); err == nil {
 		t.Fatalf("unknown selection created %s", out)
@@ -237,10 +234,11 @@ func TestOperationalFailuresExitOne(t *testing.T) {
 		{"locks", "check"},
 		{"locks", "verify"},
 		{"bench", "--split", "2026-01-01", "--home", t.TempDir()},
+		{"scenarios", "validate"},
 		{"dash"},
 	} {
 		if r := runBinary(t, outside, args...); r.code != 1 {
-			t.Errorf("%v outside a checkout exited %d, want 1 (stderr %q)", args, r.code, r.stderr)
+			t.Errorf("%v outside a checkout or configured repository exited %d, want 1 (stderr %q)", args, r.code, r.stderr)
 		}
 	}
 }
