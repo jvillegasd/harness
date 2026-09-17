@@ -85,6 +85,10 @@ func (in *installer) extractAssets() func() {
 	}
 	tmp, err := os.MkdirTemp("", "harness-assets-*")
 	must(err)
+	// The role agent renderer refuses a symlinked output path, and macOS TMPDIR sits under the /var symlink.
+	if resolved, err := filepath.EvalSymlinks(tmp); err == nil {
+		tmp = resolved
+	}
 	if err := os.CopyFS(tmp, assets); err != nil {
 		_ = os.RemoveAll(tmp)
 		die("Extracting the harness assets failed: %v", err)
