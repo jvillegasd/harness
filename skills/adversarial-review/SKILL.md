@@ -18,7 +18,7 @@ Never pass the conversation, the implementation rationale, the plan behind the c
 
 When a named agent is unavailable, say so, launch a general agent with the matching role file's full text as its instructions, and report that this fallback enforces only the general agent's own permissions rather than the named agent's read-search restrictions. Never skip or silently omit a review because a named agent is missing.
 
-The named agents' restrictions are best effort: each client enforces what its own controls support, and `harness agents` reports the gaps.
+The named agents' restrictions are best effort: each client enforces what its own controls support, and `harness install` reports the gaps.
 
 Reviewer A holds the requirements and its standards but never that rationale; Reviewer B holds only the diff and its standards. Requirements are what let a reviewer check conformance; rationale only biases it.
 

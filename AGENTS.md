@@ -20,7 +20,7 @@ The Harness AI installation that serves Claude Code and OpenCode, extracted from
 | `internal/install/` | The installer behind `harness install` |
 | `internal/locks/` | The third-party skill locks behind `harness locks` |
 | `internal/bench/` | The session-population comparison behind `harness bench` |
-| `internal/agents/` | The role-agent renderer behind `harness agents` |
+| `internal/agents/` | The role-agent renderer the installer calls in-process |
 | `internal/scenarios/` | The artifact-based scenario runner and probes behind `harness scenarios` |
 | `internal/dash/` | The live terminal dashboard behind `harness dash` |
 | `POLICY.md` | The vendor-neutral global policy linked into each client |

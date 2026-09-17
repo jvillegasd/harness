@@ -35,10 +35,15 @@ func repoRoot() string {
 
 func configPath() string { return filepath.Join(repoRoot(), "clients", "assignments.json") }
 
+// runCommand calls Generate, or Check when args lead with --check, with the config and output that follow.
 func runCommand(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
 	var stdout, stderr bytes.Buffer
-	code := Command(args, &stdout, &stderr)
+	run := Generate
+	if args[0] == "--check" {
+		run, args = Check, args[1:]
+	}
+	code := run(args[0], args[1], &stdout, &stderr)
 	return code, stdout.String(), stderr.String()
 }
 
@@ -138,17 +143,41 @@ func TestOneDefinitionPerRolePerClient(t *testing.T) {
 	}
 }
 
-func TestGenerationIsIdempotent(t *testing.T) {
+// TestRendersTheCapturedGolden compares the output against the golden captured from the Python renderer before it was deleted.
+func TestRendersTheCapturedGolden(t *testing.T) {
 	out := temp(t)
 	if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
-		t.Fatalf("first generate exited %d: %s", code, stderr)
+		t.Fatalf("generate exited %d: %s", code, stderr)
+	}
+	want := treeOf(t, filepath.Join("testdata", "agents"))
+	if len(want) != len(outputNames) {
+		t.Fatalf("golden holds %d files, want %d", len(want), len(outputNames))
+	}
+	got := treeOf(t, out)
+	for name, text := range want {
+		if got[name] != text {
+			t.Errorf("%s differs from the captured golden", name)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("rendered %d files, want %d", len(got), len(want))
+	}
+	if code, stdout, _ := runCommand(t, "--check", configPath(), out); code != 0 {
+		t.Fatalf("check on fresh output exited %d: %s", code, stdout)
+	}
+}
+
+func TestGenerationIsIdempotent(t *testing.T) {
+	out := temp(t)
+	if code, stdout, stderr := runCommand(t, configPath(), out); code != 0 || !strings.Contains(stdout, "output: changed") {
+		t.Fatalf("first generate exited %d with %q: %s", code, stdout, stderr)
 	}
 	first := treeOf(t, out)
 	code, stdout, stderr := runCommand(t, configPath(), out)
 	if code != 0 {
 		t.Fatalf("second generate exited %d, want 0: %s", code, stderr)
 	}
-	if !strings.Contains(stdout, "unchanged") {
+	if !strings.Contains(stdout, "output: unchanged") {
 		t.Fatalf("second generate did not report its output as unchanged: %s", stdout)
 	}
 	if len(treeOf(t, out)) != len(first) {

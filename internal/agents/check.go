@@ -90,7 +90,7 @@ func checkSymlinks(outputs map[string]string, output string, stderr io.Writer) i
 		entries := append([]string{path}, parents(path)...)
 		for _, entry := range entries {
 			if info, err := os.Lstat(entry); err == nil && info.Mode()&os.ModeSymlink != 0 {
-				fmt.Fprintf(stderr, "harness agents: %s: symlink in role agent output path\n", entry)
+				fmt.Fprintf(stderr, "agents: %s: symlink in role agent output path\n", entry)
 				return 1
 			}
 		}
@@ -110,8 +110,8 @@ func parents(path string) []string {
 	return out
 }
 
-// Check reports each output that is missing, drifted, unmanaged, or widened, returning 1 when it found any.
-func Check(outputs, accesses map[string]string, output string, stdout io.Writer) int {
+// checkOutputs reports each output that is missing, drifted, unmanaged, or widened, returning 1 when it found any.
+func checkOutputs(outputs, accesses map[string]string, output string, stdout io.Writer) int {
 	present := existing(output)
 	var findings []string
 	for relative := range present {

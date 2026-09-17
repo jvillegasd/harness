@@ -6,7 +6,7 @@
 //
 // Output paths and their ancestors must not be symlinks; both generation and checking refuse them before reconciliation.
 //
-// --check writes nothing. It reports each output that is missing, drifted, unmanaged, or no longer carries its access level's restrictions, and exits 1 when it found any.
+// Checking writes nothing. It reports each output that is missing, drifted, unmanaged, or no longer carries its access level's restrictions, and exits 1 when it found any.
 package agents
 
 import "errors"
@@ -78,5 +78,5 @@ var unverified = []string{
 	"unverified: claude disallowedTools: Agent and opencode task: deny stopping the executor from delegating",
 }
 
-// fail reports an invalid or unsupported assignment, which the command surfaces as an operational failure.
+// fail reports an invalid or unsupported assignment, which Generate and Check surface as exit 1.
 func fail(msg string) error { return errors.New(msg) }
