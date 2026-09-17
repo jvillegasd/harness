@@ -106,7 +106,6 @@ type installer struct {
 	installed                         []entry
 	backupRoot                        string
 	stdout, stderr                    io.Writer
-	command                           string
 }
 
 func (in *installer) log(format string, args ...any) {
@@ -114,17 +113,17 @@ func (in *installer) log(format string, args ...any) {
 }
 
 func (in *installer) warn(format string, args ...any) {
-	fmt.Fprintf(in.stderr, "\033[1;33mharness %s:\033[0m "+format+"\n", append([]any{in.command}, args...)...)
+	fmt.Fprintf(in.stderr, "\033[1;33mharness install:\033[0m "+format+"\n", args...)
 }
 
-// recoverFatal turns a die into one red error line with the command's context and exit 1. It works only when deferred directly.
-func recoverFatal(command string, stderr io.Writer, code *int) {
+// recoverFatal turns a die into one red error line and exit 1. It works only when deferred directly.
+func recoverFatal(stderr io.Writer, code *int) {
 	if r := recover(); r != nil {
 		msg, ok := r.(fatal)
 		if !ok {
 			panic(r)
 		}
-		fmt.Fprintf(stderr, "\033[1;31mharness %s:\033[0m %s\n", command, msg)
+		fmt.Fprintf(stderr, "\033[1;31mharness install:\033[0m %s\n", msg)
 		*code = 1
 	}
 }
@@ -143,8 +142,8 @@ func (in *installer) resolveLocations() {
 
 // Command runs `harness install` with its arguments and returns the exit code.
 func Command(args []string, stdout, stderr io.Writer) (code int) {
-	defer recoverFatal("install", stderr, &code)
-	in := &installer{stdout: stdout, stderr: stderr, command: "install"}
+	defer recoverFatal(stderr, &code)
+	in := &installer{stdout: stdout, stderr: stderr}
 	clearBackups := false
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -348,10 +347,10 @@ func (in *installer) checkInstall() {
 func (in *installer) checkStatusline() {
 	binary := filepath.Join(in.home, ".local", "bin", "harness")
 	if info, err := os.Stat(binary); err != nil || info.Mode().Perm()&0o111 == 0 {
-		die("The status line binary is missing or not executable: %s; run harness bootstrap.", binary)
+		die("The status line binary is missing or not executable: %s; run harness install.", binary)
 	}
 	if exec.Command(binary, "statusline", "--help").Run() != nil {
-		die("The status line binary has no statusline subcommand: %s; run harness bootstrap.", binary)
+		die("The status line binary has no statusline subcommand: %s; run harness install.", binary)
 	}
 }
 

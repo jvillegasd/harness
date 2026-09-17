@@ -211,22 +211,22 @@ func TestUninstallKeepsAnEditedCopy(t *testing.T) {
 	}
 }
 
-// TestBootstrapInstallsTheEmbeddedHarnessFromAnywhere runs outside any checkout with no asset override, so what lands is what the binary carries.
-func TestBootstrapInstallsTheEmbeddedHarnessFromAnywhere(t *testing.T) {
+// TestInstallInstallsTheEmbeddedHarnessFromAnywhere runs outside any checkout with no asset override, so what lands is what the binary carries.
+func TestInstallInstallsTheEmbeddedHarnessFromAnywhere(t *testing.T) {
 	base := sandbox(t)
 	seedFull(t, base)
 	home := filepath.Join(base, "home")
-	cmd := exec.Command(binary, "bootstrap")
+	cmd := exec.Command(binary, "install")
 	cmd.Dir = base
 	cmd.Env = []string{"HOME=" + home, "PATH=" + filepath.Join(base, "shims") + ":/usr/bin:/bin", "SHELL=/bin/zsh", "TMPDIR=" + filepath.Join(base, "tmp")}
 	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("bootstrap: %v\n%s", err, out)
+		t.Fatalf("install: %v\n%s", err, out)
 	}
-	if help, err := exec.Command(filepath.Join(home, ".local", "bin", "harness"), "--help").Output(); err != nil || !strings.Contains(string(help), "bootstrap") {
+	if help, err := exec.Command(filepath.Join(home, ".local", "bin", "harness"), "--help").Output(); err != nil || !strings.Contains(string(help), "install") {
 		t.Errorf("the installed harness does not run: %v %s", err, help)
 	}
 	if got, want := readFileOr(filepath.Join(home, ".claude", "CLAUDE.md")), readFile(t, filepath.Join("..", "..", "POLICY.md")); got != want {
-		t.Error("bootstrap did not install the embedded policy at ~/.claude/CLAUDE.md")
+		t.Error("install did not install the embedded policy at ~/.claude/CLAUDE.md")
 	}
 }
 

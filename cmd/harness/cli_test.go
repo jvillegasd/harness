@@ -98,7 +98,6 @@ func (c matrixCase) assertClean(t *testing.T) {
 func TestCommandHelpMatrix(t *testing.T) {
 	commands := [][]string{
 		{},
-		{"bootstrap"},
 		{"install"},
 		{"agents"},
 		{"agents", "--check"},
@@ -153,7 +152,6 @@ func TestCommandHelpMatrix(t *testing.T) {
 func TestCommandInvocationMatrix(t *testing.T) {
 	args := [][]string{
 		{"bogus"},
-		{"bootstrap", "--bogus"},
 		{"install", "--bogus"},
 		{"install", "--uninstall", "--skip-packages"},
 		{"install", "--clear-backups", "--uninstall"},

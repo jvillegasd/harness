@@ -17,7 +17,7 @@ The Harness AI installation that serves Claude Code and OpenCode, extracted from
 | `go.mod`, `cmd/harness/` | The Go module and the `harness` command, the single entry point for operating the harness |
 | `internal/state/` | The per-branch oracle ladder and rabbit-hole counters behind `harness state` |
 | `internal/checkout/` | Checkout discovery and canonical asset locations, shared by the commands that resolve a checkout |
-| `internal/install/` | The installer and bootstrap behind `harness install` and `harness bootstrap` |
+| `internal/install/` | The installer behind `harness install` |
 | `internal/locks/` | The third-party skill locks behind `harness locks` |
 | `internal/bench/` | The session-population comparison behind `harness bench` |
 | `internal/agents/` | The role-agent renderer behind `harness agents` |
@@ -63,7 +63,7 @@ The first four are the Go rungs: vet, formatting, the command tests that build `
 
 Some changes cannot be settled by the checks above, because they act on machine state or on a running client: installer copy reconciliation, the tracked client settings, interactive authentication, and the session metrics a harness change is meant to move. Accept those by running the affected tool and observing it, never by static inspection alone.
 
-`harness bootstrap` and `harness install` are provisioning surfaces. Run them when the intent is to change machine state, never merely to validate a change. `--no-backup` deletes collisions instead of archiving them and is unrecoverable.
+`harness install` is a provisioning surface. Run it when the intent is to change machine state, never merely to validate a change. `--no-backup` deletes collisions instead of archiving them and is unrecoverable.
 
 The repository root is the product root and the nested product directory is gone, so a machine installed under the old layout is reinstalled cleanly rather than upgraded in place: uninstall it with the old checkout's own `harness install --uninstall` while that checkout still exists, then install from this one. The new installer claims a link only when it resolves into a managed asset namespace and ships no old-layout detection, migration, or compatibility sweep, so an old link is replaced or refused rather than swept. The Clean reinstall section of `README.md` names the leftovers.
 
