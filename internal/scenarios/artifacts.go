@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// evaluateArtifacts applies a scenario's declared artifact checks to the repository it ran in.
-func evaluateArtifacts(scenario map[string]any, before, after map[string]string, repo string, forgeCalls []string, fixturesUnchanged bool) []map[string]any {
+// evaluateArtifacts applies a scenario's declared artifact checks to the repository it ran in. Effects is nil unless the scenario seeded a publication fixture, and then forge calls are judged by the side-effect assertions instead of being refused outright.
+func evaluateArtifacts(scenario map[string]any, before, after map[string]string, repo string, forgeCalls []string, fixturesUnchanged bool, effects *sideEffects) []map[string]any {
 	artifacts := dict(scenario, "artifacts")
 	var entries []map[string]any
 	if value, ok := artifacts["tree_unchanged"]; ok {
@@ -43,8 +43,10 @@ func evaluateArtifacts(scenario map[string]any, before, after map[string]string,
 		}
 		entries = append(entries, entry(fmt.Sprintf("contains:%s:%s", relative, text), found, ""))
 	}
-	entries = append(entries, entry("no-external-forge", len(forgeCalls) == 0, strings.Join(forgeCalls, "; ")))
-	return entries
+	if effects != nil {
+		return append(entries, sideEffectEntries(artifacts, effects, forgeCalls)...)
+	}
+	return append(entries, entry("no-external-forge", len(forgeCalls) == 0, strings.Join(forgeCalls, "; ")))
 }
 
 func equalTrees(a, b map[string]string) bool {

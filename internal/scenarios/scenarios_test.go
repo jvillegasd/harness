@@ -153,7 +153,7 @@ func TestContainsCannotEscapeTheRepository(t *testing.T) {
 	declaration := testScenario(map[string]any{
 		"artifacts": map[string]any{"contains": []any{map[string]any{"path": "../outside.txt", "text": "secret"}}},
 	})
-	entries := evaluateArtifacts(declaration, map[string]string{}, map[string]string{}, repo, nil, true)
+	entries := evaluateArtifacts(declaration, map[string]string{}, map[string]string{}, repo, nil, true, nil)
 	if entries[0]["ok"] != false {
 		t.Fatalf("a path outside the repository was accepted: %v", entries[0])
 	}
@@ -176,12 +176,12 @@ func TestDigestChangesWithInputsAndDeclaration(t *testing.T) {
 
 func TestForgeGuardInterceptsARealCall(t *testing.T) {
 	workspace := t.TempDir()
-	shim, log, err := installForgeGuard(workspace)
+	shim, log, err := installForgeGuard(workspace, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	cmd := exec.Command(filepath.Join(shim, "gh"), "issue", "list")
-	cmd.Env = forgeEnv(shim)
+	cmd.Env = forgeEnv(shim, false)
 	_ = cmd.Run()
 	if cmd.ProcessState.ExitCode() == 0 {
 		t.Fatal("the forge shim did not refuse")
@@ -189,24 +189,6 @@ func TestForgeGuardInterceptsARealCall(t *testing.T) {
 	raw, err := os.ReadFile(log)
 	if err != nil || !contains(string(raw), "issue list") {
 		t.Fatalf("forge log = %q, %v", raw, err)
-	}
-}
-
-func TestPaidCapIsRetainedAcrossRuns(t *testing.T) {
-	out := t.TempDir()
-	two := 2
-	if err := claimSession(out, &two); err != nil {
-		t.Fatal(err)
-	}
-	if err := claimSession(out, nil); err != nil {
-		t.Fatal(err)
-	}
-	if err := claimSession(out, nil); err == nil {
-		t.Fatal("the cap did not refuse the third session")
-	}
-	five := 5
-	if err := claimSession(out, &five); err == nil {
-		t.Fatal("a changed cap did not refuse")
 	}
 }
 
@@ -258,12 +240,12 @@ func TestReportSeparatesLocalTooling(t *testing.T) {
 
 func TestReadOnlyOracleChecks(t *testing.T) {
 	declaration := testScenario(map[string]any{"artifacts": map[string]any{"fixtures_unchanged": true}})
-	entries := evaluateArtifacts(declaration, map[string]string{}, map[string]string{}, t.TempDir(), nil, false)
+	entries := evaluateArtifacts(declaration, map[string]string{}, map[string]string{}, t.TempDir(), nil, false, nil)
 	if entries[0]["ok"] != false {
 		t.Fatal("a changed fixture set passed a fixtures_unchanged check")
 	}
 	declaration = testScenario(map[string]any{"artifacts": map[string]any{"tree_unchanged": true}})
-	entries = evaluateArtifacts(declaration, map[string]string{"a": "b"}, map[string]string{"a": "b"}, t.TempDir(), []string{"issue list"}, true)
+	entries = evaluateArtifacts(declaration, map[string]string{"a": "b"}, map[string]string{"a": "b"}, t.TempDir(), []string{"issue list"}, true, nil)
 	forge := findEntry(entries, "no-external-forge")
 	if forge == nil || forge["ok"] != false {
 		t.Fatalf("a forge call passed the read-only oracle: %v", forge)

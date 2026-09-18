@@ -14,21 +14,26 @@ import (
 	"time"
 )
 
-// installForgeGuard writes a disposable `gh` that logs and refuses, so a scenario cannot reach a forge. A shim that cannot be written fails the run rather than leaving the real forge reachable.
-func installForgeGuard(workspace string) (shim, log string, err error) {
+// installForgeGuard writes a disposable `gh` that logs and refuses, so a scenario cannot reach a forge. Under a publication fixture it is a substitute instead: it logs and succeeds, answering `pr create` with a placeholder URL, so the workflow proceeds and the log is what gets judged. A shim that cannot be written fails the run rather than leaving the real forge reachable.
+func installForgeGuard(workspace string, substitute bool) (shim, log string, err error) {
 	shim = filepath.Join(workspace, "shim")
 	if err := os.MkdirAll(shim, 0o755); err != nil {
 		return "", "", err
 	}
 	log = filepath.Join(workspace, "forge.log")
 	script := "#!/bin/sh\nprintf \"%s\\n\" \"$*\" >> \"" + log + "\"\nexit 1\n"
+	if substitute {
+		script = "#!/bin/sh\nprintf \"%s\\n\" \"$*\" >> \"" + log + "\"\n" +
+			"if [ \"$1 $2\" = \"pr create\" ]; then echo \"https://forge.invalid/pull/$(grep -c '^pr create' \"" + log + "\")\"; fi\n"
+	}
 	if err := os.WriteFile(filepath.Join(shim, "gh"), []byte(script), 0o755); err != nil {
 		return "", "", err
 	}
 	return shim, log, nil
 }
 
-func forgeEnv(shim string) []string {
+// forgeEnv isolates a scenario from real forges and remotes. Local is set only under a publication fixture, and admits the file transport the seeded origin needs.
+func forgeEnv(shim string, local bool) []string {
 	env := os.Environ()
 	path := shim + string(os.PathListSeparator) + os.Getenv("PATH")
 	set := map[string]string{
@@ -41,6 +46,9 @@ func forgeEnv(shim string) []string {
 		"SSH_ASKPASS":         "/bin/false",
 		"GIT_SSH_COMMAND":     "/bin/false",
 		"GIT_ALLOW_PROTOCOL":  "none",
+	}
+	if local {
+		set["GIT_ALLOW_PROTOCOL"] = "file"
 	}
 	var out []string
 	seen := map[string]bool{}
@@ -209,38 +217,67 @@ func runLive(scenario map[string]any, repo string, env []string, events, transcr
 	return code, nil
 }
 
-// claimSession retains a per-batch paid-session cap and refuses once it is reached.
-func claimSession(outRoot string, maxSessions *int) error {
+// defaultCap bounds paid sessions in a batch that never set --cap.
+const defaultCap = 32
+
+// claimSession refuses a paid session once the batch's recorded paid attempts reach its cap. The cap is retained in the batch on first use, so it cannot be raised mid-batch; a new --out directory is a new batch and a new budget. The count comes from the attempts themselves: failed and interrupted sessions count, model-unavailable ones do not, and nothing is ever deleted to free budget.
+func claimSession(outRoot string, cap *int) error {
 	path := filepath.Join(outRoot, batchFile)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	data := map[string]any{"cap": nil, "sessions": 0}
-	if raw, err := os.ReadFile(path); err == nil {
-		if decoded, err := decodeJSON(raw); err == nil {
-			if object, ok := decoded.(map[string]any); ok {
-				data = object
-			}
-		}
-	}
-	capValue, hasCap := data["cap"]
-	if !hasCap || capValue == nil {
-		if maxSessions == nil {
-			return fmt.Errorf("paid execution needs --max-sessions to set the cap")
-		}
-		data["cap"] = *maxSessions
-	} else if maxSessions != nil && floatOf(capValue) != float64(*maxSessions) {
-		return fmt.Errorf("batch cap is retained at %v; start a new batch to change it", formatNumber(capValue))
-	}
-	if floatOf(data["sessions"]) >= floatOf(data["cap"]) {
-		return fmt.Errorf("per-batch session cap reached (%s/%s)", formatNumber(data["sessions"]), formatNumber(data["cap"]))
-	}
-	data["sessions"] = intOf(data["sessions"]) + 1
-	encoded, err := json.MarshalIndent(data, "", "  ")
+	data, err := readObject(path)
 	if err != nil {
-		return err
+		data = map[string]any{}
 	}
-	return os.WriteFile(path, append(encoded, '\n'), 0o644)
+	switch {
+	case data["cap"] == nil:
+		data["cap"] = defaultCap
+		if cap != nil {
+			data["cap"] = *cap
+		}
+		if err := os.MkdirAll(outRoot, 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(path, []byte(indentJSON(map[string]any{"cap": data["cap"]})), 0o644); err != nil {
+			return err
+		}
+	case cap != nil && floatOf(data["cap"]) != float64(*cap):
+		return fmt.Errorf("batch cap is retained at %s; start a new batch to change it", formatNumber(data["cap"]))
+	}
+	used := paidSessions(outRoot)
+	if float64(used) >= floatOf(data["cap"]) {
+		return fmt.Errorf("per-batch session cap reached (%d/%s)", used, formatNumber(data["cap"]))
+	}
+	return nil
+}
+
+// paidSessions counts the batch's live attempts that reached a model.
+func paidSessions(outRoot string) int {
+	provenances, _ := filepath.Glob(filepath.Join(outRoot, "*", "*", "provenance.json"))
+	count := 0
+	for _, path := range provenances {
+		provenance, err := readObject(path)
+		if err != nil || !strings.HasPrefix(getString(provenance, "executor"), "live:") {
+			continue
+		}
+		if getString(readMetrics(filepath.Dir(path)), "terminal_status") != "model-unavailable" {
+			count++
+		}
+	}
+	return count
+}
+
+// sessionStatus is terminalStatus, except that a failed session whose client reported the model as not found is model-unavailable, which spends no budget.
+func sessionStatus(code *int, events []any) string {
+	status := terminalStatus(code)
+	if status != "failed" {
+		return status
+	}
+	for _, raw := range events {
+		event, _ := raw.(map[string]any)
+		if getString(event, "error") == "model_not_found" {
+			return "model-unavailable"
+		}
+	}
+	return status
 }
 
 func attemptPaths(outRoot, scenarioID string) []string {
@@ -259,7 +296,7 @@ func attemptPaths(outRoot, scenarioID string) []string {
 	return paths
 }
 
-func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPaid bool, maxSessions *int) (string, string, error) {
+func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPaid bool, cap *int) (string, string, error) {
 	digest := scenarioDigest(scenario, root, fixturesRoot)
 	fixture := filepath.Join(fixturesRoot, getString(scenario, "id"))
 	fixtureInfo, fixtureErr := os.Stat(fixture)
@@ -279,11 +316,17 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 	init := exec.Command("git", "init", "-q")
 	init.Dir = repo
 	_ = init.Run()
-	shim, forgeLog, err := installForgeGuard(workspace)
+	var seeded *publication
+	if truthy(scenario["publication"]) {
+		if seeded, err = seedPublication(workspace, repo); err != nil {
+			return "", "", err
+		}
+	}
+	shim, forgeLog, err := installForgeGuard(workspace, seeded != nil)
 	if err != nil {
 		return "", "", err
 	}
-	env := forgeEnv(shim)
+	env := forgeEnv(shim, seeded != nil)
 	env = append(env, "HARNESS_ROOT="+root, "SCENARIO_REPO="+repo)
 	before := snapshot(repo)
 	fixturesBefore := treeDigest(fixture)
@@ -300,7 +343,7 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 			return "", "", err
 		}
 	default:
-		if err := claimSession(outRoot, maxSessions); err != nil {
+		if err := claimSession(outRoot, cap); err != nil {
 			return "", "", err
 		}
 		code, err := runLive(scenario, repo, env, &events, &transcript)
@@ -320,15 +363,26 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 			}
 		}
 	}
-	entries := evaluateArtifacts(scenario, before, after, repo, forgeCalls, fixturesBefore == treeDigest(fixture))
+	var effects *sideEffects
+	if seeded != nil {
+		if effects, err = seeded.measure(repo); err != nil {
+			return "", "", err
+		}
+	}
+	entries := evaluateArtifacts(scenario, before, after, repo, forgeCalls, fixturesBefore == treeDigest(fixture), effects)
 	if checkCode != nil {
 		entries = append(entries, entry("check-exit", *checkCode == 0, "exit "+strconv.Itoa(*checkCode)))
 	}
 	if liveCode != nil {
 		entries = append(entries, entry("session-exit", *liveCode == 0, "exit "+strconv.Itoa(*liveCode)))
 	}
-	remotes := gitRemotes(repo)
-	entries = append(entries, entry("no-git-remote", len(remotes) == 0, strings.Join(remotes, "; ")))
+	if seeded != nil {
+		foreign := seeded.foreignRemotes(repo)
+		entries = append(entries, entry("local-origin-only", len(foreign) == 0, strings.Join(foreign, "; ")))
+	} else {
+		remotes := gitRemotes(repo)
+		entries = append(entries, entry("no-git-remote", len(remotes) == 0, strings.Join(remotes, "; ")))
+	}
 
 	now := time.Now().UTC()
 	stamp := now.Format("20060102T150405") + fmt.Sprintf("%06dZ", now.Nanosecond()/1000)
@@ -372,6 +426,11 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 	if err := write("provenance.json", indentJSON(provenance)); err != nil {
 		return "", "", err
 	}
+	if seeded != nil {
+		if err := write("forge.log", strings.Join(append(forgeCalls, ""), "\n")); err != nil {
+			return "", "", err
+		}
+	}
 	if err := write("events.jsonl", jsonl(events)); err != nil {
 		return "", "", err
 	}
@@ -387,7 +446,7 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 	} else {
 		exitCode = liveCode
 	}
-	status := terminalStatus(exitCode)
+	status := sessionStatus(exitCode, events)
 	if err := write("metrics.json", indentJSON(buildMetrics(scenario, events, wallSeconds, status))); err != nil {
 		return "", "", err
 	}

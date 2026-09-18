@@ -2,7 +2,7 @@
 //
 // Each scenario declares the artifacts and assertions it expects before any model session runs, executes in a disposable repository with a forge shim on PATH, and retains one attempt directory holding prompts, input provenance, tool events, artifact results, and transcript evidence. An attempt passes only when its artifact checks pass and a transcript review record exists. Changed scenario or harness inputs mark an older attempt stale.
 //
-// Paid model execution is off unless --allow-paid is passed with a retained per-batch session cap. Local tooling success is reported separately from behavioral acceptance.
+// Paid model execution is off unless --allow-paid is passed, and is bounded by a retained per-batch session cap. Local tooling success is reported separately from behavioral acceptance.
 package scenarios
 
 import (
@@ -23,7 +23,9 @@ var requiredEvidence = []string{
 	"metrics.json",
 }
 
-var artifactKeys = []string{"tree_unchanged", "fixtures_unchanged", "present", "absent", "contains"}
+var sideEffectKeys = []string{"commits", "push", "pull_requests", "forge_allowed", "forge_forbidden"}
+
+var artifactKeys = append([]string{"tree_unchanged", "fixtures_unchanged", "present", "absent", "contains"}, sideEffectKeys...)
 
 var stateOrder = []string{"pass", "fail", "interrupted", "stale", "unreviewed", "incomplete", "unavailable"}
 
@@ -43,7 +45,7 @@ Commands:
 Flags:
   --matrix <path>   Matrix declaration (default <root>/scenarios/matrix.json)
   --out <path>      Attempt directory (default <root>/scenarios/attempts)
-  run:     --scenario <id> --fixtures <path> --allow-paid --max-sessions <n>
+  run:     --scenario <id> --fixtures <path> --allow-paid --cap <n> (default 32)
   compare: --before <dir> --after <dir>
 `
 
@@ -63,14 +65,14 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	out := flags.String("out", "", "")
 	var scenario, fixtures, before, after *string
 	var allowPaid *bool
-	var maxSessions *int
+	var capFlag *int
 	switch sub {
 	case "validate", "report":
 	case "run":
 		scenario = flags.String("scenario", "", "")
 		fixtures = flags.String("fixtures", "", "")
 		allowPaid = flags.Bool("allow-paid", false, "")
-		maxSessions = flags.Int("max-sessions", 0, "")
+		capFlag = flags.Int("cap", 0, "")
 	case "compare":
 		before = flags.String("before", "", "")
 		after = flags.String("after", "", "")
@@ -96,8 +98,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 	case "run":
-		if *allowPaid != isFlagSet(flags, "max-sessions") {
-			fmt.Fprintln(stderr, "harness scenarios: --allow-paid requires --max-sessions, and --max-sessions requires --allow-paid.")
+		if isFlagSet(flags, "cap") && (!*allowPaid || *capFlag < 1) {
+			fmt.Fprintln(stderr, "harness scenarios: --cap needs --allow-paid and a positive count.")
 			return 2
 		}
 	}
@@ -153,8 +155,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 			fixturesPath = filepath.Join(root, "scenarios", "fixtures")
 		}
 		var cap *int
-		if isFlagSet(flags, "max-sessions") {
-			cap = maxSessions
+		if isFlagSet(flags, "cap") {
+			cap = capFlag
 		}
 		errors := validateMatrix(declaration)
 		if len(errors) > 0 {

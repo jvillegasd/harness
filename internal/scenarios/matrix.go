@@ -3,6 +3,7 @@ package scenarios
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 )
 
 // ---- matrix accessors ----
@@ -102,8 +103,52 @@ func validateMatrix(matrix map[string]any) []string {
 				}
 			}
 		}
+		errors = append(errors, validatePublication(where, scenario, artifacts)...)
 		if mode(scenario) == "offline" && !truthy(scenario["check"]) {
 			errors = append(errors, fmt.Sprintf("%s: offline scenario needs a check command", where))
+		}
+	}
+	return errors
+}
+
+// validatePublication checks the publication fixture and the side-effect assertions that only it can observe.
+func validatePublication(where string, scenario, artifacts map[string]any) []string {
+	var errors []string
+	publication, declared := scenario["publication"]
+	if _, ok := publication.(bool); declared && !ok {
+		errors = append(errors, fmt.Sprintf("%s: publication must be a boolean", where))
+	}
+	for _, key := range sideEffectKeys {
+		if _, ok := artifacts[key]; ok && !truthy(publication) {
+			errors = append(errors, fmt.Sprintf("%s: side-effect assertions need a publication fixture", where))
+			break
+		}
+	}
+	for _, key := range []string{"commits", "pull_requests"} {
+		if value, ok := artifacts[key]; ok {
+			if f, isNumber := toNumber(value); !isNumber || f < 0 || f != math.Trunc(f) {
+				errors = append(errors, fmt.Sprintf("%s: %s must be a non-negative integer", where, key))
+			}
+		}
+	}
+	if value, ok := artifacts["push"]; ok {
+		if _, isBool := value.(bool); !isBool {
+			errors = append(errors, fmt.Sprintf("%s: push must be a boolean", where))
+		}
+	}
+	for _, key := range []string{"forge_allowed", "forge_forbidden"} {
+		value, ok := artifacts[key]
+		if !ok {
+			continue
+		}
+		items, isList := value.([]any)
+		for _, item := range items {
+			if !isString(item) {
+				isList = false
+			}
+		}
+		if !isList {
+			errors = append(errors, fmt.Sprintf("%s: %s must be a list of strings", where, key))
 		}
 	}
 	return errors
