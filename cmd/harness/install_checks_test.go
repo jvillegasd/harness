@@ -125,6 +125,17 @@ func TestInstallRefusesAnUnguardedLocalSkill(t *testing.T) {
 	}
 }
 
+// TestInstallExplainsAMissingLock names why the lock is needed when a HARNESS_ASSETS tree lacks it.
+func TestInstallExplainsAMissingLock(t *testing.T) {
+	base := sandbox(t)
+	if err := os.Remove(filepath.Join(base, "checkout", "skills-lock.json")); err != nil {
+		t.Fatal(err)
+	}
+	if r := runInstaller(t, base, "--skip-packages"); r.code == 0 || !strings.Contains(r.stderr, "separates local skills from locked ones") {
+		t.Errorf("exit %d, stderr %q; want the lock's purpose named", r.code, r.stderr)
+	}
+}
+
 // Role agents are copied into each client beside private entries, and the uninstall removes only the recorded copies.
 func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
 	base := sandbox(t)

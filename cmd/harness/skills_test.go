@@ -423,6 +423,32 @@ func TestSkillsVerifyRefusesAnUnguardedLocalSkill(t *testing.T) {
 	}
 }
 
+// TestSkillsVerifyRejectsMisplacedGuards counts a guard only where its client reads it: Claude's at the top level, OpenCode's under metadata.
+func TestSkillsVerifyRejectsMisplacedGuards(t *testing.T) {
+	for name, c := range map[string]struct{ text, want string }{
+		"opencode key at top level": {"---\ndisable-model-invocation: true\nopencode/autoinvoke: \"false\"\n---\n", "missing opencode/autoinvoke"},
+		"claude key under metadata": {"---\nmetadata:\n  disable-model-invocation: true\n  opencode/autoinvoke: \"false\"\n---\n", "missing disable-model-invocation"},
+		"guards quoted in a value":  {"---\ndescription: \"disable-model-invocation: true, opencode/autoinvoke: \\\"false\\\"\"\n---\n", "missing disable-model-invocation"},
+		"later override to false":   {"---\ndisable-model-invocation: true\ndisable-model-invocation: false\nmetadata:\n  opencode/autoinvoke: \"false\"\n---\n", "missing disable-model-invocation"},
+		"no closing delimiter":      {"---\ndisable-model-invocation: true\nmetadata:\n  opencode/autoinvoke: \"false\"\nbody\n", "missing disable-model-invocation"},
+	} {
+		lr := locksVerifySandbox(t)
+		writeMode(t, filepath.Join(lr.root, "skills", "zz-bare", "SKILL.md"), c.text, 0o644)
+		if r := lr.harness(t, "skills", "verify"); r.code == 0 || !strings.Contains(r.stdout, "zz-bare: "+c.want) {
+			t.Errorf("%s: exit %d, stdout %q; want %q", name, r.code, r.stdout, c.want)
+		}
+	}
+	lr := locksVerifySandbox(t)
+	writeMode(t, filepath.Join(lr.root, "skills", "zz-crlf", "SKILL.md"), "---\r\ndisable-model-invocation: true\r\nmetadata:\r\n  opencode/autoinvoke: \"false\"\r\n---\r\n", 0o644)
+	ok(t, lr.harness(t, "skills", "verify"), "skills verify with CRLF guards")
+	if err := os.MkdirAll(filepath.Join(lr.root, "skills", "zz-empty"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if r := lr.harness(t, "skills", "verify"); r.code == 0 || !strings.Contains(r.stdout, "zz-empty: missing SKILL.md") {
+		t.Errorf("empty skill dir: exit %d, stdout %q", r.code, r.stdout)
+	}
+}
+
 // TestAliasesShellSyntax keeps the shipped shell entry point parseable.
 func TestAliasesShellSyntax(t *testing.T) {
 	if out, err := exec.Command("bash", "-n", filepath.Join("..", "..", "aliases.sh")).CombinedOutput(); err != nil {

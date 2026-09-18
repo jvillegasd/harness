@@ -63,7 +63,8 @@ Install and uninstall run from any directory. An install copies this binary
 to ~/.local/bin/harness, where the Claude Code status line runs it, copies the
 assets it was built with into each client, and records every copy in
 ~/.harness/state.json. Set HARNESS_ASSETS to a directory to install that tree
-instead.
+instead; it must carry skills-lock.json, which tells an install which skills
+are locally authored and must carry both invocation guards.
 `
 
 const summaryText = `Next steps (interactive; not run by this installer):
@@ -211,9 +212,11 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 }
 
 func (in *installer) install() {
-	// Before any write, so an unguarded local skill never reaches a client.
+	// Before any write, so a refusal leaves HOME untouched.
 	unguarded, err := skills.Unguarded(in.dir)
-	must(err)
+	if err != nil {
+		die("Checking the local skills' invocation guards failed: %v", err)
+	}
 	if len(unguarded) > 0 {
 		die("Local skill missing an invocation guard: %s", strings.Join(unguarded, "; "))
 	}
