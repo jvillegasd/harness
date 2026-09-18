@@ -89,15 +89,20 @@ func (in *installer) assigned() map[string]agents.Assigned {
 	}
 	assigned := choice.ForRender()
 	var listed []string
-	for role, a := range assigned {
+	var listErr error
+	for _, role := range models.Roles {
+		a := assigned[role]
 		if a.Client != "opencode" {
 			continue
 		}
-		if listed == nil {
-			listed, err = models.OpenCodeModels()
-			if err != nil {
-				listed = []string{}
+		if listed == nil && listErr == nil {
+			if listed, listErr = models.OpenCodeModels(); listErr != nil {
+				in.warn("%v; every OpenCode-assigned role keeps the client default.", listErr)
 			}
+		}
+		if listErr != nil {
+			delete(assigned, role)
+			continue
 		}
 		if !slices.Contains(listed, a.Model) {
 			in.warn("%s is assigned OpenCode model %s, which `opencode models` does not list here; its agent keeps the client default until `harness models` names one this machine can run.", role, a.Model)

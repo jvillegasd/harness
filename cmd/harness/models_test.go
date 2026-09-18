@@ -192,6 +192,29 @@ func TestModelsRejectsAStaleChoice(t *testing.T) {
 		if r := runInstaller(t, base, "--skip-packages"); r.code == 0 || !strings.Contains(r.stderr, "harness models reset") {
 			t.Errorf("%s: install exit %d, stderr %q", name, r.code, r.stderr)
 		}
+		ok(t, runModels(t, base, "reset"), name+": the recommended reset")
+		ok(t, runModels(t, base, "show"), name+": show after reset")
+		ok(t, runInstaller(t, base, "--skip-packages"), name+": install after reset")
+	}
+	base := modelsBase(t)
+	writeMode(t, stateFile(base), `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy", "roles": {"executor": {"client": "claude", "model": "claudius"}}}}`+"\n", 0o644)
+	ok(t, runModels(t, base, "reset", "executor"), "reset the malformed role")
+	if r := ok(t, runModels(t, base, "show"), "show after role reset"); !strings.Contains(r.stdout, "executor client=opencode model=opencode-go/deepseek-v4-flash effort=inherit (preset:economy)") {
+		t.Errorf("role reset lost the preset:\n%s", r.stdout)
+	}
+}
+
+// TestModelsPresetNeedsNoOpenCode lets any built-in preset be chosen on a machine without OpenCode, and show marks what install will fall back on.
+func TestModelsPresetNeedsNoOpenCode(t *testing.T) {
+	base := sandbox(t)
+	writeShim(t, base, "opencode", "exit 1")
+	ok(t, runModels(t, base, "set", "--preset", "balanced"), "set balanced without OpenCode")
+	if r := ok(t, runModels(t, base, "show"), "show"); !strings.Contains(r.stdout, "executor client=opencode model=opencode-go/glm-5.3 effort=inherit (preset:balanced) [unverified:") {
+		t.Errorf("show does not mark the unverifiable OpenCode model:\n%s", r.stdout)
+	}
+	r := ok(t, runInstaller(t, base, "--skip-packages"), "install without OpenCode")
+	if got := strings.Count(r.stderr+r.stdout, "listing OpenCode models failed"); got != 1 {
+		t.Errorf("want one listing-failure warning, got %d:\n%s%s", got, r.stdout, r.stderr)
 	}
 }
 

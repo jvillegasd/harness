@@ -199,13 +199,31 @@ func Save(path string, c Choice) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	// A rename is atomic, so a concurrent install never reads half a file.
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, append(data, '\n'), 0o644); err != nil {
+	return replace(path, append(data, '\n'))
+}
+
+// replace writes data to a fresh temporary file beside path and renames it over path, so a reader never sees half a file.
+func replace(path string, data []byte) error {
+	f, err := os.CreateTemp(filepath.Dir(path), "state-*.json")
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, path)
+	_, werr := f.Write(data)
+	if cerr := f.Close(); werr == nil {
+		werr = cerr
+	}
+	if werr == nil {
+		werr = os.Chmod(f.Name(), 0o644)
+	}
+	if werr != nil {
+		_ = os.Remove(f.Name())
+		return werr
+	}
+	return os.Rename(f.Name(), path)
 }
+
+// Replace writes path through a temporary file and a rename; the installer uses it for the same state file.
+func Replace(path string, data []byte) error { return replace(path, data) }
 
 func readDoc(path string) (map[string]json.RawMessage, error) {
 	doc := map[string]json.RawMessage{}

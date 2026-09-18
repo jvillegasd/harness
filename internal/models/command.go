@@ -42,37 +42,39 @@ func Command(args []string, stdout, stderr io.Writer) int {
 }
 
 func run(path string, args []string, stdout io.Writer) error {
+	sub, rest := args[0], args[1:]
+	// reset is the recovery for a stored choice Load refuses, so it reads the block without validating it.
+	if sub == "reset" {
+		return reset(path, rest)
+	}
 	choice, err := Load(path)
 	if err != nil {
 		return err
 	}
-	sub, rest := args[0], args[1:]
 	switch sub {
 	case "show":
 		resolved := choice.Resolve()
+		var listed []string
+		var listErr error
 		for _, role := range Roles {
 			r := resolved[role]
-			fmt.Fprintf(stdout, "%s client=%s model=%s effort=%s (%s)\n", role, r.Client, r.Model, effortOrInherit(r.Effort), r.Source)
+			note := ""
+			if r.Client == "opencode" {
+				if listed == nil && listErr == nil {
+					listed, listErr = OpenCodeModels()
+				}
+				switch {
+				case listErr != nil:
+					note = " [unverified: " + listErr.Error() + "]"
+				case !slices.Contains(listed, r.Model):
+					note = " [not listed by `opencode models`; install renders the client default]"
+				}
+			}
+			fmt.Fprintf(stdout, "%s client=%s model=%s effort=%s (%s)%s\n", role, r.Client, r.Model, effortOrInherit(r.Effort), r.Source, note)
 		}
 		return nil
 	case "set":
 		return set(path, choice, rest)
-	case "reset":
-		switch len(rest) {
-		case 0:
-			choice = Choice{}
-		case 1:
-			if err := knownRole(rest[0]); err != nil {
-				return err
-			}
-			if _, ok := choice.Roles[rest[0]]; !ok {
-				return nil
-			}
-			delete(choice.Roles, rest[0])
-		default:
-			return fmt.Errorf("reset takes at most one role")
-		}
-		return Save(path, choice)
 	case "resolve":
 		return resolve(choice, rest, stdout)
 	}
@@ -98,11 +100,7 @@ func set(path string, choice Choice, args []string) error {
 		if _, ok := Presets[*preset]; !ok {
 			return fmt.Errorf("unknown preset %q; choose %s", *preset, strings.Join(presetNames(), ", "))
 		}
-		for _, role := range Roles {
-			if err := Validate(Presets[*preset][role]); err != nil {
-				return fmt.Errorf("preset %s: %s: %v", *preset, role, err)
-			}
-		}
+		// A built-in preset is well formed by construction; whether this machine can run its OpenCode models is the install's fallback to judge.
 		choice.Preset = *preset
 		return Save(path, choice)
 	}
@@ -119,6 +117,33 @@ func set(path string, choice Choice, args []string) error {
 		choice.Roles = map[string]Assignment{}
 	}
 	choice.Roles[role] = a
+	return Save(path, choice)
+}
+
+func reset(path string, args []string) error {
+	if len(args) > 1 {
+		return fmt.Errorf("reset takes at most one role")
+	}
+	if len(args) == 0 {
+		return Save(path, Choice{})
+	}
+	if err := knownRole(args[0]); err != nil {
+		return err
+	}
+	doc, err := readDoc(path)
+	if err != nil {
+		return err
+	}
+	var choice Choice
+	if raw, ok := doc["models"]; ok {
+		if err := json.Unmarshal(raw, &choice); err != nil {
+			return fmt.Errorf("%s: models: %w; run `harness models reset` with no role", path, err)
+		}
+	}
+	if _, ok := choice.Roles[args[0]]; !ok {
+		return nil
+	}
+	delete(choice.Roles, args[0])
 	return Save(path, choice)
 }
 
