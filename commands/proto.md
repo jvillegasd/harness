@@ -1,5 +1,5 @@
 ---
-description: Discover requirements through human-tested prototypes; hand the ledger the human accepted to /ship.
+description: Discover requirements through human-tested prototypes; hand a ledger the human accepted to /ship.
 argument-hint: "[requirements, ticket id, or a half-formed idea]"
 ---
 
@@ -42,7 +42,7 @@ Each iteration:
 
 Exactly one of:
 
-- **Promote.** Only on the human's explicit acceptance of the whole ledger, under the policy's **Publication authority**; a ledger this workflow finalized on its own never promotes, so present it and ask. Finalize the ledger: agreed behavior, acceptance criteria, verification/test seams, decisions and rejected alternatives, and prototype-quality work `/ship` must harden. Refresh the current-tip checkpoint with the ledger path or ticket, local check results, and `/ship` as next action; retrieve and confirm it. Hand off the branch and ledger. `/ship` uses the ledger as contract, squashes WIP commits, and runs its full pipeline and both reviews over the accumulated diff.
+- **Promote.** Finalize the ledger: agreed behavior, acceptance criteria, verification/test seams, decisions and rejected alternatives, and prototype-quality work `/ship` must harden. Then present the finalized ledger and ask the human to accept it; it becomes a ledger the human accepted, and promotes, only on that explicit acceptance, under the policy's **Publication authority**. A ledger this workflow finalized on its own never promotes. Refresh the current-tip checkpoint with the ledger path or ticket, local check results, and `/ship` as next action; retrieve and confirm it. Hand off the branch and ledger. `/ship` uses the ledger as contract, squashes WIP commits, and runs its full pipeline and both reviews over the accumulated diff.
 - **Kill.** Record the disproved premise and evidence, then route to `/abandon`. It confirms discarded work and tracker writes once, releases needed scope for retry or reconciles explicit cancellation, saves `abandoned` or `cancelled`, and retires the branch/worktree. Never delete the branch here or leave its claim stranded. Offer `/spec` or `/create-ticket` for replacement work.
 
 Never push, never open a pull request, never merge from here. If the human asks to ship straight from this workflow, route to `/ship` with the ledger instead: nothing reaches a pull request except through `/ship`.

@@ -45,7 +45,7 @@ Use exactly the canonical `fields` and their declared shapes:
 | --- | --- |
 | `state` | One of the canonical `states`. |
 | `branch_tip` | The git commit sha of the branch head at save time. |
-| `contract` | Durable references, never copied text: a ticket URL or path, a pull request URL, or a finalized prototype ledger path. `require_non_empty`. |
+| `contract` | Durable references, never copied text: a ticket URL or path, a pull request URL, or the path of a prototype ledger the human accepted. `require_non_empty`. |
 | `checks` | Resolved ladder results for this tip. Valid only while the tip matches. |
 | `rationale` | The narrow exception for a decision that exists nowhere durable yet. Keep the key; set it empty when the contract already records the rationale. |
 | `next_action` | One step, not a plan. `require_non_empty`. |

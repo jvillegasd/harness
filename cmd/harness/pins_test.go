@@ -724,7 +724,25 @@ func TestPublicationAuthorityHasOneHome(t *testing.T) {
 	if n := strings.Count(policy, test); n != 1 {
 		t.Errorf("POLICY.md states the agreement test %d times, want 1", n)
 	}
-	for _, name := range []string{"ship", "feedback", "address-review", "proto", "land"} {
+	for _, sentence := range []string{
+		"none of them supplies the agreement, alone or together, and an agent finalizing its own artifact never promotes it",
+		"`/address-review` and `/feedback` are the deliberate exceptions to this blanket autonomy",
+		"A commit, branch, or worktree that stays local on a task branch is not a publication",
+	} {
+		if !strings.Contains(policy, sentence) {
+			t.Errorf("POLICY.md lost the anchor %q", sentence)
+		}
+	}
+	for rel, gate := range map[string]string{
+		"commands/feedback.md": "Invoking `/feedback` is not that approval",
+		"commands/proto.md":    "A ledger this workflow finalized on its own never promotes",
+		"commands/land.md":     "confirm once before writing",
+	} {
+		if !strings.Contains(readRepo(t, rel), gate) {
+			t.Errorf("%s lost its gate %q", rel, gate)
+		}
+	}
+	for _, name := range []string{"ship", "feedback", "address-review", "proto", "land", "spec", "create-ticket", "abandon"} {
 		text := readRepo(t, "commands/"+name+".md")
 		if !strings.Contains(text, "**Publication authority**") {
 			t.Errorf("%s.md does not defer to the policy's **Publication authority**", name)
