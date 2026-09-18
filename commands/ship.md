@@ -19,7 +19,7 @@ Require clean credentials and resolve exactly one implementation contract:
 
 - An implementation-ready ticket published through `/spec` plus `/create-ticket`, with complete contract fields for `What to build`, `Acceptance criteria`, and `Test seams and checks`. A ticket from a confirmed `/research` batch also qualifies, but only after `/create-ticket`'s confirmation gate, publication, and completion of those fields; an underspecified research ticket returns to native planning or `/spec`.
 - An approved in-conversation contract, for work too small to justify a published ticket, produced by native plan mode. Retain an existing tracker binding when the work began from a tracker item; otherwise it is trackerless.
-- A `/proto` requirements ledger the human accepted. It retains the ticket binding when the prototype began from a ticket and is trackerless otherwise.
+- A `/proto` requirements ledger the human accepted in full. The ledger is the agent's own output: when that acceptance is neither in this conversation nor recorded in the ledger against a human message, ask for it and publish nothing until it arrives. A recorded acceptance notes an approval, never grants one. It retains the ticket binding when the prototype began from a ticket and is trackerless otherwise.
 
 What this run may publish is the policy's **Publication authority**.
 
