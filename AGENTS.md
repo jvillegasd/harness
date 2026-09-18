@@ -18,7 +18,7 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 | `internal/state/` | The per-branch oracle ladder and rabbit-hole counters behind `harness state` |
 | `internal/checkout/` | Checkout discovery and canonical asset locations, shared by the commands that resolve a checkout |
 | `internal/install/` | The installer behind `harness install` |
-| `internal/skills/` | The third-party skill locks behind `harness skills` |
+| `internal/skills/` | The third-party skill locks behind `harness skills`, and the invocation-guard check on local skills |
 | `internal/bench/` | The session-population comparison behind `harness bench` |
 | `internal/agents/` | The role-agent renderer the installer calls in-process |
 | `internal/scenarios/` | The artifact-based scenario runner and probes behind `harness scenarios` |
