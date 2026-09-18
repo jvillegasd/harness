@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/jvillegasd/harness/internal/checkout"
+	"github.com/jvillegasd/harness/internal/skills"
 )
 
 const (
@@ -210,6 +211,12 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 }
 
 func (in *installer) install() {
+	// Before any write, so an unguarded local skill never reaches a client.
+	unguarded, err := skills.Unguarded(in.dir)
+	must(err)
+	if len(unguarded) > 0 {
+		die("Local skill missing an invocation guard: %s", strings.Join(unguarded, "; "))
+	}
 	// First, so the warning precedes the two steps it is about.
 	in.warnUnlessZsh()
 	in.installBinary()

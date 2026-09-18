@@ -409,6 +409,20 @@ func TestSkillsVerifyReportsUnverifiableNotDrift(t *testing.T) {
 	}
 }
 
+// TestSkillsVerifyRefusesAnUnguardedLocalSkill fails verify for a local skill missing a guard, while locked bodies, which carry none, still pass.
+func TestSkillsVerifyRefusesAnUnguardedLocalSkill(t *testing.T) {
+	lr := locksVerifySandbox(t)
+	ok(t, lr.harness(t, "skills", "verify"), "skills verify with guarded local skills")
+	writeMode(t, filepath.Join(lr.root, "skills", "zz-bare", "SKILL.md"), "---\nname: zz-bare\ndisable-model-invocation: true\n---\nbody\n", 0o644)
+	r := lr.harness(t, "skills", "verify")
+	if r.code == 0 {
+		t.Fatal("verify exited 0 with an unguarded local skill")
+	}
+	if !strings.Contains(r.stdout+r.stderr, "zz-bare: missing opencode/autoinvoke") {
+		t.Fatalf("verify did not name the skill and key:\n%s%s", r.stdout, r.stderr)
+	}
+}
+
 // TestAliasesShellSyntax keeps the shipped shell entry point parseable.
 func TestAliasesShellSyntax(t *testing.T) {
 	if out, err := exec.Command("bash", "-n", filepath.Join("..", "..", "aliases.sh")).CombinedOutput(); err != nil {

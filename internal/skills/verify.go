@@ -73,8 +73,15 @@ func verify(c checkout.Checkout, stdout, stderr io.Writer) error {
 	if unverifiable > 0 {
 		fmt.Fprintf(stderr, "harness skills: %d skill(s) unverifiable\n", unverifiable)
 	}
-	if drifted > 0 {
-		return fmt.Errorf("%d skill(s) drifted", drifted)
+	unguarded, err := Unguarded(c)
+	if err != nil {
+		return err
+	}
+	for _, problem := range unguarded {
+		fmt.Fprintln(stdout, problem)
+	}
+	if drifted > 0 || len(unguarded) > 0 {
+		return fmt.Errorf("%d skill(s) drifted, %d invocation guard(s) missing", drifted, len(unguarded))
 	}
 	return nil
 }

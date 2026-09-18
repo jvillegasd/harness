@@ -103,6 +103,28 @@ func TestInstallGuardsEveryCommand(t *testing.T) {
 	}
 }
 
+// TestInstallRefusesAnUnguardedLocalSkill stops the install before it writes anything when a skill absent from the lock lacks either invocation guard.
+func TestInstallRefusesAnUnguardedLocalSkill(t *testing.T) {
+	for key, frontmatter := range map[string]string{
+		"disable-model-invocation": "name: zz-bare\nmetadata:\n  opencode/autoinvoke: \"false\"\n",
+		"opencode/autoinvoke":      "name: zz-bare\ndisable-model-invocation: true\n",
+	} {
+		base := sandbox(t)
+		writeMode(t, filepath.Join(base, "checkout", "skills", "zz-bare", "SKILL.md"), "---\n"+frontmatter+"---\nbody\n", 0o644)
+		var before strings.Builder
+		tree(t, &before, filepath.Join(base, "home"), true)
+		r := runInstaller(t, base, "--skip-packages")
+		if r.code == 0 || !strings.Contains(r.stderr, "zz-bare") || !strings.Contains(r.stderr, key) {
+			t.Errorf("missing %s: exit %d, stderr %q; want a refusal naming the skill and the key", key, r.code, r.stderr)
+		}
+		var after strings.Builder
+		tree(t, &after, filepath.Join(base, "home"), true)
+		if before.String() != after.String() {
+			t.Errorf("missing %s: the refused install wrote to HOME", key)
+		}
+	}
+}
+
 // Role agents are copied into each client beside private entries, and the uninstall removes only the recorded copies.
 func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
 	base := sandbox(t)
