@@ -14,6 +14,7 @@ import (
 
 	"github.com/jvillegasd/harness"
 	"github.com/jvillegasd/harness/internal/checkout"
+	"github.com/jvillegasd/harness/internal/models"
 )
 
 // assetsEnv names a directory to install instead of the embedded assets, so a test or a local edit installs a tree the binary was not built from.
@@ -45,6 +46,8 @@ type state struct {
 	Version   int                 `json:"version"`
 	Installed map[string][]string `json:"installed"`
 	Files     []entry             `json:"files"`
+	// Models is `harness models`' choice, carried through untouched so an install never drops it.
+	Models json.RawMessage `json:"models,omitempty"`
 }
 
 func (in *installer) stateDir() string { return filepath.Join(in.home, ".harness") }
@@ -74,7 +77,7 @@ func (in *installer) saveState(s state) {
 	must(os.MkdirAll(in.stateDir(), 0o755))
 	data, err := json.MarshalIndent(s, "", "  ")
 	must(err)
-	must(os.WriteFile(in.statePath(), append(data, '\n'), 0o644))
+	must(models.Replace(in.statePath(), append(data, '\n')))
 }
 
 // extractAssets writes the assets this binary carries, or the HARNESS_ASSETS tree, into a temporary directory for this run to install from, and returns its removal.

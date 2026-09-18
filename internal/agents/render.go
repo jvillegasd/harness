@@ -12,8 +12,13 @@ import (
 	"strings"
 )
 
-// Render returns {relative output: text}, {relative output: access}, and the report lines.
-func Render(configPath string) (map[string]string, map[string]string, []string, error) {
+// Assigned is one role's machine-level assignment: the client it runs on, and the model and effort there. An empty Effort inherits. Source names where it came from in the report.
+type Assigned struct {
+	Client, Model, Effort, Source string
+}
+
+// Render returns {relative output: text}, {relative output: access}, and the report lines. Each assigned role becomes its client's override, so the other client keeps its default.
+func Render(configPath string, assigned map[string]Assigned) (map[string]string, map[string]string, []string, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, nil, nil, fail(fmt.Sprintf("%s: %v", configPath, err))
@@ -26,9 +31,39 @@ func Render(configPath string) (map[string]string, map[string]string, []string, 
 	if !ok {
 		return nil, nil, nil, fail(fmt.Sprintf("%s: config must be an object", configPath))
 	}
+	if roles, ok := config["roles"].(map[string]any); ok && assigned != nil {
+		// The machine's choice is the only per-role assignment, so a tracked one would silently compete with it.
+		for name, role := range roles {
+			if role, ok := role.(map[string]any); ok {
+				for _, client := range []string{"claude", "opencode"} {
+					if _, ok := role[client]; ok {
+						return nil, nil, nil, fail(fmt.Sprintf("roles.%s.%s: per-role model and effort are chosen with `harness models`, not in the assignments file", name, client))
+					}
+				}
+			}
+		}
+		for name, a := range assigned {
+			role, ok := roles[name].(map[string]any)
+			if !ok {
+				continue
+			}
+			effort := a.Effort
+			if effort == "" {
+				effort = "inherit"
+			}
+			role[a.Client] = map[string]any{"model": a.Model, "effort": effort}
+		}
+	}
 	roles, resolved, err := resolve(config)
 	if err != nil {
 		return nil, nil, nil, err
+	}
+	for name, a := range assigned {
+		if settings, ok := resolved[a.Client+"/"+name]; ok {
+			for field, value := range settings {
+				settings[field] = [2]string{value[0], a.Source}
+			}
+		}
 	}
 	outputs, accesses, report := map[string]string{}, map[string]string{}, []string{}
 	pairs := make([][2]string, 0, len(resolved))

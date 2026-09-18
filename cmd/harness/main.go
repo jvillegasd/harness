@@ -9,6 +9,7 @@ import (
 	"github.com/jvillegasd/harness/internal/bench"
 	"github.com/jvillegasd/harness/internal/dash"
 	"github.com/jvillegasd/harness/internal/install"
+	"github.com/jvillegasd/harness/internal/models"
 	"github.com/jvillegasd/harness/internal/scenarios"
 	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/state"
@@ -29,6 +30,7 @@ Commands:
   statusline Print the Claude Code status line for the payload on stdin
   state      Read and write this branch's oracle ladder and rabbit-hole counters
   dash       Show the live harness dashboard
+  models     Choose each delegated role's client, model, and effort
 `
 
 func run(args []string, stdout, stderr io.Writer) int {
@@ -51,6 +53,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return state.Command(args[1:], stdout, stderr)
 	case "dash":
 		return dash.Command(args[1:], stdout, stderr)
+	case "models":
+		return models.Command(args[1:], stdout, stderr)
 	case "-h", "--help", "help":
 		fmt.Fprint(stdout, usage)
 		return 0

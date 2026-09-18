@@ -11,6 +11,7 @@ agent-browser install <>
 engram setup claude-code <y>
 engram setup opencode <>
 wt config shell install --yes zsh <>
+opencode models <>
 claude mcp remove --scope user agent-browser <>
 claude mcp add --scope user agent-browser -- $SHIMS/agent-browser mcp <>
 claude mcp remove --scope user engram <>
