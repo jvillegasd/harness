@@ -39,7 +39,7 @@ Load and follow the `ponytail` skill for every code change.
 
    If `mergeStateStatus` is `BEHIND` or the base moved, prepare but do not apply an update plan. Default to merging the actual base into the pull request branch to preserve pushed history. Never assume `main`.
 
-5. Confirm once before any external write: branch updates, pushes, thread replies, or remote CI reruns. Show each thread's verdict with fix hash, rejection reason, or drafted question; fixed CI failures and discounted flakes; local check results; and the exact branch-update plan. Continue only after approval. Local checks may run before this gate.
+5. Confirm once before any external write, under the policy's **Publication authority**: branch updates, pushes, thread replies, or remote CI reruns. Show each thread's verdict with fix hash, rejection reason, or drafted question; fixed CI failures and discounted flakes; local check results; and the exact branch-update plan. Continue only after approval. Local checks may run before this gate.
 
 6. After approval: update the branch and resolve conflicts without dropping either side, rerun the local rungs, push, rerun remote CI only where needed, then reply inside each unresolved thread using its existing comment id and the review-comment reply endpoint, `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`.
 

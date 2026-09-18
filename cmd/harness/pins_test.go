@@ -713,3 +713,44 @@ func containsString(items []string, want string) bool {
 	}
 	return false
 }
+
+// TestPublicationAuthorityHasOneHome keeps the agreement test in one policy section that every publishing workflow defers to, so no workflow restates or weakens it.
+func TestPublicationAuthorityHasOneHome(t *testing.T) {
+	policy := readRepo(t, "POLICY.md")
+	if n := strings.Count(policy, "\n## Publication authority\n"); n != 1 {
+		t.Fatalf("POLICY.md has %d Publication authority sections, want 1", n)
+	}
+	test := "the purpose is settled, the whole scope is settled, the acceptance evidence is named, and an identifiable human message covers that scope"
+	if n := strings.Count(policy, test); n != 1 {
+		t.Errorf("POLICY.md states the agreement test %d times, want 1", n)
+	}
+	for _, sentence := range []string{
+		"none of them supplies the agreement, alone or together, and an agent finalizing its own artifact never promotes it",
+		"`/address-review` and `/feedback` are the deliberate exceptions to this blanket autonomy",
+		"A commit, branch, or worktree that stays local on a task branch is not a publication",
+		"publishes nothing from scope that arrived after the approval",
+		"None of these authorizes an external write",
+	} {
+		if !strings.Contains(policy, sentence) {
+			t.Errorf("POLICY.md lost the anchor %q", sentence)
+		}
+	}
+	for rel, gate := range map[string]string{
+		"commands/feedback.md": "Invoking `/feedback` is not that approval",
+		"commands/proto.md":    "A ledger this workflow finalized on its own never promotes",
+		"commands/land.md":     "confirm once before writing",
+	} {
+		if !strings.Contains(readRepo(t, rel), gate) {
+			t.Errorf("%s lost its gate %q", rel, gate)
+		}
+	}
+	for _, name := range []string{"ship", "feedback", "address-review", "proto", "land", "spec", "create-ticket"} {
+		text := readRepo(t, "commands/"+name+".md")
+		if !strings.Contains(text, "**Publication authority**") {
+			t.Errorf("%s.md does not defer to the policy's **Publication authority**", name)
+		}
+		if strings.Contains(text, test) {
+			t.Errorf("%s.md restates the agreement test instead of deferring to it", name)
+		}
+	}
+}

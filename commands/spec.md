@@ -25,7 +25,7 @@ Require `docs/agents/harness.json`; if it is missing, tell the user to invoke th
 2. Identify test seams. Prefer existing, higher-level seams and as few as possible, ideally one.
 3. Draft the complete template below, including test seams. Approve everything at one gate.
 4. Ask once whether the entire final contract is approved for publication.
-5. On approval, publish to the configured canonical spec home. For GitHub, create or update the parent issue and apply the mapped `in_progress` label. For a docs home, write the project-conventional spec path. For local markdown, read the `local-tracker` skill and follow it: the spec and any slices `/create-ticket` writes beside it share one feature directory.
+5. On approval, publish to the configured canonical spec home. That approval is this workflow's publication authority under the policy's **Publication authority**. For GitHub, create or update the parent issue and apply the mapped `in_progress` label. For a docs home, write the project-conventional spec path. For local markdown, read the `local-tracker` skill and follow it: the spec and any slices `/create-ticket` writes beside it share one feature directory.
 
 If the contract changes at the gate, revise and ask again at that gate. `/create-ticket` owns ticket creation.
 
