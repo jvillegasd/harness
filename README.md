@@ -272,7 +272,7 @@ The two clients expose different amounts of surface, so one renderer cannot serv
 | Client | Mechanism |
 | --- | --- |
 | Claude Code | `harness statusline`, run on every draw from the tracked `statusLine` command |
-| OpenCode | none: no status line field in its schema and no plugin hook |
+| OpenCode | no harness renderer: its schema has no status line field. Engram brings a sidebar instead: `engram setup opencode` adds the `opencode-subagent-statusline` plugin (https://github.com/Joaquinvesapa/sub-agent-statusline) to the global `tui.json`, and OpenCode downloads it from npm on first launch. The plugin adds a Subagents section to the session sidebar, shown automatically in terminals wider than 120 columns. The harness does not install it; `harness install --uninstall` removes it along with Engram's other OpenCode entries. |
 
 `harness statusline` reads the client's payload as JSON on stdin and prints model, context-window percentage, directory and branch with a dirty marker, session duration, and reasoning effort, then the five-hour and weekly rate-limit bars, fetched from the OAuth usage endpoint and cached for sixty seconds in the system temporary directory.
 
