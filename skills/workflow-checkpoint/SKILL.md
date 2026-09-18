@@ -1,6 +1,6 @@
 ---
 name: workflow-checkpoint
-description: The one branch-scoped Engram checkpoint protocol: topic key format, record schema, recovery validation, and terminal states, wired into the delivery commands at their return boundaries.
+description: Define branch-scoped Engram checkpoints: keys, schema, recovery validation, and terminal states.
 disable-model-invocation: true
 metadata:
   opencode/autoinvoke: "false"
@@ -8,13 +8,11 @@ metadata:
 
 # Workflow Checkpoint
 
-A workflow that spans sessions needs continuity that survives a context reset. Engram already stores persistent project memory; this skill fixes what a checkpoint is, where it lives, and when it may be trusted, so the delivery commands share one schema instead of each carrying its own.
-
-This skill owns the protocol. It does not own the boundaries: the delivery commands save and read back at their existing return points, and wiring them to this skill is issue #77, where they refer here by name rather than restating the schema.
+Use this shared Engram protocol for continuity across sessions. Delivery commands own when to save and read back; they reference this schema rather than duplicate it.
 
 ## Protocol
 
-This block is the canonical definition. The prose below explains it; a change to a rule belongs in this block, and anything implementing the protocol reads it from here.
+This block is canonical. Change rules here; implementations read them here.
 
 ```json
 {
@@ -37,11 +35,11 @@ This block is the canonical definition. The prose below explains it; a change to
 
 ## Topic key
 
-Every active implementation branch has exactly one checkpoint, stored under the `topic_key` above with `scope: project`, so a later session upserts the same record rather than appending a second one. The branch, not the ticket, scopes it: the branch is what a worktree carries across sessions, and two tickets on one branch share one checkpoint. A branch that does not exist yet, a published spec, or an unclaimed ticket has no checkpoint.
+Upsert one checkpoint per active implementation branch under `topic_key` with `scope: project`. Tickets sharing a branch share its checkpoint. Do not checkpoint a nonexistent branch, published spec, or unclaimed ticket.
 
 ## Record
 
-The checkpoint carries exactly the canonical `fields`, each with the shape the canonical block gives it:
+Use exactly the canonical `fields` and their declared shapes:
 
 | Field | Holds |
 | --- | --- |
@@ -56,22 +54,21 @@ Save the record for the branch tip it describes, and read it back before trustin
 
 ## Recovery
 
-Continuation retrieves the branch checkpoint explicitly. Recent memory context is not a substitute, because it is not scoped and may belong to another branch.
+Retrieve the branch checkpoint explicitly; recent memory may belong to another branch.
 
 1. Derive the topic key from the current branch and retrieve it.
 2. Reject the record, reusing nothing, when any of these holds:
-   - `state` is in `terminal_states`, which is auditable but excluded from ordinary continuation.
-   - `state` is not a canonical state at all. The canonical set is exactly `active_state` plus `terminal_states`.
+   - `state` is terminal or outside the canonical set (`active_state` plus `terminal_states`).
    - A field is missing or its value does not match its canonical shape.
    - A `require_non_empty` field is empty.
-   - No `contract` reference resolves against current Git, tracker, or pull request state. A reference that does not resolve is dropped; when none survives, the record cannot drive continuation.
+   - No `contract` reference resolves against current Git, tracker, or pull request state. Drop unresolved references.
 3. When the record survives validation, drop the `stale_invalidates` fields if `branch_tip` differs from the current head, and re-derive them from the surviving contract. The contract references and the rationale survive a moved tip.
 4. Reuse only what validated. When a requirement the work needs is missing from the validated record and the contract, ask about it rather than inferring it.
 5. After saving, retrieve the topic key again and confirm the record matches what was written. A save with no read-back is unverified.
 
 ## Terminal states
 
-`/land` finalizes a checkpoint as `completed` after the pull request merges. `/abandon` finalizes it as `abandoned` (a discarded attempt) or `cancelled` (scope explicitly cancelled). All three are terminal: they remain auditable, and ordinary continuation ignores them. New work after a terminal checkpoint gets a new ticket, a new branch, and a new topic key rather than reopening the finished record.
+`/land` saves `completed` after merge. `/abandon` saves `abandoned` for a discarded attempt or `cancelled` for explicitly cancelled scope. Terminal records remain auditable but cannot resume. New work needs a new ticket, branch, and topic key.
 
 ## Constraints
 

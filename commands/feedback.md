@@ -3,7 +3,7 @@ description: Apply bullet-list feedback to the branch of an open pull request, i
 argument-hint: "[bullet list of changes]"
 ---
 
-Apply a bullet list reviewing work already pushed by `/ship`, usually typed while the human is testing the branch. This updates that branch. It never creates a second branch or pull request. A full round pushes, and it may synchronize the pull request title and body, but it never publishes review findings to the forge as comments.
+Apply bullet-list feedback to work pushed by `/ship` on the same branch and pull request. Full rounds push and may update the title and body. Never post review findings as forge comments.
 
 <user_input>
 $ARGUMENTS
@@ -17,20 +17,20 @@ Resolve the effective input:
 - Otherwise use the latest unambiguous feedback list in the conversation.
 - Ask only when no active feedback exists, or when a load-bearing product decision is unresolved.
 
-Load and follow the `ponytail` skill. Keep every change minimal and address the underlying requirement, not only the literal wording.
+Load and follow the `ponytail` skill.
 
-Beyond the review pass a full round requires, use subagents only when the work genuinely benefits from broader reconnaissance or parallel investigation. Both round types read this; a deferred round never reaches the step that would otherwise carry it.
+In either round type, delegate only useful broad reconnaissance or parallel investigation, apart from the full round's required review.
 
-Evaluate every item against the contract and the current implementation. Preserve settled decisions unless the feedback changes them explicitly or repository evidence invalidates them. Address the underlying requirement, not only the literal wording, and keep each change minimal.
+Check each item against the contract and implementation. Preserve settled decisions unless feedback explicitly changes them or repository evidence invalidates them. Make the smallest change meeting the underlying requirement.
 
 ## Round types
 
-Feedback arrives in serial small rounds, and running the full ladder after each one makes the loop slower than the changes it applies. Each round is one of two types:
+Choose one round type:
 
 - **Deferred**: apply the items, verify each has a corresponding change, report what changed and how to try it, then stop. No ladder, no review, no commit, no push. The unvalidated delta accumulates as debt.
 - **Full**: steps 4 through 7 below, over the entire accumulated delta since the last validated state, not only this round's items.
 
-Pick the type at the start of the round. If the input says to defer or that more rounds are coming, run a deferred round; if it says to finalize or to run the checks, run a full round. If it says neither and this is the first round, ask once and reuse that answer for the rest of the conversation. Deferred debt must be settled by a full round before the loop finalizes. Never push from a deferred round.
+Choose at the start: defer when requested or more rounds are coming; run full when asked to finalize or check. If unspecified on the first round, ask once and reuse the answer. Settle all deferred debt in a full round before finalizing. Never push a deferred round.
 
 ## Steps
 
@@ -38,7 +38,7 @@ Pick the type at the start of the round. If the input says to defer or that more
 
 2. Parse every bullet into a separate actionable item and investigate the relevant code before deciding how to implement it.
 
-3. If any item is ambiguous, contradictory, or needs a product decision, batch the questions under the policy's question format and stop. This is the only pre-implementation clarification point.
+3. Batch ambiguous, contradictory, or product-decision questions in the policy's format and stop. This is the only pre-implementation clarification point.
 
 4. Apply every item. Verify each has a corresponding change or an explicit reason it needed none. Run the narrowest checks for the changed surface first, then the policy's oracle ladder. For data, auth, concurrency, migration, or public-contract changes, also verify failure behavior, compatibility, and rollback.
 

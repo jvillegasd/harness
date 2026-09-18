@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: Review a diff with a requirements-aware reviewer and a reviewer that sees only the diff and standards before pushing, then triage their findings, with a refuter adjudicating any contested blocking finding.
+description: Review before pushing with requirements-aware and diff-only reviewers; triage findings and adjudicate contested blockers.
 disable-model-invocation: true
 metadata:
   opencode/autoinvoke: "false"
@@ -8,19 +8,17 @@ metadata:
 
 # Adversarial Review
 
-Self-review that grades its own homework is worthless. This protocol withholds the implementer's rationale from the reviewer, so the diff has to defend itself.
+Withhold implementation rationale so reviewers judge the diff independently.
 
 ## Invocation
 
 Launch each reviewer as its named agent, in parallel, each with a fresh context: `reviewer-a` and `reviewer-b` in Claude Code and OpenCode. The installer generates them from `roles/reviewer-a.md` and `roles/reviewer-b.md` beside this skill, which own each reviewer's standing instructions, lenses, and output format.
 
-Never pass the conversation, the implementation rationale, the plan behind the change, or a prior round. Anchoring a reviewer on why you thought the code was right is what makes the review useless.
+Never pass the conversation, implementation rationale, implementation plan, or prior rounds.
 
 When a named agent is unavailable, say so, launch a general agent with the matching role file's full text as its instructions, and report that this fallback enforces only the general agent's own permissions rather than the named agent's read-search restrictions. Never skip or silently omit a review because a named agent is missing.
 
 The named agents' restrictions are best effort: each client enforces what its own controls support, and `harness install` reports the gaps.
-
-Reviewer A holds the requirements and its standards but never that rationale; Reviewer B holds only the diff and its standards. Requirements are what let a reviewer check conformance; rationale only biases it.
 
 Give Reviewer A the requirements, the diff snapshot path, and the exact absolute path of the project's own instruction file as its standards, never the implementation rationale. Nothing else.
 
@@ -30,7 +28,7 @@ Standards are paths, never requirements or rationale, so supplying them leaves e
 
 The project's own instruction file is `AGENTS.md` at the repository root, or `CLAUDE.md` there when no `AGENTS.md` exists, and is left out when neither does. Where the client is known to refuse a standards path, such as OpenCode for a file outside the project, paste that file's text into the first launch instead of its path. When a supplied standards file is missing from a reviewer's `loaded:` line, relaunch that reviewer once with that file's text pasted in; the relaunch replaces that reviewer's output for the same round and never counts toward the cap. A reviewer names a pasted standard as `inline:<absolute path>`. If a standard is still unread, disclose it under the pull request's `## Checks`, or in the requirements ledger under `/proto`.
 
-This block is the one definition of what each reviewer and the refuter is given. Anything it does not list is withheld, and every standards path is absolute.
+This block defines permitted inputs. Withhold everything else; use absolute standards paths.
 
 ```json
 {
@@ -54,9 +52,9 @@ This block is the one definition of what each reviewer and the refuter is given.
 
 Scale to blast radius:
 
-- One reviewer when the diff is under roughly 50 changed lines, in a single file, and touches no data, auth, concurrency, migration, or public-contract surface. Use Reviewer A, so the single reviewer gets the requirements and not the rationale, the same explicit context rule the two-reviewer case uses.
+- Use Reviewer A alone for a single-file diff under roughly 50 changed lines touching no data, auth, concurrency, migration, or public-contract surface. Keep its input boundary unchanged.
 - Two reviewers otherwise.
-- Never three. A third mostly re-finds what the first two found.
+- Never three.
 
 ## Diff delivery
 
@@ -66,7 +64,7 @@ Reviewers and the refuter never edit files, and neither findings nor verdicts re
 
 ## Triage, by the implementer
 
-This block is the one definition of triage. Every workflow that runs this review follows it, and the prose below explains it without adding rules.
+Every consumer follows this canonical triage block. The prose explains it without adding rules.
 
 ```json
 {
@@ -123,13 +121,13 @@ Its verdict decides the finding:
 - `refuted`: reject it, recording the verdict and the refuter's `path:Lline:` evidence.
 - `inconclusive`, `missing`, `malformed`, or `unavailable`: escalate for evidence or a human decision. Never dismiss the finding, and never make a speculative fix.
 
-A finding that rests on a requirement or standard the refuter was not given comes back `inconclusive`, so it escalates rather than being refuted by code alone. The snapshot, not a later worktree, is the code the refuter judges. A human's decision on an escalated finding closes it, recorded the same way a rejection is.
+A finding requiring an unseen requirement or standard is `inconclusive`. Judge the snapshot, never a later worktree. A human's decision on an escalated finding closes it, recorded like a rejection.
 
-A result is `missing` when the refuter returned nothing, `malformed` when its first line is not a `verdict:` line naming `corroborated`, `refuted`, or `inconclusive`, or when a `corroborated` or `refuted` verdict carries no `path:Lline:` evidence line, and `unavailable` when neither the named agent nor the fallback could run, or when the inline relaunch after an `unreadable:` answer could not carry the snapshot. Only one `unreadable:` answer, before the answer it retries, is part of the invocation.
+A result is `missing` if empty; `malformed` if its first line is not a `verdict:` line naming `corroborated`, `refuted`, or `inconclusive`, or a `corroborated` or `refuted` verdict lacks a `path:Lline:` evidence line; `unavailable` if neither agent can run or the inline retry cannot carry the snapshot. Allow only one `unreadable:` answer, preceding its retry, per invocation.
 
-The refuter is not a reviewer and not a round: it leaves the reviewer count and the loop cap where they were, never starts or counts toward a round, and runs once per contested finding, never again for a second opinion. A fix after a `corroborated` verdict is a fixed blocking finding like any other.
+The refuter is not a reviewer and not a round: it changes neither count nor cap and runs once per contested finding, never for a second opinion. A fix after `corroborated` triggers the usual fixed-blocker rule.
 
-How often a finding is contested, what an adjudication costs, and how accurate a verdict is stay unmeasured until evidence exists. Session cost and friction metrics do not establish that a verdict was correct.
+Do not claim contest frequency, adjudication cost, or verdict accuracy without evidence. Session cost and friction do not prove correctness.
 
 ## Loop cap
 

@@ -3,7 +3,7 @@ description: Synthesize the agreed design into the final contract and publish it
 argument-hint: "[optional: what the spec covers]"
 ---
 
-Synthesize what has already been discussed into one publishable contract. Do not interview the user; `grilling` owns that, and it has already run.
+Synthesize the settled discussion into one publishable contract. `grilling` owns any needed interview.
 
 <user_input>
 $ARGUMENTS
@@ -22,12 +22,12 @@ Require `docs/agents/harness.json`; if it is missing, tell the user to invoke th
 ## Steps
 
 1. Re-read the conversation, the repository, the domain docs, and the ADRs in the area being touched. Use the project's glossary vocabulary throughout.
-2. Sketch the seams at which the feature will be tested. Prefer existing seams to new ones, and the highest seam available. The fewer seams across the codebase, the better; the ideal number is one.
-3. Produce one complete draft using the template below. Include the seams in that draft rather than approving them separately: this workflow has exactly one gate.
+2. Identify test seams. Prefer existing, higher-level seams and as few as possible, ideally one.
+3. Draft the complete template below, including test seams. Approve everything at one gate.
 4. Ask once whether the entire final contract is approved for publication.
 5. On approval, publish to the configured canonical spec home. For GitHub, create or update the parent issue and apply the mapped `in_progress` label. For a docs home, write the project-conventional spec path. For local markdown, read the `local-tracker` skill and follow it: the spec and any slices `/create-ticket` writes beside it share one feature directory.
 
-If the user changes the contract at the approval gate, revise and ask again. That is the same gate, not a second approval. Do not create tickets; that is `/create-ticket`.
+If the contract changes at the gate, revise and ask again at that gate. `/create-ticket` owns ticket creation.
 
 ## Template
 
@@ -53,11 +53,11 @@ Cover every aspect of the feature.
 
 The modules built or modified, the interfaces that change, technical clarifications from the developer, architectural decisions, schema changes, API contracts, and specific interactions.
 
-Do not include file paths or code snippets: they go stale fast. Exception: where a prototype produced a snippet that encodes a decision more precisely than prose can (a state machine, a reducer, a schema, a type shape), inline the decision-rich part and note that it came from a prototype.
+Omit file paths and code snippets, which go stale. Exception: inline a prototype's decision-rich snippet when it is more precise than prose, such as a state machine, reducer, schema, or type shape. Identify its prototype origin.
 
 ## Testing Decisions
 
-The agreed behavior-level test seams and required checks: which modules are tested, through which public seam, and the prior art in this codebase for that kind of test. Test external behavior, never implementation details.
+Name agreed behavior-level test seams, modules, required checks, and repository precedent. Test external behavior through public seams, never implementation details.
 
 ## Out of Scope
 
