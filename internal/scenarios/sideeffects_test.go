@@ -28,6 +28,7 @@ func TestPublicationDeclarations(t *testing.T) {
 		"pull_requests must be a non-negative":   `{"id":"s","command":"c","prompt":"p","publication":true,"artifacts":{"pull_requests":1.5}}`,
 		"push must be a boolean":                 `{"id":"s","command":"c","prompt":"p","publication":true,"artifacts":{"push":"no"}}`,
 		"forge_forbidden must be a list":         `{"id":"s","command":"c","prompt":"p","publication":true,"artifacts":{"forge_forbidden":["pr merge",3]}}`,
+		"forge_allowed must be a list":           `{"id":"s","command":"c","prompt":"p","publication":true,"artifacts":{"forge_allowed":[""]}}`,
 	}
 	for want, text := range cases {
 		errors := validateMatrix(map[string]any{"scenarios": []any{decodeScenario(t, text)}})
@@ -59,6 +60,10 @@ func TestSideEffectOracles(t *testing.T) {
 		{"forbidden operation made", "gh pr merge 1 --squash", `{"forge_forbidden":["pr merge"]}`, "forge_forbidden:pr merge", false},
 		{"only allowed operations", "gh pr view 1 && gh pr create --title t", `{"forge_allowed":["pr view","pr create"]}`, "forge_allowed", true},
 		{"operation outside the allowed set", "gh pr view 1 && gh issue close 2", `{"forge_allowed":["pr view"]}`, "forge_allowed", false},
+		{"multi-line body stays one call", `gh pr create --title t --body "$(printf 'a\npr merge 1')"`, `{"pull_requests":1,"forge_forbidden":["pr merge"]}`, "forge_forbidden:pr merge", true},
+		{"multi-line body counts once", `gh pr create --title t --body "$(printf 'a\npr create')"`, `{"pull_requests":1}`, "pull_requests", true},
+		{"forge calls refused without forge rules", "gh pr view 1", `{"commits":0}`, "no-external-forge", false},
+		{"no forge calls without forge rules", "true", `{"commits":0}`, "no-external-forge", true},
 	}
 	root := testRepoRoot()
 	for _, c := range cases {
@@ -83,9 +88,6 @@ func TestSideEffectOracles(t *testing.T) {
 			if check := findEntry(results, "check-exit"); check == nil || !truthy(check["ok"]) {
 				t.Fatalf("simulated attempt did not run cleanly: %v", results)
 			}
-			if origin := findEntry(results, "local-origin-only"); origin == nil || !truthy(origin["ok"]) {
-				t.Fatalf("origin check = %v", origin)
-			}
 			result := findEntry(results, c.result)
 			if result == nil || truthy(result["ok"]) != c.ok {
 				t.Fatalf("%s = %v, want ok=%v; all results %v", c.result, result, c.ok, results)
@@ -96,7 +98,7 @@ func TestSideEffectOracles(t *testing.T) {
 
 func TestForgeSubstituteLogsToTheAttempt(t *testing.T) {
 	root := testRepoRoot()
-	declaration := decodeScenario(t, `{"id":"pub","command":"c","prompt":"p","mode":"offline","publication":true,"artifacts":{"pull_requests":1}}`)
+	declaration := decodeScenario(t, `{"id":"pub","command":"c","prompt":"p","mode":"offline","publication":true,"artifacts":{"pull_requests":1,"forge_allowed":["pr create"]}}`)
 	declaration["check"] = "gh pr create --title t | grep -q pull/1"
 	state, where, err := runOne(declaration, root, t.TempDir(), filepath.Join(root, "scenarios", "fixtures"), false, nil)
 	if err != nil {
@@ -178,5 +180,78 @@ func TestModelUnavailableStatus(t *testing.T) {
 	}
 	if got := sessionStatus(&one, nil); got != "failed" {
 		t.Fatalf("status without the marker = %q, want failed", got)
+	}
+	spent := append([]any{map[string]any{"type": "assistant", "message": map[string]any{"usage": map[string]any{"output_tokens": 40}}}}, events...)
+	if got := sessionStatus(&one, spent); got != "failed" {
+		t.Fatalf("status after paid output = %q, want failed", got)
+	}
+}
+
+// TestPublicationReachesOnlyTheSeededOrigin pushes to a real local repository outside the fixture, which the scenario protocol must refuse.
+func TestPublicationReachesOnlyTheSeededOrigin(t *testing.T) {
+	outside := filepath.Join(t.TempDir(), "outside.git")
+	if _, err := git(filepath.Dir(outside), "init", "-q", "--bare", outside); err != nil {
+		t.Fatal(err)
+	}
+	root := testRepoRoot()
+	declaration := decodeScenario(t, `{"id":"pub","command":"c","prompt":"p","mode":"offline","publication":true,"artifacts":{"push":false}}`)
+	declaration["check"] = "git push -q " + outside + " HEAD:refs/heads/x"
+	_, where, err := runOne(declaration, root, t.TempDir(), filepath.Join(root, "scenarios", "fixtures"), false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refs, _ := git(outside, "for-each-ref"); refs != "" {
+		t.Fatalf("a push reached a repository outside the fixture: %s", refs)
+	}
+	artifacts, err := readObject(filepath.Join(where, "artifacts.json"))
+	if err != nil || truthy(artifacts["ok"]) {
+		t.Fatalf("the refused push did not fail the attempt: %v %v", artifacts, err)
+	}
+}
+
+func TestPublicationRefusesARecording(t *testing.T) {
+	root := testRepoRoot()
+	declaration := decodeScenario(t, `{"id":"ask-read-only","command":"c","prompt":"p","publication":true,"artifacts":{"push":false}}`)
+	_, _, err := runOne(declaration, root, t.TempDir(), filepath.Join(root, "scenarios", "fixtures"), false, nil)
+	if err == nil || !contains(err.Error(), "cannot be judged") {
+		t.Fatalf("publication on a recording = %v, want a refusal", err)
+	}
+}
+
+func TestUnreadableBatchCapIsRefused(t *testing.T) {
+	out := t.TempDir()
+	writeFile(t, filepath.Join(out, batchFile), "{not json")
+	if err := claimSession(out, nil); err == nil {
+		t.Fatal("an unreadable batch cap was reset instead of refused")
+	}
+}
+
+// TestRunEnforcesTheCap drives runOne with a stand-in client, so the refusal and the model-unavailable exemption are checked where run applies them.
+func TestRunEnforcesTheCap(t *testing.T) {
+	bin := t.TempDir()
+	writeFile(t, filepath.Join(bin, "claude"), "#!/bin/sh\n"+`echo '{"type":"assistant","error":"model_not_found","message":{"model":"<synthetic>"}}'`+"\nexit 1\n")
+	if err := os.Chmod(filepath.Join(bin, "claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	root, out := testRepoRoot(), t.TempDir()
+	fixtures := filepath.Join(root, "scenarios", "fixtures")
+	declaration := testScenario(map[string]any{"id": "paid"})
+	one := 1
+	for i := 0; i < 2; i++ {
+		if _, where, err := runOne(declaration, root, out, fixtures, true, &one); err != nil {
+			t.Fatalf("model-unavailable run %d refused: %v", i, err)
+		} else if status := getString(readMetrics(where), "terminal_status"); status != "model-unavailable" {
+			t.Fatalf("terminal_status = %q, want model-unavailable", status)
+		}
+	}
+	writePaidAttempt(t, out, "spent", "live:claude", "failed")
+	before := len(attemptPaths(out, "paid"))
+	_, _, err := runOne(declaration, root, out, fixtures, true, nil)
+	if err == nil || !contains(err.Error(), "1/1") {
+		t.Fatalf("run at the cap = %v, want a refusal reporting 1/1", err)
+	}
+	if after := len(attemptPaths(out, "paid")); after != before {
+		t.Fatalf("a refused run wrote an attempt: %d -> %d", before, after)
 	}
 }

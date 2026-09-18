@@ -143,12 +143,12 @@ func validatePublication(where string, scenario, artifacts map[string]any) []str
 		}
 		items, isList := value.([]any)
 		for _, item := range items {
-			if !isString(item) {
+			if op, _ := item.(string); op == "" {
 				isList = false
 			}
 		}
 		if !isList {
-			errors = append(errors, fmt.Sprintf("%s: %s must be a list of strings", where, key))
+			errors = append(errors, fmt.Sprintf("%s: %s must be a list of non-empty strings", where, key))
 		}
 	}
 	return errors

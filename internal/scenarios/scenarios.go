@@ -154,9 +154,9 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		if fixturesPath == "" {
 			fixturesPath = filepath.Join(root, "scenarios", "fixtures")
 		}
-		var cap *int
+		var limit *int
 		if isFlagSet(flags, "cap") {
-			cap = capFlag
+			limit = capFlag
 		}
 		errors := validateMatrix(declaration)
 		if len(errors) > 0 {
@@ -171,7 +171,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 			if *scenario != "" && getString(entry, "id") != *scenario {
 				continue
 			}
-			state, where, err := runOne(entry, root, *out, fixturesPath, *allowPaid, cap)
+			state, where, err := runOne(entry, root, *out, fixturesPath, *allowPaid, limit)
 			if err != nil {
 				fmt.Fprintf(stderr, "harness scenarios: %s: %v\n", getString(entry, "id"), err)
 				exitCode = 1

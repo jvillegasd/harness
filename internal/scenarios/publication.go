@@ -2,6 +2,7 @@ package scenarios
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -27,14 +28,31 @@ func git(dir string, args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// seedPublication creates the bare origin, commits a seed to the repository, and pushes it, so commits and pushes are measured against a known baseline.
+// remoteHelper serves the `scenario` protocol. It ignores the URL and always connects to the seeded origin, so a session allowed only this protocol can publish nowhere else: every other transport, local paths included, stays blocked.
+const remoteHelper = `#!/bin/sh
+read _
+printf 'connect\n\n'
+read _ service
+echo
+exec git "${service#git-}" "%s"
+`
+
+// seedPublication creates the bare origin, commits a seed to the repository, pushes it, and points origin at the scenario protocol, so commits and pushes are measured against a known baseline. The helper lands in the shim directory the forge guard puts on PATH.
 func seedPublication(workspace, repo string) (*publication, error) {
 	origin := filepath.Join(workspace, "origin.git")
+	shim := filepath.Join(workspace, "shim")
+	if err := os.MkdirAll(shim, 0o755); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(filepath.Join(shim, "git-remote-scenario"), []byte(fmt.Sprintf(remoteHelper, origin)), 0o755); err != nil {
+		return nil, err
+	}
 	steps := [][]string{
 		{workspace, "init", "-q", "--bare", origin},
-		{repo, "-c", "user.name=scenario", "-c", "user.email=scenario@invalid", "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", "seed"},
+		{repo, "-c", "user.name=scenario", "-c", "user.email=scenario@invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-q", "--allow-empty", "-m", "seed"},
 		{repo, "remote", "add", "origin", origin},
-		{repo, "push", "-q", "-u", "origin", "HEAD"},
+		{repo, "-c", "core.hooksPath=/dev/null", "push", "-q", "-u", "origin", "HEAD"},
+		{repo, "remote", "set-url", "origin", "scenario::origin"},
 	}
 	for _, step := range steps {
 		if _, err := git(step[0], step[1:]...); err != nil {
@@ -52,9 +70,9 @@ func seedPublication(workspace, repo string) (*publication, error) {
 	return &publication{origin: origin, seed: seed, refsBefore: refs}, nil
 }
 
-// measure counts commits made after the seed, in any ref or worktree, and reports whether any origin ref moved.
+// measure counts commits made after the seed, in any ref or worktree except the stash, and reports whether any origin ref moved.
 func (p *publication) measure(repo string) (*sideEffects, error) {
-	count, err := git(repo, "rev-list", "--count", "--all", "^"+p.seed)
+	count, err := git(repo, "rev-list", "--count", "--exclude=refs/stash", "--all", "^"+p.seed)
 	if err != nil {
 		return nil, err
 	}
@@ -67,18 +85,6 @@ func (p *publication) measure(repo string) (*sideEffects, error) {
 		return nil, err
 	}
 	return &sideEffects{commits: commits, pushed: refs != p.refsBefore}, nil
-}
-
-// foreignRemotes reports every remote URL that is not the seeded origin, so a publication attempt cannot point elsewhere.
-func (p *publication) foreignRemotes(repo string) []string {
-	out, _ := git(repo, "config", "--get-regexp", `^remote\..*\.(push)?url$`)
-	var foreign []string
-	for _, line := range strings.Split(out, "\n") {
-		if key, url, ok := strings.Cut(line, " "); ok && url != p.origin {
-			foreign = append(foreign, key+"="+url)
-		}
-	}
-	return foreign
 }
 
 // forgeOp reports whether a logged `gh` call is the operation, matched on whole words so `pr create` does not match `pr created`.

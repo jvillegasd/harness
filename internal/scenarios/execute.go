@@ -23,7 +23,7 @@ func installForgeGuard(workspace string, substitute bool) (shim, log string, err
 	log = filepath.Join(workspace, "forge.log")
 	script := "#!/bin/sh\nprintf \"%s\\n\" \"$*\" >> \"" + log + "\"\nexit 1\n"
 	if substitute {
-		script = "#!/bin/sh\nprintf \"%s\\n\" \"$*\" >> \"" + log + "\"\n" +
+		script = "#!/bin/sh\n{ printf \"%s\" \"$*\" | tr '\\n' ' '; echo; } >> \"" + log + "\"\n" +
 			"if [ \"$1 $2\" = \"pr create\" ]; then echo \"https://forge.invalid/pull/$(grep -c '^pr create' \"" + log + "\")\"; fi\n"
 	}
 	if err := os.WriteFile(filepath.Join(shim, "gh"), []byte(script), 0o755); err != nil {
@@ -32,7 +32,7 @@ func installForgeGuard(workspace string, substitute bool) (shim, log string, err
 	return shim, log, nil
 }
 
-// forgeEnv isolates a scenario from real forges and remotes. Local is set only under a publication fixture, and admits the file transport the seeded origin needs.
+// forgeEnv isolates a scenario from real forges and remotes. Local is set only under a publication fixture, and admits only the scenario protocol, whose helper reaches nothing but the seeded origin.
 func forgeEnv(shim string, local bool) []string {
 	env := os.Environ()
 	path := shim + string(os.PathListSeparator) + os.Getenv("PATH")
@@ -48,7 +48,7 @@ func forgeEnv(shim string, local bool) []string {
 		"GIT_ALLOW_PROTOCOL":  "none",
 	}
 	if local {
-		set["GIT_ALLOW_PROTOCOL"] = "file"
+		set["GIT_ALLOW_PROTOCOL"] = "scenario"
 	}
 	var out []string
 	seen := map[string]bool{}
@@ -221,17 +221,19 @@ func runLive(scenario map[string]any, repo string, env []string, events, transcr
 const defaultCap = 32
 
 // claimSession refuses a paid session once the batch's recorded paid attempts reach its cap. The cap is retained in the batch on first use, so it cannot be raised mid-batch; a new --out directory is a new batch and a new budget. The count comes from the attempts themselves: failed and interrupted sessions count, model-unavailable ones do not, and nothing is ever deleted to free budget.
-func claimSession(outRoot string, cap *int) error {
+func claimSession(outRoot string, limit *int) error {
 	path := filepath.Join(outRoot, batchFile)
 	data, err := readObject(path)
-	if err != nil {
+	if os.IsNotExist(err) {
 		data = map[string]any{}
+	} else if err != nil {
+		return fmt.Errorf("unreadable batch cap, refusing rather than resetting it: %w", err)
 	}
 	switch {
 	case data["cap"] == nil:
 		data["cap"] = defaultCap
-		if cap != nil {
-			data["cap"] = *cap
+		if limit != nil {
+			data["cap"] = *limit
 		}
 		if err := os.MkdirAll(outRoot, 0o755); err != nil {
 			return err
@@ -239,7 +241,7 @@ func claimSession(outRoot string, cap *int) error {
 		if err := os.WriteFile(path, []byte(indentJSON(map[string]any{"cap": data["cap"]})), 0o644); err != nil {
 			return err
 		}
-	case cap != nil && floatOf(data["cap"]) != float64(*cap):
+	case limit != nil && floatOf(data["cap"]) != float64(*limit):
 		return fmt.Errorf("batch cap is retained at %s; start a new batch to change it", formatNumber(data["cap"]))
 	}
 	used := paidSessions(outRoot)
@@ -265,10 +267,10 @@ func paidSessions(outRoot string) int {
 	return count
 }
 
-// sessionStatus is terminalStatus, except that a failed session whose client reported the model as not found is model-unavailable, which spends no budget.
+// sessionStatus is terminalStatus, except that a failed session whose client reported the model as not found, and which produced no output, is model-unavailable and spends no budget.
 func sessionStatus(code *int, events []any) string {
 	status := terminalStatus(code)
-	if status != "failed" {
+	if status != "failed" || floatOf(parseUsage(events)["output_tokens"]) > 0 {
 		return status
 	}
 	for _, raw := range events {
@@ -296,13 +298,34 @@ func attemptPaths(outRoot, scenarioID string) []string {
 	return paths
 }
 
-func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPaid bool, cap *int) (string, string, error) {
+func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPaid bool, limit *int) (string, string, error) {
 	digest := scenarioDigest(scenario, root, fixturesRoot)
 	fixture := filepath.Join(fixturesRoot, getString(scenario, "id"))
 	fixtureInfo, fixtureErr := os.Stat(fixture)
 	hasFixture := fixtureErr == nil && fixtureInfo.IsDir()
 	if mode(scenario) == "live" && !hasFixture && !allowPaid {
 		return "not-run", "live scenario: pass --allow-paid or provide a recording", nil
+	}
+	if truthy(scenario["publication"]) && mode(scenario) == "live" && hasFixture {
+		return "", "", fmt.Errorf("a recording replays no git or forge calls, so its publication side effects cannot be judged")
+	}
+	executor := "offline"
+	switch {
+	case mode(scenario) == "offline":
+	case hasFixture:
+		executor = "recording"
+	default:
+		client := getString(scenario, "client")
+		if client == "" {
+			client = "claude"
+		}
+		executor = "live:" + client
+		if _, err := exec.LookPath(client); err != nil {
+			return "", "", err
+		}
+		if err := claimSession(outRoot, limit); err != nil {
+			return "", "", err
+		}
 	}
 	workspace, err := os.MkdirTemp("", "scenario-"+getString(scenario, "id")+"-")
 	if err != nil {
@@ -330,6 +353,25 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 	env = append(env, "HARNESS_ROOT="+root, "SCENARIO_REPO="+repo)
 	before := snapshot(repo)
 	fixturesBefore := treeDigest(fixture)
+	// The attempt and its provenance exist before the session starts, so a paid session killed mid-run still counts toward the cap.
+	now := time.Now().UTC()
+	stamp := now.Format("20060102T150405") + fmt.Sprintf("%06dZ", now.Nanosecond()/1000)
+	attempt := filepath.Join(outRoot, getString(scenario, "id"), stamp+"-"+digest[:8])
+	if err := os.MkdirAll(attempt, 0o755); err != nil {
+		return "", "", err
+	}
+	write := func(name, text string) error {
+		return os.WriteFile(filepath.Join(attempt, name), []byte(text), 0o644)
+	}
+	provenance := map[string]any{
+		"scenario":     getString(scenario, "id"),
+		"input_digest": digest,
+		"recorded_at":  now.Format("2006-01-02T15:04:05.000000"),
+		"executor":     executor,
+	}
+	if err := write("provenance.json", indentJSON(provenance)); err != nil {
+		return "", "", err
+	}
 	var events, transcript []any
 	var checkCode, liveCode *int
 
@@ -343,9 +385,6 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 			return "", "", err
 		}
 	default:
-		if err := claimSession(outRoot, cap); err != nil {
-			return "", "", err
-		}
 		code, err := runLive(scenario, repo, env, &events, &transcript)
 		if err != nil {
 			return "", "", err
@@ -364,32 +403,28 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 		}
 	}
 	var effects *sideEffects
+	var measureErr error
 	if seeded != nil {
-		if effects, err = seeded.measure(repo); err != nil {
-			return "", "", err
+		// A session that broke the repository still spent its budget, so a measurement failure fails the attempt rather than losing it.
+		if effects, measureErr = seeded.measure(repo); measureErr != nil {
+			effects = &sideEffects{}
 		}
 	}
 	entries := evaluateArtifacts(scenario, before, after, repo, forgeCalls, fixturesBefore == treeDigest(fixture), effects)
+	if measureErr != nil {
+		entries = append(entries, entry("side-effects-measured", false, measureErr.Error()))
+	}
 	if checkCode != nil {
 		entries = append(entries, entry("check-exit", *checkCode == 0, "exit "+strconv.Itoa(*checkCode)))
 	}
 	if liveCode != nil {
 		entries = append(entries, entry("session-exit", *liveCode == 0, "exit "+strconv.Itoa(*liveCode)))
 	}
-	if seeded != nil {
-		foreign := seeded.foreignRemotes(repo)
-		entries = append(entries, entry("local-origin-only", len(foreign) == 0, strings.Join(foreign, "; ")))
-	} else {
+	if seeded == nil {
 		remotes := gitRemotes(repo)
 		entries = append(entries, entry("no-git-remote", len(remotes) == 0, strings.Join(remotes, "; ")))
 	}
 
-	now := time.Now().UTC()
-	stamp := now.Format("20060102T150405") + fmt.Sprintf("%06dZ", now.Nanosecond()/1000)
-	attempt := filepath.Join(outRoot, getString(scenario, "id"), stamp+"-"+digest[:8])
-	if err := os.MkdirAll(attempt, 0o755); err != nil {
-		return "", "", err
-	}
 	ok := true
 	results := make([]any, 0, len(entries))
 	for _, item := range entries {
@@ -398,32 +433,7 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 		}
 		results = append(results, item)
 	}
-	write := func(name, text string) error {
-		return os.WriteFile(filepath.Join(attempt, name), []byte(text), 0o644)
-	}
 	if err := write("prompts.txt", strings.TrimRight(getString(scenario, "prompt"), " \t\r\n\f\v")+"\n"); err != nil {
-		return "", "", err
-	}
-	executor := "offline"
-	switch {
-	case mode(scenario) == "offline":
-		executor = "offline"
-	case hasFixture:
-		executor = "recording"
-	default:
-		client := getString(scenario, "client")
-		if client == "" {
-			client = "claude"
-		}
-		executor = "live:" + client
-	}
-	provenance := map[string]any{
-		"scenario":     getString(scenario, "id"),
-		"input_digest": digest,
-		"recorded_at":  time.Now().UTC().Format("2006-01-02T15:04:05.000000"),
-		"executor":     executor,
-	}
-	if err := write("provenance.json", indentJSON(provenance)); err != nil {
 		return "", "", err
 	}
 	if seeded != nil {
