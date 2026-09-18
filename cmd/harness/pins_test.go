@@ -713,3 +713,24 @@ func containsString(items []string, want string) bool {
 	}
 	return false
 }
+
+// TestPublicationAuthorityHasOneHome keeps the agreement test in one policy section that every publishing workflow defers to, so no workflow restates or weakens it.
+func TestPublicationAuthorityHasOneHome(t *testing.T) {
+	policy := readRepo(t, "POLICY.md")
+	if n := strings.Count(policy, "\n## Publication authority\n"); n != 1 {
+		t.Fatalf("POLICY.md has %d Publication authority sections, want 1", n)
+	}
+	test := "the purpose is settled, the whole scope is settled, the acceptance evidence is named, and an identifiable human message covers that scope"
+	if n := strings.Count(policy, test); n != 1 {
+		t.Errorf("POLICY.md states the agreement test %d times, want 1", n)
+	}
+	for _, name := range []string{"ship", "feedback", "address-review", "proto", "land"} {
+		text := readRepo(t, "commands/"+name+".md")
+		if !strings.Contains(text, "**Publication authority**") {
+			t.Errorf("%s.md does not defer to the policy's **Publication authority**", name)
+		}
+		if strings.Contains(text, test) {
+			t.Errorf("%s.md restates the agreement test instead of deferring to it", name)
+		}
+	}
+}

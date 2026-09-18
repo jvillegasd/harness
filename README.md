@@ -80,7 +80,7 @@ flowchart TD
     end
 
     subgraph AFTER["after"]
-        ready --> feedback["/feedback<br>a bullet list from you;<br>deferred rounds apply only,<br>a full round settles the debt"]
+        ready --> feedback["/feedback<br>a bullet list from you;<br>deferred rounds apply only,<br>a full round validates locally,<br>then publishes only an<br>approved batch"]
         ready --> addressreview["/address-review<br>review threads, red CI"]
         feedback --> merge{"a human decides to merge"}
         addressreview --> merge
