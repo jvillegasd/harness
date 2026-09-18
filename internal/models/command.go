@@ -65,6 +65,9 @@ func run(path string, args []string, stdout io.Writer) error {
 			if err := knownRole(rest[0]); err != nil {
 				return err
 			}
+			if _, ok := choice.Roles[rest[0]]; !ok {
+				return nil
+			}
 			delete(choice.Roles, rest[0])
 		default:
 			return fmt.Errorf("reset takes at most one role")
@@ -94,6 +97,11 @@ func set(path string, choice Choice, args []string) error {
 	if role == "" {
 		if _, ok := Presets[*preset]; !ok {
 			return fmt.Errorf("unknown preset %q; choose %s", *preset, strings.Join(presetNames(), ", "))
+		}
+		for _, role := range Roles {
+			if err := Validate(Presets[*preset][role]); err != nil {
+				return fmt.Errorf("preset %s: %s: %v", *preset, role, err)
+			}
 		}
 		choice.Preset = *preset
 		return Save(path, choice)

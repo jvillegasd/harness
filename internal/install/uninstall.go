@@ -96,6 +96,9 @@ func (in *installer) uninstallSelected() {
 		in.reconcileAliases(true)
 	}
 	if len(s.Installed) == 0 {
+		if len(s.Models) > 0 {
+			in.log("Removing ~/.harness discards the `harness models` choice.")
+		}
 		must(os.RemoveAll(in.stateDir()))
 	} else {
 		in.saveState(s)

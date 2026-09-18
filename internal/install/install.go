@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/jvillegasd/harness/internal/agents"
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
@@ -105,6 +106,7 @@ type installer struct {
 	clients, components               []string
 	installed                         []entry
 	backupRoot                        string
+	assignments                       map[string]agents.Assigned
 	stdout, stderr                    io.Writer
 }
 

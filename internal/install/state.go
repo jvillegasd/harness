@@ -76,7 +76,10 @@ func (in *installer) saveState(s state) {
 	must(os.MkdirAll(in.stateDir(), 0o755))
 	data, err := json.MarshalIndent(s, "", "  ")
 	must(err)
-	must(os.WriteFile(in.statePath(), append(data, '\n'), 0o644))
+	// A rename is atomic, so a concurrent `harness models` never reads half a file.
+	tmp := in.statePath() + ".tmp"
+	must(os.WriteFile(tmp, append(data, '\n'), 0o644))
+	must(os.Rename(tmp, in.statePath()))
 }
 
 // extractAssets writes the assets this binary carries, or the HARNESS_ASSETS tree, into a temporary directory for this run to install from, and returns its removal.

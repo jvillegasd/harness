@@ -1,5 +1,6 @@
 run [--skip-packages]: exit 0
 == commands
+opencode models <>
 engram setup claude-code <y>
 engram setup opencode <>
 claude mcp remove --scope user agent-browser <>

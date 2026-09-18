@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -76,16 +77,38 @@ func (in *installer) commandRoots() []string {
 	return []string{filepath.Join(in.home, ".claude", "commands"), filepath.Join(in.config, "opencode", "command")}
 }
 
-// agentOut is this checkout's own untracked directory of rendered role agents. A client link's text pointing into it is what proves this checkout wrote the link.
-// assigned is this machine's `harness models` choice, which the role agents are rendered from.
+// assigned is this machine's `harness models` choice, which the role agents are rendered from. An OpenCode model this machine cannot run falls back to the client default with a warning, so a routine install never writes an agent that cannot start.
 func (in *installer) assigned() map[string]agents.Assigned {
+	// Resolved once per run, so generation and the check render the same choice.
+	if in.assignments != nil {
+		return in.assignments
+	}
 	choice, err := models.Load(models.StatePath(in.home))
 	if err != nil {
 		die("Reading the model choice failed: %v", err)
 	}
-	return choice.ForRender()
+	assigned := choice.ForRender()
+	var listed []string
+	for role, a := range assigned {
+		if a.Client != "opencode" {
+			continue
+		}
+		if listed == nil {
+			listed, err = models.OpenCodeModels()
+			if err != nil {
+				listed = []string{}
+			}
+		}
+		if !slices.Contains(listed, a.Model) {
+			in.warn("%s is assigned OpenCode model %s, which `opencode models` does not list here; its agent keeps the client default until `harness models` names one this machine can run.", role, a.Model)
+			delete(assigned, role)
+		}
+	}
+	in.assignments = assigned
+	return assigned
 }
 
+// agentOut is this checkout's own untracked directory of rendered role agents. A client link's text pointing into it is what proves this checkout wrote the link.
 func (in *installer) agentOut() string {
 	return filepath.Join(in.dir.Generated(), "agents")
 }
@@ -241,7 +264,8 @@ func (in *installer) installFiles() {
 			}
 		}
 	}
-	in.saveState(state{Version: stateVersion, Installed: installed, Files: want, Models: previous.Models})
+	// Re-read, so a `harness models` change made while this install ran is kept.
+	in.saveState(state{Version: stateVersion, Installed: installed, Files: want, Models: in.loadState().Models})
 	in.installed = want
 }
 

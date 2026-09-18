@@ -58,8 +58,34 @@ var claudeEfforts = map[string][]string{
 // openaiEfforts are what OpenCode passes as OpenAI's reasoningEffort, the only effort it sends.
 var openaiEfforts = []string{"", "none", "minimal", "low", "medium", "high", "xhigh"}
 
-// Validate rejects an assignment the client cannot run: an unknown Claude alias, an OpenCode id `opencode models` does not list, or an effort the model does not support.
+// Validate rejects an assignment the client cannot run: a malformed one, or an OpenCode id `opencode models` does not list on this machine.
 func Validate(a Assignment) error {
+	if err := shape(a); err != nil {
+		return err
+	}
+	if a.Client == "opencode" {
+		listed, err := OpenCodeModels()
+		if err != nil {
+			return err
+		}
+		if !slices.Contains(listed, a.Model) {
+			return fmt.Errorf("opencode has no model %q; run `opencode models`", a.Model)
+		}
+	}
+	return nil
+}
+
+// OpenCodeModels lists the provider/model ids OpenCode can run on this machine.
+func OpenCodeModels() ([]string, error) {
+	out, err := exec.Command("opencode", "models").Output()
+	if err != nil {
+		return nil, fmt.Errorf("listing OpenCode models failed: %v", err)
+	}
+	return strings.Fields(string(out)), nil
+}
+
+// shape rejects what no machine can run: an unknown client or Claude alias, or an effort the model does not support.
+func shape(a Assignment) error {
 	switch a.Client {
 	case "claude":
 		efforts, ok := claudeEfforts[a.Model]
@@ -70,12 +96,8 @@ func Validate(a Assignment) error {
 			return fmt.Errorf("claude %s does not support effort %q", a.Model, a.Effort)
 		}
 	case "opencode":
-		out, err := exec.Command("opencode", "models").Output()
-		if err != nil {
-			return fmt.Errorf("listing OpenCode models failed: %v", err)
-		}
-		if !slices.Contains(strings.Fields(string(out)), a.Model) {
-			return fmt.Errorf("opencode has no model %q; run `opencode models`", a.Model)
+		if !strings.Contains(a.Model, "/") {
+			return fmt.Errorf("opencode model %q is not a provider/model id", a.Model)
 		}
 		if a.Effort != "" && (!strings.HasPrefix(a.Model, "openai/") || !slices.Contains(openaiEfforts, a.Effort)) {
 			return fmt.Errorf("opencode sends effort only as OpenAI's reasoningEffort, so %q is unsupported for %s", a.Effort, a.Model)
@@ -134,9 +156,22 @@ func Load(path string) (Choice, error) {
 		return Choice{}, err
 	}
 	var c Choice
-	if raw, ok := doc["models"]; ok {
-		if err := json.Unmarshal(raw, &c); err != nil {
-			return Choice{}, fmt.Errorf("%s: models: %w", path, err)
+	raw, ok := doc["models"]
+	if !ok {
+		return c, nil
+	}
+	if err := json.Unmarshal(raw, &c); err != nil {
+		return Choice{}, fmt.Errorf("%s: models: %w; run `harness models reset`", path, err)
+	}
+	if _, ok := Presets[c.Preset]; c.Preset != "" && !ok {
+		return Choice{}, fmt.Errorf("%s: unknown preset %q; run `harness models reset`", path, c.Preset)
+	}
+	for role, a := range c.Roles {
+		if err := knownRole(role); err != nil {
+			return Choice{}, fmt.Errorf("%s: %v; run `harness models reset`", path, err)
+		}
+		if err := shape(a); err != nil {
+			return Choice{}, fmt.Errorf("%s: %s: %v; run `harness models reset %s`", path, role, err, role)
 		}
 	}
 	return c, nil
@@ -164,7 +199,12 @@ func Save(path string, c Choice) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(data, '\n'), 0o644)
+	// A rename is atomic, so a concurrent install never reads half a file.
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, append(data, '\n'), 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 func readDoc(path string) (map[string]json.RawMessage, error) {

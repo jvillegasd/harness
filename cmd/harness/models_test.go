@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -77,11 +76,13 @@ func TestModelsSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
 		"unknown preset":           {"--preset", "lavish"},
 	} {
 		base := modelsBase(t)
+		seed := `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}` + "\n"
+		writeMode(t, stateFile(base), seed, 0o644)
 		if r := runModels(t, base, append([]string{"set"}, args...)...); r.code == 0 {
 			t.Errorf("%s: set exited 0", name)
 		}
-		if _, err := os.Stat(stateFile(base)); err == nil {
-			t.Errorf("%s: a rejected set wrote state.json", name)
+		if readFile(t, stateFile(base)) != seed {
+			t.Errorf("%s: a rejected set rewrote state.json", name)
 		}
 	}
 }
@@ -161,5 +162,67 @@ func TestInstallRendersTheResolvedAssignments(t *testing.T) {
 	}
 	if strings.Contains(agent("opencode", "reviewer-a"), "model:") {
 		t.Error("opencode reviewer-a, assigned to Claude, carries a model instead of the client default")
+	}
+}
+
+// TestModelsSetBeforeTheFirstInstall keeps a choice made on a never-installed machine, and installs over it.
+func TestModelsSetBeforeTheFirstInstall(t *testing.T) {
+	base := modelsBase(t)
+	ok(t, runModels(t, base, "set", "--preset", "performance"), "set before install")
+	ok(t, runInstaller(t, base, "--skip-packages"), "first install over a models-only state")
+	if r := ok(t, runModels(t, base, "show"), "show"); !strings.Contains(r.stdout, "(preset:performance)") {
+		t.Errorf("the first install dropped the choice:\n%s", r.stdout)
+	}
+	ok(t, runModels(t, base, "reset"), "reset all")
+	ok(t, runInstaller(t, base, "--skip-packages"), "install over a reset state")
+}
+
+// TestModelsRejectsAStaleChoice names the reset when the stored block cannot be resolved.
+func TestModelsRejectsAStaleChoice(t *testing.T) {
+	for name, block := range map[string]string{
+		"unknown preset":   `{"preset": "lavish"}`,
+		"malformed role":   `{"roles": {"executor": {"client": "claude", "model": "claudius"}}}`,
+		"unknown role key": `{"roles": {"planner": {"client": "claude", "model": "opus"}}}`,
+	} {
+		base := modelsBase(t)
+		writeMode(t, stateFile(base), `{"version": 1, "installed": {}, "files": [], "models": `+block+"}\n", 0o644)
+		if r := runModels(t, base, "show"); r.code == 0 || !strings.Contains(r.stderr, "harness models reset") {
+			t.Errorf("%s: exit %d, stderr %q", name, r.code, r.stderr)
+		}
+		if r := runInstaller(t, base, "--skip-packages"); r.code == 0 || !strings.Contains(r.stderr, "harness models reset") {
+			t.Errorf("%s: install exit %d, stderr %q", name, r.code, r.stderr)
+		}
+	}
+}
+
+// TestInstallFallsBackForAnUnlistedOpenCodeModel keeps the client default and warns when this machine cannot run the assigned OpenCode model.
+func TestInstallFallsBackForAnUnlistedOpenCodeModel(t *testing.T) {
+	base := modelsBase(t)
+	writeShim(t, base, "opencode", `case "$1" in models) echo 'openai/gpt-5.6-sol' ;; esac`)
+	r := ok(t, runInstaller(t, base, "--skip-packages"), "install without the balanced executor model")
+	if !strings.Contains(r.stderr+r.stdout, "does not list here") {
+		t.Errorf("no fallback warning:\n%s%s", r.stdout, r.stderr)
+	}
+	if strings.Contains(readFile(t, filepath.Join(base, "home", ".config", "opencode", "agents", "executor.md")), "model:") {
+		t.Error("the OpenCode executor carries a model this machine cannot run")
+	}
+}
+
+// TestInstallRefusesATrackedPerRoleAssignment keeps the machine choice the only per-role source.
+func TestInstallRefusesATrackedPerRoleAssignment(t *testing.T) {
+	base := modelsBase(t)
+	path := filepath.Join(base, "checkout", "clients", "assignments.json")
+	var config map[string]any
+	if err := json.Unmarshal([]byte(readFile(t, path)), &config); err != nil {
+		t.Fatal(err)
+	}
+	config["roles"].(map[string]any)["reviewer-b"].(map[string]any)["opencode"] = map[string]any{"model": "openai/gpt-5.6-sol"}
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeMode(t, path, string(data)+"\n", 0o644)
+	if r := runInstaller(t, base, "--skip-packages"); r.code == 0 || !strings.Contains(r.stdout+r.stderr, "chosen with `harness models`") {
+		t.Errorf("exit %d, output %q%q", r.code, r.stdout, r.stderr)
 	}
 }

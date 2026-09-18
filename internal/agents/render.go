@@ -31,7 +31,17 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 	if !ok {
 		return nil, nil, nil, fail(fmt.Sprintf("%s: config must be an object", configPath))
 	}
-	if roles, ok := config["roles"].(map[string]any); ok {
+	if roles, ok := config["roles"].(map[string]any); ok && assigned != nil {
+		// The machine's choice is the only per-role assignment, so a tracked one would silently compete with it.
+		for name, role := range roles {
+			if role, ok := role.(map[string]any); ok {
+				for _, client := range []string{"claude", "opencode"} {
+					if _, ok := role[client]; ok {
+						return nil, nil, nil, fail(fmt.Sprintf("roles.%s.%s: per-role model and effort are chosen with `harness models`, not in the assignments file", name, client))
+					}
+				}
+			}
+		}
 		for name, a := range assigned {
 			role, ok := roles[name].(map[string]any)
 			if !ok {
