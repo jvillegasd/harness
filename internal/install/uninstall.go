@@ -118,9 +118,10 @@ func (in *installer) removeClaudeMCP() {
 		_ = exec.Command("claude", "plugin", "uninstall", "engram@engram").Run()
 		_ = exec.Command("claude", "plugin", "marketplace", "remove", "engram").Run()
 		_ = exec.Command("claude", "mcp", "remove", "--scope", "user", "agent-browser").Run()
+		_ = exec.Command("claude", "mcp", "remove", "--scope", "user", "engram").Run()
 	} else {
-		in.warn("Claude Code is not installed, so its agent-browser entry stays.")
-		in.warn("Remove it by hand from %s under mcpServers.", filepath.Join(in.home, ".claude.json"))
+		in.warn("Claude Code is not installed, so its engram and agent-browser entries stay.")
+		in.warn("Remove them by hand from %s under mcpServers.", filepath.Join(in.home, ".claude.json"))
 	}
 	in.pruneJSON(in.settingsPath(), func(doc *object) bool {
 		removed := false
@@ -354,7 +355,7 @@ func names(section any) []string {
 	return nil
 }
 
-// checkClaudeMCPRemoved checks the containers removeClaudeMCP prunes, not the whole file, so an unrelated mention of the word cannot fail the run. The agent-browser entry is read from the file rather than the CLI; a survivor beside a missing Claude Code is the documented consequence of not hand-editing another tool's config.
+// checkClaudeMCPRemoved checks the containers removeClaudeMCP prunes, not the whole file, so an unrelated mention of the word cannot fail the run. The agent-browser and engram entries are read from the file rather than the CLI; a survivor beside a missing Claude Code is the documented consequence of not hand-editing another tool's config.
 func (in *installer) checkClaudeMCPRemoved() {
 	if path := filepath.Join(in.home, ".claude", "mcp", "engram.json"); exists(path) {
 		die("Engram file survived the uninstall: %s", path)
@@ -377,11 +378,14 @@ func (in *installer) checkClaudeMCPRemoved() {
 	claudeJSON := filepath.Join(in.home, ".claude.json")
 	if doc, ok := decodeFile(claudeJSON); ok {
 		servers, _ := doc["mcpServers"].(map[string]any)
-		if _, survived := servers["agent-browser"]; survived {
-			if _, err := exec.LookPath("claude"); err == nil {
-				die("The agent-browser MCP survived the uninstall in %s.", claudeJSON)
+		for _, server := range []string{"agent-browser", "engram"} {
+			if _, survived := servers[server]; !survived {
+				continue
 			}
-			in.warn("An agent-browser entry stays in %s; its client is not installed.", claudeJSON)
+			if _, err := exec.LookPath("claude"); err == nil {
+				die("The %s MCP survived the uninstall in %s.", server, claudeJSON)
+			}
+			in.warn("An %s entry stays in %s; its client is not installed.", server, claudeJSON)
 		}
 	}
 }

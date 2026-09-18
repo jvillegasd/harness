@@ -13,8 +13,11 @@ engram setup opencode <>
 wt config shell install --yes zsh <>
 claude mcp remove --scope user agent-browser <>
 claude mcp add --scope user agent-browser -- $SHIMS/agent-browser mcp <>
+claude mcp remove --scope user engram <>
+claude mcp add --scope user engram -- $SHIMS/engram mcp --tools=agent <>
 claude plugin list --json <>
 claude mcp get agent-browser <>
+claude mcp get engram <>
 opencode debug config <>
 claude plugin validate $BASE/tmp/harness-assets-<n>/skills <>
 wt switch --help <>

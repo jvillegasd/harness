@@ -4,6 +4,8 @@ engram setup claude-code <y>
 engram setup opencode <>
 claude mcp remove --scope user agent-browser <>
 claude mcp add --scope user agent-browser -- $SHIMS/agent-browser mcp <>
+claude mcp remove --scope user engram <>
+claude mcp add --scope user engram -- $SHIMS/engram mcp --tools=agent <>
 == home
 D .agent-browser
 D .agent-browser/browsers
