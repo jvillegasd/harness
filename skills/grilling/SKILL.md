@@ -1,6 +1,6 @@
 ---
 name: grilling
-description: A relentless interview that attacks the load-bearing assumptions in a plan or design before they become expensive, interactively or by self-grilling.
+description: Challenge a plan's load-bearing assumptions through an interactive interview or self-grill.
 disable-model-invocation: true
 metadata:
   opencode/autoinvoke: "false"
@@ -8,42 +8,33 @@ metadata:
 
 # Grilling
 
-Cheap to change a plan. Expensive to change a merged diff. This closes that gap by attacking the plan while it is still words.
-
-Grilling is not a checklist and not a summary. It is an attempt to break the thing.
+Try to break the plan before implementation, rather than summarize it or run a checklist.
 
 ## Find the load-bearing assumption first
 
-Before asking anything, identify what the plan **depends on** being true. Attack that. Do not attack the surface.
-
-A load-bearing assumption is one where being wrong changes the approach, the scope, or whether the work happens at all. Everything else is detail, and interrogating detail while the foundation is unexamined is theatre.
-
-Rank by consequence, then start with the worst one.
+Before asking, identify assumptions whose failure changes the approach, scope, or whether the work happens. Rank by consequence and challenge the worst first, before details.
 
 ## Mode: interactive
 
 Human-driven. The default when invoked directly.
 
-- **One question at a time.** Wait for the answer. A batch invites skimming, and skimming is what you are trying to prevent.
-- **Hardest first.** If the plan dies on question one, every later question was wasted.
-- **Follow the crack.** When an answer is vague, hedged, or shifts the subject, push there instead of moving on. "It depends" means you found something.
-- **Use the repository, not just logic.** "Does anything here already do this?" beats an abstract objection. Search before asserting.
-- **Never accept a plan restatement as an answer.** Saying it again louder is not evidence.
+- Ask one question at a time, hardest first, and wait for the answer.
+- Probe vague, hedged, or evasive answers rather than moving on.
+- Search for repository precedent before asserting an objection.
+- Require evidence, not a restatement of the plan.
 
-Finding facts is your job, never the user's. When a question needs a fact from the environment, look it up or dispatch a read-only subagent; never ask the user for something you could find yourself. The decisions are the user's: put each to them and wait.
+Find environmental facts yourself or through a read-only subagent. Ask the user only for decisions, and wait.
 
-Stop when the design either survives, in which case say so and name what would still break it, or breaks, in which case say what broke and what the smaller version looks like.
+Stop when the design survives or breaks. Name what could still break a surviving design; otherwise name the failure and the smaller viable version.
 
 ## Mode: self-grill
 
-No human in the loop. Use this when a workflow needs its own approach pressure-tested and serial human grilling would be the bottleneck: `/ship` on a load-bearing ambiguity that survives a repository search, and `/triage` before it escalates.
+Pressure-test without serial human questions: `/ship` uses this for load-bearing ambiguity surviving a repository search; `/triage` uses it before escalation.
 
 1. **List the assumptions** the approach depends on, ranked by consequence.
-2. **Resolve what you can**, in this order: search the repository for precedent; check history for whether this was tried before; load and follow the `evidence` skill for any claim about runtime behavior, impact, or frequency. Most open questions die here, because they were answerable and nobody looked.
-3. **Kill the plan if it deserves it.** If evidence refutes the premise, say so and stop. That is a success, not a failure.
-4. **Present only survivors**, in one batch, each carrying the decision, what you already checked and what it ruled out, the options with consequences, your default, and the cost if the default is wrong. Per the policy's escalation contract, if three or fewer read-only actions would settle a question, take them instead of asking it.
-
-A self-grill that produces a long question list did not do step 2.
+2. **Resolve what you can**, in order: search repository precedent, check history for earlier attempts, then read and follow `evidence` for runtime, impact, or frequency claims.
+3. **Stop if evidence refutes the premise.** Report why the plan should die.
+4. **Batch only unresolved decisions.** For each, give the checks and what they ruled out, options and consequences, your default, and its cost if wrong. Take up to three read-only actions that would settle a question before asking it, per the escalation contract.
 
 ## What makes a good question
 

@@ -1,5 +1,5 @@
 ---
-description: Answer one bounded question. Investigate read-only, answer directly, change nothing until approved.
+description: Answer one bounded question with read-only investigation.
 argument-hint: "[question]"
 ---
 
@@ -19,10 +19,10 @@ Resolve the effective input:
 
 Rules:
 
-- Answer only what is asked. No edits, no file writes, no commits, no side-effecting commands. Read-only investigation is fine: read, grep, search, `gh` reads.
-- Investigate just enough to answer with evidence. Cite `path:line` for code and the complete absolute URL for web sources. Do not sprawl into adjacent problems.
-- Lead with the answer, then the why. If uncertain, say so and name what would resolve it.
-- If the question is ambiguous, ask one sharp clarifying question before answering. Do not guess.
-- If a fix is the natural next step, describe it and stop. Wait for explicit approval before touching anything.
+- Answer only what was asked. No edits, writes, commits, or side-effecting commands; read, grep, search, and `gh` reads are allowed.
+- Investigate only enough to ground the answer. Cite code as `path:line` and web sources as complete absolute URLs.
+- Lead with the answer, then the reason. State uncertainty and what would resolve it.
+- Clarify material ambiguity with one question; do not guess.
+- Describe a natural next fix, then stop for explicit approval before changes.
 
-Scope check. This exists so a one-line lookup does not pay for a workflow. If the question stays one question but needs deep tracing, several sources, or evidence triangulation, hand it to `/research`. If the real problem is unclear requirements, a design tradeoff, or several valid approaches, recommend `grilling` or native plan mode instead of answering shallowly here.
+Use `/research` for deep tracing, multiple sources, or triangulation. Recommend `grilling` or native plan mode for unclear requirements, design tradeoffs, or multiple valid approaches.
