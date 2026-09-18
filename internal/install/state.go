@@ -45,6 +45,8 @@ type state struct {
 	Version   int                 `json:"version"`
 	Installed map[string][]string `json:"installed"`
 	Files     []entry             `json:"files"`
+	// Models is `harness models`' choice, carried through untouched so an install never drops it.
+	Models json.RawMessage `json:"models,omitempty"`
 }
 
 func (in *installer) stateDir() string { return filepath.Join(in.home, ".harness") }

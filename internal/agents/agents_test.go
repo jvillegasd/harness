@@ -43,7 +43,7 @@ func runCommand(t *testing.T, args ...string) (int, string, string) {
 	if args[0] == "--check" {
 		run, args = Check, args[1:]
 	}
-	code := run(args[0], args[1], &stdout, &stderr)
+	code := run(args[0], args[1], nil, &stdout, &stderr)
 	return code, stdout.String(), stderr.String()
 }
 

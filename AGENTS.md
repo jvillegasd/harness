@@ -21,6 +21,7 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 | `internal/skills/` | The third-party skill locks behind `harness skills` |
 | `internal/bench/` | The session-population comparison behind `harness bench` |
 | `internal/agents/` | The role-agent renderer the installer calls in-process |
+| `internal/models/` | The per-machine role model presets behind `harness models` |
 | `internal/scenarios/` | The artifact-based scenario runner and probes behind `harness scenarios` |
 | `internal/dash/` | The live terminal dashboard behind `harness dash` |
 | `POLICY.md` | The vendor-neutral global policy linked into each client |

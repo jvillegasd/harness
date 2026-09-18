@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/jvillegasd/harness/internal/agents"
+	"github.com/jvillegasd/harness/internal/models"
 )
 
 // exists is true for anything at a path, a dangling symlink included.
@@ -76,6 +77,15 @@ func (in *installer) commandRoots() []string {
 }
 
 // agentOut is this checkout's own untracked directory of rendered role agents. A client link's text pointing into it is what proves this checkout wrote the link.
+// assigned is this machine's `harness models` choice, which the role agents are rendered from.
+func (in *installer) assigned() map[string]agents.Assigned {
+	choice, err := models.Load(models.StatePath(in.home))
+	if err != nil {
+		die("Reading the model choice failed: %v", err)
+	}
+	return choice.ForRender()
+}
+
 func (in *installer) agentOut() string {
 	return filepath.Join(in.dir.Generated(), "agents")
 }
@@ -186,7 +196,7 @@ func (in *installer) installFiles() {
 	for _, pair := range in.agentRoots() {
 		in.ensureManagedDir(pair[1], true)
 	}
-	if code := agents.Generate(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 {
+	if code := agents.Generate(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.assigned(), in.stdout, in.stderr); code != 0 {
 		die("Generating the role agents failed with status %d.", code)
 	}
 
@@ -231,7 +241,7 @@ func (in *installer) installFiles() {
 			}
 		}
 	}
-	in.saveState(state{Version: stateVersion, Installed: installed, Files: want})
+	in.saveState(state{Version: stateVersion, Installed: installed, Files: want, Models: previous.Models})
 	in.installed = want
 }
 
@@ -255,7 +265,7 @@ func (in *installer) checkFiles() {
 			die("Managed copy missing or changed: %s", e.Path)
 		}
 	}
-	if code := agents.Check(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.stdout, in.stderr); code != 0 {
+	if code := agents.Check(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.assigned(), in.stdout, in.stderr); code != 0 {
 		die("Role agents in %s are missing, drifted, or widened.", in.agentOut())
 	}
 }
