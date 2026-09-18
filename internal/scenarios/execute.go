@@ -267,10 +267,11 @@ func paidSessions(outRoot string) int {
 	return count
 }
 
-// sessionStatus is terminalStatus, except that a failed session whose client reported the model as not found, and which produced no output, is model-unavailable and spends no budget.
+// sessionStatus is terminalStatus, except that a failed session whose client reported the model as not found, and which used no tokens, is model-unavailable and spends no budget.
 func sessionStatus(code *int, events []any) string {
 	status := terminalStatus(code)
-	if status != "failed" || floatOf(parseUsage(events)["output_tokens"]) > 0 {
+	usage := parseUsage(events)
+	if status != "failed" || floatOf(usage["input_tokens"]) > 0 || floatOf(usage["output_tokens"]) > 0 {
 		return status
 	}
 	for _, raw := range events {
@@ -353,24 +354,29 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 	env = append(env, "HARNESS_ROOT="+root, "SCENARIO_REPO="+repo)
 	before := snapshot(repo)
 	fixturesBefore := treeDigest(fixture)
-	// The attempt and its provenance exist before the session starts, so a paid session killed mid-run still counts toward the cap.
 	now := time.Now().UTC()
 	stamp := now.Format("20060102T150405") + fmt.Sprintf("%06dZ", now.Nanosecond()/1000)
 	attempt := filepath.Join(outRoot, getString(scenario, "id"), stamp+"-"+digest[:8])
-	if err := os.MkdirAll(attempt, 0o755); err != nil {
-		return "", "", err
-	}
 	write := func(name, text string) error {
 		return os.WriteFile(filepath.Join(attempt, name), []byte(text), 0o644)
 	}
-	provenance := map[string]any{
-		"scenario":     getString(scenario, "id"),
-		"input_digest": digest,
-		"recorded_at":  now.Format("2006-01-02T15:04:05.000000"),
-		"executor":     executor,
+	record := func() error {
+		if err := os.MkdirAll(attempt, 0o755); err != nil {
+			return err
+		}
+		return write("provenance.json", indentJSON(map[string]any{
+			"scenario":     getString(scenario, "id"),
+			"input_digest": digest,
+			"recorded_at":  now.Format("2006-01-02T15:04:05.000000"),
+			"executor":     executor,
+		}))
 	}
-	if err := write("provenance.json", indentJSON(provenance)); err != nil {
-		return "", "", err
+	// A paid attempt is recorded before its session starts, so one killed mid-run still counts toward the cap. Others are recorded only once they finish, so an error leaves no half-written attempt.
+	paid := strings.HasPrefix(executor, "live:")
+	if paid {
+		if err := record(); err != nil {
+			return "", "", err
+		}
 	}
 	var events, transcript []any
 	var checkCode, liveCode *int
@@ -403,16 +409,16 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 		}
 	}
 	var effects *sideEffects
-	var measureErr error
 	if seeded != nil {
 		// A session that broke the repository still spent its budget, so a measurement failure fails the attempt rather than losing it.
-		if effects, measureErr = seeded.measure(repo); measureErr != nil {
-			effects = &sideEffects{}
+		var err error
+		if effects, err = seeded.measure(repo); err != nil {
+			effects = &sideEffects{err: err}
 		}
 	}
 	entries := evaluateArtifacts(scenario, before, after, repo, forgeCalls, fixturesBefore == treeDigest(fixture), effects)
-	if measureErr != nil {
-		entries = append(entries, entry("side-effects-measured", false, measureErr.Error()))
+	if effects != nil && effects.err != nil {
+		entries = append(entries, entry("side-effects-measured", false, effects.err.Error()))
 	}
 	if checkCode != nil {
 		entries = append(entries, entry("check-exit", *checkCode == 0, "exit "+strconv.Itoa(*checkCode)))
@@ -420,11 +426,19 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 	if liveCode != nil {
 		entries = append(entries, entry("session-exit", *liveCode == 0, "exit "+strconv.Itoa(*liveCode)))
 	}
-	if seeded == nil {
+	if seeded != nil {
+		foreign := foreignRemotes(repo)
+		entries = append(entries, entry("local-origin-only", len(foreign) == 0, strings.Join(foreign, "; ")))
+	} else {
 		remotes := gitRemotes(repo)
 		entries = append(entries, entry("no-git-remote", len(remotes) == 0, strings.Join(remotes, "; ")))
 	}
 
+	if !paid {
+		if err := record(); err != nil {
+			return "", "", err
+		}
+	}
 	ok := true
 	results := make([]any, 0, len(entries))
 	for _, item := range entries {

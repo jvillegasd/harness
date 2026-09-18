@@ -64,6 +64,10 @@ func TestSideEffectOracles(t *testing.T) {
 		{"multi-line body counts once", `gh pr create --title t --body "$(printf 'a\npr create')"`, `{"pull_requests":1}`, "pull_requests", true},
 		{"forge calls refused without forge rules", "gh pr view 1", `{"commits":0}`, "no-external-forge", false},
 		{"no forge calls without forge rules", "true", `{"commits":0}`, "no-external-forge", true},
+		{"counted pull requests are not foreign forge calls", "gh pr create --title t", `{"pull_requests":1}`, "no-external-forge", true},
+		{"other forge calls still refused beside counted pull requests", "gh pr create --title t && gh pr merge 1", `{"pull_requests":1}`, "no-external-forge", false},
+		{"origin left alone", commit, `{"commits":1}`, "local-origin-only", true},
+		{"remote pointed elsewhere", "git remote add other https://forge.invalid/x.git", `{"commits":0}`, "local-origin-only", false},
 	}
 	root := testRepoRoot()
 	for _, c := range cases {
@@ -185,6 +189,10 @@ func TestModelUnavailableStatus(t *testing.T) {
 	if got := sessionStatus(&one, spent); got != "failed" {
 		t.Fatalf("status after paid output = %q, want failed", got)
 	}
+	read := append([]any{map[string]any{"type": "assistant", "message": map[string]any{"usage": map[string]any{"input_tokens": 900, "output_tokens": 0}}}}, events...)
+	if got := sessionStatus(&one, read); got != "failed" {
+		t.Fatalf("status after paid input = %q, want failed", got)
+	}
 }
 
 // TestPublicationReachesOnlyTheSeededOrigin pushes to a real local repository outside the fixture, which the scenario protocol must refuse.
@@ -253,5 +261,25 @@ func TestRunEnforcesTheCap(t *testing.T) {
 	}
 	if after := len(attemptPaths(out, "paid")); after != before {
 		t.Fatalf("a refused run wrote an attempt: %d -> %d", before, after)
+	}
+}
+
+// TestPublicationSurvivesAHostileTempPath seeds the origin under a path with shell metacharacters, which the remote helper must quote.
+func TestPublicationSurvivesAHostileTempPath(t *testing.T) {
+	hostile := filepath.Join(t.TempDir(), `it's "$HOME" `+"`x`")
+	if err := os.MkdirAll(hostile, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TMPDIR", hostile)
+	root := testRepoRoot()
+	declaration := decodeScenario(t, `{"id":"pub","command":"c","prompt":"p","mode":"offline","publication":true,"artifacts":{"commits":1,"push":true}}`)
+	declaration["check"] = "git -c user.name=t -c user.email=t@t -c commit.gpgsign=false commit -q --allow-empty -m work && git push -q origin HEAD:refs/heads/work"
+	state, where, err := runOne(declaration, root, t.TempDir(), filepath.Join(root, "scenarios", "fixtures"), false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state != "unreviewed" {
+		raw, _ := os.ReadFile(filepath.Join(where, "artifacts.json"))
+		t.Fatalf("state = %q, want unreviewed: %s", state, raw)
 	}
 }

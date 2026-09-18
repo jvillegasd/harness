@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// evaluateArtifacts applies a scenario's declared artifact checks to the repository it ran in. Effects is nil unless the scenario seeded a publication fixture; then forge calls are judged by its declared forge rules, and refused outright when it declares none.
+// evaluateArtifacts applies a scenario's declared artifact checks to the repository it ran in. Effects is nil unless the scenario seeded a publication fixture; then forge calls are judged by its declared forge rules, and refused outright when it declares none, except the `pr create` calls a declared `pull_requests` needs.
 func evaluateArtifacts(scenario map[string]any, before, after map[string]string, repo string, forgeCalls []string, fixturesUnchanged bool, effects *sideEffects) []map[string]any {
 	artifacts := dict(scenario, "artifacts")
 	var entries []map[string]any
@@ -49,6 +49,15 @@ func evaluateArtifacts(scenario map[string]any, before, after map[string]string,
 		_, forbidden := artifacts["forge_forbidden"]
 		if allowed || forbidden {
 			return entries
+		}
+		if _, counted := artifacts["pull_requests"]; counted {
+			var other []string
+			for _, call := range forgeCalls {
+				if !forgeOp(call, "pr create") {
+					other = append(other, call)
+				}
+			}
+			forgeCalls = other
 		}
 	}
 	return append(entries, entry("no-external-forge", len(forgeCalls) == 0, strings.Join(forgeCalls, "; ")))
