@@ -33,6 +33,7 @@ Each attempt under `attempts/<id>/<stamp>-<digest>/` retains:
 | `transcript.jsonl` | The recorded session or command output. |
 | `metrics.json` | Normalized efficiency: tokens, tool calls, output bytes, wall time, model, terminal status. |
 | `status.json` | The computed state and its reasons. |
+| `forge.log` | Every `gh` call the attempt made, one per line. Written only under a publication fixture. |
 
 ## States
 
@@ -63,7 +64,7 @@ Every attempt carries `metrics.json`, normalized from the recorded events so two
 | `tool_calls` | Tool invocations the run made. |
 | `command_output_bytes` | Bytes the run's commands returned. |
 | `wall_seconds` | First to last of the executor. |
-| `terminal_status` | `ok`, `failed`, `interrupted`, or `unknown` when nothing was executed. |
+| `terminal_status` | `ok`, `failed`, `interrupted`, `model-unavailable` when a live session failed without using a token because the client reported the model as not found, or `unknown` when nothing was executed. |
 
 An absent token count is `null`, never `0`: an unmeasured field and a measured zero are different claims, and collapsing them would invent evidence.
 
@@ -75,9 +76,27 @@ An absent token count is `null`, never `0`: an unmeasured field and a measured z
 
 Every scenario runs in a fresh temporary repository with no git remote. A `gh` shim is placed first on `PATH`; it logs each call and exits nonzero, so a scenario cannot reach a real forge or tracker. `GH_TOKEN` and `GITHUB_TOKEN` are cleared. Any logged call fails the attempt under `no-external-forge`.
 
+## Publication
+
+A scenario that declares `"publication": true` gets a publication fixture instead, so an oracle can judge what a workflow actually published rather than what its transcript claims. The repository is seeded with one commit, pushed to a local bare `origin`. The `origin` remote uses a `scenario::` URL, and git is allowed only that protocol, whose helper always connects to the seeded origin whatever the URL says, so a push to any other path or host is refused. The `gh` shim becomes a substitute: it logs each call to the attempt's `forge.log`, one line per call, and succeeds, answering `pr create` with a placeholder URL. The protocol allowlist is an environment variable a session could override, so `no-git-remote` gives way to `local-origin-only`, which fails if any remote URL is not `scenario::origin` after the run. `no-external-forge` applies only when the scenario declares neither `forge_allowed` nor `forge_forbidden`, and then it ignores the `pr create` calls a declared `pull_requests` counts. A recording replays no git or forge calls, so a publication scenario with a recording is refused rather than judged vacuously.
+
+Side-effect assertions are valid only under a publication fixture:
+
+| Assertion | Passes when |
+| --- | --- |
+| `commits: <n>` | Exactly `n` commits exist after the seed, across every ref except the stash. |
+| `push: true` or `false` | Some ref on the origin moved, or none did. |
+| `pull_requests: <n>` | The forge log holds exactly `n` `pr create` calls. |
+| `forge_allowed: [<op>, ...]` | Every logged call starts with one of the listed operations, such as `pr view`. |
+| `forge_forbidden: [<op>, ...]` | No logged call starts with a listed operation. Each operation is its own result. |
+
+Operations match on whole words, so `pr create` does not match `pr created`.
+
 ## Paid execution
 
-A `live` scenario needs a recording under `fixtures/<id>/` or `--allow-paid`. Paid execution additionally needs `--max-sessions`, which is retained in `attempts/batch.json` and refuses a session beyond the cap. Changing the cap mid-batch is refused; start a new batch. `--max-sessions` is required exactly when `--allow-paid` is set and rejected otherwise; either mismatch is an incompatible invocation rejected before any attempt is written.
+A `live` scenario needs a recording under `fixtures/<id>/` or `--allow-paid`. Paid sessions are capped per batch: 32 by default, or `--cap <n>`, which requires `--allow-paid` and is otherwise an incompatible invocation rejected before any attempt is written. The first paid session retains the cap in `batch.json` under `--out`, and changing it mid-batch is refused; a new `--out` directory is a new batch and a new budget.
+
+The count is read from the batch's own attempts, so `run` refuses a session once the recorded paid attempts reach the cap and reports the count. A paid attempt's provenance is written before its session starts, so a session killed mid-run still counts; other executors write their attempt only once they finish. Failed and interrupted sessions count; a `model-unavailable` one, which failed without using a token, does not, because it spent nothing. Attempts are never deleted to free budget: a failure stays on the record rather than being erased by a rerun. An unreadable `batch.json` is refused rather than reset.
 
 ## Fixtures
 
