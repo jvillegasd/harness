@@ -27,15 +27,17 @@ Load and follow the `ponytail` skill for every code change.
 
 3. Judge each thread and fix locally. For defects, first add or adjust a behavior-level test, make the smallest fix, and drive the oracle ladder green. Assign each thread a verdict:
 
-   - **Legit**: the reviewer is right. Fix it in code, one focused commit per thread or per tightly-related cluster, and capture the short hash.
+   - **Legit**: the reviewer is right. Fix it in the working tree; step 4 commits it once review settles, one focused commit per thread or per tightly-related cluster.
    - **Not legit**: wrong, out of scope, or already handled. Change nothing and draft the reason.
    - **Needs clarification**: ambiguous or a product decision. Do not guess and do not contact the reviewer yet; draft the question.
 
-   Commit as you go; batch all external writes behind step 5.
+   Commit nothing yet; batch all external writes behind step 5.
 
-4. Review the new diff the way `/ship` does: read and run `adversarial-review` first, then your own spec-conformance pass against the resolved contract and the repository's documented standards. After a repair, conformance rechecks the affected criteria and test seams, repeating the complete pass only when the contract or broad behavior changed. In legacy mode, report that contract conformance is unavailable and check the explicit review requests, CI failures, and documented standards instead. Repair every conformance finding, or in legacy mode every unmet review request, CI failure, and standards break; the triage block's conformance rule decides whether each such repair gets a delta round. Make coherent Conventional Commits.
+4. Review the uncommitted diff before any commit, snapshotting and staging it the way `/ship` step 2 does but with `git diff HEAD` as the first snapshot. Read and run `adversarial-review` first, then your own spec-conformance pass against the resolved contract and the repository's documented standards. After a repair, conformance rechecks the affected criteria and test seams, repeating the complete pass only when the contract or broad behavior changed. In legacy mode, report that contract conformance is unavailable and check the explicit review requests, CI failures, and documented standards instead. Repair every conformance finding, or in legacy mode every unmet review request, CI failure, and standards break; the triage block's conformance rule decides whether each such repair gets a delta round.
 
    Triage every finding by `adversarial-review`'s canonical triage block: only `bug:` and `risk:` block, a `nit:` is fixed only when the fix is smaller than the argument and is otherwise dropped, a `q:` is answered and blocks only once evidence reclassifies it, a contested `bug:` or `risk:` is rejected only on the refuter's `refuted` verdict or a human decision on its escalation, and a second adversarial round runs only after a fixed blocking finding, over the repair delta alone.
+
+   Once triage settles and the local rungs are green, commit with no squash: `git reset`, then stage each legit thread's paths, new files included, and make one focused Conventional Commit per thread or per tightly-related cluster, putting threads that share a file in one cluster, and capture each short hash. Then repeat `/ship` step 2's untracked-file step for the remaining reviewed paths, CI and review repairs, and commit them as one `fix:` commit, which is the only commit on the CI-only path. Confirm `git status --short` shows nothing except the untracked files reported as excluded. The ladder ran green over the whole tree; note under `## Checks` that intermediate commits were not verified separately. These commits stay local until step 5.
 
    If `mergeStateStatus` is `BEHIND` or the base moved, prepare but do not apply an update plan. Default to merging the actual base into the pull request branch to preserve pushed history. Never assume `main`.
 

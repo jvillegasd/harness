@@ -20,7 +20,7 @@ Load and follow `ponytail`. Build only what the next feedback round needs.
 ## Setup, once
 
 1. Establish a safe branch before editing, the same rule as `/ship`: never the default branch, even for throwaway code. Derive `<type>/<tracker-id>-<short-slug>` when the input is bound to a ticket and `<type>/<short-slug>` for a plain description. Never fabricate a tracker ID. Under local markdown the id form is the one `local-tracker` gives; a bare `NN` is not an id and repeats across features. Create the worktree with Worktrunk (`wt switch --create <branch> --base origin/<default> --no-cd --format=json --yes`), or the runtime-provided Orca CLI guide inside Orca.
-2. When tracker-bound, claim the ticket from mapped `ready_for_agent` to mapped `in_progress` so another run cannot take it during feedback. Skip for a plain description. For local markdown, read `local-tracker`: the claim is a default-branch bookkeeping commit.
+2. When tracker-bound, claim the ticket from mapped `ready_for_agent` to mapped `in_progress` so another run cannot take it during feedback, after confirming that claim once, whether the human invoked this workflow or routing entered it; a declined claim ends the run. Skip for a plain description. For local markdown, read `local-tracker`: the claim is a default-branch bookkeeping commit.
 3. Resolve the local rungs of the oracle ladder only: type check, lint, and the tests for the touched surface. Record them per the policy. The remote rungs do not exist in this workflow.
 4. Build UI slices from the project's existing styling layer, never a new palette or design system.
 5. Create a requirements ledger file in the branch's worktree for durable checkpoint references. Mark each initial requirement assumed or confirmed.

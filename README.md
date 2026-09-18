@@ -50,10 +50,10 @@ flowchart TD
         createticket -->|research ticket,<br>contract fields missing| planning["planning-only ticket<br>no lifecycle label"]
         planning -->|fields supplied,<br>/create-ticket promotes| ticket
 
-        proto_in["requirements that<br>will not settle on paper"] --> proto["/proto<br>build a slice, local rungs green,<br>a human tries it, fold feedback in"]
+        proto_in["requirements that<br>will not settle on paper,<br>implement this with<br>the contract still open"] --> proto["/proto<br>build a slice, local rungs green,<br>a human tries it, fold feedback in"]
         proto --> protoledger["requirements ledger"]
 
-        else_in["everything else"] --> plan["native plan mode"]
+        else_in["how should we do this,<br>no build intent"] --> plan["native plan mode"]
         brief --> plan
         brief --> spec
 
@@ -62,6 +62,7 @@ flowchart TD
         grill -.-> plan
         grill -.-> proto
 
+        bounded_in["a message stating<br>a bounded scope<br>and asking for the work"] --> approval
         ticket --> approval(["approved contract"])
         plan --> approval
         protoledger --> approval
@@ -72,10 +73,10 @@ flowchart TD
         ship --> ladder["resolve the oracle ladder<br>project instructions, else task runner,<br>else the toolchain"]
         ladder --> implement["implement<br>loading ponytail"]
         implement --> rungs["local rungs green:<br>types, lint, tests, build"]
-        rungs --> commit["commit"] --> review["adversarial-review<br>named agents rendered from role files,<br>A: requirements, diff, project standards<br>B: diff, review standards<br>disclosed fallback, only bug and risk block,<br>rejected only on a refuter's refuted verdict"]
+        rungs --> review["adversarial-review<br>uncommitted diff snapshot,<br>untracked files included<br>named agents rendered from role files,<br>A: requirements, diff, project standards<br>B: diff, review standards<br>disclosed fallback, only bug and risk block,<br>rejected only on a refuter's refuted verdict"]
         review -->|fixed bug or risk:<br>one delta round| review
         review --> conform["spec-conformance pass<br>diff against the contract"]
-        conform --> push["push"] --> pr["open the draft pull request<br>capped body: what changed, contract,<br>checks, assumptions, refuted, rejected"]
+        conform --> commit["commit<br>after triage settles"] --> push["push"] --> pr["open the draft pull request<br>capped body: what changed, contract,<br>checks, assumptions, refuted, rejected"]
         pr --> checks(["remote required checks<br>and both review passes green"])
         checks -->|mark the draft ready| ready(["ready-for-human<br>terminal state"])
     end
