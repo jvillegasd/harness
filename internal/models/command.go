@@ -203,7 +203,7 @@ func resolve(choice Choice, args []string, stdout io.Writer) error {
 		return fmt.Errorf("resolve needs --session claude or --session opencode")
 	}
 	r := choice.Resolve()[role]
-	out := map[string]string{"role": role, "client": r.Client, "model": r.Model, "effort": effortOrInherit(r.Effort), "source": r.Source, "route": Route(r.Assignment, *session)}
+	out := map[string]string{"role": role, "client": r.Client, "model": r.Model, "effort": effortOrInherit(r.Effort), "source": r.Source, "route": Route(r.Assignment, *session, "")}
 	if *asJSON {
 		return json.NewEncoder(stdout).Encode(out)
 	}

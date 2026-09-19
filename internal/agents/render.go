@@ -126,7 +126,8 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 			controls += line + "\n"
 		}
 		outputs["claude/"+name+".md"] = "---\nname: " + name + "\ndescription: " + quoted + "\n" + controls + claudeSettings + "---\n\n" + body + "\n"
-		outputs["opencode/"+name+".md"] = "---\ndescription: " + quoted + "\nmode: subagent\n" + opencodeControls[accessLevel] + opencodeSettings + "---\n\n" + body + "\n"
+		// mode: all, not subagent: `opencode run --agent` and `opencode --agent` silently fall back to the default agent for a subagent, which would drop every control below.
+		outputs["opencode/"+name+".md"] = "---\ndescription: " + quoted + "\nmode: all\n" + opencodeControls[accessLevel] + opencodeSettings + "---\n\n" + body + "\n"
 		accesses["claude/"+name+".md"] = accessLevel
 		accesses["opencode/"+name+".md"] = accessLevel
 	}
