@@ -174,6 +174,12 @@ func TestPickerViewKeepsCursorOnScreen(t *testing.T) {
 	if got := strings.Count(view, "p/m"); got != visibleRows {
 		t.Errorf("view renders %d ids, want %d", got, visibleRows)
 	}
+	for range 20 {
+		p = drive(t, p, keyDown)
+	}
+	if view := p.View().Content; !strings.Contains(view, "> p/m48") || strings.Count(view, "p/m") != visibleRows {
+		t.Errorf("view at the end of the list:\n%s", view)
+	}
 }
 
 // TestPickerTablesMatch fails when a preset lacks its note or a Claude alias is missing from either table, which would leave the picker a blank line or an empty effort step.

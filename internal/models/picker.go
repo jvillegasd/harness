@@ -20,6 +20,7 @@ var presetNotes = map[string]string{
 var claudeModels = []string{"inherit", "fable", "opus", "sonnet", "haiku"}
 
 // visibleRows caps the rendered list, since `opencode models` can list more ids than a terminal is tall.
+// ponytail: fixed height, so a terminal under about 21 rows still clips; size it from tea.WindowSizeMsg if that bites.
 const visibleRows = 15
 
 const (
@@ -173,5 +174,6 @@ func (p picker) save(path string) (bool, error) {
 			return false, err
 		}
 	}
-	return true, Save(path, choice)
+	err = Save(path, choice)
+	return err == nil, err
 }
