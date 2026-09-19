@@ -1,6 +1,6 @@
 ---
 description: "Adjudicates one contested review finding against its diff as corroborated, refuted, or inconclusive. Read and search only."
-mode: subagent
+mode: all
 permission:
   "*": deny
   read:

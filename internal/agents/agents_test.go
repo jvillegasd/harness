@@ -201,7 +201,7 @@ func TestEachClientGetsItsControlsAndTheWholeRole(t *testing.T) {
 		if !strings.Contains(claude, "\nname: "+role+"\n") || !strings.Contains(claude, "\ntools: Read, Grep, Glob\n") {
 			t.Errorf("%s claude frontmatter is wrong:\n%s", role, claude)
 		}
-		if !strings.Contains(opencode, "\nmode: subagent\npermission:\n  \"*\": deny\n") || !strings.Contains(opencode, "\n    \"*.env\": deny\n") {
+		if !strings.Contains(opencode, "\nmode: all\npermission:\n  \"*\": deny\n") || !strings.Contains(opencode, "\n    \"*.env\": deny\n") {
 			t.Errorf("%s opencode controls are wrong:\n%s", role, opencode)
 		}
 		if !strings.Contains(claude, body) || !strings.Contains(opencode, body) {
@@ -228,7 +228,7 @@ func TestExecutorKeepsImplementationAccess(t *testing.T) {
 	if !strings.Contains(claude, "\ndisallowedTools: Agent\n") {
 		t.Error("executor claude does not disable delegation")
 	}
-	if !strings.Contains(opencode, "\nmode: subagent\npermission:\n  task: deny\n  bash:\n") {
+	if !strings.Contains(opencode, "\nmode: all\npermission:\n  task: deny\n  bash:\n") {
 		t.Errorf("executor opencode controls are wrong:\n%s", opencode)
 	}
 	for _, pattern := range []string{"git commit*", "git push*", "git worktree remove*", "wt remove*", "wt merge*", "wt step commit*", "gh *"} {
@@ -321,7 +321,7 @@ func TestCheckDetectsWidening(t *testing.T) {
 		{"claude/reviewer-b.md", "tools: Read, Grep, Glob\n", ""},
 		{"opencode/reviewer-a.md", "  \"*\": deny", "  \"*\": allow"},
 		{"opencode/reviewer-b.md", "  list: allow\n", "  list: allow\n  bash: allow\n"},
-		{"opencode/reviewer-b.md", "mode: subagent\n", "mode: subagent\ntools:\n  bash: true\n"},
+		{"opencode/reviewer-b.md", "mode: all\n", "mode: all\ntools:\n  bash: true\n"},
 		{"claude/review-refuter.md", "tools: Read, Grep, Glob\n", "tools: Read, Grep, Glob, Edit\n"},
 		{"opencode/review-refuter.md", "  grep: allow\n", "  grep: allow\n  task: allow\n"},
 		{"claude/executor.md", "disallowedTools: Agent\n", ""},

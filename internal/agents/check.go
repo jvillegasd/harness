@@ -56,7 +56,7 @@ func restricted(relative, text, level string) bool {
 		}
 		kept += line + "\n"
 	}
-	return kept == "mode: subagent\n"+opencodeControls[level]
+	return kept == "mode: all\n"+opencodeControls[level]
 }
 
 func existing(output string) map[string]string {

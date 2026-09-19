@@ -35,6 +35,9 @@ func renderAgent(t *testing.T, base, client, role, model, effort string) {
 		dir, effortKey = filepath.Join(base, "home", ".config", "opencode", "agents"), "reasoningEffort: "
 	}
 	head := "---\ndescription: \"x\"\nmodel: " + model + "\n"
+	if client == "opencode" {
+		head += "mode: all\n"
+	}
 	if effort != "" {
 		head += effortKey + effort + "\n"
 	}
@@ -44,21 +47,22 @@ func renderAgent(t *testing.T, base, client, role, model, effort string) {
 // orcaEnv pins the Orca executable to the shim, since Linux outside an Orca terminal resolves to orca-ide.
 func orcaEnv(session string) []string { return []string{session, "ORCA_CLI_COMMAND=orca"} }
 
-// orcaShim fakes an Orca runtime with no bound Run, whose worker-show reports the status and worker state written to base/status.
+// orcaShim fakes an Orca runtime with no bound Run, whose worker-show reports the status and worker state written to base/status, and whose worker-abandon refuses when a third field there says refuse, and whose liveness verdict is the fourth field.
 func orcaShim(t *testing.T, base string) {
 	t.Helper()
 	status := filepath.Join(base, "status")
 	writeMode(t, status, "completed ready\n", 0o644)
-	writeShim(t, base, "orca", `read status state < "`+status+`"
+	writeShim(t, base, "orca", `read status state abandon verdict < "`+status+`"
 case "$1 $2" in
 "worktree current") echo '{"ok":true}' ;;
 "orchestration run-current") echo '{"ok":true,"result":{"run":null}}' ;;
 "orchestration run-create") echo '{"ok":true,"result":{"run":{"id":"r-1"}}}' ;;
 "terminal create") echo '{"ok":true,"result":{"terminal":{"handle":"term-7"}}}' ;;
 "orchestration worker-start") echo '{"ok":true,"result":{"dispatchId":"d-1","state":"ready"}}' ;;
-"orchestration worker-show") echo '{"ok":true,"result":{"dispatch":{"id":"d-1","status":"'"$status"'"},"worker":{"state":"'"$state"'"}}}' ;;
+"orchestration worker-show") echo '{"ok":true,"result":{"dispatch":{"id":"d-1","status":"'"$status"'"},"worker":{"state":"'"$state"'"},"projection":{"liveness":{"verdict":"'"$verdict"'"}}}}' ;;
 "orchestration worker-read") echo "worker said" ;;
 "orchestration worker-release") echo '{"ok":true}' ;;
+"orchestration worker-abandon") [ "$abandon" = refuse ] && exit 1; echo '{"ok":true}' ;;
 *) exit 1 ;;
 esac`)
 }
@@ -214,7 +218,7 @@ func TestDispatchInsideOrca(t *testing.T) {
 	log := shimLog(t, base)
 	for _, want := range []string{
 		"orca orchestration run-create --objective harness dispatch executor --json",
-		"orca terminal create --worktree path:" + wt + " --command 'claude' '--agent' 'executor' '--permission-mode' 'acceptEdits' '--allowedTools' 'Bash' '--disallowedTools' 'Bash(git commit:*)' 'Bash(git push:*)' 'Bash(git merge:*)' 'Bash(git worktree remove:*)' 'Bash(wt remove:*)' 'Bash(wt merge:*)' 'Bash(wt step commit:*)' 'Bash(gh:*)' --json",
+		"orca terminal create --worktree path:" + wt + " --title harness dispatch executor --command 'claude' '--agent' 'executor' '--permission-mode' 'acceptEdits' '--allowedTools' 'Bash' '--disallowedTools' 'Bash(git commit:*)' 'Bash(git push:*)' 'Bash(git merge:*)' 'Bash(git worktree remove:*)' 'Bash(wt remove:*)' 'Bash(wt merge:*)' 'Bash(wt step commit:*)' 'Bash(gh:*)' --json",
 		"orca orchestration worker-start --run r-1 --spec review the diff --worktree path:" + wt + " --terminal term-7 --json",
 		"orca orchestration worker-read --dispatch d-1 --source auto",
 		"orca orchestration worker-release --dispatch d-1 --json",
@@ -226,7 +230,7 @@ func TestDispatchInsideOrca(t *testing.T) {
 
 	renderAgent(t, base, "opencode", "reviewer-b", "openai/gpt-5.6-sol", "")
 	ok(t, runDispatch(t, base, orcaEnv("CLAUDECODE=1"), "reviewer-b", "--prompt-file", prompt, "--worktree", wt), "opencode role in orca")
-	if want := "orca terminal create --worktree path:" + wt + " --command 'opencode' '-m' 'openai/gpt-5.6-sol' '--agent' 'reviewer-b' --json"; !strings.Contains(shimLog(t, base), want) {
+	if want := "orca terminal create --worktree path:" + wt + " --title harness dispatch reviewer-b --command 'opencode' '-m' 'openai/gpt-5.6-sol' '--agent' 'reviewer-b' --json"; !strings.Contains(shimLog(t, base), want) {
 		t.Errorf("log lacks %q:\n%s", want, shimLog(t, base))
 	}
 	if log := shimLog(t, base); strings.Contains(log, "claude -p") || strings.Contains(log, "opencode run") || strings.Contains(log, "--agent claude") {
@@ -241,24 +245,36 @@ func TestDispatchInsideOrcaSettlesOnlyOnProof(t *testing.T) {
 	ok(t, runModels(t, base, "set", "--preset", "performance"), "set performance")
 	renderAgent(t, base, "claude", "executor", "opus", "high")
 	args := []string{"executor", "--prompt-file", prompt, "--worktree", wt}
-	for status, want := range map[string]string{
-		"failed ready":         "run_failed",
-		"circuit_broken ready": "run_failed",
-		"dispatched stopped":   "run_failed",
-		"archived ready":       "outcome_unknown",
+	// A settled failure frees its terminal; a proven stop of an unsettled Dispatch is fenced with worker-abandon, never released, and its terminal closed; an unknown outcome touches nothing.
+	for status, want := range map[string]struct {
+		reason                     string
+		releases, abandons, closes int
+	}{
+		"failed ready":               {"run_failed", 1, 0, 0},
+		"circuit_broken ready":       {"run_failed", 1, 0, 0},
+		"dispatched stopped":         {"run_failed", 0, 1, 1},
+		"dispatched abandoned":       {"run_failed", 0, 0, 1},
+		"dispatched ready ok exited": {"run_failed", 0, 1, 1},
+		"dispatched stopped refuse":  {"outcome_unknown", 0, 1, 0},
+		"archived ready":             {"outcome_unknown", 0, 0, 0},
 	} {
 		writeMode(t, filepath.Join(base, "status"), status+"\n", 0o644)
-		released := strings.Count(shimLog(t, base), "worker-release")
-		if r := runDispatch(t, base, orcaEnv("OPENCODE=1"), args...); r.code == 0 || reason(t, r) != want {
+		count := func() [3]int {
+			log := shimLog(t, base)
+			return [3]int{strings.Count(log, "worker-release"), strings.Count(log, "worker-abandon"), strings.Count(log, "terminal close")}
+		}
+		before := count()
+		if r := runDispatch(t, base, orcaEnv("OPENCODE=1"), args...); r.code == 0 || reason(t, r) != want.reason {
 			t.Errorf("%s: exit %d, %s", status, r.code, r.stdout)
 		}
-		// A settled failure frees its terminal; an unknown outcome touches nothing.
-		if got, wantReleased := strings.Count(shimLog(t, base), "worker-release")-released, map[bool]int{true: 1, false: 0}[want == "run_failed"]; got != wantReleased {
-			t.Errorf("%s: %d releases, want %d", status, got, wantReleased)
+		after := count()
+		if got := [3]int{after[0] - before[0], after[1] - before[1], after[2] - before[2]}; got != [3]int{want.releases, want.abandons, want.closes} {
+			t.Errorf("%s: releases, abandons, closes %v, want %d %d %d", status, got, want.releases, want.abandons, want.closes)
 		}
 	}
 
 	writeMode(t, filepath.Join(base, "status"), "dispatched ready\n", 0o644)
+	earlier := len(shimLog(t, base))
 	before := strings.Count(shimLog(t, base), "worker-show")
 	cmd, stdout := startDispatch(t, base, orcaEnv("OPENCODE=1"), args...)
 	waitFor(t, "the first poll", func() bool { return strings.Count(shimLog(t, base), "worker-show") > before })
@@ -269,7 +285,7 @@ func TestDispatchInsideOrcaSettlesOnlyOnProof(t *testing.T) {
 	if !strings.Contains(stdout.String(), `"reason":"outcome_unknown"`) {
 		t.Errorf("signalled while dispatched: %q", stdout.String())
 	}
-	if log := shimLog(t, base); strings.Contains(log, "worker-stop") || strings.Contains(log, "terminal close") {
+	if log := shimLog(t, base)[earlier:]; strings.Contains(log, "worker-stop") || strings.Contains(log, "worker-abandon") || strings.Contains(log, "terminal close") {
 		t.Errorf("dispatch stopped a worker without positive proof:\n%s", log)
 	}
 }
@@ -332,6 +348,11 @@ func TestDispatchFailuresExitWithAReason(t *testing.T) {
 	renderAgent(t, base, "opencode", "executor", "opencode-go/glm-5.3", "high")
 	if r := runDispatch(t, base, []string{"CLAUDECODE=1"}, args...); r.code == 0 || reason(t, r) != "stale_install" {
 		t.Errorf("agent rendered for another effort: exit %d, %s", r.code, r.stdout)
+	}
+	// An agent rendered before mode: all would run as OpenCode's default agent.
+	writeMode(t, filepath.Join(base, "home", ".config", "opencode", "agents", "executor.md"), "---\ndescription: \"x\"\nmode: subagent\nmodel: opencode-go/glm-5.3\n---\n\nbody\n", 0o644)
+	if r := runDispatch(t, base, []string{"CLAUDECODE=1"}, args...); r.code == 0 || reason(t, r) != "stale_install" {
+		t.Errorf("agent rendered as a subagent: exit %d, %s", r.code, r.stdout)
 	}
 
 	// OpenCode lists no model, so the balanced executor is unavailable.

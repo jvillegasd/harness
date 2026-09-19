@@ -27,6 +27,9 @@ var executorDenies = []string{"Bash(git commit:*)", "Bash(git push:*)", "Bash(gi
 // pollEvery is how often an Orca worker is checked for settlement, and workerTimeout how long any dispatched run may take.
 const pollEvery, workerTimeout = 5 * time.Second, time.Hour
 
+// terminalCreateTimeout is how long Orca may take to open the agent terminal; a variable so a test can shorten it.
+var terminalCreateTimeout = time.Minute
+
 // failure is a dispatch that could not run, printed as JSON so the calling workflow can fall back on its reason.
 type failure struct {
 	Reason string `json:"reason"`
@@ -158,6 +161,10 @@ func renderedMatches(home, role string, a Assignment) error {
 	if !slices.Contains(lines, "model: "+a.Model) || rendered != a.Effort {
 		return failure{"stale_install", "the installed " + a.Client + " " + role + " agent was not rendered for " + a.Model + " at effort " + effortOrInherit(a.Effort) + "; run harness install"}
 	}
+	// A mode: subagent agent launched by --agent runs as OpenCode's default agent with none of its controls.
+	if a.Client == "opencode" && !slices.Contains(lines, "mode: all") {
+		return failure{"stale_install", "the installed opencode " + role + " agent is not mode: all; run harness install"}
+	}
 	return nil
 }
 
@@ -249,8 +256,14 @@ func viaOrca(ctx context.Context, role string, a Assignment, prompt, dir string)
 			Terminal struct{ Handle string }
 		}
 	}
-	// Uncancellable, so a signal can never lose the handle of a terminal Orca already opened; the guard below closes it.
-	if err := orcaJSON(context.Background(), &created, "terminal", "create", "--worktree", where, "--command", strings.Join(quoted, " "), "--json"); err != nil {
+	// Immune to signals, so a signal cannot lose the handle of a terminal Orca already opened; the guard below closes it. Bounded, so a hung Orca cannot hold dispatch forever. The title is Orca's low-level topology recipe, and what makes a terminal whose handle the timeout lost findable: Orca's recovery guide says inspect a lost mutation, never replay it blind.
+	title := "harness dispatch " + role
+	createCtx, cancelCreate := context.WithTimeout(context.Background(), terminalCreateTimeout)
+	defer cancelCreate()
+	if err := orcaJSON(createCtx, &created, "terminal", "create", "--worktree", where, "--title", title, "--command", strings.Join(quoted, " "), "--json"); err != nil {
+		if createCtx.Err() != nil {
+			return nil, failure{"timeout", fmt.Sprintf("orca terminal create did not answer within %s; a %q terminal may be open, so inspect `%s terminal list --worktree %s --json` and close it before retrying", terminalCreateTimeout, title, orcaCLI(), where)}
+		}
 		return nil, err
 	}
 	handle := created.Result.Terminal.Handle
@@ -302,10 +315,14 @@ func viaOrca(ctx context.Context, role string, a Assignment, prompt, dir string)
 			release(id)
 			return nil, failure{"run_failed", "orca dispatch " + id + " " + r.Dispatch.Status}
 		case "pending", "dispatched":
-			// Only positive proof the agent stopped ends the wait early: Orca's guide never reads a stall from absence.
+			// Only positive proof the agent stopped ends the wait early: Orca's guide never reads a stall from absence. An unsettled Dispatch is never released; it is fenced with worker-abandon so a late worker_done cannot land beside the fallback.
 			if slices.Contains([]string{"failed", "stopped", "abandoned"}, r.Worker.State) || r.Projection.Liveness.Verdict == "exited" {
-				release(id)
-				return nil, failure{"run_failed", "orca worker " + id + " stopped without reporting worker_done"}
+				if r.Worker.State != "abandoned" && orcaJSON(ctx, &struct{}{}, "orchestration", "worker-abandon", "--dispatch", id, "--json") != nil {
+					return nil, failure{"outcome_unknown", "orca worker " + id + " stopped without reporting worker_done and could not be abandoned; the worker may still be running"}
+				}
+				// Fenced and proven stopped, so its terminal can no longer settle; close it so each fallback does not leave an agent TUI in the worktree.
+				closeTerminal()
+				return nil, failure{"run_failed", "orca worker " + id + " stopped without reporting worker_done and was abandoned"}
 			}
 		default:
 			return nil, failure{"outcome_unknown", fmt.Sprintf("orca dispatch %s reports status %q; the worker may still be running", id, r.Dispatch.Status)}
@@ -337,7 +354,10 @@ func release(id string) {
 
 // orcaJSON runs one orca command and decodes its JSON envelope; a nonzero exit or ok:false is Orca refusing.
 func orcaJSON(ctx context.Context, v any, args ...string) error {
-	out, err := exec.CommandContext(ctx, orcaCLI(), args...).Output()
+	cmd := exec.CommandContext(ctx, orcaCLI(), args...)
+	// A child that keeps stdout open would otherwise hold Output past the kill.
+	cmd.WaitDelay = time.Second
+	out, err := cmd.Output()
 	var envelope struct{ Ok bool }
 	if err != nil || json.Unmarshal(out, &envelope) != nil || !envelope.Ok {
 		return failure{"orca_refused", fmt.Sprintf("orca %s %s: %s", args[0], args[1], strings.TrimSpace(string(out)))}

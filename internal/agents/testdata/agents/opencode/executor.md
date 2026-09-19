@@ -1,6 +1,6 @@
 ---
 description: "Implements one delegated slice of an approved contract inside the scope the parent names. Used only when a workflow chooses to delegate implementation."
-mode: subagent
+mode: all
 permission:
   task: deny
   bash:

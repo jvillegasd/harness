@@ -1,6 +1,6 @@
 ---
 description: "Adversarial reviewer that checks a diff against the requirements it claims to meet. Read and search only."
-mode: subagent
+mode: all
 permission:
   "*": deny
   read:
