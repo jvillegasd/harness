@@ -181,6 +181,7 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"state", "get", "--jsn"},
 		{"state", "prune", "extra"},
 		{"dash", "extra"},
+		{"models"},
 		{"statusline", "--bogus"},
 	}
 	for _, want := range args {
