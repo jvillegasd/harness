@@ -2,6 +2,8 @@ package models
 
 import (
 	"errors"
+	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -66,7 +68,7 @@ func TestPickerPresetStoresWhatSetStores(t *testing.T) {
 		if !p.done {
 			t.Fatalf("%s: choosing a preset did not finish the picker", name)
 		}
-		if err := p.save(viaPicker); err != nil {
+		if _, err := p.save(viaPicker); err != nil {
 			t.Fatal(err)
 		}
 		a, _ := os.ReadFile(viaSet)
@@ -91,8 +93,8 @@ func TestPickerCustomOverridesRole(t *testing.T) {
 	p = choose(t, p, "high")
 	p = choose(t, p, "save")
 	path := statePath(t)
-	if err := p.save(path); err != nil {
-		t.Fatal(err)
+	if wrote, err := p.save(path); err != nil || !wrote {
+		t.Fatalf("save wrote=%v err=%v", wrote, err)
 	}
 	out := show(t, path)
 	if !strings.Contains(out, "reviewer-b client=claude model=sonnet effort=high (override)") {
@@ -137,16 +139,55 @@ func TestPickerCancelWritesNothing(t *testing.T) {
 		"menu":          newPicker(nil, nil),
 		"after an edit": choose(t, choose(t, custom, "opus"), "high"),
 	} {
-		p = drive(t, p, keyDown, keyUp, keyEsc)
-		if p.done {
-			t.Errorf("%s: esc finished the picker", name)
+		p = drive(t, p, keyDown, keyUp)
+		next, cmd := p.Update(keyEsc)
+		if cmd == nil {
+			t.Fatalf("%s: esc did not quit", name)
 		}
+		if _, ok := cmd().(tea.QuitMsg); !ok {
+			t.Errorf("%s: esc did not quit", name)
+		}
+		p = next.(picker)
 		path := statePath(t)
-		if err := p.save(path); err != nil {
-			t.Fatal(err)
+		if wrote, err := p.save(path); err != nil || wrote {
+			t.Fatalf("%s: save wrote=%v err=%v", name, wrote, err)
 		}
 		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
 			t.Errorf("%s: cancelling wrote %s", name, path)
 		}
+	}
+}
+
+func TestPickerViewKeepsCursorOnScreen(t *testing.T) {
+	var listed []string
+	for i := range 49 {
+		listed = append(listed, fmt.Sprintf("p/m%02d", i))
+	}
+	p := choose(t, choose(t, choose(t, newPicker(listed, nil), "custom"), "executor"), "opencode")
+	for range 40 {
+		p = drive(t, p, keyDown)
+	}
+	view := p.View().Content
+	if !strings.Contains(view, "> p/m40") || strings.Contains(view, "p/m00") {
+		t.Errorf("view does not follow the cursor:\n%s", view)
+	}
+	if got := strings.Count(view, "p/m"); got != visibleRows {
+		t.Errorf("view renders %d ids, want %d", got, visibleRows)
+	}
+}
+
+// TestPickerTablesMatch fails when a preset lacks its note or a Claude alias is missing from either table, which would leave the picker a blank line or an empty effort step.
+func TestPickerTablesMatch(t *testing.T) {
+	for name := range Presets {
+		if presetNotes[name] == "" {
+			t.Errorf("preset %s has no picker note", name)
+		}
+	}
+	if len(presetNotes) != len(Presets) {
+		t.Errorf("presetNotes has %d entries for %d presets", len(presetNotes), len(Presets))
+	}
+	aliases := slices.Sorted(maps.Keys(claudeEfforts))
+	if !slices.Equal(aliases, slices.Sorted(slices.Values(claudeModels))) {
+		t.Errorf("claudeModels %v does not match claudeEfforts %v", claudeModels, aliases)
 	}
 }

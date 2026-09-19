@@ -62,12 +62,12 @@ func pickAndSave(path string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	p := final.(picker)
-	if !p.done || len(p.sets) == 0 {
-		_, err := fmt.Fprintln(stdout, "nothing written")
+	wrote, err := final.(picker).save(path)
+	if err != nil {
 		return err
 	}
-	if err := p.save(path); err != nil {
+	if !wrote {
+		_, err := fmt.Fprintln(stdout, "nothing written")
 		return err
 	}
 	return run(path, []string{"show"}, stdout)

@@ -19,6 +19,9 @@ var presetNotes = map[string]string{
 // claudeModels is the picker's order for the aliases claudeEfforts supports.
 var claudeModels = []string{"inherit", "fable", "opus", "sonnet", "haiku"}
 
+// visibleRows caps the rendered list, since `opencode models` can list more ids than a terminal is tall.
+const visibleRows = 15
+
 const (
 	stepMenu = iota
 	stepRole
@@ -124,7 +127,10 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 func (p picker) View() tea.View {
 	var b strings.Builder
 	b.WriteString([]string{"Choose a preset, or custom to set roles one by one", "Choose a role to override, or save", "Client for " + p.role, "Model for " + p.role, "Effort for " + p.role + " on " + p.model}[p.step] + "\n\n")
-	for i, opt := range p.options() {
+	opts := p.options()
+	first := min(max(p.cursor-visibleRows/2, 0), max(len(opts)-visibleRows, 0))
+	for i := first; i < min(first+visibleRows, len(opts)); i++ {
+		opt := opts[i]
 		mark := "  "
 		if i == p.cursor {
 			mark = "> "
@@ -138,6 +144,9 @@ func (p picker) View() tea.View {
 		}
 		b.WriteString(mark + line + "\n")
 	}
+	if len(opts) > visibleRows {
+		fmt.Fprintf(&b, "  (%d of %d)\n", p.cursor+1, len(opts))
+	}
 	if p.step == stepClient && p.opencodeErr != "" {
 		b.WriteString("\nopencode unavailable: " + p.opencodeErr + "\n")
 	}
@@ -150,19 +159,19 @@ func (p picker) View() tea.View {
 	return tea.NewView(b.String())
 }
 
-// save applies the collected set arguments through apply and writes once, so a cancelled picker or one rejected value writes nothing.
-func (p picker) save(path string) error {
+// save applies the collected set arguments through apply and writes once, so a cancelled picker or one rejected value writes nothing. It reports whether it wrote.
+func (p picker) save(path string) (bool, error) {
 	if !p.done || len(p.sets) == 0 {
-		return nil
+		return false, nil
 	}
 	choice, err := Load(path)
 	if err != nil {
-		return err
+		return false, err
 	}
 	for _, args := range p.sets {
 		if choice, err = apply(choice, args); err != nil {
-			return err
+			return false, err
 		}
 	}
-	return Save(path, choice)
+	return true, Save(path, choice)
 }
