@@ -9,10 +9,14 @@ import (
 	"slices"
 	"sort"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/term"
 )
 
-const usage = `usage: harness models <show|set|reset|resolve>
+const usage = `usage: harness models [show|set|reset|resolve]
 
+  (no arguments, in a terminal)                 Pick a preset, or each role's client, model, and effort
   show                                          Print each role's client, model, effort, and source
   set --preset <name>                           Choose a preset: balanced (default), performance, economy, diversity
   set <role> --client <c> --model <m> [--effort <e>]   Override one role
@@ -24,7 +28,8 @@ The choice is stored in ~/.harness/state.json; ` + "`harness install`" + ` rende
 
 // Command runs `harness models`.
 func Command(args []string, stdout, stderr io.Writer) int {
-	if len(args) == 0 {
+	// Without a terminal the picker would wait on input that never comes, so a script gets the usage instead.
+	if len(args) == 0 && (!term.IsTerminal(os.Stdin.Fd()) || !term.IsTerminal(os.Stdout.Fd())) {
 		fmt.Fprint(stderr, usage)
 		return 2
 	}
@@ -34,11 +39,38 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	path := StatePath(home)
+	if len(args) == 0 {
+		if err := pickAndSave(path, stdout); err != nil {
+			fmt.Fprintf(stderr, "harness models: %v\n", err)
+			return 1
+		}
+		return 0
+	}
 	if err := run(path, args, stdout); err != nil {
 		fmt.Fprintf(stderr, "harness models: %v\n", err)
 		return 1
 	}
 	return 0
+}
+
+// pickAndSave runs the picker, saves what it collected, and reports the result through show.
+func pickAndSave(path string, stdout io.Writer) error {
+	if _, err := Load(path); err != nil {
+		return err
+	}
+	final, err := tea.NewProgram(newPicker(OpenCodeModels()), tea.WithOutput(stdout), tea.WithInput(os.Stdin)).Run()
+	if err != nil {
+		return err
+	}
+	p := final.(picker)
+	if !p.done || len(p.sets) == 0 {
+		_, err := fmt.Fprintln(stdout, "nothing written")
+		return err
+	}
+	if err := p.save(path); err != nil {
+		return err
+	}
+	return run(path, []string{"show"}, stdout)
 }
 
 func run(path string, args []string, stdout io.Writer) error {
@@ -74,14 +106,19 @@ func run(path string, args []string, stdout io.Writer) error {
 		}
 		return nil
 	case "set":
-		return set(path, choice, rest)
+		choice, err := apply(choice, rest)
+		if err != nil {
+			return err
+		}
+		return Save(path, choice)
 	case "resolve":
 		return resolve(choice, rest, stdout)
 	}
 	return fmt.Errorf("unknown subcommand %q\n%s", sub, usage)
 }
 
-func set(path string, choice Choice, args []string) error {
+// apply validates one set invocation's arguments and returns the choice with it applied. The picker saves through it too, so both paths accept exactly the same values.
+func apply(choice Choice, args []string) (Choice, error) {
 	var role string
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		role, args = args[0], args[1:]
@@ -94,30 +131,30 @@ func set(path string, choice Choice, args []string) error {
 	fs.StringVar(&a.Model, "model", "", "")
 	fs.StringVar(&a.Effort, "effort", "", "")
 	if err := fs.Parse(args); err != nil || fs.NArg() > 0 {
-		return fmt.Errorf("set takes --preset <name>, or <role> --client --model [--effort]")
+		return choice, fmt.Errorf("set takes --preset <name>, or <role> --client --model [--effort]")
 	}
 	if role == "" {
 		if _, ok := Presets[*preset]; !ok {
-			return fmt.Errorf("unknown preset %q; choose %s", *preset, strings.Join(presetNames(), ", "))
+			return choice, fmt.Errorf("unknown preset %q; choose %s", *preset, strings.Join(presetNames(), ", "))
 		}
 		// A built-in preset is well formed by construction; whether this machine can run its OpenCode models is the install's fallback to judge.
 		choice.Preset = *preset
-		return Save(path, choice)
+		return choice, nil
 	}
 	if *preset != "" {
-		return fmt.Errorf("set a preset or a role, not both")
+		return choice, fmt.Errorf("set a preset or a role, not both")
 	}
 	if err := knownRole(role); err != nil {
-		return err
+		return choice, err
 	}
 	if err := Validate(a); err != nil {
-		return err
+		return choice, err
 	}
 	if choice.Roles == nil {
 		choice.Roles = map[string]Assignment{}
 	}
 	choice.Roles[role] = a
-	return Save(path, choice)
+	return choice, nil
 }
 
 func reset(path string, args []string) error {

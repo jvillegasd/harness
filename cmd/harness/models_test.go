@@ -37,6 +37,19 @@ func TestModelsShowDefaultsToBalanced(t *testing.T) {
 	}
 }
 
+// TestModelsWithoutTTYPrintsUsage keeps a script from hanging on the picker: with piped stdin the bare command prints the show and set usage and exits nonzero.
+func TestModelsWithoutTTYPrintsUsage(t *testing.T) {
+	r := runModels(t, modelsBase(t))
+	if r.code == 0 {
+		t.Fatalf("bare models without a TTY exited 0")
+	}
+	for _, want := range []string{"show ", "set --preset", "set <role>"} {
+		if !strings.Contains(r.stderr, want) {
+			t.Errorf("usage lacks %q:\n%s", want, r.stderr)
+		}
+	}
+}
+
 func TestModelsSetPresetKeepsOtherStateKeys(t *testing.T) {
 	base := modelsBase(t)
 	writeMode(t, stateFile(base), `{"version": 1, "installed": {"claude": ["policy"]}, "files": []}`+"\n", 0o644)
