@@ -240,12 +240,14 @@ func readDoc(path string) (map[string]json.RawMessage, error) {
 	return doc, nil
 }
 
-// Route says how a session on one client launches a role: natively when the role runs on the same client, through an Orca worker inside Orca, and through the other client's headless CLI otherwise.
-func Route(a Assignment, session string) string {
+// Route says how a session on one client launches a role: natively when the role runs on the same client, through an Orca worker inside an Orca worktree at dir (the working directory when empty), and through the other client's headless CLI otherwise.
+func Route(a Assignment, session, dir string) string {
 	if a.Client == session {
 		return "native"
 	}
-	if exec.Command("orca", "worktree", "current", "--json").Run() == nil {
+	orca := exec.Command(orcaCLI(), "worktree", "current", "--json")
+	orca.Dir = dir
+	if orca.Run() == nil {
 		return "orca"
 	}
 	return "headless"
