@@ -265,6 +265,8 @@ OpenAI models reach the harness through OpenCode, and Claude models through Clau
 
 OpenCode has no bypass flag: its permissions are configuration, and `OPENCODE_PERMISSION` overrides them for one run.
 
+`aliases.sh` also exports `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true` unless it is already set, which lets an OpenCode session start a subagent with `background: true`. `adversarial-review` uses it to run the reviewers while the session does its conformance pass, and falls back to ordinary parallel task calls when an OpenCode started outside the managed shell refuses it. The flag is experimental, from OpenCode 1.15.11.
+
 Zsh is the only shell either shell-facing step writes: the aliases go into `~/.zshrc`, and Worktrunk is asked for its zsh integration by name. A run whose `$SHELL` is something else warns and names both, rather than leaving the aliases quietly absent. Source `aliases.sh` from your own rc and run `wt config shell install` for that shell.
 
 ## Status line
