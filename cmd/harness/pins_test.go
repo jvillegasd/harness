@@ -754,3 +754,17 @@ func TestPublicationAuthorityHasOneHome(t *testing.T) {
 		}
 	}
 }
+
+// The /proto claim is only verifiable while every side keeps the clause that checks it.
+func TestProtoClaimIsVerifiable(t *testing.T) {
+	for rel, clause := range map[string]string{
+		"commands/proto.md":             "the ledger's claim record must name this ticket and this branch",
+		"commands/ship.md":              "whose ledger claim record names this ticket and this branch",
+		"skills/local-tracker/SKILL.md": "verify it against the ledger's claim record, which must name this ticket and this branch",
+		"POLICY.md":                     "the claim record in its ledger is what lets `/ship` verify it",
+	} {
+		if !strings.Contains(readRepo(t, rel), clause) {
+			t.Errorf("%s lost the /proto claim check %q", rel, clause)
+		}
+	}
+}
