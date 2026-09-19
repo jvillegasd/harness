@@ -27,6 +27,7 @@ C .agents/skills/handoff
 C .agents/skills/impeccable
 C .agents/skills/improve-codebase-architecture
 C .agents/skills/local-tracker
+C .agents/skills/orchestration
 C .agents/skills/ponytail
 C .agents/skills/resolving-merge-conflicts
 C .agents/skills/security-audit
@@ -140,6 +141,7 @@ D .claude/skills/mine
 F .claude/skills/mine/SKILL.md
   |private skill
   |
+C .claude/skills/orchestration
 C .claude/skills/ponytail
 C .claude/skills/resolving-merge-conflicts
 C .claude/skills/security-audit
@@ -440,6 +442,23 @@ F .harness/state.json
   |    },
   |    {
   |      "path": "$HOME/.claude/skills/local-tracker",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.agents/skills/orchestration",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/orchestration",
   |      "component": "skills",
   |      "clients": [
   |        "claude"
