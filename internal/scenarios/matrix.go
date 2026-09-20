@@ -107,6 +107,12 @@ func validateMatrix(matrix map[string]any) []string {
 		if declaration, ok := scenario["concurrent"]; ok {
 			errors = append(errors, validateConcurrent(where, scenario, declaration)...)
 		}
+		if _, ok := scenario["sessions"]; ok {
+			errors = append(errors, validateSessions(where, scenario)...)
+		}
+		if _, ok := scenario["worker"]; ok {
+			errors = append(errors, validateWorker(where, scenario)...)
+		}
 		if mode(scenario) == "offline" && !truthy(scenario["check"]) {
 			errors = append(errors, fmt.Sprintf("%s: offline scenario needs a check command", where))
 		}
@@ -155,6 +161,71 @@ func validateConcurrent(where string, scenario map[string]any, value any) []stri
 	if value, ok := declaration["barrier_seconds"]; ok {
 		if seconds, isNumber := toNumber(value); !isNumber || seconds < 1 || seconds != math.Trunc(seconds) {
 			errors = append(errors, fmt.Sprintf("%s: barrier_seconds must be a positive integer", where))
+		}
+	}
+	return errors
+}
+
+// validateSessions checks a fresh-session continuation declaration: at least two live sessions with distinct ids and prompts, and the branch checkpoint values the experiment saves and recovers.
+func validateSessions(where string, scenario map[string]any) []string {
+	var errors []string
+	if mode(scenario) != "live" {
+		errors = append(errors, fmt.Sprintf("%s: a continuation experiment must be a live scenario", where))
+	}
+	sessions, ok := scenario["sessions"].([]any)
+	if !ok || len(sessions) < 2 {
+		return append(errors, fmt.Sprintf("%s: sessions must be a list of at least two sessions", where))
+	}
+	seen := map[string]bool{}
+	for index, raw := range sessions {
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			errors = append(errors, fmt.Sprintf("%s: session[%d] must be an object", where, index))
+			continue
+		}
+		id := getString(entry, "id")
+		if !validClaimName(id) {
+			errors = append(errors, fmt.Sprintf("%s: session[%d] needs an id of letters, digits, dot, dash, or underscore", where, index))
+		}
+		if seen[id] {
+			errors = append(errors, fmt.Sprintf("%s: duplicate session id %s", where, id))
+		}
+		seen[id] = true
+		if !truthy(entry["prompt"]) {
+			errors = append(errors, fmt.Sprintf("%s: session[%d] needs a prompt", where, index))
+		}
+	}
+	for _, field := range []string{"branch", "requirement", "rationale", "unrelated_value"} {
+		if !truthy(dict(scenario, "continuation")[field]) {
+			errors = append(errors, fmt.Sprintf("%s: continuation.%s must be declared", where, field))
+		}
+	}
+	return errors
+}
+
+// validateWorker checks a dispatched-worker declaration: a live scenario naming the route, role, and session the real dispatch takes.
+func validateWorker(where string, scenario map[string]any) []string {
+	var errors []string
+	if mode(scenario) != "live" {
+		errors = append(errors, fmt.Sprintf("%s: a worker experiment must be a live scenario", where))
+	}
+	worker, ok := scenario["worker"].(map[string]any)
+	if !ok {
+		return append(errors, fmt.Sprintf("%s: worker must be an object", where))
+	}
+	if route := getString(worker, "route"); route != routeHeadless && route != routeOrca {
+		errors = append(errors, fmt.Sprintf("%s: worker.route must be %s or %s", where, routeHeadless, routeOrca))
+	}
+	for _, field := range []string{"role", "session"} {
+		if !truthy(worker[field]) {
+			errors = append(errors, fmt.Sprintf("%s: worker.%s must be declared", where, field))
+		}
+	}
+	for _, field := range []string{"interrupt_after_seconds", "settle_seconds"} {
+		if value, ok := worker[field]; ok {
+			if seconds, isNumber := toNumber(value); !isNumber || seconds < 1 || seconds != math.Trunc(seconds) {
+				errors = append(errors, fmt.Sprintf("%s: worker.%s must be a positive integer", where, field))
+			}
 		}
 	}
 	return errors

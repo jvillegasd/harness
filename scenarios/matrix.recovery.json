@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "checkpoint-continuation-live",
+      "title": "A fresh session recovers the deferred requirement and rationale through an isolated real Engram store, never from its prompt or another branch",
+      "command": "workflow-checkpoint",
+      "prompt": "Live fresh-session continuation: session one records the deferred requirement and its rationale as a branch checkpoint; a fresh session recovers them by topic key through an isolated test memory store.",
+      "mode": "live",
+      "client": "claude",
+      "sessions": [
+        {
+          "id": "record",
+          "prompt": "You are session one of a two-session checkpoint experiment. Using the workflow-checkpoint protocol and its Engram tools, save the branch checkpoint for branch `{{branch}}` with state active, contract [\"https://github.com/jvillegasd/harness/issues/69\"], rationale `{{rationale}}`, and next_action `{{requirement}}`. Also save a checkpoint for branch `{{unrelated_branch}}` with next_action `{{unrelated_value}}` and the same contract. Read both back and confirm they match. Then write `recovery/session-one.json` recording the topic keys. Write nothing else."
+        },
+        {
+          "id": "recover",
+          "prompt": "You are a fresh session with no shared conversation. Recover the branch checkpoint for branch `{{branch}}` from Engram by its topic key using only that store: do not read another branch's checkpoint and do not infer anything from prior context. Write `recovery/session-two.json` containing the recovered next_action and rationale as JSON. Write nothing else."
+        }
+      ],
+      "continuation": {
+        "branch": "docs/69-live-continuation",
+        "requirement": "wire /ship continuation retrieval at its worktree step",
+        "rationale": "the branch, not the ticket, scopes recovery across sessions",
+        "unrelated_branch": "feat/99-unrelated-work",
+        "unrelated_value": "a different next action"
+      },
+      "artifacts": {
+        "contains": [
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"outcome\": \"recovered\""
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"accepted\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "skills/workflow-checkpoint/SKILL.md",
+        "internal/scenarios/recovery.go",
+        "internal/scenarios/probe_recovery.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probe_checkpoint.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    },
+    {
+      "id": "worker-recovery-headless-live",
+      "title": "A real headless interruption checks for surviving processes and post-stop edits and proves a stop before any fallback",
+      "command": "ship",
+      "prompt": "As the dispatched executor, write your pid to `worker.pid`, then append a line to `worker.log` every second until you are stopped. Change no tracked file. Do not commit, push, or open a pull request.",
+      "mode": "live",
+      "client": "claude",
+      "worker": {
+        "route": "headless",
+        "role": "executor",
+        "session": "claude",
+        "interrupt_after_seconds": 30,
+        "settle_seconds": 2
+      },
+      "artifacts": {
+        "contains": [
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"accepted\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "roles/executor.md",
+        "internal/scenarios/recovery.go",
+        "internal/scenarios/probe_recovery.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    },
+    {
+      "id": "worker-recovery-orca-live",
+      "title": "An uncertain Orca worker outcome starts no fallback beside a possibly live writer and records the dispatch identity and observed state",
+      "command": "ship",
+      "prompt": "As the dispatched executor, write your pid to `worker.pid`, then append a line to `worker.log` every second. Change no tracked file. Do not commit, push, or open a pull request.",
+      "mode": "live",
+      "client": "claude",
+      "worker": {
+        "route": "orca",
+        "role": "executor",
+        "session": "claude"
+      },
+      "artifacts": {
+        "contains": [
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"accepted\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "roles/executor.md",
+        "internal/scenarios/recovery.go",
+        "internal/scenarios/probe_recovery.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    }
+  ]
+}

@@ -1,19 +1,24 @@
 local-tooling: pass
 behavioral-acceptance:
-  ask-read-only: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  read-only-execution: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  landing-authorization: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  lifecycle-blocked-to-ready: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  checkpoint-protocol: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  checkpoint-two-session: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  spec-slicing: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  harness-audit: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  recon-citations: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  review-triage: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  gate-mixed-scope: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  gate-self-authored: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  feedback-local-first: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  feedback-approved-batch: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  route-open-shape: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  review-before-commit: unreviewed (no transcript review record; bind evidence_digest <digest>)
-  concurrent-claim: unreviewed (no transcript review record; bind evidence_digest <digest>)
+  ask-read-only: unreviewed (no transcript review record; bind evidence_digest <digest>) [recording]
+  read-only-execution: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  landing-authorization: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  lifecycle-blocked-to-ready: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  checkpoint-protocol: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  checkpoint-two-session: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  spec-slicing: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  harness-audit: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  recon-citations: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  review-triage: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  gate-mixed-scope: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  gate-self-authored: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  feedback-local-first: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  feedback-approved-batch: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  route-open-shape: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  review-before-commit: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  concurrent-claim: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  checkpoint-continuation: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  worker-recovery: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+
+live coverage:
+  ask-read-only: unreviewed (no transcript review record; bind evidence_digest <digest>) sessions=1 route=direct client=claude

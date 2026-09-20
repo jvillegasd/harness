@@ -1126,6 +1126,132 @@
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
+    },
+    {
+      "id": "checkpoint-continuation",
+      "title": "A fresh session's continuation recovers the deferred requirement and rationale from the branch checkpoint, never from its prompt, a shared conversation, or another branch",
+      "command": "workflow-checkpoint",
+      "prompt": "Classify a fresh-session continuation: only a recovery of the deferred requirement and its rationale from the branch checkpoint is accepted; a value repeated in the continuation prompt, a shared conversation, an unrelated branch's value, a non-isolated store, or an unavailable route is refused as unverified.",
+      "mode": "offline",
+      "check": "probe:recovery",
+      "artifacts": {
+        "tree_unchanged": false,
+        "present": [
+          "artifacts/recovery.json"
+        ],
+        "contains": [
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"continuation_recovers_requirement\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"continuation_recovers_rationale\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"continuation_not_repeated_in_prompt\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"continuation_not_shared_conversation\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"continuation_unrelated_excluded\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"continuation_memory_isolated\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"continuation_missing_is_rejected\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"continuation_missing_requirement_rejected\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"continuation_unavailable_is_unverified\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"continuation_store_unavailable_is_unverified\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "skills/workflow-checkpoint/SKILL.md",
+        "internal/scenarios/recovery.go",
+        "internal/scenarios/probe_recovery.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probe_checkpoint.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    },
+    {
+      "id": "worker-recovery",
+      "title": "A dispatched worker is a proven stop or an uncertain outcome that starts no fallback; a post-stop edit or a fallback beside a live writer is rejected",
+      "command": "ship",
+      "prompt": "Classify a dispatched worker's stop: a proven stop with nothing surviving and no post-stop edit is accepted, an uncertain outcome that started no fallback is accepted, and a post-stop edit, a surviving writer, or a fallback beside an unproven worker is rejected; an unavailable route or an unrecorded identity is unverified.",
+      "mode": "offline",
+      "check": "probe:recovery",
+      "artifacts": {
+        "tree_unchanged": false,
+        "present": [
+          "artifacts/recovery.json"
+        ],
+        "contains": [
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"headless_proven_stop\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"post_stop_edit_rejected\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"uncertain_no_fallback\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"uncertain_fallback_rejected\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"worker_identities_required\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"worker_unavailable_is_unverified\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "internal/scenarios/recovery.go",
+        "internal/scenarios/probe_recovery.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
     }
   ]
 }
