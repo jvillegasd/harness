@@ -10,21 +10,46 @@ import (
 	"strings"
 )
 
-// reviewed reports whether the attempt carries a transcript review record.
-func reviewed(attempt string) bool {
+// reviewedEvidence is the retained evidence a review binds to, in a fixed order. The review and the derived status file are never included, so a review cannot hash itself.
+var reviewedEvidence = []string{
+	"prompts.txt",
+	"provenance.json",
+	"events.jsonl",
+	"transcript.jsonl",
+	"artifacts.json",
+	"metrics.json",
+}
+
+// reviewAccepted reports whether the attempt carries an affirmative, evidence-bound human review, and why not when it does not. A legacy boolean-only record, a rejected or malformed one, and one whose input or evidence digest no longer matches all require a new review rather than retaining acceptance.
+func reviewAccepted(attempt, currentDigest string) (bool, string) {
 	raw, err := os.ReadFile(filepath.Join(attempt, "review.json"))
 	if err != nil {
-		return false
+		return false, "no transcript review record"
 	}
-	data, err := decodeJSON(raw)
+	decoded, err := decodeJSON(raw)
 	if err != nil {
-		return false
+		return false, "unreadable transcript review record"
 	}
-	object, ok := data.(map[string]any)
+	object, ok := decoded.(map[string]any)
 	if !ok {
-		return false
+		return false, "transcript review record is not an object"
 	}
-	return truthy(object["reviewed"])
+	if !truthy(object["reviewed"]) {
+		return false, "transcript review was not accepted"
+	}
+	if strings.TrimSpace(getString(object, "reviewer")) == "" {
+		return false, "transcript review names no reviewer"
+	}
+	if strings.TrimSpace(getString(object, "observations")) == "" {
+		return false, "transcript review records no observations"
+	}
+	if getString(object, "input_digest") != currentDigest {
+		return false, "transcript review is not bound to the current inputs"
+	}
+	if getString(object, "evidence_digest") != evidenceDigest(attempt) {
+		return false, "transcript review does not match the retained evidence"
+	}
+	return true, ""
 }
 
 // evaluate returns the state of one retained attempt and the reasons it did not pass.
@@ -70,8 +95,8 @@ func evaluate(attempt string, scenario map[string]any, currentDigest string) (st
 		}
 		return "fail", []string{"artifact checks failed: " + detail}
 	}
-	if !reviewed(attempt) {
-		return "unreviewed", []string{"no transcript review record"}
+	if ok, reason := reviewAccepted(attempt, currentDigest); !ok {
+		return "unreviewed", []string{reason}
 	}
 	return "pass", nil
 }

@@ -51,6 +51,19 @@ func treeDigest(root string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// evidenceDigest hashes the retained evidence a review binds to, with the optional forge log appended when present. Fixed ordering, and the exclusion of the review and the derived status file, keep it deterministic and free of self-reference.
+func evidenceDigest(attempt string) string {
+	parts := make([]string, 0, len(reviewedEvidence)+1)
+	for _, name := range reviewedEvidence {
+		parts = append(parts, name+":"+fileDigest(filepath.Join(attempt, name)))
+	}
+	if forge := filepath.Join(attempt, "forge.log"); pathExists(forge) {
+		parts = append(parts, "forge.log:"+fileDigest(forge))
+	}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\n")))
+	return hex.EncodeToString(sum[:])
+}
+
 // scenarioDigest hashes the declaration, its harness inputs, and its recording, so a change marks an older attempt stale.
 func scenarioDigest(scenario map[string]any, root, fixturesRoot string) string {
 	parts := []string{canonical(scenario)}

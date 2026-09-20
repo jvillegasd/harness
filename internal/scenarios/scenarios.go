@@ -1,6 +1,6 @@
 // Package scenarios runs artifact-based scenarios for critical harness behavior, replacing the Python runner.
 //
-// Each scenario declares the artifacts and assertions it expects before any model session runs, executes in a disposable repository with a forge shim on PATH, and retains one attempt directory holding prompts, input provenance, tool events, artifact results, and transcript evidence. An attempt passes only when its artifact checks pass and a transcript review record exists. Changed scenario or harness inputs mark an older attempt stale.
+// Each scenario declares the artifacts and assertions it expects before any model session runs, executes in a disposable repository with a forge shim on PATH, and retains one attempt directory holding prompts, input provenance, tool events, artifact results, and transcript evidence. An attempt passes only when its artifact checks pass and a human review bound to its retained evidence exists. Changed scenario or harness inputs mark an older attempt stale.
 //
 // Paid model execution is off unless --allow-paid is passed, and is bounded by a retained per-batch session cap. Local tooling success is reported separately from behavioral acceptance.
 package scenarios

@@ -39,7 +39,7 @@ func writeAttempt(t *testing.T, path, digest string, ok, review bool, metrics ma
 	}
 	writeJSON(t, filepath.Join(path, "metrics.json"), metrics)
 	if review {
-		writeJSON(t, filepath.Join(path, "review.json"), map[string]any{"reviewed": true, "by": "test"})
+		writeJSON(t, filepath.Join(path, "review.json"), boundReview(path, digest))
 	}
 }
 
@@ -53,6 +53,17 @@ func writeFile(t *testing.T, path, text string) {
 func writeJSON(t *testing.T, path string, value any) {
 	t.Helper()
 	writeFile(t, path, indentJSON(value))
+}
+
+// boundReview builds an affirmative human review bound to the attempt's current evidence and declared input.
+func boundReview(attempt, digest string) map[string]any {
+	return map[string]any{
+		"reviewed":        true,
+		"reviewer":        "test",
+		"observations":    "read the transcript",
+		"input_digest":    digest,
+		"evidence_digest": evidenceDigest(attempt),
+	}
 }
 
 func TestEvaluateStates(t *testing.T) {
@@ -107,6 +118,176 @@ func TestMissingMetricsIsIncomplete(t *testing.T) {
 	_ = os.Remove(filepath.Join(attempt, "metrics.json"))
 	if got, _ := evaluate(attempt, declaration, "abc"); got != "incomplete" {
 		t.Fatalf("evaluate = %q, want incomplete", got)
+	}
+}
+
+// TestReviewMustBeBoundToEvidence holds the acceptance rule against each way a review can be absent, unbound, malformed, or rejected.
+func TestReviewMustBeBoundToEvidence(t *testing.T) {
+	declaration := testScenario(nil)
+	const digest = "abc"
+	cases := []struct {
+		name string
+		edit func(t *testing.T, attempt string)
+		want string
+	}{
+		{"bound review passes", func(t *testing.T, attempt string) {}, "pass"},
+		{"missing review", func(t *testing.T, attempt string) {
+			_ = os.Remove(filepath.Join(attempt, "review.json"))
+		}, "unreviewed"},
+		{"legacy boolean-only review", func(t *testing.T, attempt string) {
+			writeJSON(t, filepath.Join(attempt, "review.json"), map[string]any{"reviewed": true})
+		}, "unreviewed"},
+		{"malformed review", func(t *testing.T, attempt string) {
+			writeFile(t, filepath.Join(attempt, "review.json"), "{not json")
+		}, "unreviewed"},
+		{"rejected review", func(t *testing.T, attempt string) {
+			review := boundReview(attempt, digest)
+			review["reviewed"] = false
+			writeJSON(t, filepath.Join(attempt, "review.json"), review)
+		}, "unreviewed"},
+		{"review naming no reviewer", func(t *testing.T, attempt string) {
+			review := boundReview(attempt, digest)
+			review["reviewer"] = " "
+			writeJSON(t, filepath.Join(attempt, "review.json"), review)
+		}, "unreviewed"},
+		{"review without observations", func(t *testing.T, attempt string) {
+			review := boundReview(attempt, digest)
+			review["observations"] = ""
+			writeJSON(t, filepath.Join(attempt, "review.json"), review)
+		}, "unreviewed"},
+		{"review bound to other inputs", func(t *testing.T, attempt string) {
+			review := boundReview(attempt, digest)
+			review["input_digest"] = "other"
+			writeJSON(t, filepath.Join(attempt, "review.json"), review)
+		}, "unreviewed"},
+		{"review bound to other evidence", func(t *testing.T, attempt string) {
+			review := boundReview(attempt, digest)
+			review["evidence_digest"] = "other"
+			writeJSON(t, filepath.Join(attempt, "review.json"), review)
+		}, "unreviewed"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			attempt := filepath.Join(t.TempDir(), "attempt")
+			writeAttempt(t, attempt, digest, true, true, nil)
+			c.edit(t, attempt)
+			if got, reasons := evaluate(attempt, declaration, digest); got != c.want {
+				t.Fatalf("evaluate = %q (%v), want %q", got, reasons, c.want)
+			}
+		})
+	}
+}
+
+// TestAnAttemptCanBeReviewedAgainWithoutRerunning replaces a refused legacy review on the same retained attempt.
+func TestAnAttemptCanBeReviewedAgainWithoutRerunning(t *testing.T) {
+	declaration := testScenario(nil)
+	attempt := filepath.Join(t.TempDir(), "attempt")
+	writeAttempt(t, attempt, "abc", true, false, nil)
+	writeJSON(t, filepath.Join(attempt, "review.json"), map[string]any{"reviewed": true})
+	if got, _ := evaluate(attempt, declaration, "abc"); got != "unreviewed" {
+		t.Fatalf("a legacy review was accepted: %q", got)
+	}
+	writeJSON(t, filepath.Join(attempt, "review.json"), boundReview(attempt, "abc"))
+	if got, _ := evaluate(attempt, declaration, "abc"); got != "pass" {
+		t.Fatalf("the re-review did not pass: %q", got)
+	}
+}
+
+// TestEditingCoveredEvidenceRequiresANewReview rewrites each retained evidence file after a review and expects acceptance to drop.
+func TestEditingCoveredEvidenceRequiresANewReview(t *testing.T) {
+	declaration := testScenario(nil)
+	mutate := map[string]func(t *testing.T, attempt string){
+		"prompts.txt":  func(t *testing.T, attempt string) { writeFile(t, filepath.Join(attempt, "prompts.txt"), "changed\n") },
+		"events.jsonl": func(t *testing.T, attempt string) { writeFile(t, filepath.Join(attempt, "events.jsonl"), "changed\n") },
+		"transcript.jsonl": func(t *testing.T, attempt string) {
+			writeFile(t, filepath.Join(attempt, "transcript.jsonl"), "changed\n")
+		},
+		"provenance.json": func(t *testing.T, attempt string) {
+			writeJSON(t, filepath.Join(attempt, "provenance.json"), map[string]any{"input_digest": "abc", "recorded_at": "later"})
+		},
+		"artifacts.json": func(t *testing.T, attempt string) {
+			writeJSON(t, filepath.Join(attempt, "artifacts.json"), map[string]any{"ok": true, "results": []any{map[string]any{"name": "x", "ok": true, "detail": "other"}}})
+		},
+		"metrics.json": func(t *testing.T, attempt string) {
+			writeJSON(t, filepath.Join(attempt, "metrics.json"), map[string]any{"terminal_status": "ok", "wall_seconds": 9.0})
+		},
+	}
+	for _, name := range reviewedEvidence {
+		t.Run(name, func(t *testing.T) {
+			attempt := filepath.Join(t.TempDir(), "attempt")
+			writeAttempt(t, attempt, "abc", true, true, nil)
+			mutate[name](t, attempt)
+			if got, reasons := evaluate(attempt, declaration, "abc"); got != "unreviewed" {
+				t.Fatalf("editing %s kept acceptance: %q (%v)", name, got, reasons)
+			}
+		})
+	}
+}
+
+// TestRemovedCoveredEvidenceRefusesAcceptance removes a required evidence file after review.
+func TestRemovedCoveredEvidenceRefusesAcceptance(t *testing.T) {
+	declaration := testScenario(nil)
+	attempt := filepath.Join(t.TempDir(), "attempt")
+	writeAttempt(t, attempt, "abc", true, true, nil)
+	_ = os.Remove(filepath.Join(attempt, "transcript.jsonl"))
+	if got, reasons := evaluate(attempt, declaration, "abc"); got != "incomplete" {
+		t.Fatalf("evaluate = %q (%v), want incomplete", got, reasons)
+	}
+}
+
+// TestForgeLogIsCoveredOnlyWhenPresent covers the optional forge log in both directions.
+func TestForgeLogIsCoveredOnlyWhenPresent(t *testing.T) {
+	declaration := testScenario(nil)
+	added := filepath.Join(t.TempDir(), "attempt")
+	writeAttempt(t, added, "abc", true, true, nil)
+	writeFile(t, filepath.Join(added, "forge.log"), "pr create --title t\n")
+	if got, _ := evaluate(added, declaration, "abc"); got != "unreviewed" {
+		t.Fatalf("a forge log added after review kept acceptance: %q", got)
+	}
+	removed := filepath.Join(t.TempDir(), "attempt")
+	writeAttempt(t, removed, "abc", true, false, nil)
+	writeFile(t, filepath.Join(removed, "forge.log"), "pr create --title t\n")
+	writeJSON(t, filepath.Join(removed, "review.json"), boundReview(removed, "abc"))
+	if got, _ := evaluate(removed, declaration, "abc"); got != "pass" {
+		t.Fatalf("a review bound beside a forge log did not pass: %q", got)
+	}
+	_ = os.Remove(filepath.Join(removed, "forge.log"))
+	if got, _ := evaluate(removed, declaration, "abc"); got != "unreviewed" {
+		t.Fatalf("a removed forge log kept acceptance: %q", got)
+	}
+}
+
+// TestEvidenceDigestIgnoresReviewAndStatus proves the digest never folds in the review or the derived status file.
+func TestEvidenceDigestIgnoresReviewAndStatus(t *testing.T) {
+	attempt := filepath.Join(t.TempDir(), "attempt")
+	writeAttempt(t, attempt, "abc", true, false, nil)
+	base := evidenceDigest(attempt)
+	writeJSON(t, filepath.Join(attempt, "review.json"), boundReview(attempt, "abc"))
+	writeJSON(t, filepath.Join(attempt, "status.json"), map[string]any{"state": "pass"})
+	if evidenceDigest(attempt) != base {
+		t.Fatal("the evidence digest changed when a derived file was written")
+	}
+}
+
+// TestReportAndCompareShareTheAcceptanceRule shows a legacy review is refused by both surfaces and a bound one accepted by both.
+func TestReportAndCompareShareTheAcceptanceRule(t *testing.T) {
+	tmp := t.TempDir()
+	declaration := testScenario(map[string]any{"id": "s"})
+	matrix := map[string]any{"scenarios": []any{declaration}}
+	digest := scenarioDigest(declaration, tmp, filepath.Join(tmp, "scenarios", "fixtures"))
+	before, after := filepath.Join(tmp, "before"), filepath.Join(tmp, "after")
+	legacy := filepath.Join(before, "s", "a-"+digest[:8])
+	writeAttempt(t, legacy, digest, true, false, nil)
+	writeJSON(t, filepath.Join(legacy, "review.json"), map[string]any{"reviewed": true})
+	writeAttempt(t, filepath.Join(after, "s", "a-"+digest[:8]), digest, true, true, nil)
+	if text := report(matrix, before, tmp); !contains(text, "s: unreviewed") {
+		t.Fatalf("report accepted a legacy review:\n%s", text)
+	}
+	if text := report(matrix, after, tmp); !contains(text, "s: pass") {
+		t.Fatalf("report did not accept a bound review:\n%s", text)
+	}
+	if text := compare(before, after, matrix, tmp); !contains(text, "unreviewed=1") || !contains(text, "pass 1/1") {
+		t.Fatalf("compare did not apply the same rule:\n%s", text)
 	}
 }
 
@@ -206,10 +387,8 @@ func TestMatrixRunsOfflineAndReviewPromotesToPass(t *testing.T) {
 		if state != "unreviewed" {
 			t.Fatalf("%s = %q at %s, want unreviewed", getString(declaration, "id"), state, where)
 		}
-		if err := os.WriteFile(filepath.Join(where, "review.json"), []byte(`{"reviewed": true}`), 0o644); err != nil {
-			t.Fatal(err)
-		}
 		digest := scenarioDigest(declaration, root, fixtures)
+		writeJSON(t, filepath.Join(where, "review.json"), boundReview(where, digest))
 		if got, _ := evaluate(where, declaration, digest); got != "pass" {
 			t.Fatalf("%s after review = %q, want pass", getString(declaration, "id"), got)
 		}

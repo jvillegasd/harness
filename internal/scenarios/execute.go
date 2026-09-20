@@ -475,7 +475,7 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 		return "", "", err
 	}
 	state, reasons := evaluate(attempt, scenario, digest)
-	if err := write("status.json", indentJSON(map[string]any{"state": state, "reasons": reasons})); err != nil {
+	if err := write("status.json", indentJSON(map[string]any{"state": state, "reasons": reasons, "evidence_digest": evidenceDigest(attempt)})); err != nil {
 		return "", "", err
 	}
 	return state, attempt, nil
