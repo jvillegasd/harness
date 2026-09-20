@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "claim-race-ship",
+      "title": "Two /ship sessions racing one ready ticket",
+      "command": "ship",
+      "prompt": "Simultaneous /ship claim race over the worktree-and-claim step.",
+      "mode": "live",
+      "concurrent": {
+        "synchronized": true,
+        "contenders": [
+          {
+            "id": "ship-a",
+            "workspace": "a",
+            "client": "claude",
+            "prompt": "You are one of two independent /ship sessions racing for ticket 68 in a disposable tracker. Run only the worktree-and-claim step. First read the ticket: `gh issue view 68 --json state,labels`. If a label `in-progress` is present, abort and write nothing. Otherwise claim it with `gh issue edit 68 --add-label in-progress`, then begin implementation by creating the file `impl/ship-a.txt` in your workspace. Never push, open a pull request, or touch any real remote."
+          },
+          {
+            "id": "ship-b",
+            "workspace": "b",
+            "client": "claude",
+            "prompt": "You are one of two independent /ship sessions racing for ticket 68 in a disposable tracker. Run only the worktree-and-claim step. First read the ticket: `gh issue view 68 --json state,labels`. If a label `in-progress` is present, abort and write nothing. Otherwise claim it with `gh issue edit 68 --add-label in-progress`, then begin implementation by creating the file `impl/ship-b.txt` in your workspace. Never push, open a pull request, or touch any real remote."
+          }
+        ]
+      },
+      "artifacts": {
+        "contains": [
+          {
+            "path": "artifacts/claim.json",
+            "text": "\"single_winner\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "commands/ship.md",
+        "docs/agents/harness.json",
+        "internal/scenarios/claim.go",
+        "internal/scenarios/concurrent.go",
+        "internal/scenarios/probe_claim.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/publication.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    },
+    {
+      "id": "claim-race-proto",
+      "title": "Two /proto sessions racing one ready ticket with the claim confirmation supplied",
+      "command": "proto",
+      "prompt": "Simultaneous /proto claim race with the prototype claim confirmation supplied in the fixture.",
+      "mode": "live",
+      "concurrent": {
+        "synchronized": true,
+        "requires_confirmation": true,
+        "confirmed": true,
+        "contenders": [
+          {
+            "id": "proto-a",
+            "workspace": "a",
+            "client": "claude",
+            "prompt": "You are one of two independent /proto sessions racing for ticket 68 in a disposable tracker, and the human has confirmed this claim: approved. Run only the claim step. Re-read the ticket with `gh issue view 68 --json state,labels` immediately before writing. If it is not `ready-for-agent`, abort and write nothing. Otherwise claim it with `gh issue edit 68 --add-label in-progress`, then create the file `impl/proto-a.txt` in your workspace. Never push, open a pull request, or touch any real remote."
+          },
+          {
+            "id": "proto-b",
+            "workspace": "b",
+            "client": "claude",
+            "prompt": "You are one of two independent /proto sessions racing for ticket 68 in a disposable tracker, and the human has confirmed this claim: approved. Run only the claim step. Re-read the ticket with `gh issue view 68 --json state,labels` immediately before writing. If it is not `ready-for-agent`, abort and write nothing. Otherwise claim it with `gh issue edit 68 --add-label in-progress`, then create the file `impl/proto-b.txt` in your workspace. Never push, open a pull request, or touch any real remote."
+          }
+        ]
+      },
+      "artifacts": {
+        "contains": [
+          {
+            "path": "artifacts/claim.json",
+            "text": "\"single_winner\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "commands/proto.md",
+        "docs/agents/harness.json",
+        "internal/scenarios/claim.go",
+        "internal/scenarios/concurrent.go",
+        "internal/scenarios/probe_claim.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/publication.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    }
+  ]
+}

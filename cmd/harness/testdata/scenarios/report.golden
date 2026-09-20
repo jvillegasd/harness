@@ -16,3 +16,4 @@ behavioral-acceptance:
   feedback-approved-batch: unreviewed (no transcript review record; bind evidence_digest <digest>)
   route-open-shape: unreviewed (no transcript review record; bind evidence_digest <digest>)
   review-before-commit: unreviewed (no transcript review record; bind evidence_digest <digest>)
+  concurrent-claim: unreviewed (no transcript review record; bind evidence_digest <digest>)

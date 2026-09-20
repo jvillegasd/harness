@@ -104,11 +104,74 @@ func validateMatrix(matrix map[string]any) []string {
 			}
 		}
 		errors = append(errors, validatePublication(where, scenario, artifacts)...)
+		if declaration, ok := scenario["concurrent"]; ok {
+			errors = append(errors, validateConcurrent(where, scenario, declaration)...)
+		}
 		if mode(scenario) == "offline" && !truthy(scenario["check"]) {
 			errors = append(errors, fmt.Sprintf("%s: offline scenario needs a check command", where))
 		}
 	}
 	return errors
+}
+
+// validateConcurrent checks a simultaneous-claim declaration before any session runs: at least two rivals with distinct, shell-safe ids and, for a live race, a prompt each, because a race needs two contenders and an empty prompt would spend a session on nothing.
+func validateConcurrent(where string, scenario map[string]any, value any) []string {
+	declaration, ok := value.(map[string]any)
+	if !ok {
+		return []string{fmt.Sprintf("%s: concurrent must be an object", where)}
+	}
+	contenders := list(declaration, "contenders")
+	if len(contenders) < 2 {
+		return []string{fmt.Sprintf("%s: concurrent needs at least two contenders", where)}
+	}
+	live := mode(scenario) == "live"
+	var errors []string
+	seen := map[string]bool{}
+	for index, raw := range contenders {
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			errors = append(errors, fmt.Sprintf("%s: contender[%d] must be an object", where, index))
+			continue
+		}
+		id := getString(entry, "id")
+		if !validClaimName(id) {
+			errors = append(errors, fmt.Sprintf("%s: contender[%d] needs an id of letters, digits, dot, dash, or underscore", where, index))
+			continue
+		}
+		if seen[id] {
+			errors = append(errors, fmt.Sprintf("%s: duplicate contender id %s", where, id))
+		}
+		seen[id] = true
+		if workspace := getString(entry, "workspace"); workspace != "" && !validClaimName(workspace) {
+			errors = append(errors, fmt.Sprintf("%s: contender[%d] workspace must be letters, digits, dot, dash, or underscore", where, index))
+		}
+		if live && !truthy(entry["prompt"]) {
+			errors = append(errors, fmt.Sprintf("%s: contender[%d] needs a prompt for a live race", where, index))
+		}
+		if client := getString(entry, "client"); client != "" && client != "claude" {
+			errors = append(errors, fmt.Sprintf("%s: contender[%d] client %s is unsupported", where, index, client))
+		}
+	}
+	if value, ok := declaration["barrier_seconds"]; ok {
+		if seconds, isNumber := toNumber(value); !isNumber || seconds < 1 || seconds != math.Trunc(seconds) {
+			errors = append(errors, fmt.Sprintf("%s: barrier_seconds must be a positive integer", where))
+		}
+	}
+	return errors
+}
+
+// validClaimName keeps a contender id or workspace from breaking out of the generated shell shim.
+func validClaimName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '.' || r == '-' || r == '_' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // validatePublication checks the publication fixture and the side-effect assertions that only it can observe.

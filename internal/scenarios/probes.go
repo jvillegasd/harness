@@ -3,6 +3,7 @@ package scenarios
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -10,8 +11,8 @@ import (
 	"strings"
 )
 
-// runProbe dispatches a scenario's internal probe, which is the Go replacement for the shell check that used to exec a Python probe.
-func runProbe(name, repo, root string) error {
+// runProbe dispatches a scenario's internal probe, which is the Go replacement for the shell check that used to exec a Python probe. out receives any evidence a probe wants retained in the attempt transcript.
+func runProbe(name, repo, root string, out io.Writer) error {
 	switch name {
 	case "landing-authorization":
 		return probeLanding(repo, root)
@@ -39,6 +40,8 @@ func runProbe(name, repo, root string) error {
 		return probeFeedbackApprovedBatch(repo, root)
 	case "review-before-commit":
 		return probeReviewBeforeCommit(repo, root)
+	case "concurrent-claim":
+		return probeConcurrentClaim(repo, root, out)
 	}
 	return fmt.Errorf("unknown scenario probe %q", name)
 }

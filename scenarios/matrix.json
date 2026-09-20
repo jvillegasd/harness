@@ -1020,6 +1020,112 @@
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
+    },
+    {
+      "id": "concurrent-claim",
+      "title": "Simultaneous claims: one winner accepted, duplicates and loser interference rejected, an incomplete race unverified",
+      "command": "ship",
+      "prompt": "Apply the concurrent-claim oracle to independently launched contenders sharing one disposable tracker: exactly one contender reaching implementation is the only accepted result, a duplicate winner or loser interference is rejected, and a failed barrier, absent contender, unavailable client, or missing prototype confirmation stays incomplete rather than success.",
+      "mode": "offline",
+      "check": "probe:concurrent-claim",
+      "artifacts": {
+        "present": [
+          "artifacts/concurrent-claim.json",
+          "artifacts/claim-events.jsonl"
+        ],
+        "contains": [
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"serialized_single_winner\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"synchronized_duplicate_exposed\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"independent_workspaces\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"reads_preceded_writes\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"reads_observed_ready\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"serialized_loser_abstained\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"proto_unconfirmed_unverified\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"proto_abort_recorded\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"proto_confirmed_judged\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"proto_reread_observed\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"interference_rejected\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"barrier_failure_incomplete\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"absent_contender_incomplete\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"unavailable_client_incomplete\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"ship_read_before_write\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"ship_aborts_when_claimed\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"proto_rereads_before_write\": true"
+          },
+          {
+            "path": "artifacts/concurrent-claim.json",
+            "text": "\"proto_requires_confirmation\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "commands/ship.md",
+        "commands/proto.md",
+        "docs/agents/harness.json",
+        "internal/scenarios/claim.go",
+        "internal/scenarios/probe_claim.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/publication.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
     }
   ]
 }

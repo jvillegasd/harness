@@ -14,6 +14,7 @@ feedback-local-first: unreviewed -> <attempt>
 feedback-approved-batch: unreviewed -> <attempt>
 route-open-shape: unreviewed -> <attempt>
 review-before-commit: unreviewed -> <attempt>
+concurrent-claim: unreviewed -> <attempt>
 local-tooling: pass
 behavioral-acceptance:
   ask-read-only: unreviewed (no transcript review record; bind evidence_digest <digest>)
@@ -32,3 +33,4 @@ behavioral-acceptance:
   feedback-approved-batch: unreviewed (no transcript review record; bind evidence_digest <digest>)
   route-open-shape: unreviewed (no transcript review record; bind evidence_digest <digest>)
   review-before-commit: unreviewed (no transcript review record; bind evidence_digest <digest>)
+  concurrent-claim: unreviewed (no transcript review record; bind evidence_digest <digest>)
