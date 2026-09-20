@@ -333,7 +333,11 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 		if _, err := exec.LookPath(client); err != nil {
 			return "", "", err
 		}
-		if err := claimSession(outRoot, limit); err != nil {
+		if count := liveSessionCount(scenario); count > 1 {
+			if err := claimConcurrentSessions(outRoot, limit, count); err != nil {
+				return "", "", err
+			}
+		} else if err := claimSession(outRoot, limit); err != nil {
 			return "", "", err
 		}
 	}
@@ -378,6 +382,7 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 			"input_digest": digest,
 			"recorded_at":  now.Format("2006-01-02T15:04:05.000000"),
 			"executor":     executor,
+			"sessions":     liveSessionCount(scenario),
 		}))
 	}
 	// A paid attempt is recorded before its session starts, so one killed mid-run still counts toward the cap. Others are recorded only once they finish, so an error leaves no half-written attempt.
@@ -389,6 +394,7 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 	}
 	var events, transcript []any
 	var checkCode, liveCode *int
+	incompleteReason := ""
 
 	started := time.Now()
 	switch {
@@ -399,6 +405,12 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 		if err := replay(fixture, repo, &events, &transcript); err != nil {
 			return "", "", err
 		}
+	case hasRecovery(scenario):
+		_, reason, err := runRecoveryExperiment(scenario, repo, root, env, &events, &transcript)
+		if err != nil {
+			return "", "", err
+		}
+		incompleteReason = reason
 	default:
 		code, err := runLive(scenario, repo, env, &events, &transcript)
 		if err != nil {
@@ -467,7 +479,11 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 	if err := write("events.jsonl", jsonl(events)); err != nil {
 		return "", "", err
 	}
-	if err := write("artifacts.json", indentJSON(map[string]any{"ok": ok, "results": results})); err != nil {
+	artifacts := map[string]any{"ok": ok, "results": results}
+	if incompleteReason != "" {
+		artifacts["incomplete_reason"] = incompleteReason
+	}
+	if err := write("artifacts.json", indentJSON(artifacts)); err != nil {
 		return "", "", err
 	}
 	if err := write("transcript.jsonl", jsonl(transcript)); err != nil {

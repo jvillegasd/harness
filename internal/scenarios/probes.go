@@ -42,6 +42,8 @@ func runProbe(name, repo, root string, out io.Writer) error {
 		return probeReviewBeforeCommit(repo, root)
 	case "concurrent-claim":
 		return probeConcurrentClaim(repo, root, out)
+	case "recovery":
+		return probeRecovery(repo, root)
 	}
 	return fmt.Errorf("unknown scenario probe %q", name)
 }

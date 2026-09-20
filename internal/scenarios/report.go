@@ -25,7 +25,7 @@ func report(matrix map[string]any, outRoot, root string) string {
 		scenario, _ := raw.(map[string]any)
 		attempts := attemptPaths(outRoot, getString(scenario, "id"))
 		if len(attempts) == 0 {
-			lines = append(lines, "  "+getString(scenario, "id")+": incomplete (no attempt)")
+			lines = append(lines, "  "+getString(scenario, "id")+": incomplete (no attempt) "+executorLabel(scenario, ""))
 			continue
 		}
 		state, reasons := evaluate(attempts[len(attempts)-1], scenario, scenarioDigest(scenario, root, filepath.Join(root, "scenarios", "fixtures")))
@@ -33,9 +33,81 @@ func report(matrix map[string]any, outRoot, root string) string {
 		if len(reasons) > 0 {
 			detail = " (" + strings.Join(reasons, "; ") + ")"
 		}
-		lines = append(lines, "  "+getString(scenario, "id")+": "+state+detail)
+		lines = append(lines, "  "+getString(scenario, "id")+": "+state+detail+" "+executorLabel(scenario, attempts[len(attempts)-1]))
+	}
+	if coverage := liveCoverage(matrix, outRoot, root); len(coverage) > 0 {
+		lines = append(lines, "", "live coverage:")
+		lines = append(lines, coverage...)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// executorLabel separates a live result from an offline simulation, reading the executor the attempt recorded rather than the declaration alone.
+func executorLabel(scenario map[string]any, attempt string) string {
+	if mode(scenario) != "live" {
+		return "[offline]"
+	}
+	executor := ""
+	if attempt != "" {
+		if provenance, err := readObject(filepath.Join(attempt, "provenance.json")); err == nil {
+			executor = getString(provenance, "executor")
+		}
+	}
+	if executor == "" {
+		executor = "live:" + sessionClient(scenario)
+	}
+	return "[" + executor + "]"
+}
+
+// liveRoute names the concrete client and route a live scenario takes: a fresh-session continuation, an Orca worker, a headless worker, or a direct session.
+func liveRoute(scenario map[string]any) (route, client string) {
+	if _, ok := scenario["concurrent"]; ok {
+		return "concurrent", sessionClient(scenario)
+	}
+	if worker, ok := scenario["worker"].(map[string]any); ok && worker != nil {
+		return getString(worker, "route"), sessionClient(scenario)
+	}
+	if truthy(scenario["sessions"]) {
+		return routeFresh, sessionClient(scenario)
+	}
+	return "direct", sessionClient(scenario)
+}
+
+// liveCoverage names which concrete client and route combinations actually ran, so an unrun or unavailable route is reported as unverified rather than folded into a behavioral pass.
+func liveCoverage(matrix map[string]any, outRoot, root string) []string {
+	var lines []string
+	for _, raw := range list(matrix, "scenarios") {
+		scenario, _ := raw.(map[string]any)
+		if mode(scenario) != "live" {
+			continue
+		}
+		id := getString(scenario, "id")
+		route, client := liveRoute(scenario)
+		state := "unverified (no attempt)"
+		detail := ""
+		attempts := attemptPaths(outRoot, id)
+		if len(attempts) > 0 {
+			last := attempts[len(attempts)-1]
+			var reasons []string
+			state, reasons = evaluate(last, scenario, scenarioDigest(scenario, root, filepath.Join(root, "scenarios", "fixtures")))
+			if len(reasons) > 0 {
+				detail = " (" + strings.Join(reasons, "; ") + ")"
+			}
+			detail += " sessions=" + formatNumber(float64(attemptSessions(last)))
+		}
+		lines = append(lines, fmt.Sprintf("  %s: %s%s route=%s client=%s", id, state, detail, route, client))
+	}
+	return lines
+}
+
+// attemptSessions reads how many model sessions a retained live attempt spent.
+func attemptSessions(attempt string) int {
+	if provenance, err := readObject(filepath.Join(attempt, "provenance.json")); err == nil {
+		if count, ok := toNumber(provenance["sessions"]); ok && count >= 1 {
+			return int(count)
+		}
+	}
+	return 1
 }
 
 var efficiencyFields = []string{"input_tokens", "output_tokens", "cached_input", "tool_calls", "command_output_bytes", "wall_seconds"}

@@ -15,7 +15,7 @@ harness scenarios compare --before <dir> --after <dir>
 | --- | --- |
 | `validate` | Reject any declaration that names no artifacts or assertions, before a session runs. |
 | `run` | Execute each scenario and write one attempt per run under `attempts/`. |
-| `report` | Print `local-tooling` and `behavioral-acceptance` as separate lines. |
+| `report` | Print `local-tooling`, `behavioral-acceptance`, and a `live coverage` line per live scenario. |
 | `compare` | Report behavioral pass rates first, then efficiency among passing runs only. |
 
 `harness scenarios` runs inside a harness checkout, from any directory in it. `--matrix` and `--out` override the declaration file and the attempts directory. `run --scenario <id>` narrows to one scenario; an id that matches no declared scenario is rejected before any attempt is written, and `compare` requires both `--before` and `--after`.
@@ -119,6 +119,31 @@ The default matrix carries the offline `concurrent-claim` scenario instead. It r
 On this revision the offline scenario passes: a serialized launch leaves one winner, a synchronized launch duplicates only when both reads precede the writes, loser interference and a failed barrier are rejected, an absent contender and an unavailable client stay incomplete, and an unconfirmed prototype claim is unverified. No real ticket, forge, or remote repository is touched; every tracker call is the scenario's own instrumented `gh`, and any other call is refused.
 
 The limits are those of the fixture, not a claim about a real session. The offline contenders are scripted claim drivers, not models, so a duplicate they expose shows what the protocol order admits, not what a model session does. Implementation is read from the marker the prompt tells a session to create, so a session that implements elsewhere is not observed, and interference is detected only when a rival changes a workspace after that contender's session exited, so a change made during the run is missed. The model-session experiment has not been run here: no budget was approved, so `claim-race-ship` and `claim-race-proto` are unrun and unverified. A retained duplicate-winner result is a failure of the ownership expectation; it never promotes a locking design, which is a separate evidence-driven contract.
+
+## Recovery experiments
+
+Two live experiments cover multi-agent recovery, alongside the offline checkpoint probes that stay as tooling checks. `matrix.recovery.json` declares them; the default matrix runs their oracles offline as `checkpoint-continuation` and `worker-recovery`.
+
+A **fresh-session continuation** launches two independent client processes. Session one records a deferred requirement and its rationale as a branch checkpoint through `workflow-checkpoint`, and also records an unrelated branch's checkpoint; session two, a fresh process with no shared conversation, recovers the first by topic key. Only a recovery of both values from the branch checkpoint is accepted: a value repeated in the continuation prompt, a shared conversation, a value that only the unrelated branch's checkpoint holds, a checkpoint the runner cannot find in the isolated store, or an unavailable route is refused. The runner records the client, model, repository revision, and session identities in the retained transcript.
+
+A **dispatched worker** runs through the real supported route: `harness dispatch` places the role as its own agent, through the Orca worker terminal inside an Orca worktree and through the other client's headless CLI otherwise. The runner resolves the role's actual client and model, records the installed agent digest and the dispatch and worker identities, and observes the stop: surviving worker processes and any workspace change after the recorded stop. A proven stop with nothing surviving and no post-stop edit is accepted; a post-stop edit or a fallback started beside a writer whose liveness is unproven is rejected; an uncertain outcome that starts no fallback is accepted, because the runner never starts one. A declared route the environment would not take dispatches nothing and is reported unverified, alongside an unrecorded identity or an unapproved budget.
+
+The offline oracles in `internal/scenarios/recovery.go` classify compliant, violating, and unverified cases, so `harness scenarios run --scenario checkpoint-continuation` and `--scenario worker-recovery` prove the rules without a model session.
+
+### Isolation and limits
+
+Each continuation session runs in a disposable repository, and the experiment namespaces the checkpoint under an `ENGRAM_PROJECT` test project, so personal memory and live work are untouched. `HOME` stays intact because the client authenticates from it, so a real run still writes to the machine's Engram binary; the test project is the isolation boundary, not a separate database. The runner reads that test project back through the Engram CLI, so isolation is observed rather than taken from the session's own report; an unreadable store leaves the outcome unverified.
+
+An unverified live outcome is reported as incomplete, never as a failed behavioral check, so an unavailable route, model, memory service, or budget reads as unverified rather than as a rejection.
+
+The live experiments are budget-gated exactly like the claim race: they need `--allow-paid`, they charge one session per launch against the batch cap, and no attempt is written without it. Run them with:
+
+```sh
+harness scenarios validate --matrix scenarios/matrix.recovery.json
+harness scenarios run --matrix scenarios/matrix.recovery.json --allow-paid --cap 4
+```
+
+On this revision the offline oracles pass and no live budget was approved, so every live route is unrun and unverified rather than a behavioral pass. The Orca route additionally needs the scenario to run inside an Orca worktree; from a disposable repository the observed route is headless, so the declared Orca experiment is unverified until it runs there. `report` lists each concrete client and route under `live coverage` and labels every behavioral line `[offline]`, `[recording]`, or `[live:<client>]`, so an offline simulation is never read as a live result.
 
 ## Paid execution
 
