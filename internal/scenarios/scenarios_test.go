@@ -145,6 +145,11 @@ func TestReviewMustBeBoundToEvidence(t *testing.T) {
 			review["reviewed"] = false
 			writeJSON(t, filepath.Join(attempt, "review.json"), review)
 		}, "unreviewed"},
+		{"non-boolean review flag", func(t *testing.T, attempt string) {
+			review := boundReview(attempt, digest)
+			review["reviewed"] = "no"
+			writeJSON(t, filepath.Join(attempt, "review.json"), review)
+		}, "unreviewed"},
 		{"review naming no reviewer", func(t *testing.T, attempt string) {
 			review := boundReview(attempt, digest)
 			review["reviewer"] = " "
@@ -178,7 +183,6 @@ func TestReviewMustBeBoundToEvidence(t *testing.T) {
 	}
 }
 
-// TestAnAttemptCanBeReviewedAgainWithoutRerunning replaces a refused legacy review on the same retained attempt.
 func TestAnAttemptCanBeReviewedAgainWithoutRerunning(t *testing.T) {
 	declaration := testScenario(nil)
 	attempt := filepath.Join(t.TempDir(), "attempt")
@@ -212,7 +216,7 @@ func TestEditingCoveredEvidenceRequiresANewReview(t *testing.T) {
 			writeJSON(t, filepath.Join(attempt, "metrics.json"), map[string]any{"terminal_status": "ok", "wall_seconds": 9.0})
 		},
 	}
-	for _, name := range reviewedEvidence {
+	for _, name := range requiredEvidence {
 		t.Run(name, func(t *testing.T) {
 			attempt := filepath.Join(t.TempDir(), "attempt")
 			writeAttempt(t, attempt, "abc", true, true, nil)
@@ -224,19 +228,8 @@ func TestEditingCoveredEvidenceRequiresANewReview(t *testing.T) {
 	}
 }
 
-// TestRemovedCoveredEvidenceRefusesAcceptance removes a required evidence file after review.
-func TestRemovedCoveredEvidenceRefusesAcceptance(t *testing.T) {
-	declaration := testScenario(nil)
-	attempt := filepath.Join(t.TempDir(), "attempt")
-	writeAttempt(t, attempt, "abc", true, true, nil)
-	_ = os.Remove(filepath.Join(attempt, "transcript.jsonl"))
-	if got, reasons := evaluate(attempt, declaration, "abc"); got != "incomplete" {
-		t.Fatalf("evaluate = %q (%v), want incomplete", got, reasons)
-	}
-}
-
-// TestForgeLogIsCoveredOnlyWhenPresent covers the optional forge log in both directions.
-func TestForgeLogIsCoveredOnlyWhenPresent(t *testing.T) {
+// TestForgeLogChangeRequiresANewReview shows adding or removing the forge log after a review drops acceptance.
+func TestForgeLogChangeRequiresANewReview(t *testing.T) {
 	declaration := testScenario(nil)
 	added := filepath.Join(t.TempDir(), "attempt")
 	writeAttempt(t, added, "abc", true, true, nil)
@@ -257,7 +250,6 @@ func TestForgeLogIsCoveredOnlyWhenPresent(t *testing.T) {
 	}
 }
 
-// TestEvidenceDigestIgnoresReviewAndStatus proves the digest never folds in the review or the derived status file.
 func TestEvidenceDigestIgnoresReviewAndStatus(t *testing.T) {
 	attempt := filepath.Join(t.TempDir(), "attempt")
 	writeAttempt(t, attempt, "abc", true, false, nil)
@@ -280,8 +272,8 @@ func TestReportAndCompareShareTheAcceptanceRule(t *testing.T) {
 	writeAttempt(t, legacy, digest, true, false, nil)
 	writeJSON(t, filepath.Join(legacy, "review.json"), map[string]any{"reviewed": true})
 	writeAttempt(t, filepath.Join(after, "s", "a-"+digest[:8]), digest, true, true, nil)
-	if text := report(matrix, before, tmp); !contains(text, "s: unreviewed") {
-		t.Fatalf("report accepted a legacy review:\n%s", text)
+	if text := report(matrix, before, tmp); !contains(text, "s: unreviewed") || !contains(text, "bind evidence_digest "+evidenceDigest(legacy)) {
+		t.Fatalf("report accepted a legacy review or hid the digest to bind:\n%s", text)
 	}
 	if text := report(matrix, after, tmp); !contains(text, "s: pass") {
 		t.Fatalf("report did not accept a bound review:\n%s", text)

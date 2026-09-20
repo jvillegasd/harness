@@ -32,7 +32,7 @@ Each attempt under `attempts/<id>/<stamp>-<digest>/` retains:
 | `artifacts.json` | One result per declared artifact or assertion. |
 | `transcript.jsonl` | The recorded session or command output. |
 | `metrics.json` | Normalized efficiency: tokens, tool calls, output bytes, wall time, model, terminal status. |
-| `status.json` | The computed state, its reasons, and the evidence digest a review must bind to. |
+| `status.json` | The state and reasons at run time, and the evidence digest a review must bind to. `report` computes the current state. |
 | `forge.log` | Every `gh` call the attempt made, one per line. Written only under a publication fixture. |
 | `review.json` | The human review. Written by hand after reading the transcript, never by a command. |
 
@@ -53,10 +53,10 @@ Each attempt under `attempts/<id>/<stamp>-<digest>/` retains:
 A transcript review is a `review.json` beside the attempt that records the human who read it and binds that reading to the evidence:
 
 ```json
-{"reviewed": true, "reviewer": "<who>", "observations": "<what the transcript showed>", "input_digest": "<from provenance.json>", "evidence_digest": "<from status.json>"}
+{"reviewed": true, "reviewer": "<who>", "observations": "<what the transcript showed>", "input_digest": "<from provenance.json>", "evidence_digest": "<from status.json or report>"}
 ```
 
-Acceptance needs an affirmative `reviewed`, a nonempty `reviewer` and `observations`, and both digests matching. The evidence digest covers `prompts.txt`, `provenance.json`, `events.jsonl`, `transcript.jsonl`, `artifacts.json`, `metrics.json`, and `forge.log` when present, so editing or removing any of them, adding or dropping the forge log, or changing declared inputs all require a new review rather than retaining acceptance. It never covers `review.json` or the derived `status.json`, so a review cannot hash itself. A missing, malformed, rejected, or boolean-only legacy record never counts as approval, and a retained attempt may be reviewed again without rerunning an unchanged execution.
+Acceptance needs a boolean-true `reviewed`, a nonempty `reviewer` and `observations`, and both digests matching; `report` prints the current `evidence_digest` in each refusal, so a retained attempt can be bound without rerunning it. The evidence digest covers `prompts.txt`, `provenance.json`, `events.jsonl`, `transcript.jsonl`, `artifacts.json`, `metrics.json`, and `forge.log`, which digests as missing when absent, so editing or removing any of them, adding or dropping the forge log, or changing declared inputs all require a new review rather than retaining acceptance. It never covers `review.json` or the derived `status.json`, so a review cannot hash itself. A missing, malformed, rejected, or boolean-only legacy record never counts as approval.
 
 `run` additionally reports `not-run` for a live scenario that has neither a recording nor `--allow-paid`. That is not an evaluated state: nothing ran, so no attempt is written.
 

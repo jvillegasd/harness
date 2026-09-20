@@ -8,7 +8,15 @@ import (
 	"testing"
 )
 
-var attemptPath = regexp.MustCompile(` -> .*`)
+var (
+	attemptPath           = regexp.MustCompile(` -> .*`)
+	evidenceDigestPattern = regexp.MustCompile(`bind evidence_digest [0-9a-f]{64}`)
+)
+
+// normalizeReport replaces the attempt path and the attempt-dependent evidence digest, so the golden asserts the reason text but not the digest value, which the unit test asserts.
+func normalizeReport(text string) string {
+	return evidenceDigestPattern.ReplaceAllString(attemptPath.ReplaceAllString(text, " -> <attempt>"), "bind evidence_digest <digest>")
+}
 
 // TestScenariosValidateAndRunAgainstRecordedFixtures drives the command boundary over the shipped matrix without paid sessions, comparing each result to the golden captured from the Python runner before it was deleted.
 func TestScenariosValidateAndRunAgainstRecordedFixtures(t *testing.T) {
@@ -25,14 +33,13 @@ func TestScenariosValidateAndRunAgainstRecordedFixtures(t *testing.T) {
 	assertGolden(t, "validate.golden", validate.stdout)
 
 	run := runBinary(t, root, "scenarios", "run", "--out", out)
-	normalized := attemptPath.ReplaceAllString(run.stdout, " -> <attempt>")
-	assertGolden(t, "run.golden", normalized)
+	assertGolden(t, "run.golden", normalizeReport(run.stdout))
 
 	report := runBinary(t, root, "scenarios", "report", "--out", out)
 	if report.code != 0 {
 		t.Fatalf("report exited %d: %s", report.code, report.stderr)
 	}
-	assertGolden(t, "report.golden", report.stdout)
+	assertGolden(t, "report.golden", normalizeReport(report.stdout))
 }
 
 func assertGolden(t *testing.T, name, got string) {

@@ -10,18 +10,8 @@ import (
 	"strings"
 )
 
-// reviewedEvidence is the retained evidence a review binds to, in a fixed order. The review and the derived status file are never included, so a review cannot hash itself.
-var reviewedEvidence = []string{
-	"prompts.txt",
-	"provenance.json",
-	"events.jsonl",
-	"transcript.jsonl",
-	"artifacts.json",
-	"metrics.json",
-}
-
-// reviewAccepted reports whether the attempt carries an affirmative, evidence-bound human review, and why not when it does not. A legacy boolean-only record, a rejected or malformed one, and one whose input or evidence digest no longer matches all require a new review rather than retaining acceptance.
-func reviewAccepted(attempt, currentDigest string) (bool, string) {
+// reviewAccepted reports whether the attempt carries an affirmative, evidence-bound human review, and why not when it does not. The current evidence digest is passed so evaluate can append the value a new review must bind to. A legacy boolean-only record, a rejected or malformed one, and one whose input or evidence digest no longer matches all require a new review rather than retaining acceptance.
+func reviewAccepted(attempt, currentDigest, evidence string) (bool, string) {
 	raw, err := os.ReadFile(filepath.Join(attempt, "review.json"))
 	if err != nil {
 		return false, "no transcript review record"
@@ -34,7 +24,8 @@ func reviewAccepted(attempt, currentDigest string) (bool, string) {
 	if !ok {
 		return false, "transcript review record is not an object"
 	}
-	if !truthy(object["reviewed"]) {
+	approved, isBool := object["reviewed"].(bool)
+	if !isBool || !approved {
 		return false, "transcript review was not accepted"
 	}
 	if strings.TrimSpace(getString(object, "reviewer")) == "" {
@@ -46,7 +37,7 @@ func reviewAccepted(attempt, currentDigest string) (bool, string) {
 	if getString(object, "input_digest") != currentDigest {
 		return false, "transcript review is not bound to the current inputs"
 	}
-	if getString(object, "evidence_digest") != evidenceDigest(attempt) {
+	if getString(object, "evidence_digest") != evidence {
 		return false, "transcript review does not match the retained evidence"
 	}
 	return true, ""
@@ -95,8 +86,9 @@ func evaluate(attempt string, scenario map[string]any, currentDigest string) (st
 		}
 		return "fail", []string{"artifact checks failed: " + detail}
 	}
-	if ok, reason := reviewAccepted(attempt, currentDigest); !ok {
-		return "unreviewed", []string{reason}
+	evidence := evidenceDigest(attempt)
+	if ok, reason := reviewAccepted(attempt, currentDigest, evidence); !ok {
+		return "unreviewed", []string{reason + "; bind evidence_digest " + evidence}
 	}
 	return "pass", nil
 }
