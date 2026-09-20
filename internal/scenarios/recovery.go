@@ -376,6 +376,7 @@ type workerObservation struct {
 	Reason    string
 	Available bool
 	Uncertain bool
+	Output    string
 }
 
 // dispatchWorker runs the real supported route: `harness dispatch` launches the role as its own agent, through the Orca worker terminal inside an Orca worktree and through the other client's headless CLI otherwise. After interruptAfter it signals the dispatch process, so dispatch cancels its own worker group and reports its outcome; the runner never starts a fallback.
@@ -409,6 +410,7 @@ func dispatchWorker(role, session, repo, promptFile string, env []string, interr
 	} else {
 		runErr = <-finished
 	}
+	observation.Output = outBuf.String()
 	observation.Available = runErr == nil
 	if runErr != nil {
 		// A nonzero dispatch prints a JSON reason. A timeout or a failure is the route answering; an outcome_unknown one may still have a live worker, so no fallback may start beside it.

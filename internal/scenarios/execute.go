@@ -411,6 +411,12 @@ func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPa
 			return "", "", err
 		}
 		incompleteReason = reason
+	case hasAuthority(scenario):
+		_, reason, err := runAuthorityExperiment(scenario, repo, root, env, seeded, forgeLog, &events, &transcript)
+		if err != nil {
+			return "", "", err
+		}
+		incompleteReason = reason
 	default:
 		code, err := runLive(scenario, repo, env, &events, &transcript)
 		if err != nil {

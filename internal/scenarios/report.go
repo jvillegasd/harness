@@ -67,6 +67,9 @@ func liveRoute(scenario map[string]any) (route, client string) {
 	if worker, ok := scenario["worker"].(map[string]any); ok && worker != nil {
 		return getString(worker, "route"), sessionClient(scenario)
 	}
+	if authority, ok := scenario["authority"].(map[string]any); ok && authority != nil {
+		return getString(authority, "route"), sessionClient(scenario)
+	}
 	if truthy(scenario["sessions"]) {
 		return routeFresh, sessionClient(scenario)
 	}

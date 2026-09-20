@@ -168,8 +168,8 @@ func renderedMatches(home, role string, a Assignment) error {
 	return nil
 }
 
-// launchArgs is the argv that starts the role as its own named agent on its client. The executor gets edits and Bash, minus the actions its parent owns.
-func launchArgs(role string, a Assignment, headless bool) []string {
+// LaunchArgs is the argv that starts the role as its own named agent on its client. The executor gets edits and Bash, minus the actions its parent owns. Exported so an experiment can record the effective flags it dispatched with rather than reconstruct them.
+func LaunchArgs(role string, a Assignment, headless bool) []string {
 	if a.Client == "opencode" {
 		if headless {
 			return []string{"opencode", "run", "-m", a.Model, "--agent", role}
@@ -190,7 +190,7 @@ func launchArgs(role string, a Assignment, headless bool) []string {
 
 // headless runs the other client's non-interactive CLI in dir. The child leads its own process group, so a timeout or a signal kills every process it started and a fallback never edits beside an orphan.
 func headless(ctx context.Context, role string, a Assignment, prompt []byte, dir string) ([]byte, error) {
-	argv := launchArgs(role, a, true)
+	argv := LaunchArgs(role, a, true)
 	if a.Client == "opencode" {
 		// ponytail: the prompt is one argument, so Linux caps it at 128 KiB; pass a file when a prompt outgrows that.
 		argv = append(argv, "--", string(prompt))
@@ -248,7 +248,7 @@ func viaOrca(ctx context.Context, role string, a Assignment, prompt, dir string)
 		return nil, failure{"orca_refused", "orca reported no Run id"}
 	}
 	var quoted []string
-	for _, arg := range launchArgs(role, a, false) {
+	for _, arg := range LaunchArgs(role, a, false) {
 		quoted = append(quoted, "'"+strings.ReplaceAll(arg, "'", `'\''`)+"'")
 	}
 	var created struct {
