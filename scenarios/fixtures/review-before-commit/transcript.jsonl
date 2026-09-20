@@ -1,0 +1,4 @@
+{"agent": "reviewer-a", "command": ""}
+{"agent": "reviewer-b", "command": ""}
+{"agent": "", "command": "git commit -m work"}
+{"agent": "reviewer-a", "command": ""}

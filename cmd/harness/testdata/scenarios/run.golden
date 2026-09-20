@@ -8,6 +8,12 @@ spec-slicing: unreviewed -> <attempt>
 harness-audit: unreviewed -> <attempt>
 recon-citations: unreviewed -> <attempt>
 review-triage: unreviewed -> <attempt>
+gate-mixed-scope: unreviewed -> <attempt>
+gate-self-authored: unreviewed -> <attempt>
+feedback-local-first: unreviewed -> <attempt>
+feedback-approved-batch: unreviewed -> <attempt>
+route-open-shape: unreviewed -> <attempt>
+review-before-commit: unreviewed -> <attempt>
 local-tooling: pass
 behavioral-acceptance:
   ask-read-only: unreviewed (no transcript review record)
@@ -20,3 +26,9 @@ behavioral-acceptance:
   harness-audit: unreviewed (no transcript review record)
   recon-citations: unreviewed (no transcript review record)
   review-triage: unreviewed (no transcript review record)
+  gate-mixed-scope: unreviewed (no transcript review record)
+  gate-self-authored: unreviewed (no transcript review record)
+  feedback-local-first: unreviewed (no transcript review record)
+  feedback-approved-batch: unreviewed (no transcript review record)
+  route-open-shape: unreviewed (no transcript review record)
+  review-before-commit: unreviewed (no transcript review record)

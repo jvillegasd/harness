@@ -27,6 +27,18 @@ func runProbe(name, repo, root string) error {
 		return probeReconCitations(repo, root)
 	case "review-triage":
 		return probeReviewTriage(repo, root)
+	case "gate-mixed-scope":
+		return probeGateMixedScope(repo, root)
+	case "gate-self-authored":
+		return probeGateSelfAuthored(repo, root)
+	case "route-open-shape":
+		return probeRouteOpenShape(repo, root)
+	case "feedback-local-first":
+		return probeFeedbackLocalFirst(repo, root)
+	case "feedback-approved-batch":
+		return probeFeedbackApprovedBatch(repo, root)
+	case "review-before-commit":
+		return probeReviewBeforeCommit(repo, root)
 	}
 	return fmt.Errorf("unknown scenario probe %q", name)
 }

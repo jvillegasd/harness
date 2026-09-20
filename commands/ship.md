@@ -39,6 +39,19 @@ With a ticket, escalate before changing code if any blocker is not closed by a m
 
 Inspect `git status --short` before creating anything. If pre-existing changes fall outside this contract, stop, report them, and ask how to proceed. Never absorb them into the reviewed diff.
 
+<delivery-order>
+
+```json
+{
+  "review_before_commit": true,
+  "commit_before_review_allowed": false,
+  "review_markers": ["reviewer-a", "reviewer-b", "review-refuter"],
+  "commit_marker": "git commit"
+}
+```
+
+</delivery-order>
+
 ## Worktree and claim
 
 1. Fetch the remote default branch. For a `/proto` ledger, reuse its existing branch and retained worktree rather than creating another; it committed its work there, and a fresh worktree from the default branch would not contain it. Inside Orca, use the runtime-provided Orca CLI guide; otherwise locate and switch to the existing Worktrunk branch.

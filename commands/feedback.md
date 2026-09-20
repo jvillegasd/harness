@@ -32,6 +32,28 @@ Choose one round type:
 
 Choose at the start: defer when requested or more rounds are coming; run full when asked to finalize or check. If unspecified on the first round, ask once and reuse the answer. Settle all deferred debt in a full round before finalizing. Never push a deferred round.
 
+<batch-gate>
+
+```json
+{
+  "deferred_round_publishes": false,
+  "full_round_validates_locally": true,
+  "unapproved_batch_commits": false,
+  "unapproved_batch_pushes": false,
+  "unapproved_batch_edits_pull_request": false,
+  "unapproved_batch_publishes": false,
+  "approved_batch_commits": true,
+  "approved_batch_pushes_same_branch": true,
+  "approved_batch_refreshes_pull_request": true,
+  "approved_batch_opens_new_pull_request": false,
+  "approved_batch_drives_checks": true,
+  "approved_batch_publishes": true,
+  "approval_carries_to_next_batch": false
+}
+```
+
+</batch-gate>
+
 ## Steps
 
 1. Resolve the current branch and its open pull request with `gh pr view`, then resolve its contract and inspect `git status --short`. Prefer the inline `## Contract` when present; otherwise fall back to the ticket from its closing reference. If neither exists, continue in legacy mode, state that contract conformance cannot be reconstructed, and evaluate only the explicit feedback and current implementation. Stop only if no open pull request exists or the worktree holds pre-existing changes not part of this feedback run; a deferred or unapproved earlier round's local delta is part of it. Never absorb unrelated changes. Read `workflow-checkpoint`, derive the topic key from the branch, and retrieve the checkpoint; reuse only what validates against current Git, tracker, and pull request state. The contract governs conformance; the checkpoint supplies deferred requirements, rationale, and the next action, and a needed requirement missing from both is asked about, never inferred.
