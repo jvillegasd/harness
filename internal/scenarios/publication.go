@@ -50,6 +50,8 @@ func seedPublication(workspace, repo string) (*publication, error) {
 	}
 	steps := [][]string{
 		{workspace, "init", "-q", "--bare", origin},
+		// The bare origin must not run the operator's receive hooks, which a global core.hooksPath would otherwise apply to the approved branch's push.
+		{origin, "config", "core.hooksPath", "/dev/null"},
 		{repo, "-c", "user.name=scenario", "-c", "user.email=scenario@invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-q", "--allow-empty", "-m", "seed"},
 		{repo, "remote", "add", "origin", origin},
 		{repo, "-c", "core.hooksPath=/dev/null", "push", "-q", "-u", "origin", "HEAD"},

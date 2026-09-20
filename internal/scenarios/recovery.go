@@ -226,6 +226,9 @@ func hasRecovery(scenario map[string]any) bool {
 
 // liveSessionCount is how many model sessions a live scenario spends against the batch budget.
 func liveSessionCount(scenario map[string]any) int {
+	if hasPublicationGate(scenario) {
+		return 2
+	}
 	if truthy(scenario["sessions"]) {
 		return len(declaredSessions(scenario))
 	}

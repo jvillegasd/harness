@@ -70,6 +70,9 @@ func liveRoute(scenario map[string]any) (route, client string) {
 	if authority, ok := scenario["authority"].(map[string]any); ok && authority != nil {
 		return getString(authority, "route"), sessionClient(scenario)
 	}
+	if gate, ok := scenario["publication_gate"].(map[string]any); ok && gate != nil {
+		return "direct", sessionClient(scenario)
+	}
 	if truthy(scenario["sessions"]) {
 		return routeFresh, sessionClient(scenario)
 	}

@@ -18,6 +18,7 @@ concurrent-claim: unreviewed -> <attempt>
 checkpoint-continuation: unreviewed -> <attempt>
 worker-recovery: unreviewed -> <attempt>
 executor-authority: unreviewed -> <attempt>
+publication-gate: unreviewed -> <attempt>
 local-tooling: pass
 behavioral-acceptance:
   ask-read-only: unreviewed (no transcript review record; bind evidence_digest <digest>) [recording]
@@ -40,6 +41,7 @@ behavioral-acceptance:
   checkpoint-continuation: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
   worker-recovery: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
   executor-authority: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  publication-gate: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
 
 live coverage:
   ask-read-only: unreviewed (no transcript review record; bind evidence_digest <digest>) sessions=1 route=direct client=claude

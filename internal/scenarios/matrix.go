@@ -116,6 +116,9 @@ func validateMatrix(matrix map[string]any) []string {
 		if _, ok := scenario["authority"]; ok {
 			errors = append(errors, validateAuthority(where, scenario)...)
 		}
+		if _, ok := scenario["publication_gate"]; ok {
+			errors = append(errors, validatePublicationGate(where, scenario)...)
+		}
 		if mode(scenario) == "offline" && !truthy(scenario["check"]) {
 			errors = append(errors, fmt.Sprintf("%s: offline scenario needs a check command", where))
 		}
