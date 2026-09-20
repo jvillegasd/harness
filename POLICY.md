@@ -107,6 +107,27 @@ An agreement authorizes publication when the purpose is settled, the whole scope
 
 When part of a request is settled and part is not, route the whole request to `/proto`, naming in one line which part is unsettled, and open no pull request from it. A settled subtask never promotes the unresolved work travelling with it.
 
+<publishing-gate>
+
+```json
+{
+  "agreement_parts": ["purpose_settled", "scope_settled", "acceptance_evidence_named", "human_message_covers_scope"],
+  "agent_artifacts_satisfy_agreement": false,
+  "unsatisfied_agreement_action": "ask_for_acceptance",
+  "unsatisfied_agreement_publishes": false,
+  "mixed_scope_route": "/proto",
+  "mixed_scope_names_open_part": true,
+  "mixed_scope_publishes": false,
+  "settled_subtask_publishes_unresolved": false,
+  "open_implementation_route": "/proto",
+  "open_implementation_opens_pull_request": false,
+  "bounded_scope_route": "/ship",
+  "design_question_route": "native plan mode"
+}
+```
+
+</publishing-gate>
+
 A human's explicit invocation of a workflow, or approval at its named gate, authorizes exactly the writes that workflow names for it, and nothing beyond them: `/spec`'s one publication gate covers the spec and `/create-ticket`'s tickets, labels, and edges for that spec; a research batch's one `/create-ticket` confirmation covers its listed write set; `/proto` on a ticket confirms its claim once before writing it, whether invoked or routed; invoking `/land` covers the merge and the tracker transitions it applies, while its default-branch bookkeeping commit confirms once before writing; `/abandon`'s one confirmation covers its listed discard and tracker write set; `/address-review`'s one gate covers its batched writes.
 
 An approved `/ship` run authorizes, for its agreed scope and with no further confirmation, creating its task branch, committing, pushing, opening and refreshing its own pull request, the tracker transitions its steps name, and driving its required checks green. That authority reaches its own branch, pull request, and ticket, and nothing else.

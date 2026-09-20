@@ -699,6 +699,327 @@
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
+    },
+    {
+      "id": "gate-mixed-scope",
+      "title": "A half-settled request routes whole to /proto, names the open part, and publishes nothing",
+      "command": "proto",
+      "prompt": "Apply the policy's agreement gate to a request that is half settled: route the whole request to /proto, name the unsettled part in one line, open no pull request, and publish nothing.",
+      "mode": "offline",
+      "check": "probe:gate-mixed-scope",
+      "publication": true,
+      "artifacts": {
+        "tree_unchanged": false,
+        "commits": 0,
+        "push": false,
+        "pull_requests": 0,
+        "contains": [
+          {
+            "path": "artifacts/gate-mixed-scope.json",
+            "text": "\"mixed_scope_routes_to_proto\": true"
+          },
+          {
+            "path": "artifacts/gate-mixed-scope.json",
+            "text": "\"open_part_named\": true"
+          },
+          {
+            "path": "artifacts/gate-mixed-scope.json",
+            "text": "\"nothing_published\": true"
+          },
+          {
+            "path": "artifacts/gate-mixed-scope.json",
+            "text": "\"unresolved_work_withheld\": true"
+          },
+          {
+            "path": "artifacts/gate-mixed-scope.json",
+            "text": "\"settled_request_routes_to_ship\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "POLICY.md",
+        "internal/scenarios/probe_gates.go",
+        "internal/scenarios/publication.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    },
+    {
+      "id": "gate-self-authored",
+      "title": "An agent-authored ledger never satisfies the agreement test, so acceptance is requested and nothing is published",
+      "command": "proto",
+      "prompt": "Apply the policy's agreement gate when the only contract is an agent-written ledger: the ledger is the agent's own output and never supplies the agreement, so request acceptance and publish nothing.",
+      "mode": "offline",
+      "check": "probe:gate-self-authored",
+      "publication": true,
+      "artifacts": {
+        "tree_unchanged": false,
+        "commits": 0,
+        "push": false,
+        "pull_requests": 0,
+        "contains": [
+          {
+            "path": "artifacts/gate-self-authored.json",
+            "text": "\"agent_ledger_is_not_agreement\": true"
+          },
+          {
+            "path": "artifacts/gate-self-authored.json",
+            "text": "\"human_message_covers_scope\": true"
+          },
+          {
+            "path": "artifacts/gate-self-authored.json",
+            "text": "\"all_four_parts_required\": true"
+          },
+          {
+            "path": "artifacts/gate-self-authored.json",
+            "text": "\"acceptance_requested\": true"
+          },
+          {
+            "path": "artifacts/gate-self-authored.json",
+            "text": "\"nothing_published\": true"
+          },
+          {
+            "path": "artifacts/gate-self-authored.json",
+            "text": "\"self_finalized_ledger_never_promotes\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "POLICY.md",
+        "internal/scenarios/probe_gates.go",
+        "internal/scenarios/publication.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    },
+    {
+      "id": "feedback-local-first",
+      "title": "A full round without batch approval validates locally and commits, pushes, and edits nothing",
+      "command": "feedback",
+      "prompt": "Apply the /feedback batch gate to a full round that has no batch approval: validate locally, then commit, push, and edit nothing until the batch is approved.",
+      "mode": "offline",
+      "check": "probe:feedback-local-first",
+      "publication": true,
+      "artifacts": {
+        "tree_unchanged": false,
+        "commits": 0,
+        "push": false,
+        "pull_requests": 0,
+        "contains": [
+          {
+            "path": "artifacts/feedback-local-first.json",
+            "text": "\"full_round_validates_locally\": true"
+          },
+          {
+            "path": "artifacts/feedback-local-first.json",
+            "text": "\"unapproved_commits_nothing\": true"
+          },
+          {
+            "path": "artifacts/feedback-local-first.json",
+            "text": "\"unapproved_pushes_nothing\": true"
+          },
+          {
+            "path": "artifacts/feedback-local-first.json",
+            "text": "\"unapproved_edits_nothing\": true"
+          },
+          {
+            "path": "artifacts/feedback-local-first.json",
+            "text": "\"unapproved_publishes_nothing\": true"
+          },
+          {
+            "path": "artifacts/feedback-local-first.json",
+            "text": "\"deferred_round_publishes_nothing\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "commands/feedback.md",
+        "internal/scenarios/probe_gates.go",
+        "internal/scenarios/publication.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    },
+    {
+      "id": "feedback-approved-batch",
+      "title": "An approved batch publishes to the same branch and pull request and opens no second one",
+      "command": "feedback",
+      "prompt": "Apply the /feedback batch gate to an approved batch: commit, push the same branch, refresh the existing pull request, open no second one, and never carry the approval to the next batch.",
+      "mode": "offline",
+      "check": "probe:feedback-approved-batch",
+      "publication": true,
+      "artifacts": {
+        "tree_unchanged": false,
+        "pull_requests": 0,
+        "forge_forbidden": [
+          "pr create"
+        ],
+        "contains": [
+          {
+            "path": "artifacts/feedback-approved-batch.json",
+            "text": "\"approved_commits\": true"
+          },
+          {
+            "path": "artifacts/feedback-approved-batch.json",
+            "text": "\"approved_pushes_same_branch\": true"
+          },
+          {
+            "path": "artifacts/feedback-approved-batch.json",
+            "text": "\"approved_refreshes_existing_pull_request\": true"
+          },
+          {
+            "path": "artifacts/feedback-approved-batch.json",
+            "text": "\"approved_opens_no_second_pull_request\": true"
+          },
+          {
+            "path": "artifacts/feedback-approved-batch.json",
+            "text": "\"approval_does_not_carry\": true"
+          },
+          {
+            "path": "artifacts/feedback-approved-batch.json",
+            "text": "\"approved_drives_checks\": true"
+          },
+          {
+            "path": "artifacts/feedback-approved-batch.json",
+            "text": "\"approved_publishes\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "commands/feedback.md",
+        "internal/scenarios/probe_gates.go",
+        "internal/scenarios/publication.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    },
+    {
+      "id": "route-open-shape",
+      "title": "An open implementation request routes to /proto, a bounded one to /ship, and a design question stays in native plan mode",
+      "command": "proto",
+      "prompt": "Apply the policy's routing table: an open implementation request routes to /proto, a bounded request to /ship, and a design question with no build intent stays in native plan mode.",
+      "mode": "offline",
+      "check": "probe:route-open-shape",
+      "artifacts": {
+        "tree_unchanged": false,
+        "contains": [
+          {
+            "path": "artifacts/route-open-shape.json",
+            "text": "\"open_implementation_routes_to_proto\": true"
+          },
+          {
+            "path": "artifacts/route-open-shape.json",
+            "text": "\"open_implementation_opens_no_pull_request\": true"
+          },
+          {
+            "path": "artifacts/route-open-shape.json",
+            "text": "\"bounded_scope_routes_to_ship\": true"
+          },
+          {
+            "path": "artifacts/route-open-shape.json",
+            "text": "\"design_question_stays_in_plan_mode\": true"
+          },
+          {
+            "path": "artifacts/route-open-shape.json",
+            "text": "\"mixed_scope_routes_to_proto\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "POLICY.md",
+        "internal/scenarios/probe_gates.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    },
+    {
+      "id": "review-before-commit",
+      "title": "A recorded transcript shows the first review precedes the first commit",
+      "command": "ship",
+      "prompt": "Judge a recorded /ship transcript: the first review precedes the first commit, and a commit-first or review-free transcript is refused. A later repair round after a commit stays compliant.",
+      "mode": "offline",
+      "check": "probe:review-before-commit",
+      "publication": true,
+      "artifacts": {
+        "tree_unchanged": false,
+        "commits": 0,
+        "push": false,
+        "pull_requests": 0,
+        "contains": [
+          {
+            "path": "artifacts/review-before-commit.json",
+            "text": "\"review_before_commit\": true"
+          },
+          {
+            "path": "artifacts/review-before-commit.json",
+            "text": "\"commit_first_refused\": true"
+          },
+          {
+            "path": "artifacts/review-before-commit.json",
+            "text": "\"transcript_ordered\": true"
+          },
+          {
+            "path": "artifacts/review-before-commit.json",
+            "text": "\"no_review_refused\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "commands/ship.md",
+        "scenarios/fixtures/review-before-commit/transcript.jsonl",
+        "internal/scenarios/probe_gates.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/publication.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
     }
   ]
 }
