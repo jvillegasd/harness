@@ -10,21 +10,37 @@ import (
 	"strings"
 )
 
-// reviewed reports whether the attempt carries a transcript review record.
-func reviewed(attempt string) bool {
+// reviewAccepted reports whether the attempt carries an affirmative, evidence-bound human review, and why not when it does not. The current evidence digest is passed so evaluate can append the value a new review must bind to. A legacy boolean-only record, a rejected or malformed one, and one whose input or evidence digest no longer matches all require a new review rather than retaining acceptance.
+func reviewAccepted(attempt, currentDigest, evidence string) (bool, string) {
 	raw, err := os.ReadFile(filepath.Join(attempt, "review.json"))
 	if err != nil {
-		return false
+		return false, "no transcript review record"
 	}
-	data, err := decodeJSON(raw)
+	decoded, err := decodeJSON(raw)
 	if err != nil {
-		return false
+		return false, "unreadable transcript review record"
 	}
-	object, ok := data.(map[string]any)
+	object, ok := decoded.(map[string]any)
 	if !ok {
-		return false
+		return false, "transcript review record is not an object"
 	}
-	return truthy(object["reviewed"])
+	approved, isBool := object["reviewed"].(bool)
+	if !isBool || !approved {
+		return false, "transcript review was not accepted"
+	}
+	if strings.TrimSpace(getString(object, "reviewer")) == "" {
+		return false, "transcript review names no reviewer"
+	}
+	if strings.TrimSpace(getString(object, "observations")) == "" {
+		return false, "transcript review records no observations"
+	}
+	if getString(object, "input_digest") != currentDigest {
+		return false, "transcript review is not bound to the current inputs"
+	}
+	if getString(object, "evidence_digest") != evidence {
+		return false, "transcript review does not match the retained evidence"
+	}
+	return true, ""
 }
 
 // evaluate returns the state of one retained attempt and the reasons it did not pass.
@@ -70,8 +86,9 @@ func evaluate(attempt string, scenario map[string]any, currentDigest string) (st
 		}
 		return "fail", []string{"artifact checks failed: " + detail}
 	}
-	if !reviewed(attempt) {
-		return "unreviewed", []string{"no transcript review record"}
+	evidence := evidenceDigest(attempt)
+	if ok, reason := reviewAccepted(attempt, currentDigest, evidence); !ok {
+		return "unreviewed", []string{reason + "; bind evidence_digest " + evidence}
 	}
 	return "pass", nil
 }
