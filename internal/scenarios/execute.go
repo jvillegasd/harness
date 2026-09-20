@@ -101,10 +101,12 @@ func runCheck(scenario map[string]any, repo, root string, env []string, events, 
 	var stdout, stderr string
 	code := 0
 	if name, ok := strings.CutPrefix(command, "probe:"); ok {
-		if err := runProbe(name, repo, root); err != nil {
+		var out bytes.Buffer
+		if err := runProbe(name, repo, root, &out); err != nil {
 			stderr = err.Error()
 			code = 1
 		}
+		stdout = out.String()
 	} else {
 		cmd := exec.Command("/bin/sh", "-c", command)
 		cmd.Dir, cmd.Env = repo, env
@@ -261,7 +263,11 @@ func paidSessions(outRoot string) int {
 			continue
 		}
 		if getString(readMetrics(filepath.Dir(path)), "terminal_status") != "model-unavailable" {
-			count++
+			sessions := 1
+			if count, ok := toNumber(provenance["sessions"]); ok && count >= 1 {
+				sessions = int(count)
+			}
+			count += sessions
 		}
 	}
 	return count
@@ -300,6 +306,9 @@ func attemptPaths(outRoot, scenarioID string) []string {
 }
 
 func runOne(scenario map[string]any, root, outRoot, fixturesRoot string, allowPaid bool, limit *int) (string, string, error) {
+	if declaration, ok := scenario["concurrent"].(map[string]any); ok {
+		return runConcurrent(scenario, declaration, root, outRoot, allowPaid, limit)
+	}
 	digest := scenarioDigest(scenario, root, fixturesRoot)
 	fixture := filepath.Join(fixturesRoot, getString(scenario, "id"))
 	fixtureInfo, fixtureErr := os.Stat(fixture)

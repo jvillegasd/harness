@@ -26,6 +26,19 @@ Load and follow `ponytail`. Build only what the next feedback round needs.
 5. Create the requirements ledger file in the branch's worktree for durable checkpoint references, unless step 2 already did. Mark each initial requirement assumed or confirmed.
 6. Read `workflow-checkpoint`. A fresh branch carries no checkpoint yet; when resuming an existing prototype branch, derive the topic key from the branch, retrieve the checkpoint, and reuse only what validated against current Git and tracker state. A requirement the work needs that is missing from the validated record and the ledger is asked about, never inferred.
 
+<claim>
+
+```json
+{
+  "claim": {
+    "reread_before_write": true,
+    "requires_confirmation": true
+  }
+}
+```
+
+</claim>
+
 ## The loop
 
 Each iteration:

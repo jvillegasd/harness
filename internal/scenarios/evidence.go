@@ -72,6 +72,10 @@ func evaluate(attempt string, scenario map[string]any, currentDigest string) (st
 	if getString(metrics, "terminal_status") == "interrupted" {
 		return "interrupted", []string{"session interrupted"}
 	}
+	// A run that never reached a judgeable state is unverified, not a failed check: the barrier, a contender, or the client was missing, so nothing about ownership was measured.
+	if reason := getString(artifacts, "incomplete_reason"); reason != "" {
+		return "incomplete", []string{reason}
+	}
 	if !truthy(artifacts["ok"]) {
 		var failed []string
 		for _, raw := range asList(artifacts["results"]) {

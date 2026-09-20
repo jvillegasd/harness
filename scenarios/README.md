@@ -33,7 +33,7 @@ Each attempt under `attempts/<id>/<stamp>-<digest>/` retains:
 | `transcript.jsonl` | The recorded session or command output. |
 | `metrics.json` | Normalized efficiency: tokens, tool calls, output bytes, wall time, model, terminal status. |
 | `status.json` | The state and reasons at run time, and the evidence digest a review must bind to. `report` computes the current state. |
-| `forge.log` | Every `gh` call the attempt made, one per line. Written only under a publication fixture. |
+| `forge.log` | Every `gh` call the attempt made or a claim shim refused, one per line. Written under a publication fixture, or by a concurrent-claim attempt. |
 | `review.json` | The human review. Written by hand after reading the transcript, never by a command. |
 
 ## States
@@ -42,7 +42,7 @@ Each attempt under `attempts/<id>/<stamp>-<digest>/` retains:
 
 | State | Meaning |
 | --- | --- |
-| `incomplete` | A required evidence file is missing or unreadable. |
+| `incomplete` | A required evidence file is missing or unreadable, or a concurrent race never reached a judgeable state (a failed barrier, an absent contender, an unavailable client, or a missing claim confirmation). Checked first for missing evidence and again after `interrupted`. |
 | `stale` | The scenario or a declared harness input changed since the attempt. |
 | `interrupted` | The recorded run was killed by a signal rather than failing on its own. |
 | `fail` | An artifact check failed, including a blocked forge call. |
@@ -98,6 +98,27 @@ Side-effect assertions are valid only under a publication fixture:
 | `forge_forbidden: [<op>, ...]` | No logged call starts with a listed operation. Each operation is its own result. |
 
 Operations match on whole words, so `pr create` does not match `pr created`.
+
+## Simultaneous claims
+
+A ticket claim is a read then a write with no atomic owner token, so two sessions that both read `ready-for-agent` before either writes `in-progress` can both believe they own the ticket. `matrix.claims.json` declares that race as a live scenario: two independent model sessions claim one disposable ticket through an instrumented `gh`, and the recorded order decides ownership rather than either session's report.
+
+Each contender runs in its own workspace and shares one disposable tracker. The tracker's `gh` records every read and write in order, and before the first write it waits, up to a `barrier_seconds` bound (600 seconds by default), until every contender has read, so a synchronized run proves both initial reads preceded the competing writes and observed the ready state. Any other `gh` call is logged and refused, so a session that tries to publish is recorded rather than silently succeeding. Ownership is judged from the tracker operations and the first implementation action, the marker the claim protocol tells a contender to create: exactly one contender reaching implementation is the only accepted result, a duplicate winner or a rival that changes another contender's workspace after that contender's session exited is rejected, and a failed barrier, an absent contender, an unavailable client, or a missing prototype claim confirmation stays incomplete rather than a rejection or a success. An unconfirmed `/proto` claim is unverified, never an exclusion.
+
+The model-session experiment spends one session per contender against the batch cap and needs `--allow-paid`:
+
+```sh
+harness scenarios validate --matrix scenarios/matrix.claims.json
+harness scenarios run --matrix scenarios/matrix.claims.json --allow-paid --cap 4
+```
+
+The default matrix carries the offline `concurrent-claim` scenario instead. It runs the same oracle over independently launched contender processes and over recorded sequences, retains the synchronized run's ordered events in the attempt transcript, and asserts the classification in `artifacts/concurrent-claim.json`. Run it with `harness scenarios run --scenario concurrent-claim`.
+
+### Observed result and limits
+
+On this revision the offline scenario passes: a serialized launch leaves one winner, a synchronized launch duplicates only when both reads precede the writes, loser interference and a failed barrier are rejected, an absent contender and an unavailable client stay incomplete, and an unconfirmed prototype claim is unverified. No real ticket, forge, or remote repository is touched; every tracker call is the scenario's own instrumented `gh`, and any other call is refused.
+
+The limits are those of the fixture, not a claim about a real session. The offline contenders are scripted claim drivers, not models, so a duplicate they expose shows what the protocol order admits, not what a model session does. Implementation is read from the marker the prompt tells a session to create, so a session that implements elsewhere is not observed, and interference is detected only when a rival changes a workspace after that contender's session exited, so a change made during the run is missed. The model-session experiment has not been run here: no budget was approved, so `claim-race-ship` and `claim-race-proto` are unrun and unverified. A retained duplicate-winner result is a failure of the ownership expectation; it never promotes a locking design, which is a separate evidence-driven contract.
 
 ## Paid execution
 

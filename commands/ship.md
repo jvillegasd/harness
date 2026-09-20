@@ -61,6 +61,19 @@ Inspect `git status --short` before creating anything. If pre-existing changes f
 5. When tracker-bound, claim mapped `ready_for_agent` as mapped `in_progress`; skip when trackerless. If already `in_progress`, continue without a write only for a `/proto` ledger reusing its existing branch whose ledger claim record names this ticket and this branch. Otherwise another run claimed it: abort. Branch names alone cannot establish ownership. For local markdown, read `local-tracker` and commit the transition on the default branch, outside this diff. On a claim-race abort, retire only the worktree this run created. Never retire a reused prototype worktree; `/proto` owns its discard decision.
 6. Read `workflow-checkpoint`. Derive the topic key from the branch and retrieve the checkpoint. For a `/proto` ledger reusing the prototype's branch, validate it against current Git, tracker, and pull request state and reuse only what survives; a fresh branch has no checkpoint. A requirement the work needs that is missing from the validated record and the contract is asked about, never inferred.
 
+<claim>
+
+```json
+{
+  "claim": {
+    "read_before_write": true,
+    "abort_when_claimed": true
+  }
+}
+```
+
+</claim>
+
 ## Delivery loop
 
 1. Treat the contract's test seams as pre-agreed. Use `tdd` one red/green vertical slice at a time and drive the oracle ladder in the policy to green, preferring the narrowest variant of each rung. On a UI change, build from the project's existing styling layer rather than a fresh palette.
