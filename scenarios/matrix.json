@@ -1317,6 +1317,90 @@
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
       ]
+    },
+    {
+      "id": "publication-gate",
+      "title": "A publication-gate probe accepts a compliant run, rejects an unauthorized commit, push, or forge publication from either branch, and reports a failed barrier or unavailable route as unverified",
+      "command": "feedback",
+      "prompt": "Classify publication-gate runs from Git and forge side effects: before approval every non-read forge call and any commit or push is a violation, after approval only reads and the pull-request refresh are authorized, an approved batch that commits, pushes, and refreshes the pull request proves the barrier, and a failed barrier or unavailable route is unverified.",
+      "mode": "offline",
+      "check": "probe:publication-gate",
+      "artifacts": {
+        "tree_unchanged": false,
+        "present": [
+          "artifacts/publication-gate.json"
+        ],
+        "contains": [
+          {
+            "path": "artifacts/publication-gate.json",
+            "text": "\"compliant_accepted\": true"
+          },
+          {
+            "path": "artifacts/publication-gate.json",
+            "text": "\"read_only_forge_allowed\": true"
+          },
+          {
+            "path": "artifacts/publication-gate.json",
+            "text": "\"global_option_read_allowed\": true"
+          },
+          {
+            "path": "artifacts/publication-gate.json",
+            "text": "\"unauthorized_commit_detected\": true"
+          },
+          {
+            "path": "artifacts/publication-gate.json",
+            "text": "\"unauthorized_push_detected\": true"
+          },
+          {
+            "path": "artifacts/publication-gate.json",
+            "text": "\"unauthorized_edit_detected\": true"
+          },
+          {
+            "path": "artifacts/publication-gate.json",
+            "text": "\"unauthorized_tracker_detected\": true"
+          },
+          {
+            "path": "artifacts/publication-gate.json",
+            "text": "\"approved_tracker_rejected\": true"
+          },
+          {
+            "path": "artifacts/publication-gate.json",
+            "text": "\"second_pull_request_rejected\": true"
+          },
+          {
+            "path": "artifacts/publication-gate.json",
+            "text": "\"merge_rejected\": true"
+          },
+          {
+            "path": "artifacts/publication-gate.json",
+            "text": "\"failed_barrier_unverified\": true"
+          },
+          {
+            "path": "artifacts/publication-gate.json",
+            "text": "\"unavailable_route_unverified\": true"
+          },
+          {
+            "path": "artifacts/publication-gate.json",
+            "text": "\"missing_install_unverified\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "internal/scenarios/probe_publication_gate.go",
+        "internal/scenarios/publication_gate.go",
+        "internal/scenarios/publication.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/recovery.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
     }
   ]
 }
