@@ -69,7 +69,7 @@ type result struct {
 	code           int
 }
 
-// runBinary runs the built harness in dir with the inherited environment, which the scenario runner needs for git and go.
+// runBinary runs the built harness in dir with the inherited environment.
 func runBinary(t *testing.T, dir string, args ...string) result {
 	t.Helper()
 	cmd := exec.Command(binary, args...)

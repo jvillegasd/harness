@@ -8,7 +8,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -177,38 +176,6 @@ func assertNoNewUpdates(t *testing.T, f *fakeAPI, run func() error) {
 	}
 }
 
-// writeScenarioArtifact feeds the lifecycle scenario its labels.json. It is a
-// no-op outside the scenario runner.
-func writeScenarioArtifact(t *testing.T, f *fakeAPI) {
-	t.Helper()
-	repo := os.Getenv("SCENARIO_REPO")
-	if repo == "" {
-		return
-	}
-	transitions := make([]map[string]any, 0, len(f.updates))
-	for _, call := range f.updates {
-		entry := map[string]any{"number": call.Number}
-		if call.Labels != nil {
-			entry["labels"] = call.Labels
-		}
-		if call.State != "" {
-			entry["state"] = call.State
-		}
-		transitions = append(transitions, entry)
-	}
-	dir := filepath.Join(repo, "artifacts")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	data, err := json.MarshalIndent(transitions, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "labels.json"), append(data, '\n'), 0o644); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestPlanningOnlyTicketNotPromoted(t *testing.T) {
 	f := newFake(map[int]*issue{1: newIssue(1, "open")}, nil, nil, nil, nil)
 	if err := reconcileFrontier(f, 1, defaultLabels(), false); err != nil {
@@ -249,7 +216,6 @@ func TestBlockedTicketBecomesReadyWhenBlockerCloses(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertUpdates(t, f, "2 labels="+labels["ready_for_agent"])
-	writeScenarioArtifact(t, f)
 }
 
 func TestReadyTicketBecomesBlockedWhileBlockerOpen(t *testing.T) {

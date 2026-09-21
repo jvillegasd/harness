@@ -10,7 +10,6 @@ import (
 	"github.com/jvillegasd/harness/internal/dash"
 	"github.com/jvillegasd/harness/internal/install"
 	"github.com/jvillegasd/harness/internal/models"
-	"github.com/jvillegasd/harness/internal/scenarios"
 	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/state"
 	"github.com/jvillegasd/harness/internal/statusline"
@@ -24,7 +23,6 @@ const usage = `Usage: harness <command> [arguments]
 
 Commands:
   install    Install, reconcile, or remove the harness on this machine
-  scenarios  Validate, run, and compare the artifact-based scenarios
   bench      Compare the session population before and after a harness change
   skills     Manage the reviewed third-party skill locks
   statusline Print the Claude Code status line for the payload on stdin
@@ -42,8 +40,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "install":
 		return install.Command(args[1:], stdout, stderr)
-	case "scenarios":
-		return scenarios.Command(args[1:], stdout, stderr)
 	case "bench":
 		return bench.Command(args[1:], stdout, stderr)
 	case "skills":

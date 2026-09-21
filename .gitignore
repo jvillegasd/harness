@@ -18,6 +18,6 @@ bench/cohorts.json
 # Generated client agent definitions, linked into each client by harness install.
 .generated/
 
-# Scenario run output, retained locally.
+# Retained output from the retired experiment runner stays private.
 scenarios/attempts/
 *.backup.*
