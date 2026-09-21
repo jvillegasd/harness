@@ -152,11 +152,16 @@ func TestDispatchRunsEveryRoleThroughOrca(t *testing.T) {
 	}
 
 	// A role on the client this session itself runs was refused as native; it now takes the same route as any other, and its rendered agent is still what carries the model.
-	ok(t, withAgent(t, base, "claude", "reviewer-a", "inherit", "", func() result {
-		return runDispatch(t, base, orcaEnv(), "reviewer-a", "--prompt-file", prompt, "--worktree", wt)
-	}), "same-client role")
-	if want := "orca terminal create --worktree path:" + wt + " --title harness dispatch reviewer-a --command 'claude' '--agent' 'reviewer-a' --json"; !strings.Contains(shimLog(t, base), want) {
-		t.Errorf("log lacks %q:\n%s", want, shimLog(t, base))
+	for _, role := range []string{"reviewer-a", "recon"} {
+		r := ok(t, withAgent(t, base, "claude", role, "inherit", "", func() result {
+			return runDispatch(t, base, orcaEnv(), role, "--prompt-file", prompt, "--worktree", wt)
+		}), "same-client "+role)
+		if r.stdout != "worker said\n" {
+			t.Errorf("%s stdout = %q", role, r.stdout)
+		}
+		if want := "orca terminal create --worktree path:" + wt + " --title harness dispatch " + role + " --command 'claude' '--agent' '" + role + "' --json"; !strings.Contains(shimLog(t, base), want) {
+			t.Errorf("log lacks %q:\n%s", want, shimLog(t, base))
+		}
 	}
 
 	renderAgent(t, base, "opencode", "reviewer-b", "openai/gpt-5.6-sol", "")

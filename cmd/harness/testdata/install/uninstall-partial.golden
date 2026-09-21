@@ -42,6 +42,7 @@ C .claude/agents/executor.md
 F .claude/agents/mine.md
   |private agent
   |
+C .claude/agents/recon.md
 L .claude/agents/retired.md -> $CHECKOUT/.generated/agents/claude/retired.md
 C .claude/agents/review-refuter.md
 C .claude/agents/reviewer-a.md
@@ -698,6 +699,14 @@ F .harness/state.json
   |    },
   |    {
   |      "path": "$HOME/.claude/agents/executor.md",
+  |      "component": "agents",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/agents/recon.md",
   |      "component": "agents",
   |      "clients": [
   |        "claude"

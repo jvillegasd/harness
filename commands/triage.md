@@ -3,7 +3,7 @@ description: Turn a ticket or a production error signal into an evidence-backed 
 argument-hint: "[ticket id, URL, pasted ticket, or error signal]"
 ---
 
-Analysis only. No file writes, code edits, commits, or other side-effecting commands. Read-only inspection is allowed.
+Analysis only. No file writes, code edits, commits, or other side-effecting commands, apart from recon launch prompts written outside the worktree and Orca operations needed to launch, recover, and release read-only recon workers. Read-only inspection is allowed.
 
 <user_input>
 $ARGUMENTS
@@ -23,13 +23,13 @@ Accept a tracker item, pasted ticket, or production error signal for a bug, feat
 
 3. Supplement from the tracker only when the input is an id or URL with no pasted body. Where the tracker is local markdown, read the `local-tracker` skill: the id resolves to a ticket file, and reading it means reading its `## Comments` too.
 
-4. Investigate the code to ground the analysis, citing `path:line`. Delegate the recon to read-only subagents by default so file contents stay out of this context and only citations in the `## Recon citations` shape come back, each verified there before reuse; read directly only when the item already names the file. No read-only role is rendered for recon, so that bound is the subagent's prompt and its client's own defaults rather than an enforced permission. Then confirm or refute the root-cause hypothesis with at most two further evidence queries.
+4. Investigate the code to ground the analysis, citing `path:line`. Delegate the recon by default so file contents stay out of this context and only citations in the `## Recon citations` shape come back, each verified there before reuse; read directly only when the item already names the file. Launch each track as the named `recon` role, never as a client-native subagent: write its question to a file outside the worktree and run `harness dispatch recon --prompt-file <path> --worktree <path>`, whose stdout is that track's report. On `read_failed`, retrieve the existing dispatch's output using the command in the failure detail and release it through Orca; if retrieval remains unavailable, preserve the dispatch and escalate. On `outcome_unknown`, or an interrupted dispatch with no reason, a worker may still be running: preserve its identity and escalate without launching another track. On other failures, recon is not a required review, so read in this context instead and disclose that the track ran undelegated. Then confirm or refute the root-cause hypothesis with at most two further evidence queries.
 
 5. For remaining load-bearing ambiguity, read `grilling` and self-grill against precedent, history, and `evidence` before escalating. Stop if the premise is refuted. Batch only surviving questions into one stop under the escalation contract.
 
 ## Recon citations
 
-A recon subagent that searches the repository ends on a text message holding only its findings, one per line in the shape `path:line | symbol | mechanism`: the cited location, the named symbol, a bare identifier, that location carries, and the mechanism it is claimed to show. A trailing tool result is not the report: re-run that track once, and if it again ends without one, record it as no data, a `no data` row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`, never as refuted or as a track that found nothing.
+A recon worker that searches the repository ends on a text message holding only its findings, one per line in the shape `path:line | symbol | mechanism`: the cited location, the named symbol, a bare identifier, that location carries, and the mechanism it is claimed to show. A trailing tool result is not the report: re-run that track once, and if it again ends without one, record it as no data, a `no data` row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`, never as refuted or as a track that found nothing.
 
 Before reusing a citation, read only the cited line and confirm the path resolves inside the repository and that line carries the named symbol as a whole identifier. That check grounds the location only, never the claimed runtime mechanism: a load-bearing mechanism claim still goes through `evidence`.
 

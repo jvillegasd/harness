@@ -3,8 +3,11 @@ package main
 import (
 	"encoding/json"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/jvillegasd/harness/internal/models"
 )
 
 // modelsBase is a sandbox whose shims list two OpenCode models and whose orca shim is absent until a test adds it.
@@ -258,5 +261,26 @@ func TestInstallRefusesATrackedPerRoleAssignment(t *testing.T) {
 	writeMode(t, path, string(data)+"\n", 0o644)
 	if r := runInstaller(t, base, "--skip-packages"); r.code == 0 || !strings.Contains(r.stdout+r.stderr, "chosen with `harness models`") {
 		t.Errorf("exit %d, output %q%q", r.code, r.stdout, r.stderr)
+	}
+}
+
+// TestEveryAssignedRoleIsDispatchable ties rendered roles to the CLI registry and preset assignments.
+func TestEveryAssignedRoleIsDispatchable(t *testing.T) {
+	var config struct {
+		Roles map[string]struct{} `json:"roles"`
+	}
+	raw := readRepo(t, "clients/assignments.json")
+	if err := json.Unmarshal([]byte(raw), &config); err != nil {
+		t.Fatal(err)
+	}
+	for role := range config.Roles {
+		if !slices.Contains(models.Roles, role) {
+			t.Errorf("clients/assignments.json assigns %q but models.Roles omits it, so harness dispatch %s is bad_input", role, role)
+		}
+		for preset, table := range models.Presets {
+			if _, ok := table[role]; !ok {
+				t.Errorf("preset %q has no assignment for %q, so Resolve yields an empty client", preset, role)
+			}
+		}
 	}
 }
