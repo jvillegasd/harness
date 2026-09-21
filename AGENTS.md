@@ -22,7 +22,6 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 | `internal/bench/` | The session-population comparison behind `harness bench` |
 | `internal/agents/` | The role-agent renderer the installer calls in-process |
 | `internal/models/` | The per-machine role model presets behind `harness models`, and the cross-client launcher behind `harness dispatch` |
-| `internal/scenarios/` | The artifact-based scenario runner and probes behind `harness scenarios` |
 | `internal/dash/` | The live terminal dashboard behind `harness dash` |
 | `POLICY.md` | The vendor-neutral global policy linked into each client |
 | `commands/` | The workflow commands, invoked as `/name` in Claude Code and OpenCode |
@@ -31,7 +30,6 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 | `roles/` | Canonical roles no skill owns |
 | `aliases.sh` | The managed yolo-mode shell aliases |
 | `bench/` | Cohort config and the manual for `harness bench` |
-| `scenarios/` | The scenario matrix, fixtures, and the manual for `harness scenarios` |
 | `docs/agents/` | This repository's tracker and lifecycle configuration |
 | `.github/workflows/`, `.github/scripts/` | The agent-lifecycle workflow and reconciler |
 | `skills-lock.json` | Reviewed third-party skill locks |

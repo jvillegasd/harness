@@ -1,1 +1,0 @@
-{"treatment":"dispatch","available":true,"events":[{"tool":"Bash","command":"harness dispatch executor --prompt-file /tmp/delivery.md","succeeded":true}],"seed_pass":true,"acceptance_pass":true}

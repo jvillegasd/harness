@@ -99,11 +99,6 @@ func TestCommandHelpMatrix(t *testing.T) {
 	commands := [][]string{
 		{},
 		{"install"},
-		{"scenarios"},
-		{"scenarios", "validate"},
-		{"scenarios", "run"},
-		{"scenarios", "report"},
-		{"scenarios", "compare"},
 		{"bench"},
 		{"skills"},
 		{"skills", "add"},
@@ -156,12 +151,6 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"install", "--client", "claude"},
 		{"install", "--uninstall", "--client", "cursor"},
 		{"install", "--uninstall", "--component"},
-		{"scenarios"},
-		{"scenarios", "bogus"},
-		{"scenarios", "compare"},
-		{"scenarios", "run", "--cap", "2"},
-		{"scenarios", "run", "--allow-paid", "--cap", "0"},
-		{"scenarios", "validate", "--root", "."},
 		{"bench"},
 		{"bench", "--split", "2026-01-01", "extra"},
 		{"bench", "--bogus"},
@@ -204,35 +193,36 @@ func TestCommandInvocationMatrix(t *testing.T) {
 	}
 }
 
-// TestScenariosUnknownSelectionWritesNoAttempt proves the narrowed run rejects a selection that matches nothing before creating an attempt directory.
-func TestScenariosUnknownSelectionWritesNoAttempt(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	out := filepath.Join(t.TempDir(), "attempts")
-	r := runBinary(t, root, "scenarios", "run", "--out", out, "--scenario", "no-such-scenario")
-	if r.code != 2 {
-		t.Fatalf("unknown selection exited %d, want 2: %s", r.code, r.stderr)
-	}
-	if _, err := os.Stat(out); err == nil {
-		t.Fatalf("unknown selection created %s", out)
-	}
-}
-
 // TestOperationalFailuresExitOne covers the third status: a command that ran and failed exits 1, not 2.
 func TestOperationalFailuresExitOne(t *testing.T) {
 	outside := t.TempDir()
 	for _, args := range [][]string{
 		{"skills", "verify"},
 		{"bench", "--split", "2026-01-01", "--home", t.TempDir()},
-		{"scenarios", "validate"},
 		{"dash"},
 	} {
 		if r := runBinary(t, outside, args...); r.code != 1 {
 			t.Errorf("%v outside a checkout or configured repository exited %d, want 1 (stderr %q)", args, r.code, r.stderr)
 		}
 	}
+}
+
+// TestScenariosCommandIsGone keeps the retired experiment command on the ordinary unknown-command path.
+func TestScenariosCommandIsGone(t *testing.T) {
+	if r := runBinary(t, t.TempDir(), "--help"); strings.Contains(r.stdout, "  scenarios ") {
+		t.Fatalf("help still lists scenarios: %q", r.stdout)
+	}
+	c := runMatrixCase(t, []string{"scenarios"})
+	if c.result.timedOut {
+		t.Fatal("unknown command read stdin and hung")
+	}
+	if c.result.code != 2 || !strings.Contains(c.result.stderr, `unknown command "scenarios"`) {
+		t.Fatalf("scenarios exited %d with stderr %q", c.result.code, c.result.stderr)
+	}
+	if c.result.stdout != "" {
+		t.Fatalf("unknown command wrote to stdout: %q", c.result.stdout)
+	}
+	c.assertClean(t)
 }
 
 // TestAgentsCommandIsGone keeps role-agent rendering an install step: the retired command is unknown and unlisted.
