@@ -130,6 +130,21 @@ func validateMatrix(matrix map[string]any) []string {
 	return errors
 }
 
+// validateMatrixAt adds checkout-dependent validation for an optional delivery declaration.
+func validateMatrixAt(root string, matrix map[string]any) []string {
+	errors := validateMatrix(matrix)
+	if raw, ok := matrix["delivery"]; ok {
+		declaration, ok := raw.(map[string]any)
+		if !ok {
+			return append(errors, "delivery must be an object")
+		}
+		for _, problem := range validateDelivery(root, declaration) {
+			errors = append(errors, "delivery: "+problem)
+		}
+	}
+	return errors
+}
+
 // validateConcurrent checks a simultaneous-claim declaration before any session runs: at least two rivals with distinct, shell-safe ids and, for a live race, a prompt each, because a race needs two contenders and an empty prompt would spend a session on nothing.
 func validateConcurrent(where string, scenario map[string]any, value any) []string {
 	declaration, ok := value.(map[string]any)

@@ -10,7 +10,7 @@ import (
 )
 
 func report(matrix map[string]any, outRoot, root string) string {
-	errors := validateMatrix(matrix)
+	errors := validateMatrixAt(root, matrix)
 	var lines []string
 	if len(errors) == 0 {
 		lines = append(lines, "local-tooling: pass")
