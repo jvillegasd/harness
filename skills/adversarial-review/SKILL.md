@@ -12,15 +12,22 @@ Withhold implementation rationale so reviewers judge the diff independently.
 
 ## Invocation
 
-Launch each reviewer as its named agent, in parallel, each with a fresh context: `reviewer-a` and `reviewer-b` in Claude Code and OpenCode. The installer generates them from `roles/reviewer-a.md` and `roles/reviewer-b.md` beside this skill, which own each reviewer's standing instructions, lenses, and output format.
+Launch each reviewer as its named agent, in parallel, each with a fresh context: `reviewer-a` and `reviewer-b`. The installer generates them from `roles/reviewer-a.md` and `roles/reviewer-b.md` beside this skill, which own each reviewer's standing instructions, lenses, and output format.
 
 Never pass the conversation, implementation rationale, implementation plan, or prior rounds.
 
-Launch every role, reviewers, the refuter, and a delegated `executor` alike, by one rule. Resolve it with `harness models resolve <role> --session <this client> --json`. When its `route` is `native`, launch the named agent. Otherwise write the launch prompt to a file outside the worktree and run `harness dispatch <role> --prompt-file <path> --worktree <path>` in the background or with the client's longest tool timeout, since a run can take up to an hour; its stdout is the role's output, produced by the role's own agent on its assigned client. When dispatch exits nonzero, its JSON `reason` says why. On `outcome_unknown`, or a run killed before printing any reason, an Orca worker may still be running: escalate, and never fall back beside it. On any other reason, fall back on the session's own client and model: launch the named agent for a reviewer or the refuter, and do an executor's slice inline, as the policy says; first inspect `git status` in the worktree, and escalate rather than redo when the failed run left changes. Disclose the dispatch reason under the pull request's `## Checks`, or in the requirements ledger under `/proto`.
+Launch every role, reviewers, the refuter, and a delegated `executor` alike, by one rule: write the launch prompt to a file outside the worktree and run `harness dispatch <role> --prompt-file <path> --worktree <path>`, in the background or with the client's longest tool timeout, since a run can take up to an hour. Its stdout is the role's output, produced by the role's own agent on its assigned client, which `harness models resolve <role> --json` names. Orca is the only runtime, so a role assigned to this session's own client takes that same command; never launch a role as a client-native agent instead.
 
-In an OpenCode session, launch native reviewers with the task tool's `background: true`, and run your own conformance pass while they work; OpenCode posts each reviewer's result back to the session when it finishes, so do not sleep, poll, or launch a duplicate. The overlap is read-only: hold every repair, triage, and commit until every launched reviewer has reported, because the reviewers are reading the snapshot you would change. When the launch is refused because `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS` is not `true`, which `aliases.sh` exports, launch them as ordinary parallel task calls instead. The refuter and a dispatched role stay foreground.
+Launch the reviewers first and run your own conformance pass while they work, then read each result as it returns; never launch a second worker for a role already dispatched. The overlap is read-only: hold every repair, triage, and commit until every launched reviewer has reported, because the reviewers are reading the snapshot you would change.
 
-When a named agent is unavailable, say so, launch a general agent with the matching role file's full text as its instructions, and report that this fallback enforces only the general agent's own permissions rather than the named agent's read-search restrictions. Never skip or silently omit a review because a named agent is missing.
+When dispatch exits nonzero, its JSON `reason` says why, and no reason authorizes another backend:
+
+- `outcome_unknown`, or a run killed before printing any reason: a worker may still be running. Escalate, and never start another worker or edit beside it; recovery uses the dispatch identity the reason names.
+- `agent_missing` or `stale_install`: run `harness install`, then dispatch again. Never substitute a general agent for the named one.
+- `orca_unavailable`: the runtime cannot launch anything. Follow the recovery the reason names and dispatch again. Where it cannot be followed, an `executor` slice may be done inline, as the policy says, after inspecting `git status` in the worktree and escalating rather than redoing when a failed run left changes; a required review may not. Escalate instead.
+- Any other reason: repair what it names and dispatch again, escalating if it recurs.
+
+Never skip, silently omit, or quietly run inline a review the blast radius requires. Disclose the dispatch reason under the pull request's `## Checks`, or in the requirements ledger under `/proto`.
 
 The named agents' restrictions are best effort: each client enforces what its own controls support, and `harness install` reports the gaps.
 
@@ -115,7 +122,7 @@ A `q:` is answered. It becomes a `bug:` or `risk:` only when evidence exposes a 
 
 ## Refuter
 
-Before rejecting a contested `bug:` or `risk:`, launch the named `review-refuter` agent once for that finding, with a fresh context. The installer generates it from `roles/review-refuter.md` beside this skill, and it runs on its central assignment. When it is unavailable, the general-agent fallback above applies to it unchanged, with the same disclosure.
+Before rejecting a contested `bug:` or `risk:`, launch the named `review-refuter` agent once for that finding, with a fresh context. The installer generates it from `roles/review-refuter.md` beside this skill, and it runs on its central assignment, dispatched by the same one rule. A refuter that cannot be launched is the `unavailable` verdict, which escalates.
 
 Give the refuter only the contested finding, verbatim, and the path of the diff snapshot that finding was raised against. Never the implementation rationale, the requirements, your reason for contesting it, or the conversation. A refuter that answers `unreadable: <path>` gets that snapshot inline under Diff delivery, and the relaunch completes the same invocation rather than adding one.
 
@@ -127,7 +134,7 @@ Its verdict decides the finding:
 
 A finding requiring an unseen requirement or standard is `inconclusive`. Judge the snapshot, never a later worktree. A human's decision on an escalated finding closes it, recorded like a rejection.
 
-A result is `missing` if empty; `malformed` if its first line is not a `verdict:` line naming `corroborated`, `refuted`, or `inconclusive`, or a `corroborated` or `refuted` verdict lacks a `path:Lline:` evidence line; `unavailable` if neither agent can run or the inline retry cannot carry the snapshot. Allow only one `unreadable:` answer, preceding its retry, per invocation.
+A result is `missing` if empty; `malformed` if its first line is not a `verdict:` line naming `corroborated`, `refuted`, or `inconclusive`, or a `corroborated` or `refuted` verdict lacks a `path:Lline:` evidence line; `unavailable` if the refuter cannot be launched or the inline retry cannot carry the snapshot. Allow only one `unreadable:` answer, preceding its retry, per invocation.
 
 The refuter is not a reviewer and not a round: it changes neither count nor cap and runs once per contested finding, never for a second opinion. A fix after `corroborated` triggers the usual fixed-blocker rule.
 

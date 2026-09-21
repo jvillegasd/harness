@@ -21,7 +21,7 @@ const usage = `usage: harness models [show|set|reset|resolve]
   set --preset <name>                           Choose a preset: balanced (default), performance, economy, diversity
   set <role> --client <c> --model <m> [--effort <e>]   Override one role
   reset [<role>]                                Drop one override, or the whole choice
-  resolve <role> --session <client> [--json]    Print the role's assignment and how that session launches it
+  resolve <role> [--json]                       Print the role's client, model, effort, and source
 
 The choice is stored in ~/.harness/state.json; ` + "`harness install`" + ` renders it into each client's role agents.
 `
@@ -186,28 +186,25 @@ func reset(path string, args []string) error {
 
 func resolve(choice Choice, args []string, stdout io.Writer) error {
 	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
-		return fmt.Errorf("resolve takes <role> --session <client> [--json]")
+		return fmt.Errorf("resolve takes <role> [--json]")
 	}
 	role := args[0]
 	fs := flag.NewFlagSet("resolve", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	session := fs.String("session", "", "")
 	asJSON := fs.Bool("json", false, "")
 	if err := fs.Parse(args[1:]); err != nil || fs.NArg() > 0 {
-		return fmt.Errorf("resolve takes <role> --session <client> [--json]")
+		return fmt.Errorf("resolve takes <role> [--json]")
 	}
 	if err := knownRole(role); err != nil {
 		return err
 	}
-	if *session != "claude" && *session != "opencode" {
-		return fmt.Errorf("resolve needs --session claude or --session opencode")
-	}
+	// No route and no session: every delegated role launches through Orca, so what a caller still needs is which client and model the role carries.
 	r := choice.Resolve()[role]
-	out := map[string]string{"role": role, "client": r.Client, "model": r.Model, "effort": effortOrInherit(r.Effort), "source": r.Source, "route": Route(r.Assignment, *session, "")}
+	out := map[string]string{"role": role, "client": r.Client, "model": r.Model, "effort": effortOrInherit(r.Effort), "source": r.Source}
 	if *asJSON {
 		return json.NewEncoder(stdout).Encode(out)
 	}
-	_, err := fmt.Fprintf(stdout, "%s client=%s model=%s effort=%s (%s) route=%s\n", role, out["client"], out["model"], out["effort"], out["source"], out["route"])
+	_, err := fmt.Fprintf(stdout, "%s client=%s model=%s effort=%s (%s)\n", role, out["client"], out["model"], out["effort"], out["source"])
 	return err
 }
 

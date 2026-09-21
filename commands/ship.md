@@ -78,7 +78,7 @@ Inspect `git status --short` before creating anything. If pre-existing changes f
 
 1. Treat the contract's test seams as pre-agreed. Use `tdd` one red/green vertical slice at a time and drive the oracle ladder in the policy to green, preferring the narrowest variant of each rung. On a UI change, build from the project's existing styling layer rather than a fresh palette.
 
-   Delegate each implementation slice to the `executor` by default when `harness models resolve executor --session <this client> --json` gives a client or model other than the session's, launching it by `adversarial-review`'s native-or-dispatch rule; otherwise work inline. This run still owns the contract, the ladder, the review passes, the commits, and every gate.
+   Delegate each implementation slice to the `executor` by default when `harness models resolve executor --json` gives a client or model other than this session's, launching it by `adversarial-review`'s one dispatch rule; otherwise work inline. This run still owns the contract, the ladder, the review passes, the commits, and every gate.
 
    After a delegated slice returns, persist its handoff under the branch `handoff` key with `scope: project`, read it back, and record the key in the branch checkpoint's `handoff` field. A save with no read-back is unverified, and a failed persistence is reported as an incomplete durable handoff preserving whatever succeeded. On a later pass, recover the handoff through that key, never recent memory, and validate it against the checkpoint, Git state, and the contract before reuse.
 

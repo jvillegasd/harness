@@ -1,4 +1,4 @@
-// Package models chooses, per machine, which client, model, and effort each delegated role runs on. The choice lives in the models block of ~/.harness/state.json: a preset, plus per-role overrides. The installer renders it into each client's role agents, and a workflow asks it how to launch a role from its session.
+// Package models chooses, per machine, which client, model, and effort each delegated role runs on. The choice lives in the models block of ~/.harness/state.json: a preset, plus per-role overrides. The installer renders it into each client's role agents, and a workflow asks it which client and model a role carries before launching it through Orca.
 package models
 
 import (
@@ -238,17 +238,4 @@ func readDoc(path string) (map[string]json.RawMessage, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	return doc, nil
-}
-
-// Route says how a session on one client launches a role: natively when the role runs on the same client, through an Orca worker inside an Orca worktree at dir (the working directory when empty), and through the other client's headless CLI otherwise.
-func Route(a Assignment, session, dir string) string {
-	if a.Client == session {
-		return "native"
-	}
-	orca := exec.Command(orcaCLI(), "worktree", "current", "--json")
-	orca.Dir = dir
-	if orca.Run() == nil {
-		return "orca"
-	}
-	return "headless"
 }

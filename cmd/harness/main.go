@@ -29,7 +29,7 @@ Commands:
   state      Read and write this branch's oracle ladder and rabbit-hole counters
   dash       Show the live harness dashboard
   models     Choose each delegated role's client, model, and effort
-  dispatch   Run a role assigned to the other client, through Orca or its headless CLI
+  dispatch   Run a delegated role as its own named agent in an Orca worker
 `
 
 func run(args []string, stdout, stderr io.Writer) int {

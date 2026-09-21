@@ -64,7 +64,7 @@ Choose at the start: defer when requested or more rounds are coming; run full wh
 
 4. Apply every item. Verify each has a corresponding change or an explicit reason it needed none. Run the narrowest checks for the changed surface first, then the policy's oracle ladder. For data, auth, concurrency, migration, or public-contract changes, also verify failure behavior, compatibility, and rollback.
 
-5. Read and run `adversarial-review`, launching each role by its native-or-dispatch rule, over the accumulated delta, which is still uncommitted: snapshot and stage it the way `/ship` step 2 does, but with `git diff HEAD` as the first snapshot. Nothing is committed until step 6.
+5. Read and run `adversarial-review`, launching each role by its one dispatch rule, over the accumulated delta, which is still uncommitted: snapshot and stage it the way `/ship` step 2 does, but with `git diff HEAD` as the first snapshot. Nothing is committed until step 6.
 
    Triage every finding by `adversarial-review`'s canonical triage block: only `bug:` and `risk:` block, a `nit:` is fixed only when the fix is smaller than the argument and is otherwise dropped, a `q:` is answered and blocks only once evidence reclassifies it, a contested `bug:` or `risk:` is rejected only on the refuter's `refuted` verdict or a human decision on its escalation, and a second adversarial round runs only after a fixed blocking finding, over the repair delta alone.
 

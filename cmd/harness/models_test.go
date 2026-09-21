@@ -117,32 +117,30 @@ func TestModelsResetRemovesOverrideThenBlock(t *testing.T) {
 	}
 }
 
-func TestModelsResolveRoutes(t *testing.T) {
+// TestModelsResolveReportsTheAssignment covers what resolve is for now that every role launches through Orca: the client, model, effort, and source, with no route to choose and no session to choose it against.
+func TestModelsResolveReportsTheAssignment(t *testing.T) {
 	base := modelsBase(t)
-	route := func(role, session string) map[string]string {
+	resolved := func(role string) map[string]string {
 		t.Helper()
-		r := ok(t, runModels(t, base, "resolve", role, "--session", session, "--json"), "resolve")
+		r := ok(t, runModels(t, base, "resolve", role, "--json"), "resolve")
 		var out map[string]string
 		if err := json.Unmarshal([]byte(r.stdout), &out); err != nil {
 			t.Fatalf("resolve output is not JSON: %v\n%s", err, r.stdout)
 		}
 		return out
 	}
-	if got := route("reviewer-a", "claude"); got["route"] != "native" || got["client"] != "claude" {
-		t.Errorf("same-client role: %v", got)
+	if got := resolved("executor"); got["client"] != "opencode" || got["model"] != "opencode-go/glm-5.3" || got["source"] != "preset:balanced" {
+		t.Errorf("executor: %v", got)
 	}
-	if got := route("executor", "claude"); got["route"] != "headless" || got["model"] != "opencode-go/glm-5.3" {
-		t.Errorf("cross-client role outside Orca: %v", got)
+	// A role on the session's own client is reported the same way, because it is launched the same way.
+	if got := resolved("reviewer-a"); got["client"] != "claude" || got["route"] != "" {
+		t.Errorf("reviewer-a: %v", got)
 	}
-	writeShim(t, base, "orca", `case "$1 $2" in "worktree current") echo '{"ok":true}' ;; *) exit 1 ;; esac`)
-	if got := route("executor", "claude"); got["route"] != "orca" {
-		t.Errorf("cross-client role inside Orca: %v", got)
+	if r := runModels(t, base, "resolve", "executor", "--session", "claude", "--json"); r.code == 0 {
+		t.Error("resolve still accepted --session")
 	}
-	if got := route("executor", "opencode"); got["route"] != "native" {
-		t.Errorf("executor in an OpenCode session: %v", got)
-	}
-	if r := runModels(t, base, "resolve", "executor", "--json"); r.code == 0 {
-		t.Error("resolve without --session exited 0")
+	if r := ok(t, runModels(t, base, "resolve", "reviewer-b"), "resolve, plain"); !strings.Contains(r.stdout, "reviewer-b client=claude model=inherit effort=inherit (preset:balanced)") || strings.Contains(r.stdout, "route=") {
+		t.Errorf("plain resolve: %s", r.stdout)
 	}
 }
 

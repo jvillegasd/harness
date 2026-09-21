@@ -5,14 +5,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
 )
 
-// dispatchBase is a models sandbox with a prompt file, a worktree directory, a claude shim that prints its own output, and an OpenCode agent rendered for the balanced executor.
+// dispatchBase is a models sandbox with a prompt file, a worktree directory, a claude shim for the client lookup, and an OpenCode agent rendered for the balanced executor.
 func dispatchBase(t *testing.T) (base, prompt, worktree string) {
 	t.Helper()
 	base = modelsBase(t)
@@ -22,7 +21,8 @@ func dispatchBase(t *testing.T) (base, prompt, worktree string) {
 	if err := os.MkdirAll(worktree, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	writeShim(t, base, "claude", `pwd > "`+filepath.Join(base, "claude.pwd")+`"; echo "claude said"`)
+	// Orca runs the client inside the terminal it opens, so dispatch only looks this one up; a client dispatch ran itself would leave a line in the shim log.
+	writeShim(t, base, "claude", "")
 	renderAgent(t, base, "opencode", "executor", "opencode-go/glm-5.3", "")
 	return base, prompt, worktree
 }
@@ -44,8 +44,19 @@ func renderAgent(t *testing.T, base, client, role, model, effort string) {
 	writeMode(t, filepath.Join(dir, role+".md"), head+"---\n\nbody\n", 0o644)
 }
 
-// orcaEnv pins the Orca executable to the shim, since Linux outside an Orca terminal resolves to orca-ide.
-func orcaEnv(session string) []string { return []string{session, "ORCA_CLI_COMMAND=orca"} }
+// orcaEnv pins the Orca executable to the shim, since Linux outside an Orca terminal resolves to orca-ide. It names no session client: every role takes the same route whatever the session runs.
+func orcaEnv(extra ...string) []string { return append([]string{"ORCA_CLI_COMMAND=orca"}, extra...) }
+
+// ranAClient reports the shim log lines left by a client dispatch started itself, rather than quoted into the command Orca's terminal runs. `opencode models` is the model listing, not a launch.
+func ranAClient(log string) []string {
+	var lines []string
+	for _, line := range strings.Split(log, "\n") {
+		if strings.HasPrefix(line, "claude ") || (strings.HasPrefix(line, "opencode ") && !strings.HasPrefix(line, "opencode models")) {
+			lines = append(lines, line)
+		}
+	}
+	return lines
+}
 
 // orcaShim fakes an Orca runtime with no bound Run, whose worker-show reports the status and worker state written to base/status, and whose worker-abandon refuses when a third field there says refuse, and whose liveness verdict is the fourth field.
 func orcaShim(t *testing.T, base string) {
@@ -116,33 +127,72 @@ func reason(t *testing.T, r result) string {
 	return out["reason"]
 }
 
-func TestDispatchHeadlessRunsTheOtherClientInTheWorktree(t *testing.T) {
+// TestDispatchRunsEveryRoleThroughOrca proves the single route: each role starts as its own named agent in the terminal Orca opens and a supervised worker adopts, a role assigned to the session's own client included, and no client is ever started directly.
+func TestDispatchRunsEveryRoleThroughOrca(t *testing.T) {
 	base, prompt, wt := dispatchBase(t)
-	writeShim(t, base, "opencode", `case "$1" in models) echo 'opencode-go/glm-5.3' ;; run) pwd > "`+filepath.Join(base, "opencode.pwd")+`"; echo "opencode said" ;; esac`)
-	r := ok(t, runDispatch(t, base, []string{"CLAUDECODE=1"}, "executor", "--prompt-file", prompt, "--worktree", wt), "dispatch executor")
-	if r.stdout != "opencode said\n" {
+	orcaShim(t, base)
+	ok(t, runModels(t, base, "set", "--preset", "diversity"), "set diversity")
+	renderAgent(t, base, "claude", "executor", "sonnet", "")
+
+	r := ok(t, runDispatch(t, base, orcaEnv(), "executor", "--prompt-file", prompt, "--worktree", wt), "claude executor")
+	if r.stdout != "worker said\n" {
 		t.Errorf("stdout = %q", r.stdout)
 	}
-	if !strings.Contains(shimLog(t, base), "opencode run -m opencode-go/glm-5.3 --agent executor -- review the diff <>") {
-		t.Errorf("opencode argv wrong:\n%s", shimLog(t, base))
-	}
-	if got := strings.TrimSpace(readFile(t, filepath.Join(base, "opencode.pwd"))); got != wt {
-		t.Errorf("opencode ran in %q, want %q", got, wt)
+	log := shimLog(t, base)
+	for _, want := range []string{
+		"orca orchestration run-create --objective harness dispatch executor --json",
+		"orca terminal create --worktree path:" + wt + " --title harness dispatch executor --command 'claude' '--agent' 'executor' '--permission-mode' 'acceptEdits' '--allowedTools' 'Bash' '--disallowedTools' 'Bash(git commit:*)' 'Bash(git push:*)' 'Bash(git merge:*)' 'Bash(git worktree remove:*)' 'Bash(wt remove:*)' 'Bash(wt merge:*)' 'Bash(wt step commit:*)' 'Bash(gh:*)' --json",
+		"orca orchestration worker-start --run r-1 --spec review the diff --worktree path:" + wt + " --terminal term-7 --json",
+		"orca orchestration worker-read --dispatch d-1 --source auto",
+		"orca orchestration worker-release --dispatch d-1 --json",
+	} {
+		if !strings.Contains(log, want) {
+			t.Errorf("log lacks %q:\n%s", want, log)
+		}
 	}
 
-	ok(t, runModels(t, base, "set", "--preset", "performance"), "set performance")
-	r = ok(t, withAgent(t, base, "claude", "reviewer-a", "fable", "high", func() result {
-		return runDispatch(t, base, []string{"OPENCODE=1"}, "reviewer-a", "--prompt-file", prompt, "--worktree", wt)
-	}), "dispatch reviewer-a")
-	if r.stdout != "claude said\n" {
-		t.Errorf("stdout = %q", r.stdout)
+	// A Claude role dispatched from a Claude session was refused as native; it now takes the same route as any other, and its rendered agent is still what carries the model.
+	ok(t, withAgent(t, base, "claude", "reviewer-a", "inherit", "", func() result {
+		return runDispatch(t, base, orcaEnv("CLAUDECODE=1"), "reviewer-a", "--prompt-file", prompt, "--worktree", wt)
+	}), "same-client role")
+	if want := "orca terminal create --worktree path:" + wt + " --title harness dispatch reviewer-a --command 'claude' '--agent' 'reviewer-a' --json"; !strings.Contains(shimLog(t, base), want) {
+		t.Errorf("log lacks %q:\n%s", want, shimLog(t, base))
 	}
-	// The rendered agent carries the model and effort; a launch-time --model would override it.
-	if !strings.Contains(shimLog(t, base), "claude -p --agent reviewer-a <review the diff>") {
-		t.Errorf("claude argv wrong:\n%s", shimLog(t, base))
+
+	renderAgent(t, base, "opencode", "reviewer-b", "openai/gpt-5.6-sol", "")
+	ok(t, runDispatch(t, base, orcaEnv(), "reviewer-b", "--prompt-file", prompt, "--worktree", wt), "opencode role")
+	if want := "orca terminal create --worktree path:" + wt + " --title harness dispatch reviewer-b --command 'opencode' '-m' 'openai/gpt-5.6-sol' '--agent' 'reviewer-b' --json"; !strings.Contains(shimLog(t, base), want) {
+		t.Errorf("log lacks %q:\n%s", want, shimLog(t, base))
 	}
-	if got := strings.TrimSpace(readFile(t, filepath.Join(base, "claude.pwd"))); got != wt {
-		t.Errorf("claude ran in %q, want %q", got, wt)
+	if ran := ranAClient(shimLog(t, base)); ran != nil {
+		t.Errorf("a role ran outside its own agent terminal:\n%s", strings.Join(ran, "\n"))
+	}
+}
+
+// TestDispatchWithoutOrcaLaunchesNothing proves the only runtime is proven before a worker launch: a missing Orca executable and a directory Orca does not own each fail with orca_unavailable naming what to do, and neither opens a terminal, starts a worker, or reaches a client.
+func TestDispatchWithoutOrcaLaunchesNothing(t *testing.T) {
+	base, prompt, wt := dispatchBase(t)
+	args := []string{"executor", "--prompt-file", prompt, "--worktree", wt}
+	// An Orca that refuses every command: the first case never reaches it, and the second gets a refused `worktree current`.
+	writeShim(t, base, "orca", "exit 1")
+	for _, c := range []struct {
+		name string
+		env  []string
+	}{
+		{"no Orca executable", []string{"ORCA_CLI_COMMAND=orca-absent"}},
+		{"a worktree Orca does not own", orcaEnv()},
+	} {
+		r := runDispatch(t, base, c.env, args...)
+		if r.code == 0 || reason(t, r) != "orca_unavailable" || !strings.Contains(r.stdout, "then retry") {
+			t.Errorf("%s: exit %d, %s", c.name, r.code, r.stdout)
+		}
+	}
+	log := shimLog(t, base)
+	if strings.Contains(log, "terminal create") || strings.Contains(log, "worker-start") {
+		t.Errorf("an unavailable Orca still launched a worker:\n%s", log)
+	}
+	if ran := ranAClient(log); ran != nil {
+		t.Errorf("an unavailable Orca still reached a client:\n%s", strings.Join(ran, "\n"))
 	}
 }
 
@@ -164,78 +214,6 @@ func withAgent(t *testing.T, base, client, role, model, effort string, run func(
 	}
 	renderAgent(t, base, client, role, model, effort)
 	return run()
-}
-
-// TestDispatchHeadlessClaudeExecutorKeepsItsLimits lets a headless Claude executor edit and run checks while denying the commit, push, merge, forge, and worktree actions its parent owns.
-func TestDispatchHeadlessClaudeExecutorKeepsItsLimits(t *testing.T) {
-	base, prompt, wt := dispatchBase(t)
-	ok(t, runModels(t, base, "set", "--preset", "performance"), "set performance")
-	renderAgent(t, base, "claude", "executor", "opus", "high")
-	ok(t, runDispatch(t, base, []string{"OPENCODE=1"}, "executor", "--prompt-file", prompt, "--worktree", wt), "dispatch executor")
-	want := "claude -p --agent executor --permission-mode acceptEdits --allowedTools Bash --disallowedTools Bash(git commit:*) Bash(git push:*) Bash(git merge:*) Bash(git worktree remove:*) Bash(wt remove:*) Bash(wt merge:*) Bash(wt step commit:*) Bash(gh:*) <review the diff>"
-	if !strings.Contains(shimLog(t, base), want) {
-		t.Errorf("headless executor argv wrong:\n%s", shimLog(t, base))
-	}
-}
-
-// TestDispatchKillsTheWholeHeadlessRun proves a signal leaves no orphan behind: a grandchild the client started dies with it, so a fallback never edits beside it.
-func TestDispatchKillsTheWholeHeadlessRun(t *testing.T) {
-	base, prompt, wt := dispatchBase(t)
-	ok(t, runModels(t, base, "set", "--preset", "performance"), "set performance")
-	renderAgent(t, base, "claude", "reviewer-a", "fable", "high")
-	pidFile := filepath.Join(base, "grandchild.pid")
-	writeShim(t, base, "claude", `sleep 60 & echo $! > "`+pidFile+`"; wait`)
-	cmd, stdout := startDispatch(t, base, []string{"OPENCODE=1"}, "reviewer-a", "--prompt-file", prompt, "--worktree", wt)
-	var pid int
-	waitFor(t, "the grandchild", func() bool {
-		data, _ := os.ReadFile(pidFile)
-		pid, _ = strconv.Atoi(strings.TrimSpace(string(data)))
-		return pid != 0
-	})
-	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
-	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
-		t.Fatal(err)
-	}
-	if err := cmd.Wait(); err == nil {
-		t.Error("a signalled dispatch exited 0")
-	}
-	if !strings.Contains(stdout.String(), `"reason":"timeout"`) {
-		t.Errorf("stdout = %q", stdout.String())
-	}
-	waitFor(t, "the grandchild to die", func() bool { return syscall.Kill(pid, 0) != nil })
-}
-
-func TestDispatchInsideOrca(t *testing.T) {
-	base, prompt, wt := dispatchBase(t)
-	orcaShim(t, base)
-	ok(t, runModels(t, base, "set", "--preset", "diversity"), "set diversity")
-	renderAgent(t, base, "claude", "executor", "sonnet", "")
-
-	r := ok(t, runDispatch(t, base, orcaEnv("OPENCODE=1"), "executor", "--prompt-file", prompt, "--worktree", wt), "claude role in orca")
-	if r.stdout != "worker said\n" {
-		t.Errorf("stdout = %q", r.stdout)
-	}
-	log := shimLog(t, base)
-	for _, want := range []string{
-		"orca orchestration run-create --objective harness dispatch executor --json",
-		"orca terminal create --worktree path:" + wt + " --title harness dispatch executor --command 'claude' '--agent' 'executor' '--permission-mode' 'acceptEdits' '--allowedTools' 'Bash' '--disallowedTools' 'Bash(git commit:*)' 'Bash(git push:*)' 'Bash(git merge:*)' 'Bash(git worktree remove:*)' 'Bash(wt remove:*)' 'Bash(wt merge:*)' 'Bash(wt step commit:*)' 'Bash(gh:*)' --json",
-		"orca orchestration worker-start --run r-1 --spec review the diff --worktree path:" + wt + " --terminal term-7 --json",
-		"orca orchestration worker-read --dispatch d-1 --source auto",
-		"orca orchestration worker-release --dispatch d-1 --json",
-	} {
-		if !strings.Contains(log, want) {
-			t.Errorf("log lacks %q:\n%s", want, log)
-		}
-	}
-
-	renderAgent(t, base, "opencode", "reviewer-b", "openai/gpt-5.6-sol", "")
-	ok(t, runDispatch(t, base, orcaEnv("CLAUDECODE=1"), "reviewer-b", "--prompt-file", prompt, "--worktree", wt), "opencode role in orca")
-	if want := "orca terminal create --worktree path:" + wt + " --title harness dispatch reviewer-b --command 'opencode' '-m' 'openai/gpt-5.6-sol' '--agent' 'reviewer-b' --json"; !strings.Contains(shimLog(t, base), want) {
-		t.Errorf("log lacks %q:\n%s", want, shimLog(t, base))
-	}
-	if log := shimLog(t, base); strings.Contains(log, "claude -p") || strings.Contains(log, "opencode run") || strings.Contains(log, "--agent claude") {
-		t.Errorf("inside Orca a role ran outside its own agent terminal:\n%s", log)
-	}
 }
 
 // TestDispatchInsideOrcaSettlesOnlyOnProof maps each Dispatch status to its outcome: a failure or a proven stop fails the run, and anything else, including a signal while the worker runs, is reported as unknown so the workflow escalates instead of editing beside a live worker.
@@ -264,7 +242,7 @@ func TestDispatchInsideOrcaSettlesOnlyOnProof(t *testing.T) {
 			return [3]int{strings.Count(log, "worker-release"), strings.Count(log, "worker-abandon"), strings.Count(log, "terminal close")}
 		}
 		before := count()
-		if r := runDispatch(t, base, orcaEnv("OPENCODE=1"), args...); r.code == 0 || reason(t, r) != want.reason {
+		if r := runDispatch(t, base, orcaEnv(), args...); r.code == 0 || reason(t, r) != want.reason {
 			t.Errorf("%s: exit %d, %s", status, r.code, r.stdout)
 		}
 		after := count()
@@ -276,7 +254,7 @@ func TestDispatchInsideOrcaSettlesOnlyOnProof(t *testing.T) {
 	writeMode(t, filepath.Join(base, "status"), "dispatched ready\n", 0o644)
 	earlier := len(shimLog(t, base))
 	before := strings.Count(shimLog(t, base), "worker-show")
-	cmd, stdout := startDispatch(t, base, orcaEnv("OPENCODE=1"), args...)
+	cmd, stdout := startDispatch(t, base, orcaEnv(), args...)
 	waitFor(t, "the first poll", func() bool { return strings.Count(shimLog(t, base), "worker-show") > before })
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		t.Fatal(err)
@@ -308,7 +286,7 @@ func TestDispatchWorkerStartReceipts(t *testing.T) {
 "terminal create") echo '{"ok":true,"result":{"terminal":{"handle":"term-7"}}}' ;;
 "orchestration worker-start") echo '`+receipt+`'; exit 1 ;;
 esac`)
-		if r := runDispatch(t, base, orcaEnv("OPENCODE=1"), "executor", "--prompt-file", prompt, "--worktree", wt); r.code == 0 || reason(t, r) != want {
+		if r := runDispatch(t, base, orcaEnv(), "executor", "--prompt-file", prompt, "--worktree", wt); r.code == 0 || reason(t, r) != want {
 			t.Errorf("%s: exit %d, %s", receipt, r.code, r.stdout)
 		}
 	}
@@ -331,7 +309,7 @@ func TestDispatchResolvesTheOrcaExecutable(t *testing.T) {
 	ok(t, runModels(t, base, "set", "--preset", "performance"), "set performance")
 	renderAgent(t, base, "claude", "executor", "opus", "high")
 	// No `orca` is on PATH any more, so the worker's output proves the Orca route ran through orca-custom.
-	r := ok(t, runDispatch(t, base, []string{"OPENCODE=1", "ORCA_CLI_COMMAND=orca-custom"}, "executor", "--prompt-file", prompt, "--worktree", wt), "dispatch through orca-custom")
+	r := ok(t, runDispatch(t, base, []string{"ORCA_CLI_COMMAND=orca-custom"}, "executor", "--prompt-file", prompt, "--worktree", wt), "dispatch through orca-custom")
 	if r.stdout != "worker said\n" {
 		t.Errorf("dispatch ignored ORCA_CLI_COMMAND: stdout %q\n%s", r.stdout, shimLog(t, base))
 	}
@@ -339,48 +317,38 @@ func TestDispatchResolvesTheOrcaExecutable(t *testing.T) {
 
 func TestDispatchFailuresExitWithAReason(t *testing.T) {
 	base, prompt, wt := dispatchBase(t)
+	orcaShim(t, base)
 	args := []string{"executor", "--prompt-file", prompt, "--worktree", wt}
 
 	renderAgent(t, base, "opencode", "executor", "opencode-go/deepseek-v4-flash", "")
-	if r := runDispatch(t, base, []string{"CLAUDECODE=1"}, args...); r.code == 0 || reason(t, r) != "stale_install" {
+	if r := runDispatch(t, base, orcaEnv(), args...); r.code == 0 || reason(t, r) != "stale_install" {
 		t.Errorf("agent rendered for another model: exit %d, %s", r.code, r.stdout)
 	}
 	renderAgent(t, base, "opencode", "executor", "opencode-go/glm-5.3", "high")
-	if r := runDispatch(t, base, []string{"CLAUDECODE=1"}, args...); r.code == 0 || reason(t, r) != "stale_install" {
+	if r := runDispatch(t, base, orcaEnv(), args...); r.code == 0 || reason(t, r) != "stale_install" {
 		t.Errorf("agent rendered for another effort: exit %d, %s", r.code, r.stdout)
 	}
 	// An agent rendered before mode: all would run as OpenCode's default agent.
 	writeMode(t, filepath.Join(base, "home", ".config", "opencode", "agents", "executor.md"), "---\ndescription: \"x\"\nmode: subagent\nmodel: opencode-go/glm-5.3\n---\n\nbody\n", 0o644)
-	if r := runDispatch(t, base, []string{"CLAUDECODE=1"}, args...); r.code == 0 || reason(t, r) != "stale_install" {
+	if r := runDispatch(t, base, orcaEnv(), args...); r.code == 0 || reason(t, r) != "stale_install" {
 		t.Errorf("agent rendered as a subagent: exit %d, %s", r.code, r.stdout)
 	}
 
 	// OpenCode lists no model, so the balanced executor is unavailable.
 	writeShim(t, base, "opencode", `case "$1" in models) echo 'openai/gpt-5.6-sol' ;; esac`)
-	if r := runDispatch(t, base, []string{"CLAUDECODE=1"}, args...); r.code == 0 || reason(t, r) != "model_unavailable" {
+	if r := runDispatch(t, base, orcaEnv(), args...); r.code == 0 || reason(t, r) != "model_unavailable" {
 		t.Errorf("unlisted model: exit %d, %s", r.code, r.stdout)
 	}
 
 	if err := os.Remove(filepath.Join(base, "shims", "opencode")); err != nil {
 		t.Fatal(err)
 	}
-	if r := runDispatch(t, base, []string{"CLAUDECODE=1"}, args...); r.code == 0 || reason(t, r) != "client_missing" {
+	if r := runDispatch(t, base, orcaEnv(), args...); r.code == 0 || reason(t, r) != "client_missing" {
 		t.Errorf("missing opencode: exit %d, %s", r.code, r.stdout)
 	}
 
-	if r := runDispatch(t, base, []string{"CLAUDECODE=1"}, "reviewer-a", "--prompt-file", prompt, "--worktree", wt); r.code == 0 || reason(t, r) != "native_route" {
-		t.Errorf("same-client role: exit %d, %s", r.code, r.stdout)
+	// --session only ever chose between routes, and there is one route now.
+	if r := runDispatch(t, base, orcaEnv(), "executor", "--prompt-file", prompt, "--worktree", wt, "--session", "claude"); r.code == 0 || reason(t, r) != "bad_input" {
+		t.Errorf("--session: exit %d, %s", r.code, r.stdout)
 	}
-}
-
-func TestDispatchNeedsASession(t *testing.T) {
-	base, prompt, wt := dispatchBase(t)
-	for name, env := range map[string][]string{"none": nil, "both": {"CLAUDECODE=1", "OPENCODE=1"}} {
-		r := runDispatch(t, base, env, "executor", "--prompt-file", prompt, "--worktree", wt)
-		if r.code == 0 || reason(t, r) != "session_unknown" || !strings.Contains(r.stdout, "--session") {
-			t.Errorf("%s: exit %d, %s", name, r.code, r.stdout)
-		}
-	}
-	writeShim(t, base, "opencode", `case "$1" in models) echo 'opencode-go/glm-5.3' ;; run) echo ran ;; esac`)
-	ok(t, runDispatch(t, base, nil, "executor", "--prompt-file", prompt, "--worktree", wt, "--session", "claude"), "explicit session")
 }

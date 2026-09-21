@@ -17,19 +17,19 @@ Accept a tracker item, pasted ticket, or production error signal for a bug, feat
 
 1. Parse pasted content as the primary source, including comments and transcripts unavailable through the tracker API. For bugs, extract expected/actual behavior, reproduction steps, errors, and affected components. For features or adjustments, extract outcomes and constraints. Read every comment thread.
 
-   Fetch each blob at most once, after step 2 permits proceeding. Fetch only images cited as evidence, in one call for the needed images. Immediately record what they show in the evidence ledger for later steps. Never re-fetch or pass them to a subagent.
+   Fetch each blob at most once, after step 2 permits proceeding. Fetch only images cited as evidence, in one call for the needed images. Immediately record what they show in the evidence ledger for later steps. Never re-fetch or pass them to a recon worker.
 
 2. Before reading code, read and follow `evidence` and run the kill query: is this still happening, reachable by real users, or ever called? A kill result ends triage with a one-paragraph report. Report and skip unconfigured capabilities.
 
 3. Supplement from the tracker only when the input is an id or URL with no pasted body. Where the tracker is local markdown, read the `local-tracker` skill: the id resolves to a ticket file, and reading it means reading its `## Comments` too.
 
-4. Investigate the code to ground the analysis, citing `path:line`. Delegate the recon to read-only subagents by default so file contents stay out of this context and only citations in the `## Recon citations` shape come back, each verified there before reuse; read directly only when the item already names the file. Then confirm or refute the root-cause hypothesis with at most two further evidence queries.
+4. Investigate the code to ground the analysis, citing `path:line`. Delegate the recon by default, through Orca and per the runtime-provided Orca CLI guide, so file contents stay out of this context and only citations in the `## Recon citations` shape come back, each verified there before reuse; read directly when the item already names the file or Orca is unavailable. A recon worker runs with its client's ordinary permissions, so its prompt is what bounds it to reading and reporting. Then confirm or refute the root-cause hypothesis with at most two further evidence queries.
 
 5. For remaining load-bearing ambiguity, read `grilling` and self-grill against precedent, history, and `evidence` before escalating. Stop if the premise is refuted. Batch only surviving questions into one stop under the escalation contract.
 
 ## Recon citations
 
-A recon subagent that searches the repository ends on a text message holding only its findings, one per line in the shape `path:line | symbol | mechanism`: the cited location, the named symbol, a bare identifier, that location carries, and the mechanism it is claimed to show. A trailing tool result is not the report: re-run that track once, and if it again ends without one, record it as no data, a `no data` row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`, never as refuted or as a track that found nothing.
+A recon worker that searches the repository ends on a text message holding only its findings, one per line in the shape `path:line | symbol | mechanism`: the cited location, the named symbol, a bare identifier, that location carries, and the mechanism it is claimed to show. A trailing tool result is not the report: re-run that track once, and if it again ends without one, record it as no data, a `no data` row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`, never as refuted or as a track that found nothing.
 
 Before reusing a citation, read only the cited line and confirm the path resolves inside the repository and that line carries the named symbol as a whole identifier. That check grounds the location only, never the claimed runtime mechanism: a load-bearing mechanism claim still goes through `evidence`.
 

@@ -1,7 +1,6 @@
 package models
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -19,7 +18,7 @@ import (
 	"time"
 )
 
-const dispatchUsage = "usage: harness dispatch <role> --prompt-file <path> [--worktree <path>] [--session claude|opencode]"
+const dispatchUsage = "usage: harness dispatch <role> --prompt-file <path> [--worktree <path>]"
 
 // executorDenies carries the executor's parent-owned actions into a Claude run, where a CLI deny rule can name a command; the rendered agent can only state them.
 var executorDenies = []string{"Bash(git commit:*)", "Bash(git push:*)", "Bash(git merge:*)", "Bash(git worktree remove:*)", "Bash(wt remove:*)", "Bash(wt merge:*)", "Bash(wt step commit:*)", "Bash(gh:*)"}
@@ -30,7 +29,7 @@ const pollEvery, workerTimeout = 5 * time.Second, time.Hour
 // terminalCreateTimeout is how long Orca may take to open the agent terminal; a variable so a test can shorten it.
 var terminalCreateTimeout = time.Minute
 
-// failure is a dispatch that could not run, printed as JSON so the calling workflow can fall back on its reason.
+// failure is a dispatch that could not run, printed as JSON so the calling workflow can act on its reason. A reason never authorizes another backend: it decides between retrying this dispatch, repairing the install, doing permitted work inline, and escalating.
 type failure struct {
 	Reason string `json:"reason"`
 	Detail string `json:"detail"`
@@ -38,7 +37,7 @@ type failure struct {
 
 func (f failure) Error() string { return f.Reason + ": " + f.Detail }
 
-// Dispatch runs `harness dispatch`: it launches a role assigned to the other client and prints the role's output.
+// Dispatch runs `harness dispatch`: it launches a role as its own named agent in an Orca worker and prints that worker's output. Orca is the only runtime, so a role assigned to the session's own client takes the same path as one assigned to the other.
 func Dispatch(args []string, stdout, stderr io.Writer) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -67,7 +66,6 @@ func dispatch(ctx context.Context, args []string) ([]byte, error) {
 	fs.SetOutput(io.Discard)
 	promptFile := fs.String("prompt-file", "", "")
 	worktree := fs.String("worktree", ".", "")
-	session := fs.String("session", "", "")
 	if err := fs.Parse(args[1:]); err != nil || fs.NArg() > 0 || *promptFile == "" {
 		return nil, failure{"bad_input", dispatchUsage}
 	}
@@ -85,11 +83,8 @@ func dispatch(ctx context.Context, args []string) ([]byte, error) {
 	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
 		return nil, failure{"bad_input", "worktree " + dir + " is not a directory"}
 	}
-	if *session == "" {
-		*session = sessionFromEnv()
-	}
-	if *session != "claude" && *session != "opencode" {
-		return nil, failure{"session_unknown", "cannot tell the session's client from CLAUDECODE or OPENCODE; pass --session claude or --session opencode"}
+	if err := requireOrca(ctx, dir); err != nil {
+		return nil, err
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -100,10 +95,6 @@ func dispatch(ctx context.Context, args []string) ([]byte, error) {
 		return nil, err
 	}
 	a := choice.Resolve()[role].Assignment
-	route := Route(a, *session, dir)
-	if route == "native" {
-		return nil, failure{"native_route", role + " runs on the session's client; launch its named agent"}
-	}
 	if _, err := exec.LookPath(a.Client); err != nil {
 		return nil, failure{"client_missing", a.Client + " is not on PATH"}
 	}
@@ -116,22 +107,21 @@ func dispatch(ctx context.Context, args []string) ([]byte, error) {
 	if err := renderedMatches(home, role, a); err != nil {
 		return nil, err
 	}
-	if route == "orca" {
-		return viaOrca(ctx, role, a, string(prompt), dir)
-	}
-	return headless(ctx, role, a, prompt, dir)
+	return viaOrca(ctx, role, a, string(prompt), dir)
 }
 
-// sessionFromEnv names the client from the marker each sets for the processes it runs, and nothing when both or neither is set.
-func sessionFromEnv() string {
-	claude, opencode := os.Getenv("CLAUDECODE") == "1", os.Getenv("OPENCODE") == "1"
-	switch {
-	case claude && !opencode:
-		return "claude"
-	case opencode && !claude:
-		return "opencode"
+// requireOrca proves the only runtime can take this worktree before anything is launched, so an unavailable Orca names what to do instead of failing part way through a launch that leaves a terminal behind. Which recovery a caller owes is the role's: a workflow may do an executor's slice inline and disclose it, while a required review escalates rather than becoming inline.
+func requireOrca(ctx context.Context, dir string) error {
+	cli := orcaCLI()
+	if _, err := exec.LookPath(cli); err != nil {
+		return failure{"orca_unavailable", cli + " is not on PATH, and Orca is the only runtime for a delegated role; install or start Orca, or set ORCA_CLI_COMMAND, then retry"}
 	}
-	return ""
+	probe := exec.CommandContext(ctx, cli, "worktree", "current", "--json")
+	probe.Dir = dir
+	if err := probe.Run(); err != nil {
+		return failure{"orca_unavailable", dir + " is not an Orca worktree, and Orca is the only runtime for a delegated role; create or open this branch's worktree in Orca, then retry"}
+	}
+	return nil
 }
 
 // renderedMatches refuses a role whose installed agent was rendered for another model or effort. The agent's frontmatter is the only place either client takes them from, since the policy forbids a launch-time model override, so a `harness models set` without a reinstall would otherwise run the old assignment.
@@ -168,51 +158,17 @@ func renderedMatches(home, role string, a Assignment) error {
 	return nil
 }
 
-// LaunchArgs is the argv that starts the role as its own named agent on its client. The executor gets edits and Bash, minus the actions its parent owns. Exported so an experiment can record the effective flags it dispatched with rather than reconstruct them.
-func LaunchArgs(role string, a Assignment, headless bool) []string {
+// launchArgs is the argv that starts the role as its own named agent on its client, inside the terminal Orca opens. The executor gets edits and Bash, minus the actions its parent owns.
+func launchArgs(role string, a Assignment) []string {
 	if a.Client == "opencode" {
-		if headless {
-			return []string{"opencode", "run", "-m", a.Model, "--agent", role}
-		}
 		return []string{"opencode", "-m", a.Model, "--agent", role}
 	}
-	argv := []string{"claude"}
-	if headless {
-		argv = append(argv, "-p")
-	}
 	// No --model or --effort: they would override the agent's frontmatter, which renderedMatches proved current. Whether a main-thread --agent session applies the frontmatter's effort, not only its model, is unverified.
-	argv = append(argv, "--agent", role)
+	argv := []string{"claude", "--agent", role}
 	if role == "executor" {
 		argv = append(append(argv, "--permission-mode", "acceptEdits", "--allowedTools", "Bash", "--disallowedTools"), executorDenies...)
 	}
 	return argv
-}
-
-// headless runs the other client's non-interactive CLI in dir. The child leads its own process group, so a timeout or a signal kills every process it started and a fallback never edits beside an orphan.
-func headless(ctx context.Context, role string, a Assignment, prompt []byte, dir string) ([]byte, error) {
-	argv := LaunchArgs(role, a, true)
-	if a.Client == "opencode" {
-		// ponytail: the prompt is one argument, so Linux caps it at 128 KiB; pass a file when a prompt outgrows that.
-		argv = append(argv, "--", string(prompt))
-	}
-	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
-	if a.Client == "claude" {
-		cmd.Stdin = bytes.NewReader(prompt)
-	}
-	cmd.Dir = dir
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
-	cmd.WaitDelay = 10 * time.Second
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	out, err := cmd.Output()
-	if ctx.Err() != nil {
-		return nil, failure{"timeout", a.Client + " was stopped by a timeout or a signal, and every process it started was killed"}
-	}
-	if err != nil {
-		return nil, failure{"run_failed", fmt.Sprintf("%s: %v: %s", a.Client, err, strings.TrimSpace(stderr.String()))}
-	}
-	return out, nil
 }
 
 // orcaCLI is the Orca executable, chosen the way the Orca orchestration skill says: Linux's bare `orca` outside an Orca terminal is the GNOME screen reader.
@@ -248,7 +204,7 @@ func viaOrca(ctx context.Context, role string, a Assignment, prompt, dir string)
 		return nil, failure{"orca_refused", "orca reported no Run id"}
 	}
 	var quoted []string
-	for _, arg := range LaunchArgs(role, a, false) {
+	for _, arg := range launchArgs(role, a) {
 		quoted = append(quoted, "'"+strings.ReplaceAll(arg, "'", `'\''`)+"'")
 	}
 	var created struct {
