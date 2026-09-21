@@ -118,8 +118,26 @@ func requireOrca(ctx context.Context, dir string) error {
 	}
 	probe := exec.CommandContext(ctx, cli, "worktree", "current", "--json")
 	probe.Dir = dir
-	if err := probe.Run(); err != nil {
-		return failure{"orca_unavailable", dir + " is not an Orca worktree, and Orca is the only runtime for a delegated role; create or open this branch's worktree in Orca, then retry"}
+	// A child that keeps stdout open would otherwise hold Output past the kill.
+	probe.WaitDelay = time.Second
+	// Orca can refuse with ok:false at exit 0, so the envelope decides here as it does in orcaJSON rather than the exit code alone.
+	out, err := probe.Output()
+	var envelope struct{ Ok bool }
+	if err != nil || json.Unmarshal(out, &envelope) != nil || !envelope.Ok {
+		said := strings.TrimSpace(string(out))
+		var exit *exec.ExitError
+		if said == "" && errors.As(err, &exit) {
+			said = strings.TrimSpace(string(exit.Stderr))
+		}
+		if said == "" && err != nil {
+			said = err.Error()
+		}
+		if said == "" {
+			said = "no output"
+		}
+		// Orca answers in indented JSON, and this travels as one line of a one-line failure.
+		said = strings.Join(strings.Fields(said), " ")
+		return failure{"orca_unavailable", fmt.Sprintf("%s cannot take worktree %s, and Orca is the only runtime for a delegated role; create or open this branch's worktree in Orca, or start Orca if it is not running, then retry. `%s worktree current` said: %s", cli, dir, cli, said)}
 	}
 	return nil
 }
@@ -136,7 +154,7 @@ func renderedMatches(home, role string, a Assignment) error {
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return failure{"agent_missing", "no rendered " + a.Client + " agent for " + role + "; run harness install"}
+		return failure{"agent_missing", "no rendered " + a.Client + " agent for " + role + "; a human must run harness install"}
 	}
 	head := ""
 	if parts := strings.SplitN(string(data), "---\n", 3); strings.HasPrefix(string(data), "---\n") && len(parts) == 3 {
@@ -149,11 +167,11 @@ func renderedMatches(home, role string, a Assignment) error {
 		rendered = strings.TrimPrefix(lines[effort], effortKey)
 	}
 	if !slices.Contains(lines, "model: "+a.Model) || rendered != a.Effort {
-		return failure{"stale_install", "the installed " + a.Client + " " + role + " agent was not rendered for " + a.Model + " at effort " + effortOrInherit(a.Effort) + "; run harness install"}
+		return failure{"stale_install", "the installed " + a.Client + " " + role + " agent was not rendered for " + a.Model + " at effort " + effortOrInherit(a.Effort) + "; a human must run harness install"}
 	}
 	// A mode: subagent agent launched by --agent runs as OpenCode's default agent with none of its controls.
 	if a.Client == "opencode" && !slices.Contains(lines, "mode: all") {
-		return failure{"stale_install", "the installed opencode " + role + " agent is not mode: all; run harness install"}
+		return failure{"stale_install", "the installed opencode " + role + " agent is not mode: all; a human must run harness install"}
 	}
 	return nil
 }
@@ -247,7 +265,14 @@ func viaOrca(ctx context.Context, role string, a Assignment, prompt, dir string)
 		release(id)
 		return nil, failure{"orca_refused", "worker-start failed: " + strings.TrimSpace(string(out))}
 	default:
-		return nil, failure{"outcome_unknown", "worker-start did not prove a ready or refused worker; one may be running: " + strings.TrimSpace(string(out))}
+		// The identity, when the receipt carried one, is what a recovery addresses; the raw receipt alone may not repeat it.
+		unknown := "worker-start did not prove a ready or refused worker; one may be running: " + strings.TrimSpace(string(out))
+		if id != "" {
+			unknown = "orca dispatch " + id + ": " + unknown
+		} else {
+			unknown += fmt.Sprintf("; no Dispatch id was reported, so inspect terminal %s with `%s terminal list --worktree %s --json` rather than retrying blind", handle, orcaCLI(), where)
+		}
+		return nil, failure{"outcome_unknown", unknown}
 	}
 	for {
 		var shown struct {

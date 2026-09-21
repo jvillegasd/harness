@@ -73,7 +73,7 @@ var unverified = []string{
 	"unverified: opencode applying the * deny to MCP tools",
 	"unverified: the ccyolo and ocyolo launchers leaving agent restrictions in force, since each bypasses or overrides the parent's permissions",
 	"unverified: diff delivery's inline fallback and escalation, which are protocol rather than exercised behavior",
-	"unverified: claude running a subagent on its model and effort frontmatter, and on the session's effort when effort is absent",
+	"unverified: claude applying a main-thread --agent session's model and effort frontmatter, and the session's effort when effort is absent",
 	"unverified: opencode sending an agent's reasoningEffort with its model requests",
 	"unverified: claude disallowedTools: Agent and opencode task: deny stopping the executor from delegating",
 }

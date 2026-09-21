@@ -198,7 +198,6 @@ func resolve(choice Choice, args []string, stdout io.Writer) error {
 	if err := knownRole(role); err != nil {
 		return err
 	}
-	// No route and no session: every delegated role launches through Orca, so what a caller still needs is which client and model the role carries.
 	r := choice.Resolve()[role]
 	out := map[string]string{"role": role, "client": r.Client, "model": r.Model, "effort": effortOrInherit(r.Effort), "source": r.Source}
 	if *asJSON {

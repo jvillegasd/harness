@@ -30,7 +30,7 @@ Eight per session, each a median across the cohort. The first three are cost, th
 | `tool_calls` | Tool invocations the assistant made. |
 | `minutes` | First stamped entry to last. |
 | `commands` | Slash-command invocations, so routing adoption is visible: `POLICY.md` is mostly a routing table. |
-| `delegation` | Messages the session's subagents produced. `POLICY.md` names subagent overspawn as a failure mode. |
+| `delegation` | Messages the session's subagents produced. `POLICY.md` names subagent overspawn as a failure mode. A role dispatched through Orca runs as a session of its own rather than a subagent, so it never reaches this metric and instead joins the population every median is taken over. |
 | `interrupts` | Times a human stopped a run. |
 | `denials` | Times a human refused a tool call. |
 | `errors` | Tool results that failed. A refusal is a denial, never also an error. |
@@ -52,7 +52,7 @@ Each client records a project differently: a dashed slug or a `directory` column
 - **Claude Code**, `~/.claude/projects/<slug>/<session>.jsonl`. The only client recording all eight metrics. Interrupts and denials come from matching `claudeInterrupt` and `claudeDenials` in `internal/bench/collect.go`.
 - **OpenCode**, `~/.local/share/opencode/opencode.db`, opened read-only and immutable because a client may be running. No interrupt, denial, failed result, or slash command, so those four are absent.
 
-**A subagent is delegation, not a session.** Claude Code writes `<session-id>/subagents/*.jsonl` beside the session file, and OpenCode gives a subagent a `session` row carrying the parent's id, so a recursive glob or an unfiltered query counts them as sessions: on this machine, 273 sidecars against 209 real sessions, and 77 against 36. Both are excluded and counted as the parent's `delegation`. The inline `isSidechain` flag those entries used to carry is still written and now always false, so a reader still looking there reports no delegation rather than reporting it cannot see any.
+**A subagent is delegation, not a session.** Claude Code writes `<session-id>/subagents/*.jsonl` beside the session file, and OpenCode gives a subagent a `session` row carrying the parent's id, so a recursive glob or an unfiltered query counts them as sessions: on this machine, 273 sidecars against 209 real sessions, and 77 against 36. Both are excluded and counted as the parent's `delegation`. The inline `isSidechain` flag those entries used to carry is still written and now always false, so a reader still looking there reports no delegation rather than reporting it cannot see any. An Orca-dispatched role is the other direction: it is a top-level session in its own terminal, counted as a session and not as delegation, so it both empties `delegation` of role dispatch and pulls every median toward a worker's shorter transcript.
 
 ## Reading the output
 

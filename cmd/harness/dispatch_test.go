@@ -151,9 +151,9 @@ func TestDispatchRunsEveryRoleThroughOrca(t *testing.T) {
 		}
 	}
 
-	// A Claude role dispatched from a Claude session was refused as native; it now takes the same route as any other, and its rendered agent is still what carries the model.
+	// A role on the client this session itself runs was refused as native; it now takes the same route as any other, and its rendered agent is still what carries the model.
 	ok(t, withAgent(t, base, "claude", "reviewer-a", "inherit", "", func() result {
-		return runDispatch(t, base, orcaEnv("CLAUDECODE=1"), "reviewer-a", "--prompt-file", prompt, "--worktree", wt)
+		return runDispatch(t, base, orcaEnv(), "reviewer-a", "--prompt-file", prompt, "--worktree", wt)
 	}), "same-client role")
 	if want := "orca terminal create --worktree path:" + wt + " --title harness dispatch reviewer-a --command 'claude' '--agent' 'reviewer-a' --json"; !strings.Contains(shimLog(t, base), want) {
 		t.Errorf("log lacks %q:\n%s", want, shimLog(t, base))
@@ -169,21 +169,23 @@ func TestDispatchRunsEveryRoleThroughOrca(t *testing.T) {
 	}
 }
 
-// TestDispatchWithoutOrcaLaunchesNothing proves the only runtime is proven before a worker launch: a missing Orca executable and a directory Orca does not own each fail with orca_unavailable naming what to do, and neither opens a terminal, starts a worker, or reaches a client.
+// TestDispatchWithoutOrcaLaunchesNothing proves the only runtime is proven before a worker launch: a missing Orca executable, a probe that exits nonzero, and a refusal Orca reports at exit 0 each fail with orca_unavailable carrying Orca's own answer and the recovery, and none of them opens a terminal, starts a worker, or reaches a client.
 func TestDispatchWithoutOrcaLaunchesNothing(t *testing.T) {
 	base, prompt, wt := dispatchBase(t)
 	args := []string{"executor", "--prompt-file", prompt, "--worktree", wt}
-	// An Orca that refuses every command: the first case never reaches it, and the second gets a refused `worktree current`.
-	writeShim(t, base, "orca", "exit 1")
 	for _, c := range []struct {
-		name string
-		env  []string
+		name, shim, want, recovery string
+		env                        []string
 	}{
-		{"no Orca executable", []string{"ORCA_CLI_COMMAND=orca-absent"}},
-		{"a worktree Orca does not own", orcaEnv()},
+		{"no Orca executable", "", "is not on PATH", "install or start Orca", []string{"ORCA_CLI_COMMAND=orca-absent"}},
+		{"a probe that exits nonzero", `echo "no worktree here" >&2; exit 1`, "no worktree here", "create or open this branch's worktree in Orca", orcaEnv()},
+		// Orca can refuse with ok:false at exit 0, which a gate reading only the exit code would pass through to run-create.
+		{"a refusal at exit 0", `echo '{"ok":false,"error":{"code":"not_a_worktree"}}'`, "not_a_worktree", "create or open this branch's worktree in Orca", orcaEnv()},
 	} {
+		writeShim(t, base, "orca", c.shim)
 		r := runDispatch(t, base, c.env, args...)
-		if r.code == 0 || reason(t, r) != "orca_unavailable" || !strings.Contains(r.stdout, "then retry") {
+		// The recovery is asserted beside the evidence, so deleting the clause that says what to do fails here.
+		if r.code == 0 || reason(t, r) != "orca_unavailable" || !strings.Contains(r.stdout, c.want) || !strings.Contains(r.stdout, c.recovery) {
 			t.Errorf("%s: exit %d, %s", c.name, r.code, r.stdout)
 		}
 	}
@@ -273,12 +275,12 @@ func TestDispatchWorkerStartReceipts(t *testing.T) {
 	base, prompt, wt := dispatchBase(t)
 	ok(t, runModels(t, base, "set", "--preset", "performance"), "set performance")
 	renderAgent(t, base, "claude", "executor", "opus", "high")
-	for receipt, want := range map[string]string{
-		`{"ok":false,"error":{"code":"runtime_error"}}`:                       "orca_refused",
-		`{"ok":true,"result":{"dispatchId":"d-1","state":"failed"}}`:          "orca_refused",
-		`{"ok":true,"result":{"dispatchId":"d-1","state":"outcome_unknown"}}`: "outcome_unknown",
-		`{"ok":true,"result":{"state":"ready"}}`:                              "outcome_unknown",
-		`not json`:                                                            "outcome_unknown",
+	for receipt, want := range map[string]struct{ reason, identity string }{
+		`{"ok":false,"error":{"code":"runtime_error"}}`:                       {"orca_refused", ""},
+		`{"ok":true,"result":{"dispatchId":"d-1","state":"failed"}}`:          {"orca_refused", ""},
+		`{"ok":true,"result":{"dispatchId":"d-1","state":"outcome_unknown"}}`: {"outcome_unknown", "orca dispatch d-1:"},
+		`{"ok":true,"result":{"state":"ready"}}`:                              {"outcome_unknown", "terminal term-7"},
+		`not json`:                                                            {"outcome_unknown", "terminal term-7"},
 	} {
 		writeShim(t, base, "orca", `case "$1 $2" in
 "worktree current") echo '{"ok":true}' ;;
@@ -286,8 +288,12 @@ func TestDispatchWorkerStartReceipts(t *testing.T) {
 "terminal create") echo '{"ok":true,"result":{"terminal":{"handle":"term-7"}}}' ;;
 "orchestration worker-start") echo '`+receipt+`'; exit 1 ;;
 esac`)
-		if r := runDispatch(t, base, orcaEnv(), "executor", "--prompt-file", prompt, "--worktree", wt); r.code == 0 || reason(t, r) != want {
+		r := runDispatch(t, base, orcaEnv(), "executor", "--prompt-file", prompt, "--worktree", wt)
+		if r.code == 0 || reason(t, r) != want.reason {
 			t.Errorf("%s: exit %d, %s", receipt, r.code, r.stdout)
+		}
+		if want.identity != "" && !strings.Contains(r.stdout, want.identity) {
+			t.Errorf("%s: an unknown outcome named nothing a recovery can address: %s", receipt, r.stdout)
 		}
 	}
 	log := shimLog(t, base)
