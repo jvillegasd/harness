@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "delivery": {
+    "treatments": ["inline", "native", "dispatch"],
+    "contracts": [
+      {"id": "fix", "seed_tests": "scenarios/seeds/delivery/fix/seed_test.go", "acceptance_tests": "scenarios/seeds/delivery/fix/acceptance_test.go"},
+      {"id": "feature", "seed_tests": "scenarios/seeds/delivery/feature/seed_test.go", "acceptance_tests": "scenarios/seeds/delivery/feature/acceptance_test.go"},
+      {"id": "refactor", "seed_tests": "scenarios/seeds/delivery/refactor/seed_test.go", "acceptance_tests": "scenarios/seeds/delivery/refactor/acceptance_test.go"}
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "delivery-oracle",
+      "title": "Recorded delivery treatments classify correctness and uncertainty",
+      "command": "scenarios",
+      "prompt": "Classify recorded delivery treatment evidence.",
+      "mode": "offline",
+      "check": "probe:delivery",
+      "harness_inputs": [
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/delivery.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/probe_delivery.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go",
+        "scenarios/fixtures/delivery/dispatch-delivered.json",
+        "scenarios/fixtures/delivery/dispatch-non-adherent.json",
+        "scenarios/fixtures/delivery/inline-delivered.json",
+        "scenarios/fixtures/delivery/inline-failed.json",
+        "scenarios/fixtures/delivery/inline-non-adherent.json",
+        "scenarios/fixtures/delivery/missing-evidence.json",
+        "scenarios/fixtures/delivery/native-delivered.json",
+        "scenarios/fixtures/delivery/native-non-adherent.json",
+        "scenarios/fixtures/delivery/route-unavailable.json",
+        "scenarios/matrix.delivery.json",
+        "scenarios/seeds/delivery/feature/acceptance_test.go",
+        "scenarios/seeds/delivery/feature/seed_test.go",
+        "scenarios/seeds/delivery/fix/acceptance_test.go",
+        "scenarios/seeds/delivery/fix/seed_test.go",
+        "scenarios/seeds/delivery/refactor/acceptance_test.go",
+        "scenarios/seeds/delivery/refactor/seed_test.go"
+      ],
+      "artifacts": {
+        "present": ["artifacts/delivery.json"],
+        "contains": [
+          {"path": "artifacts/delivery.json", "text": "inline-delivered"},
+          {"path": "artifacts/delivery.json", "text": "native-delivered"},
+          {"path": "artifacts/delivery.json", "text": "dispatch-delivered"},
+          {"path": "artifacts/delivery.json", "text": "inline-failed"},
+          {"path": "artifacts/delivery.json", "text": "inline-non-adherent"},
+          {"path": "artifacts/delivery.json", "text": "native-non-adherent"},
+          {"path": "artifacts/delivery.json", "text": "dispatch-non-adherent"},
+          {"path": "artifacts/delivery.json", "text": "route-unavailable"},
+          {"path": "artifacts/delivery.json", "text": "missing-evidence"},
+          {"path": "artifacts/delivery.json", "text": "\"outcome\": \"delivered\""},
+          {"path": "artifacts/delivery.json", "text": "\"outcome\": \"failed\""},
+          {"path": "artifacts/delivery.json", "text": "\"outcome\": \"unverified\""}
+        ]
+      }
+    }
+  ]
+}

@@ -50,6 +50,8 @@ func runProbe(name, repo, root string, out io.Writer) error {
 		return probeAuthority(repo, root)
 	case "publication-gate":
 		return probePublicationGate(repo, root)
+	case "delivery":
+		return probeDelivery(repo, root)
 	}
 	return fmt.Errorf("unknown scenario probe %q", name)
 }

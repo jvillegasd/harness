@@ -129,7 +129,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	declaration, _ := decoded.(map[string]any)
 	switch sub {
 	case "validate":
-		errors := validateMatrix(declaration)
+		errors := validateMatrixAt(root, declaration)
 		for _, problem := range errors {
 			fmt.Fprintf(stderr, "harness scenarios: %s\n", problem)
 		}
@@ -158,7 +158,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		if isFlagSet(flags, "cap") {
 			limit = capFlag
 		}
-		errors := validateMatrix(declaration)
+		errors := validateMatrixAt(root, declaration)
 		if len(errors) > 0 {
 			for _, problem := range errors {
 				fmt.Fprintf(stderr, "harness scenarios: %s\n", problem)
