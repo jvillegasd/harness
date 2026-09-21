@@ -169,7 +169,7 @@ func TestCheckpointProbe(t *testing.T) {
 		t.Fatal(err)
 	}
 	fields := dict(protocol, "fields")
-	for _, field := range []string{"state", "branch_tip", "contract", "checks", "rationale", "next_action"} {
+	for _, field := range []string{"state", "branch_tip", "contract", "checks", "rationale", "handoff", "next_action"} {
 		if _, ok := fields[field]; !ok {
 			t.Errorf("protocol is missing field %s", field)
 		}
@@ -214,7 +214,7 @@ func TestCheckpointProbeReadsRulesFromTheSkill(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := map[string]string{}
-	if _, err := checkpointSave(protocol, store, "b", "tip", "active", []string{"https://x"}, []string{"lint: pass"}, "why", "next"); err != nil {
+	if _, err := checkpointSave(protocol, store, "b", "tip", "active", []string{"https://x"}, []string{"lint: pass"}, "why", "", "next"); err != nil {
 		t.Fatal(err)
 	}
 	usable, notes := checkpointRecover(protocol, store, "b", "other", func(string) bool { return true })
@@ -232,7 +232,7 @@ func TestCheckpointProbeReadsRulesFromTheSkill(t *testing.T) {
 		t.Fatal(err)
 	}
 	store = map[string]string{}
-	if _, err := checkpointSave(protocol, store, "b", "tip", "active", []string{"https://x"}, nil, "", "next"); err != nil {
+	if _, err := checkpointSave(protocol, store, "b", "tip", "active", []string{"https://x"}, nil, "", "", "next"); err != nil {
 		t.Fatal(err)
 	}
 	usable, notes = checkpointRecover(protocol, store, "b", "tip", func(string) bool { return true })
@@ -586,4 +586,18 @@ func deleteSeverityAction(d map[string]any, severity, action string) {
 		}
 	}
 	severityMap["actions"] = kept
+}
+
+func TestWorkerHandoffProbe(t *testing.T) {
+	outcomes, err := probeWorkerHandoffRun(testRepoRoot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	haveKeys(t, outcomes, []string{
+		"composition_fields", "executor_names_fields", "never_grants_approval",
+		"valid_recovery", "legacy_checkpoint_tolerated", "missing_read_back", "foreign_branch_key",
+		"changed_tip_pending_edits", "failed_persistence", "checkpoint_non_overwrite",
+		"reviewers_excluded",
+	})
+	allTrue(t, outcomes)
 }

@@ -19,4 +19,14 @@ Edit files and run commands inside the scope you were given. Never commit, push,
 
 ## Output
 
-List every file you changed, each check you ran with its result, and anything you stopped on, with a `path:line` for each claim about code.
+Return one worker handoff to the parent. Compose it with the `handoff` skill into a recipient-focused document and give it exactly these fields, with durable references instead of copied text:
+
+- `slice`: the one slice you built.
+- `revision`: the git commit sha the handoff describes.
+- `changed_files`: the files you changed.
+- `pending_files`: the files you left uncommitted or pending.
+- `checks`: each check you ran, with its result.
+- `unresolved`: the questions you could not settle.
+- `artifacts`: durable references to the artifacts your work produced.
+
+A handoff reports work and never grants approval; the parent or a human decides. The parent persists the handoff in Engram and owns the branch checkpoint, which you never write. Give a `path:line` for each claim about code.

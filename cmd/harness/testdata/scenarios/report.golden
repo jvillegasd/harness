@@ -6,6 +6,7 @@ behavioral-acceptance:
   lifecycle-blocked-to-ready: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
   checkpoint-protocol: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
   checkpoint-two-session: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
+  worker-handoff: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
   spec-slicing: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
   harness-audit: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]
   recon-citations: unreviewed (no transcript review record; bind evidence_digest <digest>) [offline]

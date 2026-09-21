@@ -34,7 +34,7 @@ func probeCheckpointTwoSessionRun(root string) (map[string]any, error) {
 	store := map[string]string{}
 
 	// Session one: record the deferred requirement with the rationale that is not yet durable anywhere else, then persist the store across the reset.
-	if _, err := checkpointSave(protocol, store, twoSessionBranch, "abc1234", "active", []string{twoSessionTicket}, []string{"tests: pass"}, twoSessionRationale, twoSessionRequirement); err != nil {
+	if _, err := checkpointSave(protocol, store, twoSessionBranch, "abc1234", "active", []string{twoSessionTicket}, []string{"tests: pass"}, twoSessionRationale, "", twoSessionRequirement); err != nil {
 		return nil, err
 	}
 	persisted := cloneStore(store)
@@ -46,7 +46,7 @@ func probeCheckpointTwoSessionRun(root string) (map[string]any, error) {
 	recoversContract := record != nil && equalStrings(stringList(record["contract"]), []string{twoSessionTicket})
 
 	// Two branches hold separate checkpoints; neither reads the other's.
-	if _, err := checkpointSave(protocol, persisted, twoSessionOther, "abc1234", "active", []string{twoSessionTicket}, nil, "", "a different next action"); err != nil {
+	if _, err := checkpointSave(protocol, persisted, twoSessionOther, "abc1234", "active", []string{twoSessionTicket}, nil, "", "", "a different next action"); err != nil {
 		return nil, err
 	}
 	mine, _ := checkpointRecover(protocol, persisted, twoSessionBranch, "abc1234", resolves)
@@ -57,7 +57,7 @@ func probeCheckpointTwoSessionRun(root string) (map[string]any, error) {
 		getString(mine, "next_action") != getString(theirs, "next_action")
 
 	// The topic key is stable: a later save upserts the one branch record.
-	if _, err := checkpointSave(protocol, store, twoSessionBranch, "def5678", "active", []string{twoSessionTicket}, []string{"lint: pass"}, twoSessionRationale, "next"); err != nil {
+	if _, err := checkpointSave(protocol, store, twoSessionBranch, "def5678", "active", []string{twoSessionTicket}, []string{"lint: pass"}, twoSessionRationale, "", "next"); err != nil {
 		return nil, err
 	}
 	saved, _ := checkpointLoad(protocol, store, twoSessionBranch)
