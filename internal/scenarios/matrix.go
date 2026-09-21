@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"path/filepath"
 )
 
 // ---- matrix accessors ----
@@ -110,6 +111,9 @@ func validateMatrix(matrix map[string]any) []string {
 		if _, ok := scenario["sessions"]; ok {
 			errors = append(errors, validateSessions(where, scenario)...)
 		}
+		if _, ok := scenario["handoff"]; ok {
+			errors = append(errors, validateHandoff(where, scenario)...)
+		}
 		if _, ok := scenario["worker"]; ok {
 			errors = append(errors, validateWorker(where, scenario)...)
 		}
@@ -205,6 +209,26 @@ func validateSessions(where string, scenario map[string]any) []string {
 		if !truthy(dict(scenario, "continuation")[field]) {
 			errors = append(errors, fmt.Sprintf("%s: continuation.%s must be declared", where, field))
 		}
+	}
+	return errors
+}
+
+// validateHandoff checks a worker-handoff declaration: the temporary document the worker composes the handoff into, which the runner removes before the fresh parent runs, so it must stay inside the repository. It rides on the continuation experiment, which screens the second session's prompt and reads its recovery file, so it needs a live scenario declaring exactly two sessions.
+func validateHandoff(where string, scenario map[string]any) []string {
+	handoff, ok := scenario["handoff"].(map[string]any)
+	if !ok {
+		return []string{fmt.Sprintf("%s: handoff must be an object", where)}
+	}
+	var errors []string
+	if document := getString(handoff, "document"); document == "" {
+		errors = append(errors, fmt.Sprintf("%s: handoff.document must be declared", where))
+	} else if !filepath.IsLocal(document) {
+		errors = append(errors, fmt.Sprintf("%s: handoff.document must be a path inside the repository", where))
+	}
+	if mode(scenario) != "live" || !truthy(scenario["sessions"]) {
+		errors = append(errors, fmt.Sprintf("%s: a handoff experiment must be a live scenario declaring sessions", where))
+	} else if len(asList(scenario["sessions"])) != 2 {
+		errors = append(errors, fmt.Sprintf("%s: a handoff experiment needs exactly two sessions", where))
 	}
 	return errors
 }

@@ -55,6 +55,63 @@
       ]
     },
     {
+      "id": "worker-handoff-recovery-live",
+      "title": "A fresh parent recovers the worker's deferred requirement and its rationale through the branch-scoped Engram handoff after the composing document is gone",
+      "command": "workflow-checkpoint",
+      "prompt": "Live worker handoff recovery: a worker session composes its handoff into a temporary document and persists it under the branch handoff key; the runner removes that document and scans the workspace, then a fresh parent with no shared conversation recovers the deferred requirement and its rationale through the handoff alone.",
+      "mode": "live",
+      "client": "claude",
+      "sessions": [
+        {
+          "id": "worker",
+          "prompt": "You are the worker of a two-session handoff experiment. Using the workflow-checkpoint protocol and its Engram tools, compose your handoff for branch `{{branch}}` into `handoff/composing.md` with the canonical handoff fields, carrying `{{requirement}}` and `{{rationale}}` in its `unresolved` array, revision the current git HEAD or `unknown` when the disposable repository has no commit yet, and an empty artifacts array, because the composing document is temporary. Persist that handoff under the branch handoff key with `scope: project`, read it back, and confirm it matches. Save the branch checkpoint for `{{branch}}` with state active, contract [\"https://github.com/jvillegasd/harness/issues/76\"], next_action `human review`, and its `handoff` field set to that handoff key. Also save a handoff for branch `{{unrelated_branch}}` whose `unresolved` array carries `{{unrelated_value}}`, and its checkpoint. Write nothing else."
+        },
+        {
+          "id": "parent",
+          "prompt": "You are a fresh parent session with no shared conversation. Recover the branch checkpoint for branch `{{branch}}` from Engram by its topic key, follow its `handoff` field to the branch handoff key, and read the handoff there: do not read another branch's handoff and do not infer anything from prior context or from any file in the workspace. Write `recovery/session-two.json` containing the recovered deferred requirement and its rationale as JSON. Write nothing else."
+        }
+      ],
+      "handoff": {
+        "document": "handoff/composing.md"
+      },
+      "continuation": {
+        "branch": "test/76-live-handoff-recovery",
+        "requirement": "re-derive the ladder for the parent's own revision",
+        "rationale": "the worker's checks bind to the revision it ran against, not to the parent's",
+        "unrelated_branch": "feat/99-unrelated-work",
+        "unrelated_value": "a different unresolved question"
+      },
+      "artifacts": {
+        "contains": [
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"outcome\": \"recovered\""
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"accepted\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "skills/workflow-checkpoint/SKILL.md",
+        "internal/scenarios/recovery.go",
+        "internal/scenarios/probe_recovery.go",
+        "internal/scenarios/probe_worker_handoff.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probe_checkpoint.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    },
+    {
       "id": "worker-recovery-headless-live",
       "title": "A real headless interruption checks for surviving processes and post-stop edits and proves a stop before any fallback",
       "command": "ship",

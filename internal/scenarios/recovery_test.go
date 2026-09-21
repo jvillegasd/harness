@@ -15,6 +15,9 @@ var recoveryOutcomeKeys = []string{
 	"continuation_unavailable_is_unverified", "continuation_store_unavailable_is_unverified",
 	"headless_proven_stop", "post_stop_edit_rejected", "uncertain_no_fallback",
 	"uncertain_fallback_rejected", "worker_identities_required", "worker_unavailable_is_unverified",
+	"handoff_recovered_after_document_removed", "handoff_source_on_disk_rejected",
+	"handoff_foreign_branch_excluded", "handoff_checks_invalidated_on_changed_revision",
+	"handoff_unavailable_is_unverified",
 }
 
 func TestContinuationOracle(t *testing.T) {
@@ -27,6 +30,7 @@ func TestContinuationOracle(t *testing.T) {
 		MemoryReadable: true,
 		MemoryIsolated: true,
 		RouteAvailable: true,
+		ProjectCleared: true,
 	}
 	cases := []struct {
 		name string
@@ -34,6 +38,7 @@ func TestContinuationOracle(t *testing.T) {
 		want string
 	}{
 		{"compliant recovery", func(*continuationFacts) {}, continuationRecovered},
+		{"continuation project not cleared", func(f *continuationFacts) { f.ProjectCleared = false }, continuationUnverified},
 		{"requirement repeated in prompt", func(f *continuationFacts) { f.Prompt = "recover wire /ship continuation retrieval" }, continuationRepeatedInPrompt},
 		{"rationale repeated in prompt", func(f *continuationFacts) { f.Prompt = "recover the branch scopes recovery" }, continuationRepeatedInPrompt},
 		{"shared conversation", func(f *continuationFacts) { f.SharedTranscript = true }, continuationSharedConversation},
@@ -43,6 +48,31 @@ func TestContinuationOracle(t *testing.T) {
 		{"store unreadable", func(f *continuationFacts) { f.MemoryReadable = false }, continuationUnverified},
 		{"missing rationale", func(f *continuationFacts) { f.Recovered = "next_action wire /ship continuation retrieval" }, continuationMissingRationale},
 		{"missing requirement", func(f *continuationFacts) { f.Recovered = "rationale the branch scopes recovery" }, continuationMissingRequirement},
+		{"handoff document removed", func(f *continuationFacts) {
+			f.HandoffDeclared = true
+			f.ProjectCleared = true
+			f.DocumentRemoved = true
+		}, continuationRecovered},
+		{"test project not cleared", func(f *continuationFacts) {
+			f.HandoffDeclared = true
+			f.ProjectCleared = false
+			f.DocumentRemoved = true
+		}, continuationUnverified},
+		{"value still readable on disk", func(f *continuationFacts) {
+			f.HandoffDeclared = true
+			f.ProjectCleared = true
+			f.DocumentRemoved = true
+			f.Residue = []string{"notes/leftover.md"}
+		}, continuationSourceOnDisk},
+		{"residue outranks the unrelated value", func(f *continuationFacts) {
+			f.HandoffDeclared = true
+			f.ProjectCleared = true
+			f.DocumentRemoved = true
+			f.Residue = []string{"notes/leftover.md"}
+			f.Recovered += " a different next action"
+		}, continuationSourceOnDisk},
+		{"handoff document never composed", func(f *continuationFacts) { f.HandoffDeclared = true; f.ProjectCleared = true }, continuationUnverified},
+		{"residue without a declared handoff is ignored", func(f *continuationFacts) { f.Residue = []string{"notes/leftover.md"} }, continuationRecovered},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -181,6 +211,24 @@ func TestRecoveryDeclarationValidation(t *testing.T) {
 		{"bad settle", live(map[string]any{
 			"worker": map[string]any{"route": routeHeadless, "role": "executor", "session": "claude", "settle_seconds": 0},
 		}), "settle_seconds"},
+		{"handoff without a document", live(map[string]any{
+			"sessions":     []any{map[string]any{"id": "a", "prompt": "p"}, map[string]any{"id": "b", "prompt": "p"}},
+			"continuation": map[string]any{"branch": "b", "requirement": "r", "rationale": "w", "unrelated_value": "u"},
+			"handoff":      map[string]any{},
+		}), "handoff.document"},
+		{"handoff document outside the repository", live(map[string]any{
+			"sessions":     []any{map[string]any{"id": "a", "prompt": "p"}, map[string]any{"id": "b", "prompt": "p"}},
+			"continuation": map[string]any{"branch": "b", "requirement": "r", "rationale": "w", "unrelated_value": "u"},
+			"handoff":      map[string]any{"document": "../escape.md"},
+		}), "handoff.document must be a path inside the repository"},
+		{"handoff with three sessions", live(map[string]any{
+			"sessions":     []any{map[string]any{"id": "a", "prompt": "p"}, map[string]any{"id": "b", "prompt": "p"}, map[string]any{"id": "c", "prompt": "p"}},
+			"continuation": map[string]any{"branch": "b", "requirement": "r", "rationale": "w", "unrelated_value": "u"},
+			"handoff":      map[string]any{"document": "handoff/composing.md"},
+		}), "exactly two sessions"},
+		{"handoff without sessions", live(map[string]any{
+			"handoff": map[string]any{"document": "handoff/composing.md"},
+		}), "declaring sessions"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -227,7 +275,7 @@ mkdir -p recovery
 printf '%s\n' '{"next_action":"wire /ship continuation retrieval","rationale":"the branch scopes recovery","project":"scenario-continuation-live"}' > recovery/session-two.json
 echo '{"type":"result","model":"stub"}'
 `)
-	writeStub(t, stubDir, "engram", "#!/bin/sh\n[ \"$1\" = search ] || exit 1\necho 'wire /ship continuation retrieval'\n")
+	writeStub(t, stubDir, "engram", "#!/bin/sh\ncase \"$1\" in\nsearch) echo 'wire /ship continuation retrieval' ;;\ndelete) echo \"$@\" > "+stubDir+"/deleted ;;\n*) exit 1 ;;\nesac\n")
 	t.Setenv("PATH", stubDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	scenario := testScenario(map[string]any{
 		"id": "continuation-live", "mode": "live", "client": "claude",
@@ -250,10 +298,229 @@ echo '{"type":"result","model":"stub"}'
 		t.Fatalf("state = %q at %s, want unreviewed", state, where)
 	}
 	recovery := retainedRecovery(t, where)
-	for _, want := range []string{"\"outcome\": \"recovered\"", "\"identities\"", "\"revision\":"} {
+	if deleted, _ := readText(filepath.Join(stubDir, "deleted")); strings.TrimSpace(deleted) != "delete project scenario-continuation-live --hard" {
+		t.Fatalf("the test project was cleared with %q", deleted)
+	}
+	for _, want := range []string{"\"outcome\": \"recovered\"", "\"identities\"", "\"revision\":", "\"project_cleared\": true"} {
 		if !strings.Contains(recovery, want) {
 			t.Fatalf("the retained classification lacks %q:\n%s", want, recovery)
 		}
+	}
+}
+
+// handoffScenario declares the live handoff leg: a worker session composes the handoff into a temporary document, and a fresh parent recovers it after the runner removes that document.
+func handoffScenario() map[string]any {
+	return testScenario(map[string]any{
+		"id": "handoff-recovery-live", "mode": "live", "client": "claude",
+		"sessions": []any{
+			map[string]any{"id": "worker", "prompt": "compose {{requirement}} and {{rationale}} for {{branch}}"},
+			map[string]any{"id": "parent", "prompt": "recover the handoff for {{branch}}"},
+		},
+		"continuation": map[string]any{
+			"branch": "docs/76", "requirement": "wire /ship continuation retrieval",
+			"rationale": "the branch scopes recovery", "unrelated_branch": "feat/99",
+			"unrelated_value": "a different next action",
+		},
+		"handoff":   map[string]any{"document": "handoff/composing.md"},
+		"artifacts": map[string]any{"contains": []any{map[string]any{"path": "artifacts/recovery.json", "text": "\"accepted\": true"}}},
+	})
+}
+
+// handoffComposes is the compliant worker: it composes the handoff into the declared temporary document.
+const handoffComposes = "mkdir -p handoff\nprintf '%s\\n' 'requirement: wire /ship continuation retrieval rationale: the branch scopes recovery' > handoff/composing.md\n"
+
+// handoffBoth is a record holding both deferred values.
+const handoffBoth = "unresolved: wire /ship continuation retrieval; the branch scopes recovery"
+
+// handoffExport is an Engram export of the isolated test project: the branch checkpoint naming the handoff key, beside the given topic key and content pairs.
+func handoffExport(pairs ...string) string {
+	records := []string{`{"project":"scenario-handoff-recovery-live","topic_key":"checkpoint/docs/76","content":"handoff: handoff/docs/76"}`}
+	for index := 0; index+1 < len(pairs); index += 2 {
+		records = append(records, `{"project":"scenario-handoff-recovery-live","topic_key":"`+pairs[index]+`","content":"`+pairs[index+1]+`"}`)
+	}
+	return `{"observations":[` + strings.Join(records, ",") + `]}`
+}
+
+// handoffStubs installs a worker session that runs the given shell on its first launch, a parent session that recovers the values on its second, and an Engram store whose export holds the given observations. It returns the stub directory, where the store records a project delete in `deleted` and refuses one while `delete-fails` exists.
+func handoffStubs(t *testing.T, worker string, observations ...string) string {
+	t.Helper()
+	stubDir := t.TempDir()
+	writeStub(t, stubDir, "claude", `#!/bin/sh
+if [ -f `+stubDir+`/composed ]; then
+  mkdir -p recovery
+  printf '%s\n' '{"unresolved":["wire /ship continuation retrieval","the branch scopes recovery"]}' > recovery/session-two.json
+else
+  : > `+stubDir+`/composed
+`+worker+`
+fi
+echo '{"type":"result","model":"stub"}'
+`)
+	export := handoffExport("handoff/docs/76", handoffBoth)
+	if len(observations) > 0 {
+		export = observations[0]
+	}
+	writeStub(t, stubDir, "engram", `#!/bin/sh
+case "$1" in
+export) printf '%s' '`+export+`' > "$2" ;;
+delete) [ -f `+stubDir+`/delete-fails ] && exit 1; [ -f `+stubDir+`/delete-missing ] && { echo "project not found: \"$3\"" >&2; exit 1; }; echo "$@" > `+stubDir+`/deleted ;;
+*) exit 1 ;;
+esac
+`)
+	t.Setenv("PATH", stubDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return stubDir
+}
+
+// runHandoff runs the live handoff scenario through the stubs and returns its state and retained classification.
+func runHandoff(t *testing.T) (string, string) {
+	t.Helper()
+	state, where, err := runOne(handoffScenario(), testRepoRoot(), t.TempDir(), filepath.Join(testRepoRoot(), "scenarios", "fixtures"), true, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return state, retainedRecovery(t, where)
+}
+
+func wantRetained(t *testing.T, recovery string, wants ...string) {
+	t.Helper()
+	for _, want := range wants {
+		if !strings.Contains(recovery, want) {
+			t.Fatalf("the retained classification lacks %q:\n%s", want, recovery)
+		}
+	}
+}
+
+// TestHandoffRecoveryLiveWithStubSessions proves the fresh parent recovers the deferred requirement and rationale through the branch handoff after the runner removed the composing document and found no residue.
+func TestHandoffRecoveryLiveWithStubSessions(t *testing.T) {
+	stubDir := handoffStubs(t, handoffComposes)
+	state, recovery := runHandoff(t)
+	if state != "unreviewed" {
+		t.Fatalf("state = %q, want unreviewed:\n%s", state, recovery)
+	}
+	wantRetained(t, recovery, "\"outcome\": \"recovered\"", "\"key\": \"handoff/docs/76\"", "\"document_removed\": true", "\"residue\": []", "\"project_cleared\": true", "\"fallback_started\": false")
+	if deleted, _ := readText(filepath.Join(stubDir, "deleted")); strings.TrimSpace(deleted) != "delete project scenario-handoff-recovery-live --hard" {
+		t.Fatalf("the test project was cleared with %q", deleted)
+	}
+}
+
+// TestHandoffRecoveryFailedClearIsUnverified keeps a run whose disposable project could not be cleared out of acceptance, because an earlier run's records could have answered it.
+func TestHandoffRecoveryFailedClearIsUnverified(t *testing.T) {
+	stubDir := handoffStubs(t, handoffComposes)
+	if err := os.WriteFile(filepath.Join(stubDir, "delete-fails"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	state, recovery := runHandoff(t)
+	if state != "incomplete" {
+		t.Fatalf("state = %q, want incomplete:\n%s", state, recovery)
+	}
+	wantRetained(t, recovery, "\"outcome\": \"unverified\"", "\"project_cleared\": false", "could not be cleared")
+}
+
+// TestHandoffRecoveryClearsAMissingProject treats a test project that does not exist yet as cleared, because a first run has nothing to clear and must not read as unverified.
+func TestHandoffRecoveryClearsAMissingProject(t *testing.T) {
+	stubDir := handoffStubs(t, handoffComposes)
+	if err := os.WriteFile(filepath.Join(stubDir, "delete-missing"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	state, recovery := runHandoff(t)
+	if state != "unreviewed" {
+		t.Fatalf("state = %q, want unreviewed:\n%s", state, recovery)
+	}
+	wantRetained(t, recovery, "\"outcome\": \"recovered\"", "\"project_cleared\": true")
+}
+
+// TestClearTestProjectRefusesOtherProjects keeps the hard delete inside the disposable scenario namespace, because deleting a real project cannot be undone.
+func TestClearTestProjectRefusesOtherProjects(t *testing.T) {
+	stubDir := handoffStubs(t, handoffComposes)
+	for _, project := range []string{"harness", "scenario-", "my-scenario-x"} {
+		if clearTestProject(project) {
+			t.Fatalf("clearTestProject(%q) reported a clear", project)
+		}
+	}
+	if pathExists(filepath.Join(stubDir, "deleted")) {
+		t.Fatal("a project outside the scenario namespace reached engram delete")
+	}
+	if !clearTestProject("scenario-handoff-recovery-live") {
+		t.Fatal("the disposable scenario project was not cleared")
+	}
+}
+
+// TestHandoffRecoveryRejectsValueReadableOnDisk keeps a value the parent could have reread from the workspace out of acceptance, because that recovery proves nothing about the durable handoff.
+func TestHandoffRecoveryRejectsValueReadableOnDisk(t *testing.T) {
+	handoffStubs(t, handoffComposes+"mkdir -p notes\nprintf '%s\\n' 'wire /ship continuation retrieval' > notes/leftover.md\n")
+	state, recovery := runHandoff(t)
+	if state != "fail" {
+		t.Fatalf("state = %q, want fail:\n%s", state, recovery)
+	}
+	wantRetained(t, recovery, "\"outcome\": \"source_readable_on_disk\"", "\"accepted\": false", "still readable outside Engram: notes/leftover.md")
+}
+
+// TestHandoffRecoveryRejectsValueReadableThroughGit refuses a composing document the worker committed or staged, because removing it from the tree leaves both values recoverable through git.
+func TestHandoffRecoveryRejectsValueReadableThroughGit(t *testing.T) {
+	for label, record := range map[string]string{
+		"git history": "git add handoff/composing.md\ngit -c user.name=stub -c user.email=stub@example.com commit -qm handoff\n",
+		"git index":   "git add handoff/composing.md\n",
+		// A commit dropped by a reset is reachable only through the reflog; the document stays in the tree, unstaged, so the runner still removes it.
+		"reset commit": "git -c user.name=stub -c user.email=stub@example.com commit -q --allow-empty -m base\ngit add handoff/composing.md\ngit -c user.name=stub -c user.email=stub@example.com commit -qm handoff\ngit reset -q --soft HEAD~1\ngit rm -q --cached handoff/composing.md\n",
+	} {
+		t.Run(label, func(t *testing.T) {
+			handoffStubs(t, handoffComposes+record)
+			state, recovery := runHandoff(t)
+			if state != "fail" {
+				t.Fatalf("state = %q, want fail:\n%s", state, recovery)
+			}
+			want := label
+			if label == "reset commit" {
+				want = "git history"
+			}
+			wantRetained(t, recovery, "\"outcome\": \"source_readable_on_disk\"", "\""+want+"\"")
+		})
+	}
+}
+
+// TestHandoffRecoveryWithoutDocumentIsUnverified keeps a run whose worker never composed the document out of acceptance, because recovery after its removal was never exercised.
+func TestHandoffRecoveryWithoutDocumentIsUnverified(t *testing.T) {
+	handoffStubs(t, ":\n")
+	state, recovery := runHandoff(t)
+	if state != "incomplete" {
+		t.Fatalf("state = %q, want incomplete:\n%s", state, recovery)
+	}
+	wantRetained(t, recovery, "\"outcome\": \"unverified\"", "\"accepted\": false", "\"document_removed\": false", "the handoff document was not present when the runner removed it")
+}
+
+// TestHandoffRecoveryAttribution accepts a recovery only when both values sit under the branch handoff key and no other branch's handoff holds either. Session summaries and other saves may hold them too, because Engram tells every session to save proactively.
+func TestHandoffRecoveryAttribution(t *testing.T) {
+	cases := []struct {
+		name, export, state, outcome string
+	}{
+		{"session summary beside the branch handoff", handoffExport("handoff/docs/76", handoffBoth, "", handoffBoth, "session-summary/scenario", handoffBoth), "unreviewed", continuationRecovered},
+		{"foreign key only", handoffExport("handoff/feat/99", handoffBoth), "fail", continuationMemoryNotIsolated},
+		{"foreign handoff holds the rationale", handoffExport("handoff/docs/76", handoffBoth, "handoff/feat/99", "the branch scopes recovery"), "fail", continuationMemoryNotIsolated},
+		{"rationale missing from the branch key", handoffExport("handoff/docs/76", "unresolved: wire /ship continuation retrieval", "", handoffBoth), "fail", continuationMemoryNotIsolated},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			handoffStubs(t, handoffComposes, c.export)
+			state, recovery := runHandoff(t)
+			if state != c.state {
+				t.Fatalf("state = %q, want %s:\n%s", state, c.state, recovery)
+			}
+			wantRetained(t, recovery, "\"outcome\": \""+c.outcome+"\"")
+		})
+	}
+}
+
+// TestHandoffRecoveryWithoutBudgetDoesNotRun keeps the live handoff leg behind the approved budget.
+func TestHandoffRecoveryWithoutBudgetDoesNotRun(t *testing.T) {
+	out := t.TempDir()
+	state, _, err := runOne(handoffScenario(), testRepoRoot(), out, filepath.Join(testRepoRoot(), "scenarios", "fixtures"), false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state != "not-run" {
+		t.Fatalf("state = %q, want not-run", state)
+	}
+	if attempts := attemptPaths(out, "handoff-recovery-live"); len(attempts) != 0 {
+		t.Fatalf("a not-run handoff scenario wrote an attempt: %v", attempts)
 	}
 }
 

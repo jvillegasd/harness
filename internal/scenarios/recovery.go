@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -31,6 +32,7 @@ const (
 	continuationMissingRequirement = "missing_requirement"
 	continuationMissingRationale   = "missing_rationale"
 	continuationMemoryNotIsolated  = "memory_not_isolated"
+	continuationSourceOnDisk       = "source_readable_on_disk"
 	continuationUnverified         = "unverified"
 )
 
@@ -54,6 +56,10 @@ type continuationFacts struct {
 	MemoryIsolated   bool     // the checkpoint was found in the isolated test store
 	SharedTranscript bool     // the sessions shared one conversation
 	RouteAvailable   bool     // the client route and memory service answered
+	HandoffDeclared  bool     // the scenario declared a temporary document the worker composed the handoff into
+	DocumentRemoved  bool     // the runner removed that document before the fresh parent ran
+	Residue          []string // workspace paths, or git history or index, where a declared value was still readable after the removal
+	ProjectCleared   bool     // the runner cleared the disposable test project before the first session ran
 }
 
 // continuationVerdict is the classification of one continuation observation.
@@ -65,12 +71,18 @@ type continuationVerdict struct {
 // continuationAccepted reports whether a continuation verdict proves recovery from the branch checkpoint.
 func continuationAccepted(outcome string) bool { return outcome == continuationRecovered }
 
-// continuationOracle classifies whether a fresh session recovered the deferred requirement and its rationale from the branch checkpoint. It refuses a value repeated in the prompt, a shared conversation, an unrelated branch's value, a non-isolated store, and an unavailable route before it accepts a recovery.
+// continuationOracle classifies whether a fresh session recovered the deferred requirement and its rationale from the branch checkpoint or handoff. It refuses a value repeated in the prompt, a shared conversation, a value still readable in the workspace, an unrelated branch's value, a non-isolated store, and an unavailable route before it accepts a recovery.
 func continuationOracle(f continuationFacts) continuationVerdict {
 	if !f.RouteAvailable || !f.MemoryReadable {
 		return continuationVerdict{continuationUnverified, []string{"the client route, model, or memory service did not answer"}}
 	}
+	if !f.ProjectCleared {
+		return continuationVerdict{continuationUnverified, []string{"the disposable test project could not be cleared, so an earlier run's records could answer this one"}}
+	}
 	if !f.MemoryIsolated {
+		if f.HandoffDeclared {
+			return continuationVerdict{continuationMemoryNotIsolated, []string{"both values were not held under the branch handoff key in the isolated test store, or another branch's handoff held one"}}
+		}
 		return continuationVerdict{continuationMemoryNotIsolated, []string{"the checkpoint was not found in the isolated test store"}}
 	}
 	if f.SharedTranscript {
@@ -79,8 +91,15 @@ func continuationOracle(f continuationFacts) continuationVerdict {
 	if f.Requirement == "" || f.Rationale == "" {
 		return continuationVerdict{continuationUnverified, []string{"the experiment declared no requirement or rationale to recover"}}
 	}
+	if f.HandoffDeclared && !f.DocumentRemoved {
+		return continuationVerdict{continuationUnverified, []string{"the handoff document was not present when the runner removed it, so recovery after its removal was not exercised"}}
+	}
 	if strings.Contains(f.Prompt, f.Requirement) || strings.Contains(f.Prompt, f.Rationale) {
 		return continuationVerdict{continuationRepeatedInPrompt, []string{"the continuation prompt repeated a value it had to recover"}}
+	}
+	// A value still readable without Engram would fake a recovery, so residue is refused before the recovered text is trusted.
+	if f.HandoffDeclared && len(f.Residue) > 0 {
+		return continuationVerdict{continuationSourceOnDisk, []string{"a deferred value was still readable outside Engram: " + strings.Join(f.Residue, ", ")}}
 	}
 	for _, value := range f.Unrelated {
 		if value != "" && value != f.Requirement && value != f.Rationale && strings.Contains(f.Recovered, value) {
@@ -321,9 +340,30 @@ func runContinuationExperiment(scenario map[string]any, repo, root string, env [
 	spec := continuationSpecFrom(scenario)
 	client := sessionClient(scenario)
 	env = recoveryEnv(env, scenario)
+	document := getString(dict(scenario, "handoff"), "document")
+	key, prefix := "", ""
+	if document != "" {
+		// The key comes from the checkpoint skill's canonical protocol, so a changed protocol changes what this experiment reads back.
+		protocol, err := probeCheckpointProtocol(root)
+		if err != nil {
+			return nil, err
+		}
+		key = handoffKey(protocol, spec.Branch)
+		prefix, _, _ = strings.Cut(getString(protocol, "handoff_key"), "<branch>")
+	}
+	project := recoveryProject(scenario)
+	cleared := clearTestProject(project)
+	*events = append(*events, map[string]any{"type": "test-project-cleared", "project": project, "cleared": cleared})
 	identities := make([]any, 0, len(sessions))
 	available := true
+	removed := false
+	var residue []string
 	for index, session := range sessions {
+		// The composing document is removed before the fresh parent launches, so what the parent recovers came from the store rather than from a file it could reread.
+		if document != "" && index == len(sessions)-1 {
+			removed, residue = removeHandoffDocument(repo, document, spec)
+			*events = append(*events, map[string]any{"type": "handoff-document-removed", "document": document, "removed": removed, "residue": toAnyList(residue)})
+		}
 		prompt := expandContinuationPrompt(session.Prompt, spec, index)
 		identity, err := launchSession(client, repo, env, prompt, session.ID, events, transcript)
 		if err != nil {
@@ -333,20 +373,28 @@ func runContinuationExperiment(scenario map[string]any, repo, root string, env [
 	}
 	recovered, _ := readText(filepath.Join(repo, filepath.FromSlash("recovery/session-two.json")))
 	// Isolation is read back from the store by the runner, not taken from the session's own file, so a value recovered from personal memory is visible rather than assumed away.
-	project := recoveryProject(scenario)
-	isolated, readable := storeHoldsCheckpoint(project, spec.Requirement)
+	var isolated, readable bool
+	if document != "" {
+		isolated, readable = storeHoldsHandoff(project, key, prefix, spec.Requirement, spec.Rationale)
+	} else {
+		isolated, readable = storeHoldsCheckpoint(project, spec.Requirement)
+	}
 	facts := continuationFacts{
-		Prompt:         expandContinuationPrompt(sessions[1].Prompt, spec, 1),
-		Recovered:      recovered,
-		Requirement:    spec.Requirement,
-		Rationale:      spec.Rationale,
-		Unrelated:      []string{spec.UnrelatedValue},
-		MemoryReadable: readable,
-		MemoryIsolated: isolated,
-		RouteAvailable: available && recovered != "",
+		Prompt:          expandContinuationPrompt(sessions[1].Prompt, spec, 1),
+		Recovered:       recovered,
+		Requirement:     spec.Requirement,
+		Rationale:       spec.Rationale,
+		Unrelated:       []string{spec.UnrelatedValue},
+		MemoryReadable:  readable,
+		MemoryIsolated:  isolated,
+		RouteAvailable:  available && recovered != "",
+		HandoffDeclared: document != "",
+		DocumentRemoved: removed,
+		ProjectCleared:  cleared,
+		Residue:         residue,
 	}
 	verdict := continuationOracle(facts)
-	return map[string]any{
+	artifact := map[string]any{
 		"outcome":    verdict.Outcome,
 		"accepted":   continuationAccepted(verdict.Outcome),
 		"reasons":    toAnyList(verdict.Reasons),
@@ -354,8 +402,45 @@ func runContinuationExperiment(scenario map[string]any, repo, root string, env [
 		"client":     client,
 		"identities": identities,
 		"revision":   revisionOf(root),
-		"memory":     map[string]any{"readable": readable, "isolated": isolated, "project": project},
-	}, nil
+		"memory":     map[string]any{"readable": readable, "isolated": isolated, "project": project, "project_cleared": cleared},
+	}
+	if document != "" {
+		artifact["handoff"] = map[string]any{
+			"key": key, "document": document, "document_removed": removed, "residue": toAnyList(residue),
+			// This experiment never starts a worker beside a possibly live one, so an uncertain outcome is reported rather than replaced.
+			"fallback_started": false,
+		}
+	}
+	return artifact, nil
+}
+
+// removeHandoffDocument deletes the temporary document the worker composed the handoff into, then reports every workspace file, and git's history or index, where the requirement or the rationale is still readable. Both are the runner's own observations, never the session's report, because a value left on disk would let a fresh parent fake a recovery.
+func removeHandoffDocument(repo, document string, spec continuationSpec) (removed bool, residue []string) {
+	removed = os.Remove(filepath.Join(repo, filepath.FromSlash(document))) == nil
+	for rel := range snapshot(repo) {
+		text, err := readText(filepath.Join(repo, filepath.FromSlash(rel)))
+		if err != nil {
+			continue
+		}
+		if strings.Contains(text, spec.Requirement) || strings.Contains(text, spec.Rationale) {
+			residue = append(residue, rel)
+		}
+	}
+	sort.Strings(residue)
+	// A committed or staged document survives its removal from the tree, and the reflog keeps one committed then reset or amended, so git counts as residue too. A failing git, such as a repository with no commit, reads as empty.
+	for _, source := range []struct {
+		label string
+		args  []string
+	}{
+		{"git history", []string{"log", "--all", "--reflog", "-p", "--no-color"}},
+		{"git index", []string{"diff", "--cached", "--no-color"}},
+	} {
+		out, _ := git(repo, source.args...)
+		if strings.Contains(out, spec.Requirement) || strings.Contains(out, spec.Rationale) {
+			residue = append(residue, source.label)
+		}
+	}
+	return removed, residue
 }
 
 // storeHoldsCheckpoint reads the isolated test project back through the Engram CLI, so isolation is an observation the runner makes rather than the session's own claim. An unreadable store is reported as such, never as a pass.
@@ -367,6 +452,63 @@ func storeHoldsCheckpoint(project, query string) (found, readable bool) {
 		return false, false
 	}
 	return strings.Contains(string(out), query), true
+}
+
+// storeHoldsHandoff reads the isolated test project back through an Engram export, because search prints no topic keys. Each value must sit under the branch handoff key, and no other key under the protocol's handoff prefix may hold either, which is what makes a recovery attributable to the handoff. Every other record is ignored, because Engram tells each session to save and summarize proactively, so those legitimately hold the values. The export holds the machine's whole memory store, so only the two booleans leave this function.
+func storeHoldsHandoff(project, key, prefix string, values ...string) (found, readable bool) {
+	dir, err := os.MkdirTemp("", "handoff-export-")
+	if err != nil {
+		return false, false
+	}
+	defer os.RemoveAll(dir)
+	path := filepath.Join(dir, "export.json")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := exec.CommandContext(ctx, "engram", "export", path).Run(); err != nil {
+		return false, false
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false, false
+	}
+	var export struct {
+		Observations []struct {
+			Project  string `json:"project"`
+			TopicKey string `json:"topic_key"`
+			Content  string `json:"content"`
+		} `json:"observations"`
+	}
+	if err := json.Unmarshal(raw, &export); err != nil {
+		return false, false
+	}
+	held := map[string]bool{}
+	for _, observation := range export.Observations {
+		if observation.Project != project || !strings.HasPrefix(observation.TopicKey, prefix) {
+			continue
+		}
+		for _, value := range values {
+			if !strings.Contains(observation.Content, value) {
+				continue
+			}
+			if observation.TopicKey != key {
+				return false, true
+			}
+			held[value] = true
+		}
+	}
+	return len(held) == len(values), true
+}
+
+// clearTestProject hard-deletes the disposable test project, so an earlier run's records can neither satisfy nor fail this one. It refuses every name outside the scenario namespace, because a hard delete of a real project cannot be undone.
+func clearTestProject(project string) bool {
+	if !strings.HasPrefix(project, "scenario-") || project == "scenario-" {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "engram", "delete", "project", project, "--hard").CombinedOutput()
+	// A first run has no project yet, and the CLI (engram v1.20.0) answers `project not found` with exit 1 and never prompts; nothing to clear is already clear.
+	return err == nil || strings.Contains(string(out), "project not found")
 }
 
 // recoveryProject names the disposable test project the experiment namespaces its checkpoints under.
