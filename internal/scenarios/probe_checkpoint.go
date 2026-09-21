@@ -29,13 +29,14 @@ func checkpointTopicKey(protocol map[string]any, branch string) string {
 	return strings.Replace(getString(protocol, "topic_key"), "<branch>", branch, 1)
 }
 
-func checkpointSave(protocol map[string]any, store map[string]string, branch, tip, state string, contract, checks []string, rationale, nextAction string) (map[string]any, error) {
+func checkpointSave(protocol map[string]any, store map[string]string, branch, tip, state string, contract, checks []string, rationale, handoff, nextAction string) (map[string]any, error) {
 	record := map[string]any{
 		"state":       state,
 		"branch_tip":  tip,
 		"contract":    toAnyList(contract),
 		"checks":      toAnyList(checks),
 		"rationale":   rationale,
+		"handoff":     handoff,
 		"next_action": nextAction,
 	}
 	fields := dict(protocol, "fields")
@@ -122,6 +123,9 @@ func checkpointRecover(protocol map[string]any, store map[string]string, branch,
 	if !ok {
 		return nil, []string{"no checkpoint for branch"}
 	}
+	if _, ok := record["handoff"]; !ok {
+		record["handoff"] = ""
+	}
 	state := getString(record, "state")
 	if containsString(stringList(protocol["terminal_states"]), state) {
 		return nil, []string{"terminal state " + state + " is excluded"}
@@ -202,7 +206,7 @@ func probeCheckpointRun(root string) (map[string]any, error) {
 	resolve := func(ref string) bool { return strings.HasPrefix(ref, "https://") }
 	active := getString(protocol, "active_state")
 
-	written, err := checkpointSave(protocol, store, branch, tip, active, contract, []string{"typecheck: pass", "lint: pass"}, "the skill is the single schema source", "wire the commands at their return boundaries (#77)")
+	written, err := checkpointSave(protocol, store, branch, tip, active, contract, []string{"typecheck: pass", "lint: pass"}, "the skill is the single schema source", "", "wire the commands at their return boundaries (#77)")
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +223,7 @@ func probeCheckpointRun(root string) (map[string]any, error) {
 	encoded, _ := json.Marshal(corrupted)
 	store[checkpointTopicKey(protocol, branch)] = string(encoded)
 	detectsCorruption := !checkpointReadBack(protocol, store, branch, snapshot)
-	if _, err := checkpointSave(protocol, store, branch, tip, active, contract, []string{"typecheck: pass"}, "why", "wire (#77)"); err != nil {
+	if _, err := checkpointSave(protocol, store, branch, tip, active, contract, []string{"typecheck: pass"}, "why", "", "wire (#77)"); err != nil {
 		return nil, err
 	}
 

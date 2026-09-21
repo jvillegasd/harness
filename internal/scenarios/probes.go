@@ -20,6 +20,8 @@ func runProbe(name, repo, root string, out io.Writer) error {
 		return probeCheckpoint(repo, root)
 	case "checkpoint-two-session":
 		return probeCheckpointTwoSession(repo, root)
+	case "worker-handoff":
+		return probeWorkerHandoff(repo, root)
 	case "spec-slicing":
 		return probeSpecSlicing(repo, root)
 	case "harness-audit":

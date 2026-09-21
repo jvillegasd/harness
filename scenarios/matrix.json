@@ -287,6 +287,49 @@
       ]
     },
     {
+      "id": "worker-handoff",
+      "title": "A durable worker handoff is persisted under a branch key, read back, validated against the checkpoint, and never replaces it",
+      "command": "workflow-checkpoint",
+      "prompt": "Exercise the durable worker handoff: compose it with the canonical fields, persist it under the branch handoff key with a read-back, recover it for a fresh parent, refuse a foreign branch's handoff, invalidate checks on a moved tip or pending edits, report a failed persistence as incomplete, and leave the branch checkpoint unchanged.",
+      "mode": "offline",
+      "check": "probe:worker-handoff",
+      "artifacts": {
+        "tree_unchanged": false,
+        "present": ["artifacts/handoff.json"],
+        "absent": [],
+        "contains": [
+          {"path": "artifacts/handoff.json", "text": "\"composition_fields\": true"},
+          {"path": "artifacts/handoff.json", "text": "\"executor_names_fields\": true"},
+          {"path": "artifacts/handoff.json", "text": "\"never_grants_approval\": true"},
+          {"path": "artifacts/handoff.json", "text": "\"valid_recovery\": true"},
+          {"path": "artifacts/handoff.json", "text": "\"legacy_checkpoint_tolerated\": true"},
+          {"path": "artifacts/handoff.json", "text": "\"missing_read_back\": true"},
+          {"path": "artifacts/handoff.json", "text": "\"foreign_branch_key\": true"},
+          {"path": "artifacts/handoff.json", "text": "\"changed_tip_pending_edits\": true"},
+          {"path": "artifacts/handoff.json", "text": "\"failed_persistence\": true"},
+          {"path": "artifacts/handoff.json", "text": "\"checkpoint_non_overwrite\": true"},
+          {"path": "artifacts/handoff.json", "text": "\"reviewers_excluded\": true"}
+        ]
+      },
+      "harness_inputs": [
+        "skills/workflow-checkpoint/SKILL.md",
+        "roles/executor.md",
+        "skills/adversarial-review/SKILL.md",
+        "internal/scenarios/probe_worker_handoff.go",
+        "internal/scenarios/probe_checkpoint.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    },
+    {
       "id": "spec-slicing",
       "title": "A one-slice spec is promoted in place while a many-slice spec keeps its child DAG",
       "command": "create-ticket",

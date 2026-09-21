@@ -60,7 +60,7 @@ func checkpointBlock(t *testing.T) map[string]any {
 func TestCheckpointProtocolBlock(t *testing.T) {
 	block := checkpointBlock(t)
 	fields := block["fields"].(map[string]any)
-	want := map[string]bool{"state": true, "branch_tip": true, "contract": true, "checks": true, "rationale": true, "next_action": true}
+	want := map[string]bool{"state": true, "branch_tip": true, "contract": true, "checks": true, "rationale": true, "handoff": true, "next_action": true}
 	if len(fields) != len(want) {
 		t.Fatalf("fields = %v", fields)
 	}
@@ -595,7 +595,7 @@ func TestDuplicationDetectorCatchesACopiedBlock(t *testing.T) {
 	block := checkpointBlock(t)
 	// A marker-free block carrying exactly the record schema's keys is what only the JSON-key comparison catches.
 	restated := "The command restates the schema:\n\n```json\n" +
-		`{"state": "active", "branch_tip": "tip", "contract": [], "checks": [], "rationale": "", "next_action": "next"}` +
+		`{"state": "active", "branch_tip": "tip", "contract": [], "checks": [], "rationale": "", "handoff": "", "next_action": "next"}` +
 		"\n```\n"
 	if !duplicatesProtocol(restated, block) {
 		t.Error("a restated record schema is not flagged")
