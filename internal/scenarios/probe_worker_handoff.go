@@ -116,11 +116,18 @@ func recoverHandoff(protocol map[string]any, store *handoffStore, branch, curren
 			return nil, []string{"the handoff is missing a field or has the wrong shape"}
 		}
 	}
-	if getString(record, "revision") != currentTip || len(asList(record["pending_files"])) > 0 {
-		record["checks"] = []any{}
-		return record, []string{"the revision moved or pending files remain; checks invalidated"}
+	// One note per trigger, so the report says why the checks were dropped.
+	var notes []string
+	if getString(record, "revision") != currentTip {
+		notes = append(notes, "the revision moved; checks invalidated")
 	}
-	return record, nil
+	if len(asList(record["pending_files"])) > 0 {
+		notes = append(notes, "the handoff lists pending files; checks invalidated")
+	}
+	if len(notes) > 0 {
+		record["checks"] = []any{}
+	}
+	return record, notes
 }
 
 // handoffIsReviewerInput reports whether the review skill's permitted-input block names the handoff among an input or a standard.

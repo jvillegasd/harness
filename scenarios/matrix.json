@@ -1229,6 +1229,7 @@
         "skills/workflow-checkpoint/SKILL.md",
         "internal/scenarios/recovery.go",
         "internal/scenarios/probe_recovery.go",
+        "internal/scenarios/probe_worker_handoff.go",
         "internal/scenarios/artifacts.go",
         "internal/scenarios/digest.go",
         "internal/scenarios/evidence.go",
@@ -1282,8 +1283,10 @@
         ]
       },
       "harness_inputs": [
+        "skills/workflow-checkpoint/SKILL.md",
         "internal/scenarios/recovery.go",
         "internal/scenarios/probe_recovery.go",
+        "internal/scenarios/probe_worker_handoff.go",
         "internal/scenarios/artifacts.go",
         "internal/scenarios/digest.go",
         "internal/scenarios/evidence.go",
@@ -1291,6 +1294,60 @@
         "internal/scenarios/flags.go",
         "internal/scenarios/matrix.go",
         "internal/scenarios/metrics.go",
+        "internal/scenarios/probe_checkpoint.go",
+        "internal/scenarios/probes.go",
+        "internal/scenarios/report.go",
+        "internal/scenarios/scenarios.go"
+      ]
+    },
+    {
+      "id": "worker-handoff-recovery",
+      "title": "A fresh parent recovers the worker's deferred requirement and rationale through the branch handoff after the composing document is gone, and refuses a value still readable on disk or held only by another branch",
+      "command": "workflow-checkpoint",
+      "prompt": "Classify a fresh parent's recovery of a worker handoff: only a recovery of the deferred requirement and its rationale through the branch-scoped handoff, with the composing document removed and nothing left readable in the workspace, is accepted; workspace residue, another branch's handoff value, and an unavailable route are refused, and a moved tip or a pending edit invalidates the checks the worker reported.",
+      "mode": "offline",
+      "check": "probe:recovery",
+      "artifacts": {
+        "tree_unchanged": false,
+        "present": [
+          "artifacts/recovery.json"
+        ],
+        "contains": [
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"handoff_recovered_after_document_removed\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"handoff_source_on_disk_rejected\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"handoff_foreign_branch_excluded\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"handoff_checks_invalidated_on_changed_revision\": true"
+          },
+          {
+            "path": "artifacts/recovery.json",
+            "text": "\"handoff_unavailable_is_unverified\": true"
+          }
+        ]
+      },
+      "harness_inputs": [
+        "skills/workflow-checkpoint/SKILL.md",
+        "internal/scenarios/recovery.go",
+        "internal/scenarios/probe_recovery.go",
+        "internal/scenarios/probe_worker_handoff.go",
+        "internal/scenarios/artifacts.go",
+        "internal/scenarios/digest.go",
+        "internal/scenarios/evidence.go",
+        "internal/scenarios/execute.go",
+        "internal/scenarios/flags.go",
+        "internal/scenarios/matrix.go",
+        "internal/scenarios/metrics.go",
+        "internal/scenarios/probe_checkpoint.go",
         "internal/scenarios/probes.go",
         "internal/scenarios/report.go",
         "internal/scenarios/scenarios.go"
