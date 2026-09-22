@@ -94,5 +94,5 @@ Retain the original checkpoint and any retrieved handoff as a durable artifact o
 ## Constraints
 
 - Engram is the only checkpoint store. No `.agent` directory, event log, copied worker-result record, or execution-history database.
-- Retain existing worktrees and private configuration. Only the lifecycle workflow authorizes their retirement; settling or releasing a worker does not authorize removing the implementation checkout.
+- Retain existing worktrees and private configuration. Retirement is authorized only where the policy's worktree protocol and its enumeration of the workflows that remove a worktree allow it; settling or releasing a worker does not authorize removing the implementation checkout.
 - Live fresh-parent recovery through each retained client launch mechanism requires separately authorized model budget. Fixture or read-back checks never substitute for that acceptance evidence.
