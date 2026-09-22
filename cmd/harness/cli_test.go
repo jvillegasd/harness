@@ -113,7 +113,6 @@ func TestCommandHelpMatrix(t *testing.T) {
 		{"state", "escalate", "--reason", "why"},
 		{"state", "get", "--json"},
 		{"state", "prune"},
-		{"dash"},
 		{"statusline"},
 	}
 	for _, command := range commands {
@@ -170,6 +169,8 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"state", "escalate"},
 		{"state", "get", "--jsn"},
 		{"state", "prune", "extra"},
+		{"dash"},
+		{"dash", "--help"},
 		{"dash", "extra"},
 		{"models"},
 		{"statusline", "--bogus"},
@@ -200,7 +201,6 @@ func TestOperationalFailuresExitOne(t *testing.T) {
 	for _, args := range [][]string{
 		{"skills", "verify"},
 		{"bench", "--split", "2026-01-01", "--home", t.TempDir()},
-		{"dash"},
 	} {
 		if r := runBinary(t, outside, args...); r.code != 1 {
 			t.Errorf("%v outside a checkout or configured repository exited %d, want 1 (stderr %q)", args, r.code, r.stderr)

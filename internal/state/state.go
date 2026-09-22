@@ -2,7 +2,6 @@
 package state
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -49,14 +48,14 @@ func ReadSnapshot(dir string) (Snapshot, error) {
 	return snap, nil
 }
 
-// State resolves one branch's typed state from the snapshot, using the same store selection and fallback precedence Branch.Get uses: the branch's store first, then the other store.
-func (s Snapshot) State(store, branch string) State {
-	out := State{Branch: branch, Store: store}
+// State resolves canonical harness values, falling back to legacy Worktrunk values.
+func (s Snapshot) State(branch string) State {
+	out := State{Branch: branch, Store: "harness"}
 	read := func(name string) (string, bool) {
-		if value, ok := s[key(store, branch, name)]; ok {
+		if value, ok := s[key("harness", branch, name)]; ok {
 			return value, true
 		}
-		value, ok := s[key(otherStore(store), branch, name)]
+		value, ok := s[key("worktrunk", branch, name)]
 		return value, ok
 	}
 	out.Ladder, _ = read("ladder")
@@ -84,48 +83,12 @@ func (s Snapshot) State(store, branch string) State {
 	return out
 }
 
-// otherStore names the store a branch falls back to when its own store holds no value.
-func otherStore(store string) string {
-	if store == "worktrunk" {
-		return "harness"
-	}
-	return "worktrunk"
-}
-
 func Open(dir string) (*Branch, error) {
 	name, err := git(dir, "symbolic-ref", "--short", "HEAD")
 	if err != nil {
 		return nil, fmt.Errorf("not on a branch: %w", err)
 	}
-	store := "harness"
-	if worktrunkLists(dir, name) {
-		store = "worktrunk"
-	}
-	return &Branch{Dir: dir, Name: name, Store: store}, nil
-}
-
-// worktrunkLists reports whether `wt list` shows the branch. The schema is pinned on the call because a user config may pin another one. A missing `wt` or output that does not parse means Worktrunk does not manage it.
-func worktrunkLists(dir, name string) bool {
-	cmd := exec.Command("wt", "list", "--format=json", "--config-set", "list.json-schema=2")
-	cmd.Dir = dir
-	out, err := cmd.Output()
-	if err != nil {
-		return false
-	}
-	var listing struct {
-		Items []struct {
-			Branch string `json:"branch"`
-		} `json:"items"`
-	}
-	if json.Unmarshal(out, &listing) != nil {
-		return false
-	}
-	for _, item := range listing.Items {
-		if item.Branch == name {
-			return true
-		}
-	}
-	return false
+	return &Branch{Dir: dir, Name: name, Store: "harness"}, nil
 }
 
 func key(store, branch, name string) string {
@@ -135,13 +98,9 @@ func key(store, branch, name string) string {
 	return "harness." + branch + "." + name
 }
 
-func (b *Branch) other() string {
-	return otherStore(b.Store)
-}
-
-// read finds a key in this branch's store, then in the other one, so state written before `wt` detection flipped is still found. Every write removes the other store's copy, so at most one exists.
+// read prefers canonical state and falls back to legacy Worktrunk values without writing them.
 func (b *Branch) read(name string) (raw string, found bool, err error) {
-	for _, store := range []string{b.Store, b.other()} {
+	for _, store := range []string{"harness", "worktrunk"} {
 		if raw, found, err = get(b.Dir, key(store, b.Name, name)); err != nil || found {
 			return raw, found, err
 		}
@@ -149,13 +108,13 @@ func (b *Branch) read(name string) (raw string, found bool, err error) {
 	return "", false, nil
 }
 
-// write stores a key in this branch's store and removes the other store's copy.
+// write uses only harness keys and removes the replaced legacy value.
 func (b *Branch) write(name, value string) error {
-	if _, err := git(b.Dir, "config", "--local", key(b.Store, b.Name, name), value); err != nil {
+	if _, err := git(b.Dir, "config", "--local", key("harness", b.Name, name), value); err != nil {
 		return err
 	}
 	// git config exits 5 when there is no such key to unset.
-	if _, err := git(b.Dir, "config", "--local", "--unset", key(b.other(), b.Name, name)); err != nil && exitCode(err) != 5 {
+	if _, err := git(b.Dir, "config", "--local", "--unset", key("worktrunk", b.Name, name)); err != nil && exitCode(err) != 5 {
 		return err
 	}
 	return nil
@@ -180,13 +139,13 @@ func parseCounter(raw string) (int, *string) {
 	return n, nil
 }
 
-// Get resolves this branch's state from one configuration snapshot, so the CLI and the dashboard share one resolution path.
+// Get resolves this branch's state with canonical values taking precedence over legacy values.
 func (b *Branch) Get() (State, error) {
 	snap, err := ReadSnapshot(b.Dir)
 	if err != nil {
 		return State{Branch: b.Name, Store: b.Store}, err
 	}
-	return snap.State(b.Store, b.Name), nil
+	return snap.State(b.Name), nil
 }
 
 // Incr adds one to the attempts or escalations counter. A legacy value counts as zero, and replaced then carries the text it overwrote.
@@ -214,7 +173,7 @@ func (b *Branch) SetLadder(text string) error {
 	return b.write("ladder", text)
 }
 
-// Prune removes the state of every branch in dir's repository that no longer has a local ref, and returns the git config sections it removed.
+// Prune removes known harness state keys for branches without a local ref, preserving unrelated configuration. It returns the sections it pruned.
 func Prune(dir string) ([]string, error) {
 	out, err := git(dir, "config", "--local", "-z", "--get-regexp", `^(worktrunk\.state|harness)\.`)
 	if exitCode(err) == 1 {
@@ -227,6 +186,11 @@ func Prune(dir string) ([]string, error) {
 	seen := map[string]bool{}
 	for _, record := range strings.Split(out, "\x00") {
 		k, _, _ := strings.Cut(record, "\n")
+		switch k[strings.LastIndex(k, ".")+1:] {
+		case "ladder", "attempts", "escalations", "reason":
+		default:
+			continue
+		}
 		branch, section := owner(k)
 		if branch == "" || seen[section] {
 			continue
@@ -239,8 +203,10 @@ func Prune(dir string) ([]string, error) {
 		if exitCode(err) != 1 {
 			return removed, err
 		}
-		if _, err := git(dir, "config", "--local", "--remove-section", section); err != nil {
-			return removed, err
+		for _, name := range []string{"ladder", "attempts", "escalations", "reason"} {
+			if _, err := git(dir, "config", "--local", "--unset-all", section+"."+name); err != nil && exitCode(err) != 5 {
+				return removed, err
+			}
 		}
 		removed = append(removed, section)
 	}

@@ -16,7 +16,7 @@ Operations:
   get [--json]               Print this branch's state
   prune                      Remove state for branches with no local ref
 
-State lives in Worktrunk's per-branch vars when wt lists the branch, and in harness.<branch>.* git config keys otherwise.
+State lives in repository-local harness.<branch>.* git config keys. Legacy Worktrunk values remain readable until replaced.
 `
 
 // Command runs `harness state` and returns the process exit code.

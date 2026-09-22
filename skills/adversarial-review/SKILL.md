@@ -24,7 +24,7 @@ Launch independent reviewers before running the coordinator's conformance pass, 
 
 When Orca reports an unavailable or uncertain operation, follow its version-matched recovery guide and receipt. Preserve its task, dispatch, and request identities. A required review waits or escalates; it never becomes inline or switches backend. An executor may work inline only when the policy permits and Orca has established that no earlier worker can still act. Inspect partial edits before repeating a failed implementation slice. Report unavailable review evidence under `## Checks`, or in the `/proto` ledger.
 
-A missing or stale named agent requires a human to run `harness install`; never provision the machine to unblock a review or substitute a general agent. Preserve completed output through Orca's retained references. Treat a clipped, missing, or unreadable report as unavailable evidence, never as a successful review.
+A missing or stale named agent requires a human to run `harness install`; never provision the machine to unblock a review or substitute a general agent. Preserve completed output through Orca's retained references, verifying retrieval before and after release. When retention is not guaranteed, save the complete original report as a durable artifact outside the disposable terminal and worktree before release, and retain its locator. Treat a clipped, missing, or unreadable report as unavailable evidence, never as a successful review.
 
 The named agents' restrictions are best effort: each client enforces what its own controls support, and `harness install` reports the gaps.
 

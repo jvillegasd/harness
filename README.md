@@ -12,7 +12,6 @@ The harness this machine's Claude Code and OpenCode installations run: one vendo
 | `internal/bench/` | The session-population comparison behind `harness bench`. Cohort config and manual in `bench/`. |
 | `internal/agents/` | The role-agent renderer the installer calls in-process. |
 | `internal/models/` | The per-machine role model presets behind `harness models`, rendered by the installer, and read-only role launch preparation. |
-| `internal/dash/` | The live terminal dashboard behind `harness dash`, for any git repository `setup-harness` configured: worktrees and typed state and the tracker frontier (GitHub issues or local-markdown tickets), plus skill lock verification and the in-session bench result inside the harness checkout. |
 | `clients/` | The client settings this harness owns: `claude.json` declares them, `assignments.json` gives every role its definition and each client its default model and effort, and the installer renders the role agents from it and the machine's `harness models` choice. |
 | `roles/` | Canonical roles no skill owns: the executor and recon. |
 
@@ -218,7 +217,7 @@ go run ./cmd/harness install --skip-packages
 
 | Flag | Effect |
 | --- | --- |
-| `--skip-packages` | Reconcile the policy, command, skill, and role agent copies, the tracked client settings, and the Engram and agent-browser registrations, without installing packages or configuring Worktrunk's shell integration. No package manager is called, so Engram, agent-browser, and Claude Code must already be installed. |
+| `--skip-packages` | Reconcile the policy, command, skill, and role agent copies, the tracked client settings, and the Engram and agent-browser registrations, without installing packages. No package manager is called, so Engram, agent-browser, and Claude Code must already be installed. |
 | `--no-backup` | Delete what is in the way instead of archiving it. Destructive and unrecoverable. |
 | `--uninstall` | Remove the harness-managed configuration: the copies recorded in `~/.harness/state.json`, the tracked keys in `~/.claude/settings.json`, the `~/.zshrc` alias block, and the Engram and agent-browser registrations (the Claude Code plugin, marketplace, allowlist, and MCP entries, the OpenCode MCP and plugin entries and subagent status line). A copy edited since it was written stays, with a warning. Binaries, formulae, packages, `~/.engram`, `~/.agent-browser`, and `~/.dotfiles-backups` are never touched. It asks before removing anything; `--yes` skips the question. `--client claude\|opencode` and `--component agents\|aliases\|commands\|mcp\|policy\|settings\|skills` narrow it, both repeatable, and a copy another installed client still uses stays: `~/.agents/skills` serves both clients. |
 | `--clear-backups` | Delete every archive under `~/.dotfiles-backups/harness/`. Runs on its own. |
@@ -247,7 +246,7 @@ The formula is homebrew-core. It publishes no x86_64 macOS bottle, so an Intel M
 
 ### Packages
 
-Homebrew carries every tool on both platforms, because three of them (OpenCode, Engram, Worktrunk) ship only as taps. A full install inventories the installed formulae once and installs only what is missing: an already-installed dependency keeps whatever version it has, never upgraded implicitly. Claude Code comes from Anthropic's native latest channel and is installed only when it is absent. The installer never starts an interactive client or authenticates for you.
+Homebrew carries every tool on both platforms, because two of them (OpenCode, Engram) ship only as taps. A full install inventories the installed formulae once and installs only what is missing: an already-installed dependency keeps whatever version it has, never upgraded implicitly. Claude Code comes from Anthropic's native latest channel and is installed only when it is absent. The installer never starts an interactive client or authenticates for you.
 
 Python is machine tooling rather than a harness dependency: the platform scripts install uv's managed interpreters, and `harness install` asserts no Python at all.
 
@@ -268,7 +267,7 @@ OpenAI models reach the harness through OpenCode, and Claude models through Clau
 
 OpenCode has no bypass flag: its permissions are configuration, and `OPENCODE_PERMISSION` overrides them for one run.
 
-Zsh is the only shell either shell-facing step writes: the aliases go into `~/.zshrc`, and Worktrunk is asked for its zsh integration by name. A run whose `$SHELL` is something else warns and names both, rather than leaving the aliases quietly absent. Source `aliases.sh` from your own rc and run `wt config shell install` for that shell.
+The aliases go into `~/.zshrc`. A run whose `$SHELL` is something else warns; source `aliases.sh` from your own shell rc.
 
 ## Status line
 
@@ -390,6 +389,14 @@ Contract source and tracker binding are independent: the source controls conform
 
 `/land` resolves the pull request first and lets that state pick the lane, prefers the inline contract for conformance, and falls back to the ticket when none exists. Trackerless work skips tracker transitions. A legacy trackerless pull request with neither source reports that conformance cannot be reconstructed, verifies merge and default-branch health, and removes only a clean retained worktree.
 
+## Operational ownership
+
+Orca owns delegated execution, placement, messages, and retained worker results. Use Orca for worker and worktree visibility; `harness state`, `harness skills verify`, and `harness bench` remain directly available. The dashboard command and Worktrunk provisioning are retired. Existing worktrees, Worktrunk configuration, and packages are left alone.
+
+Branch state writes only repository-local `harness.<branch>.<key>` Git configuration. Missing canonical values fall back to legacy `worktrunk.state.<branch>.vars.<key>` values without invoking Worktrunk. Canonical values win when both exist; replacing a value removes only its legacy copy. Pruning removes only known harness keys for deleted local branches, preserving foreign configuration.
+
+The Engram checkpoint carries contract and branch references, revision-bound checks, retained Dispatch/artifact references, a next action, and distinct escalation context. Worker output is retrieved through Orca or an explicit durable artifact, never copied into another Engram handoff record. Recovery rejects wrong-branch or missing output and invalidates stale or dirty-tree checks. Task completion supplies no publication approval. The `workflow-checkpoint` skill defines this protocol; fresh-parent acceptance through both clients needs a separately authorized model budget.
+
 ## Validation
 
 Validate a change to this directory against the sessions it produced, as `bench/README.md` explains:
@@ -406,12 +413,10 @@ A hard week at work moves every one of those numbers without the harness changin
 
 Populations, not pairs. Cost and friction are the measured part; quality stays a human read of the sessions.
 
-Do not enable the Worktrunk Claude Code plugin. Its `UserPromptSubmit` hook rewrites the same per-branch slot `POLICY.md` uses for attempt and escalation counts, which would erase an escalation on the next prompt.
-
 ### Rollout verification
 
 The flatten and the CLI simplification were verified through a clean removal and reinstall on 2026-09-16, from the pre-flatten checkout's uninstall to the refactored `harness bootstrap`. The pre-flatten checkout no longer existed on disk, so it was reconstructed from git history at the same root the installed links targeted, because its uninstall recognizes a link by that root and reads the old client templates. The removal took every managed skill, command, policy, and role-agent link, the retired `~/.claude/statusline.sh`, the `~/.zshrc` alias block, the tracked Claude settings, and Engram and agent-browser with their registrations and formulae. Kept were `~/.engram`, `~/.agent-browser`, the private skills beside the harness ones, and the credential and history stores: `~/.claude.json`, `~/.claude/history.jsonl`, `~/.claude/projects`, `~/.local/share/opencode/auth.json`, and `~/.local/share/opencode/opencode.db`. The reinstall wrote the 17 skills into `~/.agents/skills` and `~/.claude/skills`, the 12 commands into each client's command root, both policy links, and the four generated role definitions per client, pointed the tracked status line at `~/.local/bin/harness statusline`, and re-registered Engram and agent-browser in both clients. The installed code carries no legacy path: `checkout.Manages` owns only `skills/`, `commands/`, `POLICY.md`, and `.generated/`, so the removal stays the old checkout's one-time procedure rather than a compatibility fallback the new CLI ships. Every skill, command, policy, and agent path resolves in both clients; OpenCode enumerated the harness skills and the reviewer and executor agents through `opencode debug skill` and `opencode debug agent` and showed both MCP servers in its resolved config, while Claude Code connected the agent-browser MCP, enabled the Engram plugin, and parsed the skills directory through `claude plugin validate`. Whether Claude Code loads a role definition through the symlink stays unverified, as the role agent table records. An inventory of the existing links, settings, and data preceded the removal, and each preserved path was read again after the reinstall.
 
 The deterministic suite passed on the final tree: `go vet ./...`, `gofmt -l .` empty, `go test ./...` (which carries the reconciler byte-identical identity check and the module-free smoke run), `go build ./...`, offline skill lock verification, and `git diff --check`. Those historical checks also included the now-retired scenario validator.
 
-The measured work reductions, each recorded by its own ticket, all held with no regression. Dependency provisioning replaced 7 per-formula `brew list` probes and 7 `brew upgrade` calls with a single `brew list --formula` and no upgrades, still installing only the missing formulae. Benchmark collection at 5000 records went from 399.9 to 299.1 ms and 224.7 to 139.1 MB, and a 100-session window keeping 10 from 179.0 to 22.9 ms, 89.7 to 12.3 MB, and 1.20M to 0.12M allocations. A dashboard local refresh went from 33 subprocesses in 795-882 ms to 2 in 31 ms. The session-population comparison stays pending until post-change sessions exist.
+The measured work reductions, each recorded by its own ticket, all held with no regression. Dependency provisioning replaced 7 per-formula `brew list` probes and 7 `brew upgrade` calls with a single `brew list --formula` and no upgrades, still installing only the missing formulae. Benchmark collection at 5000 records went from 399.9 to 299.1 ms and 224.7 to 139.1 MB, and a 100-session window keeping 10 from 179.0 to 22.9 ms, 89.7 to 12.3 MB, and 1.20M to 0.12M allocations. The session-population comparison stays pending until post-change sessions exist.

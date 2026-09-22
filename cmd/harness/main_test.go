@@ -87,10 +87,7 @@ func runBinary(t *testing.T, dir string, args ...string) result {
 	return result{stdout.String(), stderr.String(), code}
 }
 
-// schema1 is the shape `wt list --format=json` prints when a config pins json-schema 1, as the tracked Worktrunk config does.
-const schema1 = `[{"branch":"` + branch + `","path":"/tmp/x","kind":"worktree"}]`
-
-// harness runs the built binary in dir. wt "" means absent; otherwise a fake wt prints wt for schema 2 and schema1 otherwise.
+// harness isolates Git and optionally provides a Worktrunk shim to prove it is ignored.
 func harness(t *testing.T, dir, wt string, args ...string) result {
 	t.Helper()
 	shims := t.TempDir()
@@ -109,7 +106,7 @@ func harness(t *testing.T, dir, wt string, args ...string) result {
 			}
 		}
 	} else {
-		script := "#!/bin/sh\ncase \"$*\" in\n*list.json-schema=2*) cat <<'EOF'\n" + wt + "\nEOF\n;;\n*) cat <<'EOF'\n" + schema1 + "\nEOF\n;;\nesac\n"
+		script := "#!/bin/sh\n: > .wt-called\ncat <<'EOF'\n" + wt + "\nEOF\n"
 		if err := os.WriteFile(filepath.Join(shims, "wt"), []byte(script), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -166,25 +163,38 @@ func TestLadderSetWithoutWorktrunkUsesHarnessKeys(t *testing.T) {
 	}
 }
 
-func TestStoreFollowsWorktrunkListing(t *testing.T) {
-	cases := []struct {
-		name, wt, store, key string
-	}{
-		{"listed", listing(branch), "worktrunk", "worktrunk.state." + branch + ".vars.ladder"},
-		{"other branch listed", listing("main"), "harness", "harness." + branch + ".ladder"},
-		{"malformed output", "not json", "harness", "harness." + branch + ".ladder"},
+func TestStateUsesHarnessKeysAndPreservesLegacyValues(t *testing.T) {
+	dir := repo(t)
+	old := "worktrunk.state." + branch + ".vars."
+	current := "harness." + branch + "."
+	for name, value := range map[string]string{"attempts": "4", "escalations": "2", "reason": "prior trip", "ladder": "go test ./..."} {
+		git(t, dir, "config", old+name, value)
 	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			dir := repo(t)
-			ok(t, harness(t, dir, c.wt, "state", "ladder", "set", "L"), "ladder set")
-			if got := git(t, dir, "config", c.key); got != "L" {
-				t.Fatalf("%s = %q", c.key, got)
-			}
-			if got := getJSON(t, dir, c.wt); got["store"] != c.store {
-				t.Fatalf("store = %v, want %s", got["store"], c.store)
-			}
-		})
+	git(t, dir, "config", "harness.other.attempts", "9")
+	got := getJSON(t, dir, listing(branch))
+	if got["store"] != "harness" || got["attempts"] != 4.0 || got["escalations"] != 2.0 || got["reason"] != "prior trip" || got["ladder"] != "go test ./..." {
+		t.Fatalf("legacy state = %v", got)
+	}
+	ok(t, harness(t, dir, listing(branch), "state", "incr", "attempts"), "incr")
+	if got := git(t, dir, "config", current+"attempts"); got != "5" {
+		t.Fatalf("attempts = %q", got)
+	}
+	if configHas(t, dir, old+"attempts") {
+		t.Fatal("write retained a competing legacy value")
+	}
+	git(t, dir, "config", old+"attempts", "1")
+	if got := getJSON(t, dir, listing(branch)); got["attempts"] != 5.0 {
+		t.Fatalf("canonical value lost: %v", got)
+	}
+	if got := git(t, dir, "config", "harness.other.attempts"); got != "9" {
+		t.Fatalf("other branch changed: %q", got)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".wt-called")); !os.IsNotExist(err) {
+		t.Fatalf("state invoked Worktrunk: %v", err)
+	}
+	git(t, dir, "checkout", "-qb", "other")
+	if got := getJSON(t, dir, ""); got["branch"] != "other" || got["attempts"] != 9.0 || got["ladder"] != "" {
+		t.Fatalf("branch isolation lost: %v", got)
 	}
 }
 
@@ -267,7 +277,7 @@ func TestEscalateOverLegacyNamesReplacedText(t *testing.T) {
 	}
 }
 
-func TestStateSurvivesStoreFlipsBothWays(t *testing.T) {
+func TestStateIgnoresWorktrunkAvailability(t *testing.T) {
 	dir := repo(t)
 	listed := listing(branch)
 	worktrunkKey, harnessKey := "worktrunk.state."+branch+".vars.attempts", "harness."+branch+".attempts"
@@ -299,7 +309,7 @@ func TestPruneRemovesOnlyGoneBranches(t *testing.T) {
 	dir := repo(t)
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "init")
 	git(t, dir, "branch", "live")
-	kept := []string{"worktrunk.state.live.vars.attempts", "harness.live.attempts", "harness.attempts"}
+	kept := []string{"worktrunk.state.live.vars.attempts", "harness.live.attempts", "harness.attempts", "worktrunk.state.gone/one.vars.private", "harness.gone/two.private"}
 	gone := []string{"worktrunk.state.gone/one.vars.attempts", "worktrunk.state.gone/one.vars.ladder", "harness.gone/two.escalations"}
 	for _, key := range append(append([]string{}, kept...), gone...) {
 		git(t, dir, "config", key, "1")
