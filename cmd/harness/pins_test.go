@@ -192,7 +192,7 @@ func TestReconCommandsCarryTheSameSection(t *testing.T) {
 		t.Fatal("triage.md and research.md carry different recon citation sections")
 	}
 	pins := []string{
-		"A recon subagent that searches the repository ends on a text message holding only its findings, one per line in the shape `path:line | symbol | mechanism`: the cited location, the named symbol, a bare identifier, that location carries, and the mechanism it is claimed to show. A trailing tool result is not the report: re-run that track once, and if it again ends without one, record it as no data, a `no data` row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`, never as refuted or as a track that found nothing.",
+		"A recon worker that searches the repository ends on a text message holding only its findings, one per line in the shape `path:line | symbol | mechanism`: the cited location, the named symbol, a bare identifier, that location carries, and the mechanism it is claimed to show. A trailing tool result is not the report: re-run that track once, and if it again ends without one, record it as no data, a `no data` row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`, never as refuted or as a track that found nothing.",
 		"Before reusing a citation, read only the cited line and confirm the path resolves inside the repository and that line carries the named symbol as a whole identifier. That check grounds the location only, never the claimed runtime mechanism: a load-bearing mechanism claim still goes through `evidence`.",
 		"Drop a citation whose path is missing or outside the repository, whose line does not carry the named symbol, or that lacks any of the three fields. Record it as refuted, as a verdict row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`, and never reuse it as grounded evidence.",
 	}
@@ -217,6 +217,10 @@ func TestReconCommandsCarryTheSameSection(t *testing.T) {
 		steps = strings.SplitN(steps[1], "\n## ", 2)
 		if !strings.Contains(steps[0], "`## Recon citations`") {
 			t.Errorf("%s.md delegation steps do not point at the recon citations section", name)
+		}
+		// Acceptance criterion 1 of #92 lives in this sentence: drop it and recon silently returns to a client-native subagent.
+		if !strings.Contains(steps[0], "locked `orchestration` skill") || !strings.Contains(steps[0], "Never use client-native subagents") {
+			t.Errorf("%s.md no longer dispatches recon as a named role through Orca", name)
 		}
 	}
 }
@@ -344,24 +348,23 @@ func TestSkillKeepsOrchestrationWithoutTheRoleText(t *testing.T) {
 
 func TestPinnedReviewProtocolLines(t *testing.T) {
 	unreadable := "When you cannot read the whole diff file, return exactly `unreadable: <path>` and nothing else, so the parent can supply the same diff inline. Never review part of a diff."
-	loaded := "Begin with one line naming every standards file you actually opened with a tool during this review, as `loaded: <absolute path>, <absolute path>`, or `loaded: none`. Name a standard whose full text the parent pasted into your prompt as `inline:<absolute path>`. A path you were given but did not open, or a standard you recall without opening, does not belong on it."
+	loaded := "Begin the report with one line naming every standards file you actually opened with a tool during this review, as `loaded: <absolute path>, <absolute path>`, or `loaded: none`. Name a standard whose full text the parent pasted into your prompt as `inline:<absolute path>`. A path you were given but did not open, or a standard you recall without opening, does not belong on it."
 	deferLine := "Triage every finding by `adversarial-review`'s canonical triage block: only `bug:` and `risk:` block, a `nit:` is fixed only when the fix is smaller than the argument and is otherwise dropped, a `q:` is answered and blocks only once evidence reclassifies it, a contested `bug:` or `risk:` is rejected only on the refuter's `refuted` verdict or a human decision on its escalation, and a second adversarial round runs only after a fixed blocking finding, over the repair delta alone."
-	access := "Read and search only. Read and search the repository to follow callers and context. Never edit a file, run a command, fetch from the web, or delegate to another agent, even where the client would let you."
+	access := "Read and search the repository to follow callers and context. Never edit a file, fetch from the web, delegate to another agent, or run project or general shell commands. The only command exception is Orca lifecycle messaging under the live worker preamble."
 	pins := map[string][]string{
 		"POLICY.md": {
 			"Use ephemeral specialist roles. Do not create persistent client-specific personas when a command, a skill, or an isolated review context is enough. Role definitions generated from one canonical source, such as the reviewer agents, are shared instructions and client capability configuration, not personas.",
-			"When a workflow chooses to delegate implementation, launch the named `executor` agent, whose model and effort come from the harness's central role assignments. Delegation stays optional and changes nothing else: the delegating workflow keeps the approved scope, the commits, the review passes, the conformance check, and every gate. When the named agent is unavailable, say so and do the work inline rather than hand it to an agent without that assignment.",
+			"When a workflow chooses to delegate implementation, launch the named `executor` agent, whose model and effort come from the harness's central role assignments. Delegation stays optional and changes nothing else: the delegating workflow keeps the approved scope, the commits, the review passes, the conformance check, and every gate. When Orca or the named agent is unavailable, say so and do the work inline rather than hand it to an agent without that assignment. A required review is not inlined that way: it is run once the runtime is back, or escalated.",
 			"Launch a named role agent without a model or effort override, so it runs on its central assignment.",
 			"Before rejecting a contested `bug:` or `risk:`, every consumer launches `review-refuter` once with only that finding and the diff snapshot it was raised against: `corroborated` is fixed, `refuted` is rejected with the refuter's evidence recorded, and an inconclusive, missing, malformed, or unavailable result escalates with neither a dismissal nor a speculative fix until a human decision closes it, recorded where a rejection would be. The refuter adds no reviewer and no round.",
 		},
 		"skills/adversarial-review/SKILL.md": {
-			"Launch each reviewer as its named agent, in parallel, each with a fresh context: `reviewer-a` and `reviewer-b` in Claude Code and OpenCode. The installer generates them from `roles/reviewer-a.md` and `roles/reviewer-b.md` beside this skill, which own each reviewer's standing instructions, lenses, and output format.",
-			"When a named agent is unavailable, say so, launch a general agent with the matching role file's full text as its instructions, and report that this fallback enforces only the general agent's own permissions rather than the named agent's read-search restrictions. Never skip or silently omit a review because a named agent is missing.",
+			"Launch each reviewer as its named agent, in parallel, each with a fresh context: `reviewer-a` and `reviewer-b`. The installer generates them from `roles/reviewer-a.md` and `roles/reviewer-b.md` beside this skill, which own each reviewer's standing instructions, lenses, and output format.",
 			"Give Reviewer A the requirements, the diff snapshot path, and the exact absolute path of the project's own instruction file as its standards, never the implementation rationale. Nothing else.",
 			"Give Reviewer B only the diff snapshot path and the exact absolute paths of its review standards: the loaded `ponytail` body and the project's own instruction file. No requirements, no rationale, no ticket.",
 			"Standards are paths, never requirements or rationale, so supplying them leaves each reviewer's information boundary where it was. Count a standards file as read only when the reviewer's `loaded:` line names it: supplying a path, or a reviewer recalling what a standard says, is not evidence that it was read.",
 			"The project's own instruction file is `AGENTS.md` at the repository root, or `CLAUDE.md` there when no `AGENTS.md` exists, and is left out when neither does. Where the client is known to refuse a standards path, such as OpenCode for a file outside the project, paste that file's text into the first launch instead of its path. When a supplied standards file is missing from a reviewer's `loaded:` line, relaunch that reviewer once with that file's text pasted in; the relaunch replaces that reviewer's output for the same round and never counts toward the cap. A reviewer names a pasted standard as `inline:<absolute path>`. If a standard is still unread, disclose it under the pull request's `## Checks`, or in the requirements ledger under `/proto`.",
-			"Before rejecting a contested `bug:` or `risk:`, launch the named `review-refuter` agent once for that finding, with a fresh context. The installer generates it from `roles/review-refuter.md` beside this skill, and it runs on its central assignment. When it is unavailable, the general-agent fallback above applies to it unchanged, with the same disclosure.",
+			"Before rejecting a contested `bug:` or `risk:`, launch the named `review-refuter` agent once for that finding, with a fresh context. The installer generates it from `roles/review-refuter.md` beside this skill, and it runs on its central assignment, launched through the Orca orchestration instructions above. A refuter that cannot be launched is the `unavailable` verdict, which escalates.",
 			"Give the refuter only the contested finding, verbatim, and the path of the diff snapshot that finding was raised against. Never the implementation rationale, the requirements, your reason for contesting it, or the conversation. A refuter that answers `unreadable: <path>` gets that snapshot inline under Diff delivery, and the relaunch completes the same invocation rather than adding one.",
 			"Snapshot the complete diff once per round into a readable temporary file outside the worktree, and give each reviewer that path. A reviewer that answers `unreadable: <path>` gets the same snapshot inline instead. Never truncate the diff: when neither the file nor inline text can carry the complete snapshot, stop and escalate per the escalation contract.",
 		},
@@ -370,7 +373,7 @@ func TestPinnedReviewProtocolLines(t *testing.T) {
 		"skills/adversarial-review/roles/review-refuter.md": {
 			unreadable,
 			access,
-			"Begin with exactly one verdict line: `verdict: corroborated`, `verdict: refuted`, or `verdict: inconclusive`.",
+			"Begin the report with exactly one verdict line: `verdict: corroborated`, `verdict: refuted`, or `verdict: inconclusive`.",
 			"`corroborated` and `refuted` need at least one evidence line, or the parent treats the result as malformed. `inconclusive` states what you checked and the one fact that would settle it. Never propose a fix, raise a new finding, or soften a verdict to hedge.",
 		},
 		"commands/ship.md": {

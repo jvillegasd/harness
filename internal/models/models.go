@@ -1,4 +1,4 @@
-// Package models chooses, per machine, which client, model, and effort each delegated role runs on. The choice lives in the models block of ~/.harness/state.json: a preset, plus per-role overrides. The installer renders it into each client's role agents, and a workflow asks it how to launch a role from its session.
+// Package models chooses, per machine, which client, model, and effort each delegated role runs on. The choice lives in the models block of ~/.harness/state.json: a preset, plus per-role overrides. The installer renders it into each client's role agents, and a workflow asks it which client and model a role carries before following the Orca orchestration skill.
 package models
 
 import (
@@ -23,7 +23,7 @@ type Assignment struct {
 }
 
 // Roles are the delegated roles a preset assigns, in report order.
-var Roles = []string{"executor", "reviewer-a", "reviewer-b", "review-refuter"}
+var Roles = []string{"executor", "recon", "reviewer-a", "reviewer-b", "review-refuter"}
 
 const defaultPreset = "balanced"
 
@@ -33,16 +33,16 @@ func opencode(model string) Assignment       { return Assignment{"opencode", mod
 // Presets are the named assignment tables. balanced sends implementation to a cheaper OpenCode model and keeps review on the session's Claude model, because a reviewer too weak to find the bug is no saving.
 var Presets = map[string]map[string]Assignment{
 	"balanced": {
-		"executor": opencode("opencode-go/glm-5.3"), "reviewer-a": claude("inherit", ""), "reviewer-b": claude("inherit", ""), "review-refuter": claude("inherit", ""),
+		"executor": opencode("opencode-go/glm-5.3"), "recon": claude("inherit", ""), "reviewer-a": claude("inherit", ""), "reviewer-b": claude("inherit", ""), "review-refuter": claude("inherit", ""),
 	},
 	"performance": {
-		"executor": claude("opus", "high"), "reviewer-a": claude("fable", "high"), "reviewer-b": claude("fable", "high"), "review-refuter": claude("opus", "high"),
+		"executor": claude("opus", "high"), "recon": claude("fable", "high"), "reviewer-a": claude("fable", "high"), "reviewer-b": claude("fable", "high"), "review-refuter": claude("opus", "high"),
 	},
 	"economy": {
-		"executor": opencode("opencode-go/deepseek-v4-flash"), "reviewer-a": claude("sonnet", ""), "reviewer-b": claude("sonnet", ""), "review-refuter": claude("sonnet", ""),
+		"executor": opencode("opencode-go/deepseek-v4-flash"), "recon": claude("sonnet", ""), "reviewer-a": claude("sonnet", ""), "reviewer-b": claude("sonnet", ""), "review-refuter": claude("sonnet", ""),
 	},
 	"diversity": {
-		"executor": claude("sonnet", ""), "reviewer-a": claude("inherit", ""), "reviewer-b": opencode("openai/gpt-5.6-sol"), "review-refuter": opencode("opencode-go/glm-5.3"),
+		"executor": claude("sonnet", ""), "recon": claude("inherit", ""), "reviewer-a": claude("inherit", ""), "reviewer-b": opencode("openai/gpt-5.6-sol"), "review-refuter": opencode("opencode-go/glm-5.3"),
 	},
 }
 
@@ -238,17 +238,4 @@ func readDoc(path string) (map[string]json.RawMessage, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	return doc, nil
-}
-
-// Route says how a session on one client launches a role: natively when the role runs on the same client, through an Orca worker inside an Orca worktree at dir (the working directory when empty), and through the other client's headless CLI otherwise.
-func Route(a Assignment, session, dir string) string {
-	if a.Client == session {
-		return "native"
-	}
-	orca := exec.Command(orcaCLI(), "worktree", "current", "--json")
-	orca.Dir = dir
-	if orca.Run() == nil {
-		return "orca"
-	}
-	return "headless"
 }

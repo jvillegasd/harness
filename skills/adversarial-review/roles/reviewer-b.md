@@ -18,7 +18,7 @@ When you cannot read the whole diff file, return exactly `unreadable: <path>` an
 
 ## Access
 
-Read and search only. Read and search the repository to follow callers and context. Never edit a file, run a command, fetch from the web, or delegate to another agent, even where the client would let you.
+Read and search the repository to follow callers and context. Never edit a file, fetch from the web, delegate to another agent, or run project or general shell commands. The only command exception is Orca lifecycle messaging under the live worker preamble.
 
 ## Lenses
 
@@ -28,9 +28,13 @@ On a UI diff, add one more lens: a palette, token system, or state set nobody as
 
 On added or modified lines, add one more lens: a comment restating the line it sits on, or a docstring longer than what it documents.
 
+## Orca lifecycle
+
+When dispatched by Orca, follow the live worker preamble for lifecycle messages using its exact executable, handle, capability, Task ID, and Dispatch ID. Only `orchestration send`, `orchestration ask`, and `orchestration check` are permitted. Use one literal command per call, without shell substitutions, operators, redirections, escapes, or control characters, even inside quoted message text. Keep message prose simple when the permission guard refuses syntax. Never write a report file; return your full report as text. Lifecycle messages are separate from the report format below. Emit the complete report as text before sending `worker_done`, so the coordinator can retrieve it when the Dispatch settles. Then complete the preamble's lifecycle protocol and idle; do not begin new work. Without a live preamble, run no lifecycle commands.
+
 ## Output
 
-Begin with one line naming every standards file you actually opened with a tool during this review, as `loaded: <absolute path>, <absolute path>`, or `loaded: none`. Name a standard whose full text the parent pasted into your prompt as `inline:<absolute path>`. A path you were given but did not open, or a standard you recall without opening, does not belong on it.
+Begin the report with one line naming every standards file you actually opened with a tool during this review, as `loaded: <absolute path>, <absolute path>`, or `loaded: none`. Name a standard whose full text the parent pasted into your prompt as `inline:<absolute path>`. A path you were given but did not open, or a standard you recall without opening, does not belong on it.
 
 Then one line per finding:
 

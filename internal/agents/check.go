@@ -9,7 +9,8 @@ import (
 	"strings"
 )
 
-func restricted(relative, text, level string) bool {
+// RestrictionsMatch checks the complete rendered permission configuration.
+func RestrictionsMatch(relative, text, level string) bool {
 	lines := splitLines(text)
 	if strings.HasPrefix(relative, "claude/") {
 		head := lines
@@ -27,9 +28,10 @@ func restricted(relative, text, level string) bool {
 		}
 		var kept []string
 		for _, line := range head {
-			if strings.HasPrefix(line, "tools:") || strings.HasPrefix(line, "disallowedTools:") {
-				kept = append(kept, line)
+			if line == "---" || line == "" || strings.HasPrefix(line, "name:") || strings.HasPrefix(line, "description:") || strings.HasPrefix(line, "model:") || strings.HasPrefix(line, "effort:") {
+				continue
 			}
+			kept = append(kept, line)
 		}
 		want := claudeControls[level]
 		if len(kept) != len(want) {
@@ -137,7 +139,7 @@ func checkOutputs(outputs, accesses map[string]string, output string, stdout io.
 			findings = append(findings, "missing: "+relative)
 			continue
 		}
-		if !restricted(relative, string(raw), accesses[relative]) {
+		if !RestrictionsMatch(relative, string(raw), accesses[relative]) {
 			findings = append(findings, "widened: "+relative)
 		} else if string(raw) != expected {
 			findings = append(findings, "changed: "+relative)

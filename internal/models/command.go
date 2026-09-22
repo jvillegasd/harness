@@ -14,20 +14,24 @@ import (
 	"github.com/charmbracelet/x/term"
 )
 
-const usage = `usage: harness models [show|set|reset|resolve]
+const usage = `usage: harness models [show|set|reset|resolve|launch-args]
 
   (no arguments, in a terminal)                 Pick a preset, or each role's client, model, and effort
   show                                          Print each role's client, model, effort, and source
   set --preset <name>                           Choose a preset: balanced (default), performance, economy, diversity
   set <role> --client <c> --model <m> [--effort <e>]   Override one role
   reset [<role>]                                Drop one override, or the whole choice
-  resolve <role> --session <client> [--json]    Print the role's assignment and how that session launches it
+  resolve <role> [--json]                       Print the role's client, model, effort, and source
+  launch-args <role> --orca-command <executable>  Print validated client argv as JSON for Orca; launch nothing
 
 The choice is stored in ~/.harness/state.json; ` + "`harness install`" + ` renders it into each client's role agents.
 `
 
 // Command runs `harness models`.
 func Command(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 1 && args[0] == "lifecycle-guard" {
+		return LifecycleGuard(os.Stdin, stdout)
+	}
 	// Without a terminal the picker would wait on input that never comes, so a script gets the usage instead.
 	if len(args) == 0 && (!term.IsTerminal(os.Stdin.Fd()) || !term.IsTerminal(os.Stdout.Fd())) {
 		fmt.Fprint(stderr, usage)
@@ -113,6 +117,15 @@ func run(path string, args []string, stdout io.Writer) error {
 		return Save(path, choice)
 	case "resolve":
 		return resolve(choice, rest, stdout)
+	case "launch-args":
+		if len(rest) != 3 || rest[1] != "--orca-command" {
+			return fmt.Errorf("launch-args takes <role> --orca-command <executable>")
+		}
+		argv, err := preparedArgs(choice, rest[0], rest[2])
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(stdout).Encode(argv)
 	}
 	return fmt.Errorf("unknown subcommand %q\n%s", sub, usage)
 }
@@ -186,28 +199,24 @@ func reset(path string, args []string) error {
 
 func resolve(choice Choice, args []string, stdout io.Writer) error {
 	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
-		return fmt.Errorf("resolve takes <role> --session <client> [--json]")
+		return fmt.Errorf("resolve takes <role> [--json]")
 	}
 	role := args[0]
 	fs := flag.NewFlagSet("resolve", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	session := fs.String("session", "", "")
 	asJSON := fs.Bool("json", false, "")
 	if err := fs.Parse(args[1:]); err != nil || fs.NArg() > 0 {
-		return fmt.Errorf("resolve takes <role> --session <client> [--json]")
+		return fmt.Errorf("resolve takes <role> [--json]")
 	}
 	if err := knownRole(role); err != nil {
 		return err
 	}
-	if *session != "claude" && *session != "opencode" {
-		return fmt.Errorf("resolve needs --session claude or --session opencode")
-	}
 	r := choice.Resolve()[role]
-	out := map[string]string{"role": role, "client": r.Client, "model": r.Model, "effort": effortOrInherit(r.Effort), "source": r.Source, "route": Route(r.Assignment, *session, "")}
+	out := map[string]string{"role": role, "client": r.Client, "model": r.Model, "effort": effortOrInherit(r.Effort), "source": r.Source}
 	if *asJSON {
 		return json.NewEncoder(stdout).Encode(out)
 	}
-	_, err := fmt.Fprintf(stdout, "%s client=%s model=%s effort=%s (%s) route=%s\n", role, out["client"], out["model"], out["effort"], out["source"], out["route"])
+	_, err := fmt.Fprintf(stdout, "%s client=%s model=%s effort=%s (%s)\n", role, out["client"], out["model"], out["effort"], out["source"])
 	return err
 }
 

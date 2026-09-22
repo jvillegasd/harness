@@ -29,7 +29,6 @@ Commands:
   state      Read and write this branch's oracle ladder and rabbit-hole counters
   dash       Show the live harness dashboard
   models     Choose each delegated role's client, model, and effort
-  dispatch   Run a role assigned to the other client, through Orca or its headless CLI
 `
 
 func run(args []string, stdout, stderr io.Writer) int {
@@ -52,8 +51,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return dash.Command(args[1:], stdout, stderr)
 	case "models":
 		return models.Command(args[1:], stdout, stderr)
-	case "dispatch":
-		return models.Dispatch(args[1:], stdout, stderr)
 	case "-h", "--help", "help":
 		fmt.Fprint(stdout, usage)
 		return 0

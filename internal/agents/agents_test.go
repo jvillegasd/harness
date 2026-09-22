@@ -11,8 +11,8 @@ import (
 )
 
 var outputNames = []string{
-	"claude/executor.md", "claude/review-refuter.md", "claude/reviewer-a.md", "claude/reviewer-b.md",
-	"opencode/executor.md", "opencode/review-refuter.md", "opencode/reviewer-a.md", "opencode/reviewer-b.md",
+	"claude/executor.md", "claude/recon.md", "claude/review-refuter.md", "claude/reviewer-a.md", "claude/reviewer-b.md",
+	"opencode/executor.md", "opencode/recon.md", "opencode/review-refuter.md", "opencode/reviewer-a.md", "opencode/reviewer-b.md",
 }
 
 // temp returns a resolved temporary directory, because macOS temp paths pass through a symlink and the renderer refuses a symlinked output ancestor.
@@ -198,7 +198,7 @@ func TestEachClientGetsItsControlsAndTheWholeRole(t *testing.T) {
 		body := strings.TrimSpace(strings.SplitN(string(raw), "---\n", 3)[2])
 		claude := readFile(t, filepath.Join(out, "claude", role+".md"))
 		opencode := readFile(t, filepath.Join(out, "opencode", role+".md"))
-		if !strings.Contains(claude, "\nname: "+role+"\n") || !strings.Contains(claude, "\ntools: Read, Grep, Glob\n") {
+		if !strings.Contains(claude, "\nname: "+role+"\n") || !strings.Contains(claude, "\ntools: Read, Grep, Glob, Bash\n") {
 			t.Errorf("%s claude frontmatter is wrong:\n%s", role, claude)
 		}
 		if !strings.Contains(opencode, "\nmode: all\npermission:\n  \"*\": deny\n") || !strings.Contains(opencode, "\n    \"*.env\": deny\n") {
@@ -317,12 +317,12 @@ func TestGapsAndUnverifiedReportedApart(t *testing.T) {
 
 func TestCheckDetectsWidening(t *testing.T) {
 	mutations := []struct{ path, old, new string }{
-		{"claude/reviewer-a.md", "tools: Read, Grep, Glob\n", "tools: Read, Grep, Glob, Bash\n"},
-		{"claude/reviewer-b.md", "tools: Read, Grep, Glob\n", ""},
+		{"claude/reviewer-a.md", "permissionMode: dontAsk\n", "permissionMode: bypassPermissions\n"},
+		{"claude/reviewer-b.md", "tools: Read, Grep, Glob, Bash\n", ""},
 		{"opencode/reviewer-a.md", "  \"*\": deny", "  \"*\": allow"},
 		{"opencode/reviewer-b.md", "  list: allow\n", "  list: allow\n  bash: allow\n"},
 		{"opencode/reviewer-b.md", "mode: all\n", "mode: all\ntools:\n  bash: true\n"},
-		{"claude/review-refuter.md", "tools: Read, Grep, Glob\n", "tools: Read, Grep, Glob, Edit\n"},
+		{"claude/review-refuter.md", "tools: Read, Grep, Glob, Bash\n", "tools: Read, Grep, Glob, Edit\n"},
 		{"opencode/review-refuter.md", "  grep: allow\n", "  grep: allow\n  task: allow\n"},
 		{"claude/executor.md", "disallowedTools: Agent\n", ""},
 		{"opencode/executor.md", "  task: deny\n", "  task: allow\n"},
@@ -728,7 +728,7 @@ func TestAssignments(t *testing.T) {
 			t.Fatalf("generate exited %d: %s", code, stderr)
 		}
 		allowed := map[string]map[string]bool{
-			"claude":   {"name": true, "description": true, "tools": true, "disallowedTools": true, "model": true, "effort": true},
+			"claude":   {"name": true, "description": true, "tools": true, "disallowedTools": true, "permissionMode": true, "hooks": true, "model": true, "effort": true},
 			"opencode": {"description": true, "mode": true, "permission": true, "model": true, "reasoningEffort": true},
 		}
 		for relative := range treeOf(t, out) {

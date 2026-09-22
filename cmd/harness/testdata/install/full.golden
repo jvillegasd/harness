@@ -49,6 +49,7 @@ D .claude
 C .claude/CLAUDE.md
 D .claude/agents
 C .claude/agents/executor.md
+C .claude/agents/recon.md
 C .claude/agents/review-refuter.md
 C .claude/agents/reviewer-a.md
 C .claude/agents/reviewer-b.md
@@ -137,6 +138,7 @@ D .config/opencode
 C .config/opencode/AGENTS.md
 D .config/opencode/agents
 C .config/opencode/agents/executor.md
+C .config/opencode/agents/recon.md
 C .config/opencode/agents/review-refuter.md
 C .config/opencode/agents/reviewer-a.md
 C .config/opencode/agents/reviewer-b.md
@@ -741,6 +743,14 @@ F .harness/state.json
   |      "sha256": "sha256:<digest>"
   |    },
   |    {
+  |      "path": "$HOME/.claude/agents/recon.md",
+  |      "component": "agents",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
   |      "path": "$HOME/.claude/agents/review-refuter.md",
   |      "component": "agents",
   |      "clients": [
@@ -766,6 +776,14 @@ F .harness/state.json
   |    },
   |    {
   |      "path": "$HOME/.config/opencode/agents/executor.md",
+  |      "component": "agents",
+  |      "clients": [
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.config/opencode/agents/recon.md",
   |      "component": "agents",
   |      "clients": [
   |        "opencode"

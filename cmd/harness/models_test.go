@@ -3,11 +3,14 @@ package main
 import (
 	"encoding/json"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/jvillegasd/harness/internal/models"
 )
 
-// modelsBase is a sandbox whose shims list two OpenCode models and whose orca shim is absent until a test adds it.
+// modelsBase is a sandbox whose shim lists available OpenCode models.
 func modelsBase(t *testing.T) string {
 	t.Helper()
 	base := sandbox(t)
@@ -117,32 +120,30 @@ func TestModelsResetRemovesOverrideThenBlock(t *testing.T) {
 	}
 }
 
-func TestModelsResolveRoutes(t *testing.T) {
+// TestModelsResolveReportsTheAssignment covers what resolve is for now that every role launches through Orca: the client, model, effort, and source, with no route to choose and no session to choose it against.
+func TestModelsResolveReportsTheAssignment(t *testing.T) {
 	base := modelsBase(t)
-	route := func(role, session string) map[string]string {
+	resolved := func(role string) map[string]string {
 		t.Helper()
-		r := ok(t, runModels(t, base, "resolve", role, "--session", session, "--json"), "resolve")
+		r := ok(t, runModels(t, base, "resolve", role, "--json"), "resolve")
 		var out map[string]string
 		if err := json.Unmarshal([]byte(r.stdout), &out); err != nil {
 			t.Fatalf("resolve output is not JSON: %v\n%s", err, r.stdout)
 		}
 		return out
 	}
-	if got := route("reviewer-a", "claude"); got["route"] != "native" || got["client"] != "claude" {
-		t.Errorf("same-client role: %v", got)
+	if got := resolved("executor"); got["client"] != "opencode" || got["model"] != "opencode-go/glm-5.3" || got["source"] != "preset:balanced" {
+		t.Errorf("executor: %v", got)
 	}
-	if got := route("executor", "claude"); got["route"] != "headless" || got["model"] != "opencode-go/glm-5.3" {
-		t.Errorf("cross-client role outside Orca: %v", got)
+	// A role on the session's own client is reported the same way, because it is launched the same way.
+	if got := resolved("reviewer-a"); got["client"] != "claude" || got["route"] != "" {
+		t.Errorf("reviewer-a: %v", got)
 	}
-	writeShim(t, base, "orca", `case "$1 $2" in "worktree current") echo '{"ok":true}' ;; *) exit 1 ;; esac`)
-	if got := route("executor", "claude"); got["route"] != "orca" {
-		t.Errorf("cross-client role inside Orca: %v", got)
+	if r := runModels(t, base, "resolve", "executor", "--session", "claude", "--json"); r.code == 0 {
+		t.Error("resolve still accepted --session")
 	}
-	if got := route("executor", "opencode"); got["route"] != "native" {
-		t.Errorf("executor in an OpenCode session: %v", got)
-	}
-	if r := runModels(t, base, "resolve", "executor", "--json"); r.code == 0 {
-		t.Error("resolve without --session exited 0")
+	if r := ok(t, runModels(t, base, "resolve", "reviewer-b"), "resolve, plain"); !strings.Contains(r.stdout, "reviewer-b client=claude model=inherit effort=inherit (preset:balanced)") || strings.Contains(r.stdout, "route=") {
+		t.Errorf("plain resolve: %s", r.stdout)
 	}
 }
 
@@ -260,5 +261,26 @@ func TestInstallRefusesATrackedPerRoleAssignment(t *testing.T) {
 	writeMode(t, path, string(data)+"\n", 0o644)
 	if r := runInstaller(t, base, "--skip-packages"); r.code == 0 || !strings.Contains(r.stdout+r.stderr, "chosen with `harness models`") {
 		t.Errorf("exit %d, output %q%q", r.code, r.stdout, r.stderr)
+	}
+}
+
+// TestEveryAssignedRoleIsDispatchable ties rendered roles to the CLI registry and preset assignments.
+func TestEveryAssignedRoleIsDispatchable(t *testing.T) {
+	var config struct {
+		Roles map[string]struct{} `json:"roles"`
+	}
+	raw := readRepo(t, "clients/assignments.json")
+	if err := json.Unmarshal([]byte(raw), &config); err != nil {
+		t.Fatal(err)
+	}
+	for role := range config.Roles {
+		if !slices.Contains(models.Roles, role) {
+			t.Errorf("clients/assignments.json assigns %q but models.Roles omits it, so the role cannot be resolved", role)
+		}
+		for preset, table := range models.Presets {
+			if _, ok := table[role]; !ok {
+				t.Errorf("preset %q has no assignment for %q, so Resolve yields an empty client", preset, role)
+			}
+		}
 	}
 }

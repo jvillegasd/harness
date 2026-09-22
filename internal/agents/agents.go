@@ -11,9 +11,10 @@ package agents
 
 import "errors"
 
-// adversarial-review launches the reviewers and the refuter and POLICY.md names the executor, so each must exist with exactly this access. Every other role is read-search: only the executor may implement.
+// adversarial-review launches the reviewers and the refuter, /triage and /research launch recon, and POLICY.md names the executor, so each must exist with exactly this access. Every other role is read-search: only the executor may implement.
 var required = map[string]string{
 	"executor":       "implement",
+	"recon":          "read-search",
 	"review-refuter": "read-search",
 	"reviewer-a":     "read-search",
 	"reviewer-b":     "read-search",
@@ -27,10 +28,10 @@ var supported = map[string][]field{
 
 type field struct{ name, pattern string }
 
-const access = "Read and search only. Read and search the repository to follow callers and context. Never edit a file, run a command, fetch from the web, or delegate to another agent, even where the client would let you."
+const access = "Read and search the repository to follow callers and context. Never edit a file, fetch from the web, delegate to another agent, or run project or general shell commands. The only command exception is Orca lifecycle messaging under the live worker preamble."
 
 var claudeControls = map[string][]string{
-	"read-search": {"tools: Read, Grep, Glob"},
+	"read-search": {"tools: Read, Grep, Glob, Bash", "permissionMode: dontAsk", "hooks:", "  PreToolUse:", "    - matcher: Bash", "      hooks:", "        - type: command", `          command: 'test -n "$HARNESS_LIFECYCLE_GUARD" || exit 2; "$HARNESS_LIFECYCLE_GUARD" models lifecycle-guard || exit 2'`},
 	"implement":   {"disallowedTools: Agent"},
 }
 
@@ -73,7 +74,7 @@ var unverified = []string{
 	"unverified: opencode applying the * deny to MCP tools",
 	"unverified: the ccyolo and ocyolo launchers leaving agent restrictions in force, since each bypasses or overrides the parent's permissions",
 	"unverified: diff delivery's inline fallback and escalation, which are protocol rather than exercised behavior",
-	"unverified: claude running a subagent on its model and effort frontmatter, and on the session's effort when effort is absent",
+	"unverified: claude applying a main-thread --agent session's model and effort frontmatter, and the session's effort when effort is absent",
 	"unverified: opencode sending an agent's reasoningEffort with its model requests",
 	"unverified: claude disallowedTools: Agent and opencode task: deny stopping the executor from delegating",
 }
