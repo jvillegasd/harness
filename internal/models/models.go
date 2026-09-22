@@ -1,4 +1,4 @@
-// Package models chooses, per machine, which client, model, and effort each delegated role runs on. The choice lives in the models block of ~/.harness/state.json: a preset, plus per-role overrides. The installer renders it into each client's role agents, and a workflow asks it which client and model a role carries before launching it through Orca.
+// Package models chooses, per machine, which client, model, and effort each delegated role runs on. The choice lives in the models block of ~/.harness/state.json: a preset, plus per-role overrides. The installer renders it into each client's role agents, and a workflow asks it which client and model a role carries before following the Orca orchestration skill.
 package models
 
 import (

@@ -10,7 +10,7 @@ import (
 	"github.com/jvillegasd/harness/internal/models"
 )
 
-// modelsBase is a sandbox whose shims list two OpenCode models and whose orca shim is absent until a test adds it.
+// modelsBase is a sandbox whose shim lists available OpenCode models.
 func modelsBase(t *testing.T) string {
 	t.Helper()
 	base := sandbox(t)
@@ -275,7 +275,7 @@ func TestEveryAssignedRoleIsDispatchable(t *testing.T) {
 	}
 	for role := range config.Roles {
 		if !slices.Contains(models.Roles, role) {
-			t.Errorf("clients/assignments.json assigns %q but models.Roles omits it, so harness dispatch %s is bad_input", role, role)
+			t.Errorf("clients/assignments.json assigns %q but models.Roles omits it, so the role cannot be resolved", role)
 		}
 		for preset, table := range models.Presets {
 			if _, ok := table[role]; !ok {

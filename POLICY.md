@@ -15,7 +15,7 @@ Use ephemeral specialist roles. Do not create persistent client-specific persona
 
 Run independent roles in parallel when the runtime supports it; otherwise run them sequentially without merging their scopes.
 
-Every delegated role runs through Orca, which owns the worker's placement, supervision, messaging, retries, and lifecycle; the harness contributes only the named role's launch and the reading of its result. A client-native subagent and a headless client run are not alternative backends for a role, whatever the role and whichever client the session itself runs.
+Every delegated role runs through Orca. Before delegating, read the locked `orchestration` skill and load the version-matched guide from the executable it resolves. Follow that guide with Orca commands for placement, supervision, messaging, completion, recovery, retries, retained output, and cleanup. Harness owns the role assignments, permitted task inputs, and delivery gates; it implements no orchestration loop or alternate recovery protocol. A client-native subagent and a headless client run are not alternative backends for a role, whatever the role and whichever client the session itself runs.
 
 When a workflow chooses to delegate implementation, launch the named `executor` agent, whose model and effort come from the harness's central role assignments. Delegation stays optional and changes nothing else: the delegating workflow keeps the approved scope, the commits, the review passes, the conformance check, and every gate. When Orca or the named agent is unavailable, say so and do the work inline rather than hand it to an agent without that assignment. A required review is not inlined that way: it is run once the runtime is back, or escalated.
 

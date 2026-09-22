@@ -21,7 +21,7 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 | `internal/skills/` | The third-party skill locks behind `harness skills`, and the invocation-guard check on local skills |
 | `internal/bench/` | The session-population comparison behind `harness bench` |
 | `internal/agents/` | The role-agent renderer the installer calls in-process |
-| `internal/models/` | The per-machine role model presets behind `harness models`, and the Orca role launcher behind `harness dispatch` |
+| `internal/models/` | The per-machine role model presets behind `harness models` |
 | `internal/dash/` | The live terminal dashboard behind `harness dash` |
 | `POLICY.md` | The vendor-neutral global policy linked into each client |
 | `commands/` | The workflow commands, invoked as `/name` in Claude Code and OpenCode |
@@ -37,7 +37,7 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 
 ## Prerequisites
 
-macOS or Linux with zsh, Homebrew, and Go 1.26 or newer. The GitHub tracker operations need the `gh` CLI authenticated with issue write permission. Branch worktrees use Worktrunk (`wt`) 0.61 or newer, the first release with the `--config-set` flag `harness state` passes. Orca is the only runtime for a delegated role, so `harness dispatch` needs it; inline work does not.
+macOS or Linux with zsh, Homebrew, and Go 1.26 or newer. The GitHub tracker operations need the `gh` CLI authenticated with issue write permission. Branch worktrees use Worktrunk (`wt`) 0.61 or newer, the first release with the `--config-set` flag `harness state` passes. Orca is the only runtime for a delegated role; workflows use its commands through the locked `orchestration` skill. Inline work does not require it.
 
 ## Task runners
 

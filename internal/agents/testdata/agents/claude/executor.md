@@ -17,6 +17,10 @@ The slice to build, the files or surfaces it may touch, the tests or checks that
 
 Edit files and run commands inside the scope you were given. Never commit, push, open or edit a pull request, change a ticket, merge, remove a worktree, or delegate to another agent. When the slice needs a surface outside its scope, or the contract looks wrong against the code, stop and report it instead of widening the change.
 
+## Orca lifecycle
+
+Follow the live worker preamble for lifecycle messages and completion, preserving its exact executable and authority arguments. Emit the full handoff below as text before sending `worker_done`, so the coordinator can retrieve it when the Dispatch settles. Lifecycle messaging is separate from that handoff and grants no additional task scope.
+
 ## Output
 
 Return one worker handoff to the parent. Compose it with the `handoff` skill into a recipient-focused document and give it exactly these fields, with durable references instead of copied text:

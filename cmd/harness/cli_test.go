@@ -12,7 +12,7 @@ import (
 )
 
 // shimTools are the external tools a harness command could reach for. Every one is replaced by a logging shim on the controlled PATH, so a run that spawns any of them is caught.
-var shimTools = []string{"git", "gh", "npx", "brew", "wt", "go", "claude", "opencode", "bash", "sh", "mv", "du", "security", "secret-tool", "curl"}
+var shimTools = []string{"orca", "orca-dev", "orca-ide", "git", "gh", "npx", "brew", "wt", "go", "claude", "opencode", "bash", "sh", "mv", "du", "security", "secret-tool", "curl"}
 
 // cliResult is what one harness invocation produced, with timedOut set when holding stdin open stopped it.
 type cliResult struct {
@@ -143,6 +143,7 @@ func TestCommandHelpMatrix(t *testing.T) {
 func TestCommandInvocationMatrix(t *testing.T) {
 	args := [][]string{
 		{"bogus"},
+		{"dispatch", "reviewer-a", "--prompt-file", "prompt.md"},
 		{"locks", "verify"},
 		{"install", "--bogus"},
 		{"install", "--uninstall", "--skip-packages"},

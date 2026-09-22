@@ -28,10 +28,10 @@ var supported = map[string][]field{
 
 type field struct{ name, pattern string }
 
-const access = "Read and search only. Read and search the repository to follow callers and context. Never edit a file, run a command, fetch from the web, or delegate to another agent, even where the client would let you."
+const access = "Read and search the repository to follow callers and context. Never edit a file, fetch from the web, delegate to another agent, or run project or general shell commands. The only command exception is Orca lifecycle messaging under the live worker preamble."
 
 var claudeControls = map[string][]string{
-	"read-search": {"tools: Read, Grep, Glob"},
+	"read-search": {"tools: Read, Grep, Glob, Bash", "permissionMode: dontAsk", "hooks:", "  PreToolUse:", "    - matcher: Bash", "      hooks:", "        - type: command", `          command: 'test -n "$HARNESS_LIFECYCLE_GUARD" || exit 2; "$HARNESS_LIFECYCLE_GUARD" models lifecycle-guard || exit 2'`},
 	"implement":   {"disallowedTools: Agent"},
 }
 
