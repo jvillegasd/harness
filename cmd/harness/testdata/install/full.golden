@@ -4,13 +4,11 @@ brew tap anomalyco/tap <>
 brew tap gentleman-programming/tap <>
 brew list --formula <>
 brew install uv <>
-brew install worktrunk <>
 brew install agent-browser <>
 brew install gentleman-programming/tap/engram <>
 agent-browser install <>
 engram setup claude-code <y>
 engram setup opencode <>
-wt config shell install --yes zsh <>
 opencode models <>
 claude mcp remove --scope user agent-browser <>
 claude mcp add --scope user agent-browser -- $SHIMS/agent-browser mcp <>
@@ -21,8 +19,6 @@ claude mcp get agent-browser <>
 claude mcp get engram <>
 opencode debug config <>
 claude plugin validate $BASE/tmp/harness-assets-<n>/skills <>
-wt switch --help <>
-wt list --help <>
 == home
 D .agents
 D .agents/skills

@@ -25,7 +25,7 @@ Resolve the effective input:
 
    Telemetry is a primary source on the same footing as code. Read and follow `evidence` for any claim about runtime behavior, impact, frequency, or performance.
 
-3. Bound suspected regressions with telemetry or release history, then `git bisect` in a disposable worktree: `wt switch --create <slug>-bisect --base <sha> --no-cd --format=json --yes`, or follow the Orca CLI guide inside Orca. Use the cheapest decisive test, profile, or trace per candidate. If a probe cannot decide, report the narrowed range. Remove only this worktree afterward; leave the main tree and repository history untouched.
+3. Bound suspected regressions with telemetry or release history, then `git bisect` in a disposable worktree: follow the policy's worktree protocol, using the suspected revision as the base. Use the cheapest decisive test, profile, or trace per candidate. If a probe cannot decide, report the narrowed range. Remove only this worktree afterward; leave the main tree and repository history untouched.
 
 4. Compare independent evidence, test counterexamples, and resolve contradictions. Separate fact, inference, and unknown; fabricate none. Runtime claims unchecked against available telemetry belong in `Contradictions and unknowns`, never `Conclusion`.
 

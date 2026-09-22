@@ -5,25 +5,23 @@ import (
 	"testing"
 )
 
-// TestSnapshotStateResolvesStoreThenFallback pins the precedence the dashboard
-// depends on: this branch's store first, then the other store, with legacy text
-// marked rather than parsed.
-func TestSnapshotStateResolvesStoreThenFallback(t *testing.T) {
+// Legacy values remain readable until a canonical value replaces them.
+func TestSnapshotStatePrefersCanonicalThenLegacy(t *testing.T) {
 	snap := Snapshot{
 		"worktrunk.state.feat/x.vars.ladder":   "go test ./...",
 		"harness.feat/x.reason":                "legacy reason",
 		"worktrunk.state.feat/x.vars.attempts": "3",
 		"harness.feat/x.escalations":           "a paragraph",
 	}
-	x := snap.State("worktrunk", "feat/x")
-	if x.Branch != "feat/x" || x.Store != "worktrunk" {
-		t.Fatalf("identity = %q/%q", x.Branch, x.Store)
+	x := snap.State("feat/x")
+	if x.Branch != "feat/x" {
+		t.Fatalf("identity = %q", x.Branch)
 	}
 	if x.Ladder != "go test ./..." {
 		t.Fatalf("ladder = %q, want the worktrunk key", x.Ladder)
 	}
 	if x.Reason != "legacy reason" {
-		t.Fatalf("reason = %q, want the harness fallback", x.Reason)
+		t.Fatalf("reason = %q, want the canonical value", x.Reason)
 	}
 	if x.Attempts == nil || *x.Attempts != 3 {
 		t.Fatalf("attempts = %v, want 3", x.Attempts)
@@ -35,23 +33,19 @@ func TestSnapshotStateResolvesStoreThenFallback(t *testing.T) {
 		t.Fatalf("legacy escalations = %q", x.Legacy["escalations"])
 	}
 
-	none := snap.State("worktrunk", "none")
+	none := snap.State("none")
 	if none.Attempts == nil || *none.Attempts != 0 || none.Escalations == nil || *none.Escalations != 0 {
 		t.Fatalf("an absent counter should read 0, got %v/%v", none.Attempts, none.Escalations)
 	}
 }
 
-// TestSnapshotStateFollowsTheBranchStore pins that store selection, not a fixed
-// key, decides which store wins.
-func TestSnapshotStateFollowsTheBranchStore(t *testing.T) {
+// Canonical state wins even when both stores contain a value.
+func TestCanonicalStateTakesPrecedence(t *testing.T) {
 	snap := Snapshot{
 		"worktrunk.state.main.vars.ladder": "w",
 		"harness.main.ladder":              "h",
 	}
-	if got := snap.State("worktrunk", "main").Ladder; got != "w" {
-		t.Fatalf("worktrunk store read %q", got)
-	}
-	if got := snap.State("harness", "main").Ladder; got != "h" {
+	if got := snap.State("main").Ladder; got != "h" {
 		t.Fatalf("harness store read %q", got)
 	}
 }

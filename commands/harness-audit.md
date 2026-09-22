@@ -22,7 +22,7 @@ Read only needed evidence. Report each source in one line: its contents or why u
 
 | Source | Residue it carries |
 | --- | --- |
-| `worktrees` | Orca or Worktrunk worktrees and their branch state |
+| `worktrees` | Existing Git worktrees, their Orca placement when managed, and harness branch state |
 | `engram_checkpoints` | branch-scoped records under `checkpoint/<branch>` |
 | `pull_request_bodies` | `Closes` references and the `## Contract` and `## Checks` sections |
 | `commits` | Conventional Commit subjects and their rung results |

@@ -53,6 +53,9 @@ var opencodeControls = map[string]string{
 		"    \"git commit*\": deny\n" +
 		"    \"git push*\": deny\n" +
 		"    \"git worktree remove*\": deny\n" +
+		"    \"orca worktree rm*\": deny\n" +
+		"    \"orca-ide worktree rm*\": deny\n" +
+		"    \"orca-dev worktree rm*\": deny\n" +
 		"    \"wt remove*\": deny\n" +
 		"    \"wt merge*\": deny\n" +
 		"    \"wt step commit*\": deny\n" +
@@ -65,7 +68,7 @@ var gaps = []string{
 	"gap: opencode: a standards file outside the project, such as the installed ponytail body, needs the same external_directory, so reviewers there get it inline after their loaded: line omits it",
 	"gap: claude: the executor keeps Bash, because a disallowedTools specifier removes the whole tool, so its commit, push, pull request, merge, and tracker limits are instructions only",
 	"gap: claude: a model parameter passed at launch overrides an agent's model frontmatter, and an availableModels allowlist substitutes a blocked model with a warning, so the policy forbids the parameter and neither is enforced",
-	"gap: opencode: the executor's bash denies match command prefixes, so the same action spelled another way is not denied",
+	"gap: opencode: the executor's bash denies match command prefixes, so the same action spelled another way is not denied, including an Orca executable taken from ORCA_CLI_COMMAND, and the denied orca worktree rm spelling came from the installed Orca CLI's help rather than this tree, so a new Orca needs it re-verified",
 }
 
 var unverified = []string{

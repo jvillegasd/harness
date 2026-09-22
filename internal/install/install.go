@@ -32,8 +32,7 @@ const usage = `Usage: harness install [--skip-packages] [--no-backup]
   --skip-packages
                  Reconcile the policy, command, skill, and role agent copies,
                  the tracked client settings, and the Engram and agent-browser
-                 registrations, without installing packages or configuring
-                 Worktrunk's shell integration. No package manager is called,
+                 registrations, without installing packages. No package manager is called,
                  so Engram, agent-browser, and Claude Code have to be installed
                  already; a full run is what installs them.
   --no-backup    Delete whatever is in the way instead of moving it to
@@ -222,16 +221,15 @@ func (in *installer) install() {
 	if len(unguarded) > 0 {
 		die("Local skill missing an invocation guard: %s", strings.Join(unguarded, "; "))
 	}
-	// First, so the warning precedes the two steps it is about.
 	in.warnUnlessZsh()
 	in.installBinary()
 	if !in.skipPackages {
 		in.installPackages()
-		in.installIntegrations()
+		in.installEngram()
 	}
 	in.installFiles()
 	in.reconcileAliases(false)
-	// A package-skipping run skips the package work, so it reconciles Engram unconditionally: setup rewrites the absolute binary path each client pins, which a presence probe never checked.
+	// Engram setup rewrites the absolute binary path each client pins, which a presence probe never checked, so a package-skipping run still runs it.
 	if in.skipPackages {
 		in.installEngram()
 	}
@@ -255,7 +253,7 @@ func (in *installer) run(stdin io.Reader, name string, args ...string) {
 	}
 }
 
-// installPackages installs every tool through Homebrew on both platforms, because three of them (opencode, engram, worktrunk) ship only as taps. It inventories the installed formulae once and installs only what is missing: an already-installed dependency keeps whatever version it has, never upgraded behind the user's back.
+// installPackages installs every tool through Homebrew on both platforms, because two of them (opencode, engram) ship only as taps. It inventories the installed formulae once and installs only what is missing: an already-installed dependency keeps whatever version it has, never upgraded behind the user's back.
 func (in *installer) installPackages() {
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		die("The harness installer supports macOS and Linux, not %s.", runtime.GOOS)
@@ -269,7 +267,7 @@ func (in *installer) installPackages() {
 	in.run(nil, "brew", "tap", "anomalyco/tap")
 	in.run(nil, "brew", "tap", "gentleman-programming/tap")
 	installed := in.installedFormulae()
-	for _, formula := range []string{"node", "gh", "uv", "worktrunk", agentBrowserFormula, "anomalyco/tap/opencode", engramFormula} {
+	for _, formula := range []string{"node", "gh", "uv", agentBrowserFormula, "anomalyco/tap/opencode", engramFormula} {
 		if !installed[shortName(formula)] {
 			in.run(nil, "brew", "install", formula)
 		}
@@ -316,13 +314,7 @@ func shortName(formula string) string {
 	return formula[strings.LastIndex(formula, "/")+1:]
 }
 
-func (in *installer) installIntegrations() {
-	in.installEngram()
-	in.log("Reconciling Worktrunk")
-	in.run(nil, "wt", "config", "shell", "install", "--yes", "zsh")
-}
-
-// warnUnlessZsh tells a user on another shell what they did not get: the aliases go into ~/.zshrc and Worktrunk gets its zsh integration.
+// warnUnlessZsh tells a user on another shell where to source the aliases.
 func (in *installer) warnUnlessZsh() {
 	shell := os.Getenv("SHELL")
 	if shell != "" && filepath.Base(shell) == "zsh" {
@@ -331,7 +323,7 @@ func (in *installer) warnUnlessZsh() {
 	if shell == "" {
 		shell = "unknown"
 	}
-	in.warn("Your login shell is %s, not zsh. The yolo aliases go into\n~/.zshrc and Worktrunk gets its zsh integration. Source\n%s from your own shell rc, and run\n`wt config shell install` for the shell you use.", shell, in.dir.Aliases())
+	in.warn("Your login shell is %s, not zsh. The yolo aliases go into\n~/.zshrc. Source %s from your own shell rc.", shell, in.dir.Aliases())
 }
 
 var description = regexp.MustCompile(`(?m)^description:`)
@@ -369,7 +361,7 @@ func (in *installer) checkStatusline() {
 
 // checkTools verifies what only a full run installs, since each assertion needs a client or a package on PATH.
 func (in *installer) checkTools() {
-	for _, name := range []string{"claude", "opencode", "gh", "engram", "wt", "agent-browser"} {
+	for _, name := range []string{"claude", "opencode", "gh", "engram", "agent-browser"} {
 		if _, err := exec.LookPath(name); err != nil {
 			die("Missing required command: %s", name)
 		}
@@ -400,17 +392,6 @@ func (in *installer) checkTools() {
 	validate.Stderr = in.stderr
 	if err := validate.Run(); err != nil {
 		die("claude plugin validate failed: %v", err)
-	}
-	if help, _ := exec.Command("wt", "switch", "--help").Output(); !strings.Contains(string(help), "--no-cd") {
-		die("Worktrunk's wt switch has no --no-cd flag; upgrade Worktrunk.")
-	}
-	// state and dash pass --config-set to `wt list`, so an older Worktrunk that lacks it fails here rather than inside a later command. The flag is probed where it is used, because a global option may be hidden from the subcommand that needs it.
-	help, err := exec.Command("wt", "list", "--help").Output()
-	if err != nil {
-		die("Could not read Worktrunk's wt list help: %v", err)
-	}
-	if !strings.Contains(string(help), "--config-set") {
-		die("Worktrunk's wt list has no --config-set flag; upgrade Worktrunk to 0.61 or newer.")
 	}
 }
 

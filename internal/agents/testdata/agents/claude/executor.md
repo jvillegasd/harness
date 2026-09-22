@@ -19,18 +19,20 @@ Edit files and run commands inside the scope you were given. Never commit, push,
 
 ## Orca lifecycle
 
-Follow the live worker preamble for lifecycle messages and completion, preserving its exact executable and authority arguments. Emit the full handoff below as text before sending `worker_done`, so the coordinator can retrieve it when the Dispatch settles. Lifecycle messaging is separate from that handoff and grants no additional task scope.
+Follow the live worker preamble for lifecycle messages and completion, preserving its exact executable and authority arguments. Emit the complete result below as text before sending `worker_done`, so the coordinator can retrieve it when the Dispatch settles. Lifecycle messaging is separate from that result and grants no additional task scope.
 
 ## Output
 
-Return one worker handoff to the parent. Compose it with the `handoff` skill into a recipient-focused document and give it exactly these fields, with durable references instead of copied text:
+Return one complete result to the parent with these fields:
 
 - `slice`: the one slice you built.
-- `revision`: the git commit sha the handoff describes.
+- `dispatch`: the exact Dispatch ID from the live preamble.
+- `branch`: the exact Git branch name.
+- `revision`: the Git commit SHA the result describes.
 - `changed_files`: the files you changed.
 - `pending_files`: the files you left uncommitted or pending.
 - `checks`: each check you ran, with its result.
-- `unresolved`: the questions you could not settle.
+- `unresolved`: every unfinished requirement and question you could not settle.
 - `artifacts`: durable references to the artifacts your work produced.
 
-A handoff reports work and never grants approval; the parent or a human decides. The parent persists the handoff in Engram and owns the branch checkpoint, which you never write. Give a `path:line` for each claim about code.
+A result reports work and never grants approval; the parent or a human decides. Orca owns retained output; the parent verifies retrieval before release, retaining a durable artifact if needed, and records only its reference in the branch checkpoint, which you never write. Give a `path:line` for each claim about code.

@@ -22,7 +22,6 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 | `internal/bench/` | The session-population comparison behind `harness bench` |
 | `internal/agents/` | The role-agent renderer the installer calls in-process |
 | `internal/models/` | The per-machine role model presets behind `harness models` |
-| `internal/dash/` | The live terminal dashboard behind `harness dash` |
 | `POLICY.md` | The vendor-neutral global policy linked into each client |
 | `commands/` | The workflow commands, invoked as `/name` in Claude Code and OpenCode |
 | `skills/` | Protocol, vocabulary, and locked third-party bodies |
@@ -37,7 +36,7 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 
 ## Prerequisites
 
-macOS or Linux with zsh, Homebrew, and Go 1.26 or newer. The GitHub tracker operations need the `gh` CLI authenticated with issue write permission. Branch worktrees use Worktrunk (`wt`) 0.61 or newer, the first release with the `--config-set` flag `harness state` passes. Orca is the only runtime for a delegated role; workflows use its commands through the locked `orchestration` skill. Inline work does not require it.
+macOS or Linux with zsh, Homebrew, and Go 1.26 or newer. The GitHub tracker operations need the `gh` CLI authenticated with issue write permission. Orca is the only runtime for a delegated role; workflows use its commands through the locked `orchestration` skill. Inline work does not require it.
 
 ## Task runners
 
@@ -66,7 +65,7 @@ Some changes cannot be settled by the checks above, because they act on machine 
 
 The repository root is the product root and the nested product directory is gone, so a machine installed under the old layout is reinstalled cleanly rather than upgraded in place: uninstall it with the old checkout's own `harness install --uninstall` while that checkout still exists, then install from this one. The new installer claims a link only when it resolves into a managed asset namespace and ships no old-layout detection, migration, or compatibility sweep, so an old link is replaced or refused rather than swept. The Clean reinstall section of `README.md` names the leftovers.
 
-`go run ./cmd/harness install --skip-packages` is the same provisioning surface with the package step and Worktrunk's shell integration removed. The binary embeds the policy, commands, skills, roles, client settings, and aliases, so `go run` installs the working tree: it copies those assets into each client, records every copy in `~/.harness/state.json`, and copies itself to `~/.local/bin/harness`. An edit under those paths reaches the clients on the next install, not live. It still rewrites the Engram and agent-browser MCP registrations and the tracked client settings, so `engram`, `agent-browser`, and `claude` must already be installed. Run it when copies need reconciling, not as a validation step.
+`go run ./cmd/harness install --skip-packages` is the same provisioning surface without the package step. The binary embeds the policy, commands, skills, roles, client settings, and aliases, so `go run` installs the working tree: it copies those assets into each client, records every copy in `~/.harness/state.json`, and copies itself to `~/.local/bin/harness`. An edit under those paths reaches the clients on the next install, not live. It still rewrites the Engram and agent-browser MCP registrations and the tracked client settings, so `engram`, `agent-browser`, and `claude` must already be installed. Run it when copies need reconciling, not as a validation step.
 
 Session-population measurement for a harness change is `harness bench --split <commit-date> --since <window-start>`, documented in `bench/README.md`.
 

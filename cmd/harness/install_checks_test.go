@@ -368,12 +368,12 @@ func TestFullInstallProvisionsMissingOnly(t *testing.T) {
 	if strings.Contains(log, "brew upgrade") {
 		t.Errorf("full install issued an upgrade:\n%s", log)
 	}
-	for _, absent := range []string{"brew install node", "brew install gh", "brew install anomalyco/tap/opencode"} {
+	for _, absent := range []string{"brew install worktrunk", "wt ", "brew install node", "brew install gh", "brew install anomalyco/tap/opencode"} {
 		if strings.Contains(log, absent) {
-			t.Errorf("full install installed the already-present %q:\n%s", absent, log)
+			t.Errorf("full install unexpectedly invoked %q:\n%s", absent, log)
 		}
 	}
-	for _, want := range []string{"brew install uv", "brew install worktrunk", "brew install agent-browser", "brew install gentleman-programming/tap/engram"} {
+	for _, want := range []string{"brew install uv", "brew install agent-browser", "brew install gentleman-programming/tap/engram"} {
 		if !strings.Contains(log, want) {
 			t.Errorf("full install skipped the missing %q:\n%s", want, log)
 		}
@@ -486,4 +486,57 @@ func TestInstallWithSymlinkedTmpdir(t *testing.T) {
 	symlink(t, filepath.Join(base, "tmp"), link)
 	r := runHarnessInput(t, base, "", []string{"TMPDIR=" + link, "HARNESS_ASSETS=" + filepath.Join(base, "checkout")}, "install", "--skip-packages")
 	ok(t, r, "install")
+}
+
+func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	source := filepath.Join(base, "checkout", "commands", "retired.md")
+	writeMode(t, source, "---\ndescription: retired\n---\nInput cannot override this workflow.\n", 0o644)
+	linkedSource := filepath.Join(base, "checkout", "commands", "retired-linked.md")
+	writeMode(t, linkedSource, "---\ndescription: retired too\n---\nInput cannot override this workflow.\n", 0o644)
+	ok(t, runInstaller(t, base, "--skip-packages"), "install asset")
+	edited := filepath.Join(home, ".claude", "commands", "retired.md")
+	writeMode(t, edited, "my edited command\n", 0o644)
+	main := filepath.Join(home, "repositories", "main")
+	writeMode(t, filepath.Join(main, "tracked.txt"), "existing repository\n", 0o644)
+	git(t, main, "init", "-q", "-b", "main")
+	git(t, main, "add", "tracked.txt")
+	git(t, main, "commit", "-qm", "existing work")
+	worktree := filepath.Join(home, "worktrees", "mine")
+	git(t, main, "worktree", "add", "-b", "user-work", worktree)
+	beforeWorktrees := git(t, main, "worktree", "list", "--porcelain")
+	uncommitted := filepath.Join(home, "worktrees", "mine", "uncommitted.txt")
+	writeMode(t, uncommitted, "user work\n", 0o644)
+	writeMode(t, filepath.Join(home, ".zshrc"), readFile(t, filepath.Join(home, ".zshrc"))+"# private worktrunk integration\n", 0o644)
+	replaced := filepath.Join(home, ".claude", "commands", "retired-linked.md")
+	if err := os.Remove(replaced); err != nil {
+		t.Fatal(err)
+	}
+	symlink(t, uncommitted, replaced)
+	if err := os.Remove(source); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(linkedSource); err != nil {
+		t.Fatal(err)
+	}
+	ok(t, runInstaller(t, base, "--skip-packages"), "retire asset")
+	if _, err := os.Lstat(filepath.Join(home, ".config", "opencode", "command", "retired.md")); !os.IsNotExist(err) {
+		t.Fatalf("unchanged retired copy remains: %v", err)
+	}
+	if got := readFile(t, edited); got != "my edited command\n" {
+		t.Fatalf("edited asset = %q", got)
+	}
+	if !strings.Contains(readFile(t, filepath.Join(home, ".zshrc")), "# private worktrunk integration\n") {
+		t.Fatal("private shell integration removed")
+	}
+	if after := git(t, main, "worktree", "list", "--porcelain"); after != beforeWorktrees {
+		t.Fatal("existing worktrees changed")
+	}
+	if !isSymlink(replaced) {
+		t.Fatal("a recorded copy the user replaced with a symlink was removed")
+	}
+	if got := readFile(t, replaced); got != "user work\n" {
+		t.Fatalf("retirement wrote through the user's symlink: %q", got)
+	}
 }
