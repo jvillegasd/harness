@@ -7,6 +7,9 @@ permission:
     "git commit*": deny
     "git push*": deny
     "git worktree remove*": deny
+    "orca worktree rm*": deny
+    "orca-ide worktree rm*": deny
+    "orca-dev worktree rm*": deny
     "wt remove*": deny
     "wt merge*": deny
     "wt step commit*": deny

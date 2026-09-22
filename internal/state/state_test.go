@@ -6,7 +6,7 @@ import (
 )
 
 // Legacy values remain readable until a canonical value replaces them.
-func TestSnapshotStateResolvesStoreThenFallback(t *testing.T) {
+func TestSnapshotStatePrefersCanonicalThenLegacy(t *testing.T) {
 	snap := Snapshot{
 		"worktrunk.state.feat/x.vars.ladder":   "go test ./...",
 		"harness.feat/x.reason":                "legacy reason",
@@ -14,14 +14,14 @@ func TestSnapshotStateResolvesStoreThenFallback(t *testing.T) {
 		"harness.feat/x.escalations":           "a paragraph",
 	}
 	x := snap.State("feat/x")
-	if x.Branch != "feat/x" || x.Store != "harness" {
-		t.Fatalf("identity = %q/%q", x.Branch, x.Store)
+	if x.Branch != "feat/x" {
+		t.Fatalf("identity = %q", x.Branch)
 	}
 	if x.Ladder != "go test ./..." {
 		t.Fatalf("ladder = %q, want the worktrunk key", x.Ladder)
 	}
 	if x.Reason != "legacy reason" {
-		t.Fatalf("reason = %q, want the harness fallback", x.Reason)
+		t.Fatalf("reason = %q, want the canonical value", x.Reason)
 	}
 	if x.Attempts == nil || *x.Attempts != 3 {
 		t.Fatalf("attempts = %v, want 3", x.Attempts)

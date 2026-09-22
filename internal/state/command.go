@@ -48,8 +48,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return 0
 	case n == 1 && op == "prune":
 		removed, err := Prune(".")
-		for _, section := range removed {
-			fmt.Fprintln(stdout, "removed", section)
+		for _, branch := range removed {
+			fmt.Fprintln(stdout, "removed", branch)
 		}
 		if err != nil {
 			return fail(err)
@@ -89,8 +89,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stdout, string(out))
 			break
 		}
-		fmt.Fprintf(stdout, "branch: %s (%s)\nladder: %s\nattempts: %s\nescalations: %s\nreason: %s\n",
-			s.Branch, s.Store, s.Ladder, counter(s.Attempts, s.Legacy["attempts"]), counter(s.Escalations, s.Legacy["escalations"]), s.Reason)
+		fmt.Fprintf(stdout, "branch: %s\nladder: %s\nattempts: %s\nescalations: %s\nreason: %s\n",
+			s.Branch, s.Ladder, counter(s.Attempts, s.Legacy["attempts"]), counter(s.Escalations, s.Legacy["escalations"]), s.Reason)
 	}
 	return 0
 }

@@ -5,14 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 )
 
+// stateNames are the keys harness state owns; pruning scans for them and unsets them.
+var stateNames = []string{"ladder", "attempts", "escalations", "reason"}
+
 // State is one branch's record. A counter is nil when its stored value is legacy free-form text, which Legacy then carries verbatim.
 type State struct {
 	Branch      string            `json:"branch"`
-	Store       string            `json:"store"`
 	Ladder      string            `json:"ladder"`
 	Attempts    *int              `json:"attempts"`
 	Escalations *int              `json:"escalations"`
@@ -22,7 +25,7 @@ type State struct {
 
 // Branch addresses the state of the branch checked out in a repository directory.
 type Branch struct {
-	Dir, Name, Store string
+	Dir, Name string
 }
 
 // Snapshot is one repository's branch-state configuration, read in a single git call. Keys are the config keys git stores.
@@ -50,7 +53,7 @@ func ReadSnapshot(dir string) (Snapshot, error) {
 
 // State resolves canonical harness values, falling back to legacy Worktrunk values.
 func (s Snapshot) State(branch string) State {
-	out := State{Branch: branch, Store: "harness"}
+	out := State{Branch: branch}
 	read := func(name string) (string, bool) {
 		if value, ok := s[key("harness", branch, name)]; ok {
 			return value, true
@@ -88,7 +91,7 @@ func Open(dir string) (*Branch, error) {
 	if err != nil {
 		return nil, fmt.Errorf("not on a branch: %w", err)
 	}
-	return &Branch{Dir: dir, Name: name, Store: "harness"}, nil
+	return &Branch{Dir: dir, Name: name}, nil
 }
 
 func key(store, branch, name string) string {
@@ -143,7 +146,7 @@ func parseCounter(raw string) (int, *string) {
 func (b *Branch) Get() (State, error) {
 	snap, err := ReadSnapshot(b.Dir)
 	if err != nil {
-		return State{Branch: b.Name, Store: b.Store}, err
+		return State{Branch: b.Name}, err
 	}
 	return snap.State(b.Name), nil
 }
@@ -173,7 +176,7 @@ func (b *Branch) SetLadder(text string) error {
 	return b.write("ladder", text)
 }
 
-// Prune removes known harness state keys for branches without a local ref, preserving unrelated configuration. It returns the sections it pruned.
+// Prune removes known harness state keys for branches without a local ref, preserving unrelated configuration. It returns the branches it pruned; their config sections survive whenever foreign keys remain.
 func Prune(dir string) ([]string, error) {
 	out, err := git(dir, "config", "--local", "-z", "--get-regexp", `^(worktrunk\.state|harness)\.`)
 	if exitCode(err) == 1 {
@@ -186,9 +189,7 @@ func Prune(dir string) ([]string, error) {
 	seen := map[string]bool{}
 	for _, record := range strings.Split(out, "\x00") {
 		k, _, _ := strings.Cut(record, "\n")
-		switch k[strings.LastIndex(k, ".")+1:] {
-		case "ladder", "attempts", "escalations", "reason":
-		default:
+		if !slices.Contains(stateNames, k[strings.LastIndex(k, ".")+1:]) {
 			continue
 		}
 		branch, section := owner(k)
@@ -203,12 +204,14 @@ func Prune(dir string) ([]string, error) {
 		if exitCode(err) != 1 {
 			return removed, err
 		}
-		for _, name := range []string{"ladder", "attempts", "escalations", "reason"} {
+		for _, name := range stateNames {
 			if _, err := git(dir, "config", "--local", "--unset-all", section+"."+name); err != nil && exitCode(err) != 5 {
 				return removed, err
 			}
 		}
-		removed = append(removed, section)
+		if !slices.Contains(removed, branch) {
+			removed = append(removed, branch)
+		}
 	}
 	return removed, nil
 }

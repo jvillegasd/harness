@@ -155,7 +155,7 @@ func TestLadderSetWithoutWorktrunkUsesHarnessKeys(t *testing.T) {
 		t.Fatalf("harness ladder key = %q", got)
 	}
 	got := getJSON(t, dir, "")
-	if got["branch"] != branch || got["store"] != "harness" || got["ladder"] != "go test ./..." {
+	if got["branch"] != branch || got["ladder"] != "go test ./..." {
 		t.Fatalf("get --json = %v", got)
 	}
 	if got["attempts"] != 0.0 || got["escalations"] != 0.0 {
@@ -172,7 +172,7 @@ func TestStateUsesHarnessKeysAndPreservesLegacyValues(t *testing.T) {
 	}
 	git(t, dir, "config", "harness.other.attempts", "9")
 	got := getJSON(t, dir, listing(branch))
-	if got["store"] != "harness" || got["attempts"] != 4.0 || got["escalations"] != 2.0 || got["reason"] != "prior trip" || got["ladder"] != "go test ./..." {
+	if got["attempts"] != 4.0 || got["escalations"] != 2.0 || got["reason"] != "prior trip" || got["ladder"] != "go test ./..." {
 		t.Fatalf("legacy state = %v", got)
 	}
 	ok(t, harness(t, dir, listing(branch), "state", "incr", "attempts"), "incr")
@@ -286,8 +286,11 @@ func TestStateIgnoresWorktrunkAvailability(t *testing.T) {
 		if strings.TrimSpace(r.stdout) != fmt.Sprint(want+1) {
 			t.Fatalf("incr %d printed %q, want %d", want+1, r.stdout, want+1)
 		}
-		if configHas(t, dir, worktrunkKey) == configHas(t, dir, harnessKey) {
-			t.Fatalf("after incr %d exactly one store should hold attempts", want+1)
+		if configHas(t, dir, worktrunkKey) || !configHas(t, dir, harnessKey) {
+			t.Fatalf("after incr %d attempts should live in the harness key alone", want+1)
+		}
+		if _, err := os.Stat(filepath.Join(dir, ".wt-called")); !os.IsNotExist(err) {
+			t.Fatalf("state invoked Worktrunk: %v", err)
 		}
 	}
 	for _, wt := range []string{listed, ""} {
@@ -319,8 +322,8 @@ func TestPruneRemovesOnlyGoneBranches(t *testing.T) {
 	}
 	git(t, dir, "config", "--global", "worktrunk.state.gone/global.vars.attempts", "1")
 	r := ok(t, harness(t, dir, "", "state", "prune"), "prune")
-	if !strings.Contains(r.stdout, "gone/one") || !strings.Contains(r.stdout, "gone/two") || strings.Contains(r.stdout, "live") || strings.Contains(r.stdout, "global") {
-		t.Fatalf("prune reported %q", r.stdout)
+	if r.stdout != "removed gone/one\nremoved gone/two\n" {
+		t.Fatalf("prune reported %q, want one branch name per pruned branch", r.stdout)
 	}
 	for _, key := range kept {
 		if !configHas(t, dir, key) {

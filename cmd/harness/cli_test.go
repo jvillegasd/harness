@@ -170,8 +170,6 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"state", "get", "--jsn"},
 		{"state", "prune", "extra"},
 		{"dash"},
-		{"dash", "--help"},
-		{"dash", "extra"},
 		{"models"},
 		{"statusline", "--bogus"},
 	}

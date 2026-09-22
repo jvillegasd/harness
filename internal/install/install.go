@@ -221,7 +221,6 @@ func (in *installer) install() {
 	if len(unguarded) > 0 {
 		die("Local skill missing an invocation guard: %s", strings.Join(unguarded, "; "))
 	}
-	// Warn before writing shell aliases.
 	in.warnUnlessZsh()
 	in.installBinary()
 	if !in.skipPackages {
@@ -230,6 +229,7 @@ func (in *installer) install() {
 	}
 	in.installFiles()
 	in.reconcileAliases(false)
+	// Engram setup rewrites the absolute binary path each client pins, which a presence probe never checked, so a package-skipping run still runs it.
 	if in.skipPackages {
 		in.installEngram()
 	}

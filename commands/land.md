@@ -64,7 +64,7 @@ Check mergeability and conformance before merging. After someone else's merge, c
 
 7. Verify the merge and default-branch health. Fetch and prune, locate `<default>`'s worktree with `git worktree list`, then run `git -C <that path> merge --ff-only origin/<default>`. Always pass `-C` to avoid updating the wrong branch. Never substitute `git checkout <default>`, which fails when another worktree owns it.
 
-   Once the merge is confirmed, read `workflow-checkpoint`, derive the topic key from the merged branch, and finalize the checkpoint as `completed`, then retrieve it back and confirm the record matches. A terminal checkpoint stays auditable and ordinary continuation ignores it: new work after it gets a new ticket, branch, and topic key rather than reopening completed execution state.
+   Once the merge is confirmed, read `workflow-checkpoint`, derive the topic key from the merged branch, and finalize the checkpoint as `completed` with the branch and its merged tip, then retrieve it back and confirm the record matches. A terminal checkpoint stays auditable and ordinary continuation ignores it: new work after it gets a new ticket, branch, and topic key rather than reopening completed execution state.
 
    Reaching this step straight from step 2, run step 4's conformance check here and resume at step 8, never at step 5: steps 5 and 6 belong to the run that does the merging. Someone else merged this pull request, so a blocking mismatch is reported rather than prevented, and the landing stops here.
 

@@ -171,10 +171,7 @@ esac`,
 		"opencode": `if [ "$*" = "debug config" ]; then
 echo '{"plugin": ["engram"], "mcp": {"engram": {}, "agent-browser": {"type": "local", "enabled": true, "command": ["` + filepath.Join(shims, "agent-browser") + `", "mcp"]}}}'
 fi`,
-		"wt": `case "$*" in
-"switch --help") echo '--no-cd' ;;
-"list --help") echo '--config-set' ;;
-esac`,
+		"wt": "",
 	}
 }
 

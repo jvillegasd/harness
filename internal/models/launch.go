@@ -13,8 +13,8 @@ import (
 	"strings"
 )
 
-// executorDenies keeps publication and worktree cleanup with the parent.
-var executorDenies = []string{"Bash(git commit:*)", "Bash(git push:*)", "Bash(git merge:*)", "Bash(git worktree remove:*)", "Bash(wt remove:*)", "Bash(wt merge:*)", "Bash(wt step commit:*)", "Bash(gh:*)"}
+// executorDenies keeps publication and worktree cleanup with the parent. Orca owns delegated placement, so its `worktree rm`, the spelling the installed Orca CLI's own help gives, is denied under the three literal executable spellings; a command taken from ORCA_CLI_COMMAND is an arbitrary path no prefix can match. `wt` stays denied because retiring Worktrunk leaves an installed one on the machine.
+var executorDenies = []string{"Bash(git commit:*)", "Bash(git push:*)", "Bash(git merge:*)", "Bash(git worktree remove:*)", "Bash(orca worktree rm:*)", "Bash(orca-ide worktree rm:*)", "Bash(orca-dev worktree rm:*)", "Bash(wt remove:*)", "Bash(wt merge:*)", "Bash(wt step commit:*)", "Bash(gh:*)"}
 
 // preparedArgs validates installed role configuration and returns client argv. It never launches a worker or calls Orca.
 func preparedArgs(choice Choice, role, orca string) ([]string, error) {

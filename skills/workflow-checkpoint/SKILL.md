@@ -53,7 +53,7 @@ Derive `topic_key` from the current branch and upsert it with `scope: project`. 
 | `branch_tip` | The Git commit SHA at save time. |
 | `contract` | Resolvable ticket, pull request, or prototype ledger references, never copied requirements. |
 | `checks` | Checks and results bound to this revision, including unavailable or unverified evidence. Persist a pass only for a clean tree; uncommitted changes invalidate it even when HEAD matches. |
-| `results` | References with the canonical `result_reference_fields`, never copied worker output. Empty when no worker ran. |
+| `results` | References with the canonical `result_reference_fields`, never copied worker output. Empty when no worker ran, so inline work records its evidence in `checks` and every result reference here carries its Dispatch ID. |
 | `escalation` | Distinct unresolved harness gate or contract decision, or empty. Execution failures and retry history belong to Orca. |
 | `next_action` | One next step, not a plan. |
 
