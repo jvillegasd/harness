@@ -170,6 +170,8 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"state", "get", "--jsn"},
 		{"state", "prune", "extra"},
 		{"dash"},
+		{"scenarios"},
+		{"agents"},
 		{"models"},
 		{"statusline", "--bogus"},
 	}
@@ -206,30 +208,15 @@ func TestOperationalFailuresExitOne(t *testing.T) {
 	}
 }
 
-// TestScenariosCommandIsGone keeps the retired experiment command on the ordinary unknown-command path.
-func TestScenariosCommandIsGone(t *testing.T) {
-	if r := runBinary(t, t.TempDir(), "--help"); strings.Contains(r.stdout, "  scenarios ") {
-		t.Fatalf("help still lists scenarios: %q", r.stdout)
-	}
-	c := runMatrixCase(t, []string{"scenarios"})
-	if c.result.timedOut {
-		t.Fatal("unknown command read stdin and hung")
-	}
-	if c.result.code != 2 || !strings.Contains(c.result.stderr, `unknown command "scenarios"`) {
-		t.Fatalf("scenarios exited %d with stderr %q", c.result.code, c.result.stderr)
-	}
-	if c.result.stdout != "" {
-		t.Fatalf("unknown command wrote to stdout: %q", c.result.stdout)
-	}
-	c.assertClean(t)
-}
-
-// TestAgentsCommandIsGone keeps role-agent rendering an install step: the retired command is unknown and unlisted.
-func TestAgentsCommandIsGone(t *testing.T) {
-	if r := runBinary(t, t.TempDir(), "agents"); r.code != 2 || !strings.Contains(r.stderr, `unknown command "agents"`) {
-		t.Fatalf("agents exited %d with stderr %q", r.code, r.stderr)
-	}
-	if r := runBinary(t, t.TempDir(), "--help"); strings.Contains(r.stdout, "  agents ") {
-		t.Fatalf("help still lists agents: %q", r.stdout)
+// TestRetiredCommandsAreUnlisted keeps the retired commands off the help and on the ordinary unknown-command path, which the invocation matrix above drives for each of them.
+func TestRetiredCommandsAreUnlisted(t *testing.T) {
+	help := runBinary(t, t.TempDir(), "--help")
+	for _, name := range []string{"dash", "scenarios", "agents"} {
+		if strings.Contains(help.stdout, "  "+name+" ") {
+			t.Errorf("help still lists %s: %q", name, help.stdout)
+		}
+		if r := runBinary(t, t.TempDir(), name); r.code != 2 || !strings.Contains(r.stderr, `unknown command "`+name+`"`) {
+			t.Errorf("%s exited %d with stderr %q", name, r.code, r.stderr)
+		}
 	}
 }

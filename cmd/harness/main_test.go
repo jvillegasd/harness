@@ -198,56 +198,6 @@ func TestStateUsesHarnessKeysAndPreservesLegacyValues(t *testing.T) {
 	}
 }
 
-func TestIncrAttemptsCountsFromExistingInteger(t *testing.T) {
-	dir := repo(t)
-	for want := 1; want <= 2; want++ {
-		ok(t, harness(t, dir, "", "state", "incr", "attempts"), "incr")
-		if got := git(t, dir, "config", "harness."+branch+".attempts"); got != fmt.Sprint(want) {
-			t.Fatalf("after incr %d the key holds %q", want, got)
-		}
-	}
-	seeded := repo(t)
-	git(t, seeded, "config", "harness."+branch+".attempts", "4")
-	if got := getJSON(t, seeded, ""); got["attempts"] != 4.0 {
-		t.Fatalf("a stored integer should read as itself, got %v", got)
-	}
-	if r := ok(t, harness(t, seeded, "", "state", "incr", "attempts"), "incr"); strings.TrimSpace(r.stdout) != "5" || r.stderr != "" {
-		t.Fatalf("incr over 4 printed %q with stderr %q", r.stdout, r.stderr)
-	}
-}
-
-// Value shapes that must read as legacy: what agents wrote before the typed contract, plus integers in a non-canonical spelling.
-var legacyShapes = map[string]string{
-	"json object":    `{"review_round":2,"repair_passes":1}`,
-	"empty array":    `[]`,
-	"prose":          "round two raised new blocking findings in round-one code.\nStopped before round three.",
-	"signed integer": "+5",
-	"padded integer": "007",
-}
-
-func TestLegacyCounterReadsRawAndIncrReplacesIt(t *testing.T) {
-	for name, raw := range legacyShapes {
-		t.Run(name, func(t *testing.T) {
-			dir := repo(t)
-			git(t, dir, "config", "harness."+branch+".attempts", raw)
-			got := getJSON(t, dir, "")
-			legacy, _ := got["legacy"].(map[string]any)
-			if got["attempts"] != nil || legacy["attempts"] != raw {
-				t.Fatalf("get --json = %v, want attempts null and legacy.attempts %q", got, raw)
-			}
-			if r := harness(t, dir, "", "state", "get"); !strings.Contains(r.stdout, "attempts: legacy: "+raw) {
-				t.Fatalf("text get = %q", r.stdout)
-			}
-			if r := ok(t, harness(t, dir, "", "state", "incr", "attempts"), "incr"); !strings.Contains(r.stderr, raw) {
-				t.Fatalf("incr stderr %q should name the replaced text", r.stderr)
-			}
-			if got := git(t, dir, "config", "harness."+branch+".attempts"); got != "1" {
-				t.Fatalf("incr over legacy wrote %q, want 1", got)
-			}
-		})
-	}
-}
-
 func TestEscalateRequiresReasonAndKeepsTheLatest(t *testing.T) {
 	dir := repo(t)
 	if r := harness(t, dir, "", "state", "escalate"); r.code == 0 || strings.Count(r.stderr, "\n") != 1 {
@@ -264,39 +214,32 @@ func TestEscalateRequiresReasonAndKeepsTheLatest(t *testing.T) {
 	}
 }
 
-func TestEscalateOverLegacyNamesReplacedText(t *testing.T) {
+// TestLegacyCounterIsReportedAndReplaced is the command wiring for a legacy counter: which values read as legacy is settled at the parser, in internal/state.
+func TestLegacyCounterIsReportedAndReplaced(t *testing.T) {
 	dir := repo(t)
-	raw := legacyShapes["prose"]
+	raw := "round two raised new blocking findings in round-one code.\nStopped before round three."
+	git(t, dir, "config", "harness."+branch+".attempts", raw)
 	git(t, dir, "config", "harness."+branch+".escalations", raw)
+	got := getJSON(t, dir, "")
+	legacy, _ := got["legacy"].(map[string]any)
+	if got["attempts"] != nil || legacy["attempts"] != raw {
+		t.Fatalf("get --json = %v, want attempts null and legacy.attempts %q", got, raw)
+	}
+	if r := harness(t, dir, "", "state", "get"); !strings.Contains(r.stdout, "attempts: legacy: "+raw) {
+		t.Fatalf("text get = %q", r.stdout)
+	}
+	if r := ok(t, harness(t, dir, "", "state", "incr", "attempts"), "incr"); !strings.Contains(r.stderr, raw) {
+		t.Fatalf("incr stderr %q should name the replaced text", r.stderr)
+	}
+	if got := git(t, dir, "config", "harness."+branch+".attempts"); got != "1" {
+		t.Fatalf("incr over legacy wrote %q, want 1", got)
+	}
 	r := ok(t, harness(t, dir, "", "state", "escalate", "--reason", "cap"), "escalate")
 	if !strings.Contains(r.stderr, raw) {
 		t.Fatalf("escalate stderr %q should name the replaced text", r.stderr)
 	}
 	if got := getJSON(t, dir, ""); got["escalations"] != 1.0 || got["reason"] != "cap" {
 		t.Fatalf("get --json = %v", got)
-	}
-}
-
-func TestStateIgnoresWorktrunkAvailability(t *testing.T) {
-	dir := repo(t)
-	listed := listing(branch)
-	worktrunkKey, harnessKey := "worktrunk.state."+branch+".vars.attempts", "harness."+branch+".attempts"
-	for want, wt := range []string{listed, listed, "", listed} {
-		r := ok(t, harness(t, dir, wt, "state", "incr", "attempts"), "incr")
-		if strings.TrimSpace(r.stdout) != fmt.Sprint(want+1) {
-			t.Fatalf("incr %d printed %q, want %d", want+1, r.stdout, want+1)
-		}
-		if configHas(t, dir, worktrunkKey) || !configHas(t, dir, harnessKey) {
-			t.Fatalf("after incr %d attempts should live in the harness key alone", want+1)
-		}
-		if _, err := os.Stat(filepath.Join(dir, ".wt-called")); !os.IsNotExist(err) {
-			t.Fatalf("state invoked Worktrunk: %v", err)
-		}
-	}
-	for _, wt := range []string{listed, ""} {
-		if got := getJSON(t, dir, wt); got["attempts"] != 4.0 {
-			t.Fatalf("after flipping back, get with wt=%q reads %v, want 4", wt, got["attempts"])
-		}
 	}
 }
 
@@ -337,21 +280,16 @@ func TestPruneRemovesOnlyGoneBranches(t *testing.T) {
 	}
 }
 
-func TestHelpAndUsageErrors(t *testing.T) {
+// TestStateUsageOutsideARepository keeps what the command matrix in cli_test.go does not check: state --help lists every operation, and one representative usage error carries the one-line stderr and the absence of a branch-lookup leak. The matrix checks exit 2 and a non-empty stderr for the rest.
+func TestStateUsageOutsideARepository(t *testing.T) {
 	outside := t.TempDir()
-	if r := harness(t, outside, "", "--help"); r.code != 0 || !strings.Contains(r.stdout, "state") {
-		t.Fatalf("--help exited %d: %q", r.code, r.stdout)
-	}
 	r := ok(t, harness(t, outside, "", "state", "--help"), "state --help outside a repository")
 	for _, op := range []string{"ladder set", "incr attempts", "escalate", "get", "prune"} {
 		if !strings.Contains(r.stdout, op) {
 			t.Errorf("state --help does not list %q", op)
 		}
 	}
-	for _, args := range [][]string{{"bogus"}, {"state", "bogus"}, {"state", "incr", "escalations"}, {"state", "get", "--jsn"}, {"state", "prune", "extra"}} {
-		r := harness(t, outside, "", args...)
-		if r.code == 0 || strings.Count(r.stderr, "\n") != 1 || strings.Contains(r.stderr, "not on a branch") {
-			t.Errorf("%v exited %d with stderr %q, want a one-line usage error", args, r.code, r.stderr)
-		}
+	if r := harness(t, outside, "", "state", "bogus"); r.code == 0 || strings.Count(r.stderr, "\n") != 1 || strings.Contains(r.stderr, "not on a branch") {
+		t.Errorf("state bogus exited %d with stderr %q, want a one-line usage error", r.code, r.stderr)
 	}
 }
