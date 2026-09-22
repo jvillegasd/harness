@@ -82,24 +82,16 @@ func TestModelsSetRoleOverridesOnlyThatRole(t *testing.T) {
 	}
 }
 
-func TestModelsSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
-	for name, args := range map[string][]string{
-		"unknown opencode id":      {"reviewer-b", "--client", "opencode", "--model", "openai/nope"},
-		"unknown claude alias":     {"reviewer-b", "--client", "claude", "--model", "claudius"},
-		"unsupported haiku effort": {"reviewer-b", "--client", "claude", "--model", "haiku", "--effort", "high"},
-		"sonnet has no xhigh":      {"reviewer-b", "--client", "claude", "--model", "sonnet", "--effort", "xhigh"},
-		"unknown role":             {"planner", "--client", "claude", "--model", "opus"},
-		"unknown preset":           {"--preset", "lavish"},
-	} {
-		base := modelsBase(t)
-		seed := `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}` + "\n"
-		writeMode(t, stateFile(base), seed, 0o644)
-		if r := runModels(t, base, append([]string{"set"}, args...)...); r.code == 0 {
-			t.Errorf("%s: set exited 0", name)
-		}
-		if readFile(t, stateFile(base)) != seed {
-			t.Errorf("%s: a rejected set rewrote state.json", name)
-		}
+// TestModelsSetRejectsAnInvalidValue is the command wiring for a refused set: which values are refused is settled in internal/models.
+func TestModelsSetRejectsAnInvalidValue(t *testing.T) {
+	base := modelsBase(t)
+	seed := `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}` + "\n"
+	writeMode(t, stateFile(base), seed, 0o644)
+	if r := runModels(t, base, "set", "reviewer-b", "--client", "claude", "--model", "claudius"); r.code == 0 {
+		t.Error("set exited 0")
+	}
+	if readFile(t, stateFile(base)) != seed {
+		t.Error("a rejected set rewrote state.json")
 	}
 }
 
@@ -191,26 +183,17 @@ func TestModelsSetBeforeTheFirstInstall(t *testing.T) {
 	ok(t, runInstaller(t, base, "--skip-packages"), "install over a reset state")
 }
 
-// TestModelsRejectsAStaleChoice names the reset when the stored block cannot be resolved.
+// TestModelsRejectsAStaleChoice keeps the installer refusing a stored choice it cannot resolve, and naming the reset that clears it. Which stored blocks are stale is settled in internal/models.
 func TestModelsRejectsAStaleChoice(t *testing.T) {
-	for name, block := range map[string]string{
-		"unknown preset":   `{"preset": "lavish"}`,
-		"malformed role":   `{"roles": {"executor": {"client": "claude", "model": "claudius"}}}`,
-		"unknown role key": `{"roles": {"planner": {"client": "claude", "model": "opus"}}}`,
-	} {
-		base := modelsBase(t)
-		writeMode(t, stateFile(base), `{"version": 1, "installed": {}, "files": [], "models": `+block+"}\n", 0o644)
-		if r := runModels(t, base, "show"); r.code == 0 || !strings.Contains(r.stderr, "harness models reset") {
-			t.Errorf("%s: exit %d, stderr %q", name, r.code, r.stderr)
-		}
-		if r := runInstaller(t, base, "--skip-packages"); r.code == 0 || !strings.Contains(r.stderr, "harness models reset") {
-			t.Errorf("%s: install exit %d, stderr %q", name, r.code, r.stderr)
-		}
-		ok(t, runModels(t, base, "reset"), name+": the recommended reset")
-		ok(t, runModels(t, base, "show"), name+": show after reset")
-		ok(t, runInstaller(t, base, "--skip-packages"), name+": install after reset")
-	}
 	base := modelsBase(t)
+	writeMode(t, stateFile(base), `{"version": 1, "installed": {}, "files": [], "models": {"preset": "lavish"}}`+"\n", 0o644)
+	if r := runInstaller(t, base, "--skip-packages"); r.code == 0 || !strings.Contains(r.stderr, "harness models reset") {
+		t.Errorf("install over a stale choice: exit %d, stderr %q", r.code, r.stderr)
+	}
+	ok(t, runModels(t, base, "reset"), "the recommended reset")
+	ok(t, runInstaller(t, base, "--skip-packages"), "install after reset")
+
+	// A per-role reset drops only that role, leaving the preset to answer for it.
 	writeMode(t, stateFile(base), `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy", "roles": {"executor": {"client": "claude", "model": "claudius"}}}}`+"\n", 0o644)
 	ok(t, runModels(t, base, "reset", "executor"), "reset the malformed role")
 	if r := ok(t, runModels(t, base, "show"), "show after role reset"); !strings.Contains(r.stdout, "executor client=opencode model=opencode-go/deepseek-v4-flash effort=inherit (preset:economy)") {

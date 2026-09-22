@@ -39,6 +39,35 @@ func TestSnapshotStatePrefersCanonicalThenLegacy(t *testing.T) {
 	}
 }
 
+// legacyShapes are the counter values that must read as legacy: what agents wrote before the typed contract, plus integers in a non-canonical spelling.
+var legacyShapes = map[string]string{
+	"json object":    `{"review_round":2,"repair_passes":1}`,
+	"empty array":    `[]`,
+	"prose":          "round two raised new blocking findings in round-one code.\nStopped before round three.",
+	"signed integer": "+5",
+	"padded integer": "007",
+	"negative":       "-1",
+}
+
+// A legacy counter leaves the typed field nil and carries its text verbatim, so an increment can name what it replaced.
+func TestLegacyCounterShapesReadAsLegacy(t *testing.T) {
+	for name, raw := range legacyShapes {
+		if n, legacy := parseCounter(raw); legacy == nil || *legacy != raw || n != 0 {
+			t.Errorf("%s: parseCounter(%q) = %d, %v; want 0 and the text verbatim", name, raw, n, legacy)
+		}
+		x := Snapshot{"harness.feat/x.attempts": raw}.State("feat/x")
+		if x.Attempts != nil || x.Legacy["attempts"] != raw {
+			t.Errorf("%s: attempts = %v, legacy = %q", name, x.Attempts, x.Legacy["attempts"])
+		}
+	}
+	for raw, want := range map[string]int{"0": 0, "5": 5, "42": 42} {
+		n, legacy := parseCounter(raw)
+		if legacy != nil || n != want {
+			t.Errorf("parseCounter(%q) = %d, %v; want %d and no legacy text", raw, n, legacy, want)
+		}
+	}
+}
+
 // Canonical state wins even when both stores contain a value.
 func TestCanonicalStateTakesPrecedence(t *testing.T) {
 	snap := Snapshot{

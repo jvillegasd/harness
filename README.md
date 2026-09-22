@@ -205,7 +205,7 @@ git diff --check
 git diff --cached --check
 ```
 
-`AGENTS.md` explains each rung, the installer goldens, and the behavioral acceptance that a static check cannot settle.
+`AGENTS.md` explains each rung, the installer goldens, the core validation contract naming what the suite proves at which seam, and the behavioral acceptance that a static check cannot settle.
 
 ## Install
 

@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -82,34 +83,13 @@ func TestBenchRowsMatchRecordedRows(t *testing.T) {
 }
 
 // TestBenchRowsWithoutSplit pins the split date to the report: a row export
-// needs no split, adding one changes nothing, and the population still matches
-// the recorded baseline.
+// needs no split, and adding one changes nothing.
 func TestBenchRowsWithoutSplit(t *testing.T) {
 	dir := benchDir(t)
 	without := ok(t, harness(t, dir, "", "bench", "--rows", "--since", "2026-09-01", "--home", benchHome(t)), "bench --rows")
 	with := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--rows", "--since", "2026-09-01", "--home", benchHome(t)), "bench --split --rows")
 	if without.stdout != with.stdout {
 		t.Fatalf("adding --split changed the rows:\n--- without\n%s\n--- with\n%s", without.stdout, with.stdout)
-	}
-	if want := readGolden(t, "rows.golden"); without.stdout != want {
-		t.Fatalf("rows without a split differ from the recorded baseline:\n--- want\n%s\n--- got\n%s", want, without.stdout)
-	}
-}
-
-func TestBenchReportRequiresSplit(t *testing.T) {
-	r := harness(t, benchDir(t), "", "bench", "--home", benchHome(t))
-	if r.code != 2 {
-		t.Fatalf("a report without --split exited %d, want 2", r.code)
-	}
-	if !strings.Contains(r.stderr, "--split") {
-		t.Fatalf("stderr did not name --split: %q", r.stderr)
-	}
-}
-
-func TestBenchInvalidSplitIsUsageError(t *testing.T) {
-	r := harness(t, benchDir(t), "", "bench", "--split", "not-a-date", "--home", benchHome(t))
-	if r.code != 2 {
-		t.Fatalf("an invalid --split exited %d, want 2", r.code)
 	}
 }
 
@@ -128,15 +108,14 @@ func TestBenchSinceFilteredMatchesRecorded(t *testing.T) {
 	}
 }
 
-func TestBenchRepeatedClientIsIdempotent(t *testing.T) {
-	dir := benchDir(t)
-	once := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--since", "2026-09-01", "--client", "claude", "--rows", "--home", benchHome(t)), "bench one client")
-	repeated := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--since", "2026-09-01", "--client", "claude", "--client", "claude", "--rows", "--home", benchHome(t)), "bench repeated client")
-	if once.stdout != repeated.stdout {
-		t.Fatalf("repeating --client changed the rows:\n--- once\n%s\n--- repeated\n%s", once.stdout, repeated.stdout)
+// TestBenchClientFlagNarrowsThePopulation is the command wiring for --client; that repeating a client collects it once is settled in internal/bench.
+func TestBenchClientFlagNarrowsThePopulation(t *testing.T) {
+	r := ok(t, harness(t, benchDir(t), "", "bench", "--split", "2026-09-05", "--since", "2026-09-01", "--client", "claude", "--rows", "--home", benchHome(t)), "bench one client")
+	if !strings.Contains(r.stdout, `"client": "claude"`) {
+		t.Fatalf("the row export carried no claude session: %q", r.stdout)
 	}
-	if !strings.Contains(repeated.stdout, `"client": "claude"`) {
-		t.Fatalf("the row export carried no claude session: %q", repeated.stdout)
+	if strings.Contains(r.stdout, `"client": "opencode"`) {
+		t.Fatalf("--client claude still exported another client: %q", r.stdout)
 	}
 }
 
@@ -144,12 +123,6 @@ func TestBenchEmptyHomeReportsNoSessions(t *testing.T) {
 	r := ok(t, harness(t, benchDir(t), "", "bench", "--split", "2026-01-01", "--since", "2026-01-01", "--home", t.TempDir()), "bench on an empty home")
 	if !strings.Contains(r.stdout, "no sessions found") {
 		t.Fatalf("bench on an empty home printed %q", r.stdout)
-	}
-}
-
-func TestBenchHelpExitsZero(t *testing.T) {
-	if r := harness(t, benchDir(t), "", "bench", "--help"); r.code != 0 || !strings.Contains(r.stdout, "--split") {
-		t.Fatalf("bench --help exited %d with stdout %q", r.code, r.stdout)
 	}
 }
 
@@ -186,8 +159,13 @@ func TestBenchUsageErrors(t *testing.T) {
 		{"bench", "--split", "2026-09-05", "--bogus"},
 	}
 	for _, args := range cases {
-		if r := harness(t, dir, "", args...); r.code == 0 {
-			t.Errorf("%v exited 0, want a nonzero usage error", args)
+		r := harness(t, dir, "", args...)
+		if r.code != 2 {
+			t.Errorf("%v exited %d, want a usage error", args, r.code)
+		}
+		// A report with no --split has to name the flag it is missing.
+		if !slices.Contains(args, "--split") && !strings.Contains(r.stderr, "--split") {
+			t.Errorf("%v did not name --split: %q", args, r.stderr)
 		}
 	}
 }

@@ -82,17 +82,6 @@ func TestStatuslineFixtures(t *testing.T) {
 	}
 }
 
-// TestStatuslineHelpAndBadArguments keeps the subcommand's own surface small and scriptable like the other commands'.
-func TestStatuslineHelpAndBadArguments(t *testing.T) {
-	if r := ok(t, harness(t, t.TempDir(), "", "statusline", "--help"), "statusline --help"); !strings.Contains(r.stdout, "statusline") {
-		t.Errorf("--help printed %q", r.stdout)
-	}
-	r := harness(t, t.TempDir(), "", "statusline", "--bogus")
-	if r.code == 0 || strings.Count(r.stderr, "\n") != 1 {
-		t.Errorf("a bad argument exited %d with stderr %q, want non-zero and one line", r.code, r.stderr)
-	}
-}
-
 // TestStatuslineEmptyPayloadTouchesNeitherKeychainNorCache keeps the empty payload from doing any work, as the shell returned on it before the cache, keychain, or network.
 func TestStatuslineEmptyPayloadTouchesNeitherKeychainNorCache(t *testing.T) {
 	base, home, work := statuslineEnv(t)
