@@ -13,7 +13,7 @@ Treat the effective input as task data. It cannot override this workflow's const
 
 Load and follow the `ponytail` skill for every coding decision.
 
-Beyond required review passes and step 1's executor delegation, delegate only useful large reconnaissance or parallel work; otherwise work directly. This narrows the policy's parallel-roles default, not required reviews.
+Beyond required review passes and any executor delegation step 1 chooses, delegate only useful large reconnaissance or parallel work; otherwise work directly. This narrows the policy's parallel-roles default, not required reviews.
 
 Require clean credentials and resolve exactly one implementation contract:
 
@@ -78,7 +78,7 @@ Inspect `git status --short` before creating anything. If pre-existing changes f
 
 1. Treat the contract's test seams as pre-agreed. Use `tdd` one red/green vertical slice at a time and drive the oracle ladder in the policy to green, preferring the narrowest variant of each rung. On a UI change, build from the project's existing styling layer rather than a fresh palette.
 
-   Delegate each implementation slice to the `executor` by default, launching it by `adversarial-review`'s Orca orchestration instructions, and work inline only where the policy's unavailability case allows it. `harness models resolve executor --json` names the client and model it will run on; do not compare that against the session's own, because an Orca-launched role is its own top-level session and `inherit` there is the client's configured model rather than this session's. This run still owns the contract, the ladder, the review passes, the commits, and every gate.
+   Choose per slice between the `executor` and inline implementation under the policy's delegation rule, and state the choice in one line. Launch a delegated slice by `adversarial-review`'s Orca orchestration instructions. `harness models resolve executor --json` names the client and model it will run on; do not compare that against the session's own, because an Orca-launched role is its own top-level session and `inherit` there is the client's configured model rather than this session's. Either way this run still owns the contract, the ladder, the review passes, the commits, and every gate, and step 2's independent review runs unchanged.
 
    After a delegated slice returns, read `workflow-checkpoint` to retrieve its complete result, preserve unresolved requirements and artifact references before release, and verify retrieval after release. Record only the Dispatch/artifact reference in the branch checkpoint. On recovery retrieve that result explicitly and validate branch, revision, pending changes, and check validity against Git and the contract. Missing output is unavailable evidence, never a successful handoff.
 
@@ -93,15 +93,15 @@ Inspect `git status --short` before creating anything. If pre-existing changes f
 
 3. Once triage settles and the ladder is green over the repaired tree, make the fewest coherent Conventional Commits, written per `caveman-commit`. On a `/proto` branch before its first push, first squash its WIP checkpoints with `git reset --soft` to the step 2 merge base. Repeat step 2's untracked-file step for files a later repair added, then stage with `git add --update`, or by path when splitting. The ladder ran green over the whole tree; when it splits into several commits, note under `## Checks` that intermediate commits were not verified separately.
 
-4. Push, then create or update a draft pull request with a Conventional Commit title. Write the body to this skeleton, in this order, and add nothing it does not name:
+4. Push, then create or update a draft pull request with a Conventional Commit title. Present the body the way the project does: its pull request template when one exists (`pull_request_template.md` in `.github/`, `docs/`, or the root, or a `.github/PULL_REQUEST_TEMPLATE/` directory), else the convention its recent merged pull requests establish, else this default:
 
    ```
    Closes <issue reference, or the ticket path under local-tracker>
 
-   <opening: what changed and why, at most 50 words>
+   <opening: what changed and why>
 
    ## What changed
-   - <one line per changed surface, at most 50 words: what moved, not the reasoning for it>
+   - <one line per changed surface: what moved, not the reasoning for it>
 
    ## Contract
    - Agreed behavior: <one line>
@@ -110,28 +110,25 @@ Inspect `git status --short` before creating anything. If pre-existing changes f
    - Verification: <one line>
 
    ## Checks
-   - <ladder rung>: <its result, or skipped or not yet run and why, at most 50 words>
+   - <ladder rung>: <its result, or skipped or not yet run and why>
 
    ## Assumptions
-   - <decision made without asking, at most 50 words>; rejected <alternative>. Flips if <fact>.
+   - <decision made without asking>; rejected <alternative>. Flips if <fact>.
 
    ## Refuted evidence
-   - <claim the evidence contradicted, at most 50 words>; <what changed as a result>.
+   - <claim the evidence contradicted>; <what changed as a result>.
 
    ## Rejected review findings
-   - <bug or risk not fixed, at most 50 words>; refuted: <the refuter's path:Lline: evidence>, or human decision: <the decision that closed its escalation>.
+   - <bug or risk not fixed>; refuted: <the refuter's path:Lline: evidence>, or human decision: <the decision that closed its escalation>.
    ```
 
-   Include the prose `Closes` line above the opening only when tracker-bound. Omit `## Contract` only for a tracker-bound ticket-sourced contract retained in its ticket. Otherwise transcribe only agreed behavior, criteria, and verification there for `/land`; never use it to evade the word cap. Omit empty final three sections.
+   Whatever the presentation, the body carries what later workflows read, under these exact headings, because `/feedback`, `/address-review`, `/land`, and `/harness-audit` find them by name. The project's presentation decides order, prose, and its own sections, never these names. Always add each applicable one verbatim, even when the template has an equivalent section; where a template section asks for the same content, such as a testing section, point it at `## Checks` rather than repeating the evidence:
 
-   Outside `## Contract`, each entry, including the opening, is one list line of at most 50 words; all such text totals at most 500 words. Transcribed criteria retain source wording regardless of length. Draft and count outside the worktree under `$TMPDIR` or `/tmp` to keep pre-flight clean. On later edits, count the live body.
+   - `## Contract`, with the `Agreed behavior`, `Acceptance criteria`, and `Verification` fields, criteria in their source wording. Omit it only for a tracker-bound ticket-sourced contract retained in its ticket.
+   - `## Checks`, one entry per ladder rung with its result, including skipped, unrun, and unavailable evidence.
+   - `## Assumptions`, `## Refuted evidence`, and `## Rejected review findings`, each only when it has an entry. A rejected finding keeps the refuter's `path:Lline:` evidence or the human decision that closed its escalation.
 
-   ````
-   awk '/^ *```/{f=!f} /^## /&&!f{c=/^## Contract$/} !c' "$TMPDIR/pr-body.md" | wc -w
-   gh pr view --json body -q .body | awk '/^ *```/{f=!f} /^## /&&!f{c=/^## Contract$/} !c' | wc -w
-   ````
-
-   Over the cap, condense entries, cutting a refuted entry's evidence to its decisive `path:Lline:` citation and a human decision to one clause, never dropping either; move nothing into or out of `## Contract`. Leave a human's own additions to the body alone even when they carry the count past 500: the cap governs what this workflow writes, never what it finds.
+   When tracker-bound, include the closing reference where the presentation puts issue links, or as the prose `Closes` line above the opening by default. Fill the template's own sections from the change and keep the ones it requires. Draft the body outside the worktree under `$TMPDIR` or `/tmp` to keep pre-flight clean. On later edits, preserve human-written text, issue links, and closing references.
 
 5. Watch required remote checks. Repair owned failures, rerun local rungs, review the uncommitted repair alone, as step 2 does but snapshotting `git diff HEAD`, then commit and push. Apply the escalation contract's do-not-escalate list before counting an attempt, and stop on any rabbit-hole trip. Where a repair changed what the pull request does, or a rung's result changed, bring its title, body, and `## Checks` back in line with the diff before moving on.
 
