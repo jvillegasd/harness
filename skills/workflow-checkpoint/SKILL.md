@@ -27,11 +27,23 @@ This block is canonical. Change rules here; consumers read them here.
     "contract": "array",
     "checks": "array",
     "results": "array",
+    "pending": "array",
     "escalation": "string",
     "next_action": "string"
   },
   "require_non_empty": ["branch", "branch_tip", "contract", "next_action"],
   "stale_invalidates": ["checks", "next_action"],
+  "dirty_invalidates": ["checks", "next_action"],
+  "check_results": ["pass", "fail", "unrun", "unavailable", "stale", "unverified"],
+  "dirty_tree_pass_recorded_as": "unverified",
+  "pending_item_fields": {
+    "status": "pending",
+    "item": "string",
+    "files": "array",
+    "decisions": "array"
+  },
+  "pending_proves_completion": false,
+  "pending_replaces_git_snapshot": false,
   "result_reference_fields": {
     "dispatch": "string",
     "artifact": "string",
@@ -52,12 +64,19 @@ Derive `topic_key` from the current branch and upsert it with `scope: project`. 
 | `branch` | The exact Git branch name. |
 | `branch_tip` | The Git commit SHA at save time. |
 | `contract` | Resolvable ticket, pull request, or prototype ledger references, never copied requirements. |
-| `checks` | Checks and results bound to this revision, including unavailable or unverified evidence. Persist a pass only for a clean tree; uncommitted changes invalidate it even when HEAD matches. |
+| `checks` | Checks bound to this revision, each with one of the canonical `check_results`. Persist a pass only for a clean tree; a pass observed over uncommitted changes is recorded as `unverified`, even when HEAD matches. Failed, unrun, unavailable, and stale results stay explicit. |
 | `results` | References with the canonical `result_reference_fields`, never copied worker output. Empty when no worker ran, so inline work records its evidence in `checks` and every result reference here carries its Dispatch ID. |
+| `pending` | Requirements or feedback not yet validated, each with the canonical `pending_item_fields`: `status` always `pending`, the item in its source wording, the affected file paths, and its unresolved decisions. Completed work never appears here. Empty when nothing is pending; a record saved before this field existed reads as empty. |
 | `escalation` | Distinct unresolved harness gate or contract decision, or empty. Execution failures and retry history belong to Orca. |
 | `next_action` | One next step, not a plan. |
 
-Keep decisions and deferred requirements in the contract or retained result, not a second rationale field. Keep ladder and rabbit-hole counters in `harness state`; do not duplicate them here. Save for the revision described and retrieve the topic key to confirm the stored record matches.
+Keep decisions and deferred requirements in the contract or retained result, not a second rationale field; `pending` holds only work not yet durable in either. Keep ladder and rabbit-hole counters in `harness state`; do not duplicate them here. Save for the revision described and retrieve the topic key to confirm the stored record matches.
+
+## Pending work
+
+A consumer returning from deferred, blocked, or interrupted work saves the checkpoint before it returns whenever the session can reach Engram. The state stays `active`. Everything uncommitted in the worktree is pending context: list each unvalidated item under `pending`, record every check with its result under the dirty-tree rule, and name the next action. Read the record back. When the save or the read-back fails, report the checkpoint as unavailable and name what it would have held; never describe the work as a durable handoff.
+
+A pending checkpoint is context. It never grants approval, proves completion, or replaces a Git snapshot: the uncommitted edits live only in the worktree, and the last commit stays the rollback point.
 
 ## Retained worker results
 
@@ -71,13 +90,13 @@ Reviewers never receive the checkpoint or implementation worker results. Their p
 
 ## Recovery
 
-A fresh parent retrieves the explicit branch topic key, not recent memory, then:
+A fresh parent retrieves the explicit branch topic key, not recent memory. A retrieval that errors or times out is unavailable, never absent: report it, reuse nothing, and before dependent work ask the human about any pending work it may have held. Otherwise:
 
-1. Reject the checkpoint when its state is terminal or unknown, a canonical field is missing or has the wrong shape, a required field is empty, or its branch differs from the current branch. A legacy checkpoint needs the preservation step below before replacement; none of its checks or recorded approvals survive migration.
+1. Read the current branch, HEAD, and `git status --short`. Reject the checkpoint when its state is terminal or unknown, a canonical field is missing or has the wrong shape (a missing `pending` reads as empty), a required field is empty, or its branch differs from the current branch. A legacy checkpoint needs the preservation step below before replacement; none of its checks or recorded approvals survive migration.
 2. Resolve the contract references against current Git, tracker, and pull request state. Drop unresolved references; reject a record with none left. A past approval recorded anywhere is context, never new publication authority.
 3. For each result reference, require matching Dispatch ID, branch, and revision identities in the retrieved result. Retrieve it through the live Orca guide, or read its durable artifact when set. Reject a wrong-branch reference or mismatched result identity. Missing or incomplete output remains unavailable, even if Orca marks the Task successful. Do not reuse dependent checks or the recorded next action until evidence is recovered or rerun.
-4. If the checkpoint tip or a result revision differs from current HEAD, invalidate its checks and next action. Do the same when the worktree is dirty or the result names pending files. Retain valid contract and artifact references and unresolved requirements as context; re-derive checks and next action from current state. Never promote unverified, skipped, or unavailable evidence to a pass.
-5. Reuse only what validated. Ask about a needed requirement missing from both the contract and the retrieved results. Save and read back any refreshed checkpoint before trusting it.
+4. If the checkpoint tip or a result revision differs from current HEAD, invalidate its checks and next action. Do the same when the worktree is dirty, when `pending` is non-empty, or when a result names pending files. Retain valid contract and artifact references, pending items, the recorded next action, and unresolved requirements as context; re-derive checks and the next action from current state. A pending item stays pending whether or not its files still carry changes. Never promote unverified, skipped, or unavailable evidence to a pass.
+5. Reuse only what validated. Carry every pending item forward until the contract, a validated commit, or the human settles it; never drop one or invent one. Ask about a needed requirement missing from the contract, the retrieved results, and `pending`. When pending work is known to exist but its checkpoint is missing, rejected, or unreadable, return the consequential requirements to the human before any dependent work. Save and read back any refreshed checkpoint before trusting it.
 
 Orca settlement, harness check validity, contract completion, and publication approval are separate decisions.
 

@@ -55,6 +55,8 @@ Load and follow the `ponytail` skill for every code change.
 
 8. Repeat until feedback, required CI, and all applicable review passes are green. In legacy mode the conformance pass remains explicitly unavailable rather than green. Apply the escalation contract's rabbit-hole detector unchanged. Then keep the pull request ready and, when ticket-bound, keep the ticket mapped `ready_for_human`, following `local-tracker` where the tracker is local markdown; skip the ticket transition for trackerless work. Read `workflow-checkpoint` and refresh the branch checkpoint for the pushed tip with the branch, the contract references, the resolved ladder results, and the next action, then retrieve it back and confirm it matches.
 
+A run that stops before step 8 finishes, awaiting step 5's approval, on an escalation or rabbit-hole trip, or interrupted, saves the branch checkpoint under `workflow-checkpoint`'s pending work rules before it returns: the current tip, every unsettled thread or failing check as pending with its affected files and open decisions, each check's result, and the next action. Read it back, and report a failed save or read-back as unavailable rather than a durable handoff.
+
 Never merge the pull request or remove its worktree. Never force-push or rebase a shared branch without explicit approval, and never resolve a conflict by dropping changes.
 
 ## Skills this loads

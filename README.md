@@ -397,7 +397,7 @@ Branch state writes only repository-local `harness.<branch>.<key>` Git configura
 
 Do not enable the Worktrunk Claude Code plugin. Its `UserPromptSubmit` hook writes the same per-branch `worktrunk.state.<branch>.vars.<key>` slot that fallback reads, so on a branch harness has not written yet, whatever that hook left is what `harness state` reports.
 
-The Engram checkpoint carries contract and branch references, revision-bound checks, retained Dispatch/artifact references, a next action, and distinct escalation context. Worker output is retrieved through Orca or an explicit durable artifact, never copied into another Engram handoff record. Recovery rejects wrong-branch or missing output and invalidates stale or dirty-tree checks. Task completion supplies no publication approval. The `workflow-checkpoint` skill defines this protocol; fresh-parent acceptance through both clients needs a separately authorized model budget.
+The Engram checkpoint carries contract and branch references, revision-bound checks, retained Dispatch/artifact references, pending work kept apart from completed work, a next action, and distinct escalation context. Worker output is retrieved through Orca or an explicit durable artifact, never copied into another Engram handoff record. Recovery rejects wrong-branch or missing output and invalidates stale or dirty-tree checks while carrying pending items forward as context. Task completion supplies no publication approval. The `workflow-checkpoint` skill defines this protocol; fresh-parent acceptance through both clients needs a separately authorized model budget.
 
 ## Validation
 

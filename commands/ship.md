@@ -138,6 +138,8 @@ Inspect `git status --short` before creating anything. Report pre-existing chang
 
 6. When required checks and both review passes are green, mark the pull request ready and refresh `## Checks` with the remote rung's result. When tracker-bound, also change the ticket from mapped `in_progress` to mapped `ready_for_human`; skip label transitions for trackerless work. Then read `workflow-checkpoint` and save the branch checkpoint for the final tip: state, the branch, branch tip, the pull request URL and ticket reference, every resolved ladder result, and the next action, which is human review followed by `/land`. Retrieve it back and confirm it matches. Requirements already recorded in the ticket or the pull request contract are referenced, not copied.
 
+A run that stops before step 6, on an escalation, a rabbit-hole trip, or an interruption, saves the branch checkpoint under `workflow-checkpoint`'s pending work rules before it returns: the current tip, every unfinished requirement or unresolved finding as pending with its affected files and open decisions, each rung's result, and the next action. Read it back, and report a failed save or read-back as unavailable rather than a durable handoff.
+
 Return the pull request, checks, review result, and retained worktree path. Never merge the pull request or remove the worktree; `/land` owns the merge when a human asks for it, and everything after one.
 
 ## Skills this loads
