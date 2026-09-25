@@ -99,12 +99,15 @@ F .claude/settings.json
   |      "Bash(git checkout --:*)",
   |      "Bash(git checkout -f:*)",
   |      "Bash(git restore:*)",
-  |      "Bash(git worktree remove:*)",
   |      "Bash(git worktree prune:*)",
   |      "Bash(git push --force:*)",
   |      "Bash(git push -f:*)"
   |    ],
-  |    "defaultMode": "plan"
+  |    "defaultMode": "plan",
+  |    "ask": [
+  |      "Bash(git worktree remove --force:*)",
+  |      "Bash(git worktree remove -f:*)"
+  |    ]
   |  },
   |  "enabledPlugins": {
   |    "engram@engram": true,

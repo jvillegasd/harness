@@ -171,7 +171,7 @@ func (in *installer) writeIfChanged(path string, before, after []byte, message s
 	in.log(message, path)
 }
 
-// reconcileClaudeSettings merges clients/claude.json into the live settings and leaves every other key alone, because Orca, engram setup, and the client all write machine state there. A tracked key replaces the live value, so deleting one from the tracked file deletes it from the machine. permissions merges one level down, which keeps the allowlist engram setup writes while deny stays owned.
+// reconcileClaudeSettings merges clients/claude.json into the live settings and leaves every other key alone, because Orca, engram setup, and the client all write machine state there. A tracked key replaces the live value, so deleting one from the tracked file deletes it from the machine. permissions merges one level down, which keeps the allowlist engram setup writes while deny and ask stay owned.
 func (in *installer) reconcileClaudeSettings() {
 	path := in.settingsPath()
 	must(os.MkdirAll(filepath.Dir(path), 0o755))
