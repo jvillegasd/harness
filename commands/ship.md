@@ -33,11 +33,11 @@ Derive a conversation contract's branch slug from it. Retain bound ticket metada
 
 For a `/proto` ledger, continue on the prototype's branch, squash its WIP checkpoints at commit time, and harden whatever the ledger marks prototype-quality. Do not re-derive what the iterations already settled.
 
-For load-bearing ambiguity surviving repository search, read `grilling` and self-grill against precedent, history, and `evidence`. Ask only surviving questions under the escalation contract.
+For load-bearing ambiguity surviving repository search, read `grilling` and self-grill against precedent, history, and `evidence`. Ask only surviving questions under the escalation contract. An unanswered question holds only the slices that depend on it; independent slices continue.
 
 With a ticket, escalate before changing code if any blocker is not closed by a merged pull request.
 
-Inspect `git status --short` before creating anything. If pre-existing changes fall outside this contract, stop, report them, and ask how to proceed. Never absorb them into the reviewed diff.
+Inspect `git status --short` before creating anything. Report pre-existing changes outside this contract and leave them byte for byte as found; never absorb them into the reviewed diff, or discard, reset, or stash them merely to proceed. Continue when they separate safely from this work; stop and ask only when their ownership or safe separation is unresolved.
 
 <delivery-order>
 
