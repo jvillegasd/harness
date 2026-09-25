@@ -31,7 +31,7 @@ Contract source determines the conformance record; tracker binding determines br
 
 Derive a conversation contract's branch slug from it. Retain bound ticket metadata and transitions; skip them only when trackerless. Escalate to `/spec` only for an omitted surface requiring a durable published contract.
 
-For a `/proto` ledger, continue on the prototype's branch, squash its WIP checkpoints at commit time, and harden whatever the ledger marks prototype-quality. Do not re-derive what the iterations already settled.
+For a `/proto` ledger, continue on the prototype's branch, squash its WIP checkpoints at commit time, harden whatever the ledger marks prototype-quality, and give retained prototype code meaningful regression coverage, as the delivery loop's first step orders. Do not re-derive what the iterations already settled.
 
 For load-bearing ambiguity surviving repository search, read `grilling` and self-grill against precedent, history, and `evidence`. Ask only surviving questions under the escalation contract. An unanswered question holds only the slices that depend on it; independent slices continue.
 
@@ -76,7 +76,7 @@ Inspect `git status --short` before creating anything. Report pre-existing chang
 
 ## Delivery loop
 
-1. Treat the contract's test seams as pre-agreed. Use `tdd` one red/green vertical slice at a time and drive the oracle ladder in the policy to green, preferring the narrowest variant of each rung. On a UI change, build from the project's existing styling layer rather than a fresh palette.
+1. Treat the contract's test seams as pre-agreed. For a `/proto` ledger, first cover the retained prototype code with regression tests; they follow the code, so they are not red/green slices and are never presented as test-first evidence. Then use `tdd` one red/green vertical slice at a time for every behavioral change, and drive the oracle ladder in the policy to green, preferring the narrowest variant of each rung. On a UI change, build from the project's existing styling layer rather than a fresh palette.
 
    Choose per slice between the `executor` and inline implementation under the policy's delegation rule, and state the choice in one line. Launch a delegated slice by `adversarial-review`'s Orca orchestration instructions. `harness models resolve executor --json` names the client and model it will run on; do not compare that against the session's own, because an Orca-launched role is its own top-level session and `inherit` there is the client's configured model rather than this session's. Either way this run still owns the contract, the ladder, the review passes, the commits, and every gate, and step 2's independent review runs unchanged.
 
