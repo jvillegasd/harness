@@ -11,8 +11,8 @@ import (
 )
 
 var outputNames = []string{
-	"claude/executor.md", "claude/recon.md", "claude/review-refuter.md", "claude/reviewer-a.md", "claude/reviewer-b.md",
-	"opencode/executor.md", "opencode/recon.md", "opencode/review-refuter.md", "opencode/reviewer-a.md", "opencode/reviewer-b.md",
+	"claude/code-search.md", "claude/executor.md", "claude/review-refuter.md", "claude/reviewer-a.md", "claude/reviewer-b.md",
+	"opencode/code-search.md", "opencode/executor.md", "opencode/review-refuter.md", "opencode/reviewer-a.md", "opencode/reviewer-b.md",
 }
 
 // temp returns a resolved temporary directory, because macOS temp paths pass through a symlink and the renderer refuses a symlinked output ancestor.

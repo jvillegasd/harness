@@ -3,7 +3,7 @@ description: Turn a ticket or a production error signal into an evidence-backed 
 argument-hint: "[ticket id, URL, pasted ticket, or error signal]"
 ---
 
-Analysis only. No file writes, code edits, commits, or other side-effecting commands, apart from recon launch prompts written outside the worktree and Orca operations needed to launch, recover, and release read-only recon workers. Read-only inspection is allowed.
+Analysis only. No file writes, code edits, commits, or other side-effecting commands, apart from code-search launch prompts written outside the worktree and Orca operations needed to launch, recover, and release read-only code-search workers. Read-only inspection is allowed.
 
 <user_input>
 $ARGUMENTS
@@ -23,13 +23,13 @@ Accept a tracker item, pasted ticket, or production error signal for a bug, feat
 
 3. Supplement from the tracker only when the input is an id or URL with no pasted body. Where the tracker is local markdown, read the `local-tracker` skill: the id resolves to a ticket file, and reading it means reading its `## Comments` too.
 
-4. Investigate the code to ground the analysis, citing `path:line`. Delegate the recon by default so file contents stay out of this context and only citations in the `## Recon citations` shape come back, each verified there before reuse; read directly only when the item already names the file. Read the locked `orchestration` skill and load its version-matched Orca guide. Launch each track as the named `recon` role on the assignment from `harness models resolve recon --json`, using Orca commands and the role launch configuration in `adversarial-review`'s invocation section; reading that section does not invoke a code review. Never use client-native subagents. Follow the Orca guide for supervision, recovery, complete report retrieval, and cleanup. Recon may run inline when the runtime or role is unavailable before launch; disclose that choice. An uncertain worker outcome follows Orca recovery before any replacement work. Then confirm or refute the root-cause hypothesis with at most two further evidence queries.
+4. Investigate the code to ground the analysis, citing `path:line`. Search the repository directly by default, even when Orca and the `code-search` role are available. Delegate only when a worker earns its launch: independent searches that can run in parallel, or context isolation that keeps a large search's file contents out of this context. Name that purpose in one line, and give each worker one bounded repository question; its citations come back in the `## Code-search citations` shape and are verified there before reuse. To delegate, read the locked `orchestration` skill and load its version-matched Orca guide. Launch each track as the named `code-search` role on the assignment from `harness models resolve code-search --json`, using Orca commands and the role launch configuration in `adversarial-review`'s invocation section; reading that section does not invoke a code review. Never use client-native subagents. Follow the Orca guide for supervision, recovery, complete report retrieval, and cleanup. An uncertain worker outcome follows Orca recovery before any replacement work. Then confirm or refute the root-cause hypothesis with at most two further evidence queries.
 
 5. For remaining load-bearing ambiguity, read `grilling` and self-grill against precedent, history, and `evidence` before escalating. Stop if the premise is refuted. Batch only surviving questions into one stop under the escalation contract.
 
-## Recon citations
+## Code-search citations
 
-A recon worker that searches the repository ends on a text message holding only its findings, one per line in the shape `path:line | symbol | mechanism`: the cited location, the named symbol, a bare identifier, that location carries, and the mechanism it is claimed to show. A trailing tool result is not the report: re-run that track once, and if it again ends without one, record it as no data, a `no data` row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`, never as refuted or as a track that found nothing.
+A code-search worker that searches the repository ends on a text message holding only its findings, one per line in the shape `path:line | symbol | mechanism`: the cited location, the named symbol, a bare identifier, that location carries, and the mechanism it is claimed to show. A trailing tool result is not the report: re-run that track once, and if it again ends without one, record it as no data, a `no data` row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`, never as refuted or as a track that found nothing.
 
 Before reusing a citation, read only the cited line and confirm the path resolves inside the repository and that line carries the named symbol as a whole identifier. That check grounds the location only, never the claimed runtime mechanism: a load-bearing mechanism claim still goes through `evidence`.
 

@@ -38,11 +38,11 @@ C .agents/skills/workflow-checkpoint
 D .claude
 C .claude/CLAUDE.md
 D .claude/agents
+C .claude/agents/code-search.md
 C .claude/agents/executor.md
 F .claude/agents/mine.md
   |private agent
   |
-C .claude/agents/recon.md
 L .claude/agents/retired.md -> $CHECKOUT/.generated/agents/claude/retired.md
 C .claude/agents/review-refuter.md
 C .claude/agents/reviewer-a.md
@@ -701,7 +701,7 @@ F .harness/state.json
   |      "sha256": "sha256:<digest>"
   |    },
   |    {
-  |      "path": "$HOME/.claude/agents/executor.md",
+  |      "path": "$HOME/.claude/agents/code-search.md",
   |      "component": "agents",
   |      "clients": [
   |        "claude"
@@ -709,7 +709,7 @@ F .harness/state.json
   |      "sha256": "sha256:<digest>"
   |    },
   |    {
-  |      "path": "$HOME/.claude/agents/recon.md",
+  |      "path": "$HOME/.claude/agents/executor.md",
   |      "component": "agents",
   |      "clients": [
   |        "claude"

@@ -36,7 +36,7 @@ func TestLaunchArgsPreparesWithoutLaunching(t *testing.T) {
 		want                []string
 	}{
 		{"reviewer-a", "claude", "inherit", []string{"claude", "--agent", "reviewer-a"}},
-		{"recon", "claude", "inherit", []string{"claude", "--agent", "recon"}},
+		{"code-search", "claude", "inherit", []string{"claude", "--agent", "code-search"}},
 		{"executor", "opencode", "opencode-go/glm-5.3", []string{"opencode", "-m", "opencode-go/glm-5.3", "--agent", "executor"}},
 	} {
 		t.Run(tc.role, func(t *testing.T) {

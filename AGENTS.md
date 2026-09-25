@@ -26,7 +26,7 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 | `commands/` | The workflow commands, invoked as `/name` in Claude Code and OpenCode |
 | `skills/` | Protocol, vocabulary, and locked third-party bodies |
 | `clients/` | Client settings and the role assignments the installer reconciles |
-| `roles/` | Canonical roles no skill owns, the executor and recon |
+| `roles/` | Canonical roles no skill owns, the executor and code-search |
 | `aliases.sh` | The managed yolo-mode shell aliases |
 | `bench/` | Cohort config and the manual for `harness bench` |
 | `docs/agents/` | This repository's tracker and lifecycle configuration |
