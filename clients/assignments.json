@@ -5,7 +5,7 @@
   },
   "roles": {
     "executor": {"definition": "../roles/executor.md"},
-    "recon": {"definition": "../roles/recon.md"},
+    "code-search": {"definition": "../roles/code-search.md"},
     "reviewer-a": {"definition": "../skills/adversarial-review/roles/reviewer-a.md"},
     "reviewer-b": {"definition": "../skills/adversarial-review/roles/reviewer-b.md"},
     "review-refuter": {"definition": "../skills/adversarial-review/roles/review-refuter.md"}

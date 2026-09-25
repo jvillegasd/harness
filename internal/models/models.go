@@ -23,7 +23,7 @@ type Assignment struct {
 }
 
 // Roles are the delegated roles a preset assigns, in report order.
-var Roles = []string{"executor", "recon", "reviewer-a", "reviewer-b", "review-refuter"}
+var Roles = []string{"executor", "code-search", "reviewer-a", "reviewer-b", "review-refuter"}
 
 const defaultPreset = "balanced"
 
@@ -33,16 +33,16 @@ func opencode(model string) Assignment       { return Assignment{"opencode", mod
 // Presets are the named assignment tables. balanced sends implementation to a cheaper OpenCode model and keeps review on the session's Claude model, because a reviewer too weak to find the bug is no saving.
 var Presets = map[string]map[string]Assignment{
 	"balanced": {
-		"executor": opencode("opencode-go/glm-5.3"), "recon": claude("inherit", ""), "reviewer-a": claude("inherit", ""), "reviewer-b": claude("inherit", ""), "review-refuter": claude("inherit", ""),
+		"executor": opencode("opencode-go/glm-5.3"), "code-search": claude("inherit", ""), "reviewer-a": claude("inherit", ""), "reviewer-b": claude("inherit", ""), "review-refuter": claude("inherit", ""),
 	},
 	"performance": {
-		"executor": claude("opus", "high"), "recon": claude("fable", "high"), "reviewer-a": claude("fable", "high"), "reviewer-b": claude("fable", "high"), "review-refuter": claude("opus", "high"),
+		"executor": claude("opus", "high"), "code-search": claude("fable", "high"), "reviewer-a": claude("fable", "high"), "reviewer-b": claude("fable", "high"), "review-refuter": claude("opus", "high"),
 	},
 	"economy": {
-		"executor": opencode("opencode-go/deepseek-v4-flash"), "recon": claude("sonnet", ""), "reviewer-a": claude("sonnet", ""), "reviewer-b": claude("sonnet", ""), "review-refuter": claude("sonnet", ""),
+		"executor": opencode("opencode-go/deepseek-v4-flash"), "code-search": claude("sonnet", ""), "reviewer-a": claude("sonnet", ""), "reviewer-b": claude("sonnet", ""), "review-refuter": claude("sonnet", ""),
 	},
 	"diversity": {
-		"executor": claude("sonnet", ""), "recon": claude("inherit", ""), "reviewer-a": claude("inherit", ""), "reviewer-b": opencode("openai/gpt-5.6-sol"), "review-refuter": opencode("opencode-go/glm-5.3"),
+		"executor": claude("sonnet", ""), "code-search": claude("inherit", ""), "reviewer-a": claude("inherit", ""), "reviewer-b": opencode("openai/gpt-5.6-sol"), "review-refuter": opencode("opencode-go/glm-5.3"),
 	},
 }
 

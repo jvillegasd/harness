@@ -13,7 +13,7 @@ The harness this machine's Claude Code and OpenCode installations run: one vendo
 | `internal/agents/` | The role-agent renderer the installer calls in-process. |
 | `internal/models/` | The per-machine role model presets behind `harness models`, rendered by the installer, and read-only role launch preparation. |
 | `clients/` | The client settings this harness owns: `claude.json` declares them, `assignments.json` gives every role its definition and each client its default model and effort, and the installer renders the role agents from it and the machine's `harness models` choice. |
-| `roles/` | Canonical roles no skill owns: the executor and recon. |
+| `roles/` | Canonical roles no skill owns: the executor and code-search. |
 
 `clients/` declares rather than symlinks, because the live file is mostly machine state: hook manifests and generated absolute paths. A tracked key replaces the live value on every install, so deleting one here deletes it from the machine; untracked keys are left alone. `permissions` merges a level down, so `deny` and `ask` stay owned while the Engram allowlist survives. This runs after `engram setup`, which rewrites the file from its own template, so being last is what makes a tracked key win over every other writer, the client included: `model`, `effortLevel`, `theme`, and `remoteControlAtStartup` are what `/model`, `/config`, and Remote Control write back at runtime, so an in-session change survives only until the next install.
 
@@ -35,11 +35,11 @@ flowchart TD
         triage_in["a ticket or a production error"] --> triage["/triage"]
         triage -->|direct reads| brief["plan brief<br>evidence-backed, path:line"]
 
-        research -.->|recon role, dispatched| recon
-        triage -.->|recon role, dispatched| recon
-        recon["recon citation check<br>path:line, symbol, mechanism<br>the cited line must carry the symbol,<br>a mismatch is dropped as refuted,<br>evidence still owns mechanism claims"]
-        recon -.->|grounded citations only| ledger
-        recon -.->|grounded citations only| brief
+        research -.->|code-search role, when dispatched| codesearch
+        triage -.->|code-search role, when dispatched| codesearch
+        codesearch["code-search citation check<br>path:line, symbol, mechanism<br>the cited line must carry the symbol,<br>a mismatch is dropped as refuted,<br>evidence still owns mechanism claims"]
+        codesearch -.->|grounded citations only| ledger
+        codesearch -.->|grounded citations only| brief
 
         doc_in["work worth documenting"] --> spec["/spec<br>the only approval gate<br>before publication"]
         spec --> createticket["/create-ticket"]
@@ -110,14 +110,14 @@ Every command and leaf command answers `--help` and `-h` with its usage on stdou
 
 ## Role agents
 
-`adversarial-review` launches Reviewer A, Reviewer B, and the review refuter as named agents, a workflow that chooses to delegate implementation launches the `executor`, and `/triage` and `/research` launch `recon` for repository search. The reviewers' and the refuter's standing instructions, output format, and read-search intent live once, in `skills/adversarial-review/roles/`; the skill keeps orchestration, scaling, diff delivery, triage, refuter adjudication, and the loop cap. The executor lives in `roles/executor.md` and keeps implementation access: it edits and runs commands inside the slice it was handed, while the delegating workflow keeps scope, commits, review, conformance, and every gate. `recon` lives in `roles/recon.md` and is read-search like the reviewers: it answers one question by searching and returns only `path:line | symbol | mechanism` citations, which its caller verifies under that command's `## Recon citations` section before reuse.
+`adversarial-review` launches Reviewer A, Reviewer B, and the review refuter as named agents, a workflow that chooses to delegate implementation launches the `executor`, and `/triage` and `/research` launch `code-search` when a repository search earns its own worker: independent parallel tracks or context isolation. Ordinary searches run inline. The reviewers' and the refuter's standing instructions, output format, and read-search intent live once, in `skills/adversarial-review/roles/`; the skill keeps orchestration, scaling, diff delivery, triage, refuter adjudication, and the loop cap. The executor lives in `roles/executor.md` and keeps implementation access: it edits and runs commands inside the slice it was handed, while the delegating workflow keeps scope, commits, review, conformance, and every gate. `code-search` lives in `roles/code-search.md` and is read-search like the reviewers: it answers one question by searching and returns only `path:line | symbol | mechanism` citations, which its caller verifies under that command's `## Code-search citations` section before reuse.
 
 The installer renders the role definitions during each run and copies each into its client's agent directory, recording the copy in `~/.harness/state.json`. Only a recorded copy is the harness's: an install replaces an unchanged recorded copy, archives anything unrecorded or edited in its way, and removes a recorded copy whose definition was retired, and an uninstall removes the recorded copies while a private agent beside them is left alone. The install's check fails on a missing or changed copy or on a definition that lost its restrictions.
 
 | Client | Agents | Path | Control | Not enforced |
 | --- | --- | --- | --- | --- |
-| Claude Code | `reviewer-a`, `reviewer-b`, `review-refuter`, `recon` | `~/.claude/agents/` | `tools: Read, Grep, Glob, Bash` with a blocking lifecycle hook; writes, web, MCP tools, and `Agent` are absent | the guard permits only literal Orca lifecycle commands; reading an external diff or standards file without a prompt is unverified |
-| OpenCode | `reviewer-a`, `reviewer-b`, `review-refuter`, `recon` | `$XDG_CONFIG_HOME/opencode/agents/` | `mode: all` (a `mode: subagent` agent is silently replaced by the default agent under `--agent`, and `all` also lists the roles in the TUI agent switcher) with every permission denied and only `read`, `grep`, `glob`, and `list` re-allowed, `.env` reads still denied; the lifecycle plugin enables Bash with a blocking command hook | reading a diff or standards file outside the project, which the deny refuses, so the inline fallbacks cover it; whether MCP tools fall under the deny is unverified |
+| Claude Code | `reviewer-a`, `reviewer-b`, `review-refuter`, `code-search` | `~/.claude/agents/` | `tools: Read, Grep, Glob, Bash` with a blocking lifecycle hook; writes, web, MCP tools, and `Agent` are absent | the guard permits only literal Orca lifecycle commands; reading an external diff or standards file without a prompt is unverified |
+| OpenCode | `reviewer-a`, `reviewer-b`, `review-refuter`, `code-search` | `$XDG_CONFIG_HOME/opencode/agents/` | `mode: all` (a `mode: subagent` agent is silently replaced by the default agent under `--agent`, and `all` also lists the roles in the TUI agent switcher) with every permission denied and only `read`, `grep`, `glob`, and `list` re-allowed, `.env` reads still denied; the lifecycle plugin enables Bash with a blocking command hook | reading a diff or standards file outside the project, which the deny refuses, so the inline fallbacks cover it; whether MCP tools fall under the deny is unverified |
 | Claude Code | `executor` | `~/.claude/agents/` | `disallowedTools: Agent`, so it cannot delegate, and every other tool the session allows stays | commit, push, pull request, merge, and tracker limits are instructions only, because a `disallowedTools` specifier removes the whole `Bash` tool |
 | OpenCode | `executor` | `$XDG_CONFIG_HOME/opencode/agents/` | `task` denied, plus `git commit*`, `git push*`, `git worktree remove*`, `orca worktree rm*` under the `orca`, `orca-ide`, and `orca-dev` spellings, `wt remove*`, `wt merge*`, `wt step commit*`, and `gh *` shell commands, appended after the defaults | the same action spelled another way, since the denies match command prefixes, including an Orca executable taken from `ORCA_CLI_COMMAND`, which is an arbitrary path |
 

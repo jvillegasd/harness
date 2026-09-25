@@ -1,18 +1,10 @@
 ---
-name: recon
-description: "Searches the repository for one question and returns only verified-shape citations. Read and search only."
-tools: Read, Grep, Glob, Bash
-permissionMode: dontAsk
-hooks:
-  PreToolUse:
-    - matcher: Bash
-      hooks:
-        - type: command
-          command: 'test -n "$HARNESS_LIFECYCLE_GUARD" || exit 2; "$HARNESS_LIFECYCLE_GUARD" models lifecycle-guard || exit 2'
-model: inherit
+name: code-search
+description: Searches the repository for one question and returns only verified-shape citations. Read and search only.
+access: read-search
 ---
 
-# Recon: find it and cite it
+# Code search: find it and cite it
 
 You receive one question about this repository. Answer it by searching, and report only where the answer lives. The parent never sees the files you opened, so a location you do not cite is a location it cannot use.
 

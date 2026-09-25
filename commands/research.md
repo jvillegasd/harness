@@ -3,7 +3,7 @@ description: Investigate a question or claim against primary sources and return 
 argument-hint: "[question or claim]"
 ---
 
-Deep investigation, not implementation. No file writes, code edits, configuration changes, commits, or other side-effecting commands, apart from recon launch prompts written outside the worktree and Orca operations needed to launch, recover, and release read-only recon workers. Read-only inspection and queries are allowed.
+Deep investigation, not implementation. No file writes, code edits, configuration changes, commits, or other side-effecting commands, apart from code-search launch prompts written outside the worktree and Orca operations needed to launch, recover, and release read-only code-search workers. Read-only inspection and queries are allowed.
 
 <user_input>
 $ARGUMENTS
@@ -29,11 +29,11 @@ Resolve the effective input:
 
 4. Compare independent evidence, test counterexamples, and resolve contradictions. Separate fact, inference, and unknown; fabricate none. Runtime claims unchecked against available telemetry belong in `Contradictions and unknowns`, never `Conclusion`.
 
-5. Delegate parallel repository search only for genuinely independent tracks or a large search space. Read the locked `orchestration` skill and load its version-matched Orca guide. Launch each track as the named `recon` role on the assignment from `harness models resolve recon --json`, using Orca commands and the role launch configuration in `adversarial-review`'s invocation section; reading that section does not invoke a code review. Never use client-native subagents. Follow the Orca guide for supervision, recovery, complete report retrieval, and cleanup. Recon may run inline when the runtime or role is unavailable before launch; disclose that choice. An uncertain worker outcome follows Orca recovery before any replacement work. Give each a distinct question and reconcile their evidence rather than concatenating their reports. A track searching the repository reports in the `## Recon citations` shape, and every citation is verified there before reuse; external and telemetry queries stay in this context and keep the Findings ledger's `Evidence:` form.
+5. Delegate parallel repository search only for genuinely independent tracks or a large search space. Read the locked `orchestration` skill and load its version-matched Orca guide. Launch each track as the named `code-search` role on the assignment from `harness models resolve code-search --json`, using Orca commands and the role launch configuration in `adversarial-review`'s invocation section; reading that section does not invoke a code review. Never use client-native subagents. Follow the Orca guide for supervision, recovery, complete report retrieval, and cleanup. The search may run inline when the runtime or role is unavailable before launch; disclose that choice. An uncertain worker outcome follows Orca recovery before any replacement work. Give each a distinct question and reconcile their evidence rather than concatenating their reports. A track searching the repository reports in the `## Code-search citations` shape, and every citation is verified there before reuse; external and telemetry queries stay in this context and keep the Findings ledger's `Evidence:` form.
 
-## Recon citations
+## Code-search citations
 
-A recon worker that searches the repository ends on a text message holding only its findings, one per line in the shape `path:line | symbol | mechanism`: the cited location, the named symbol, a bare identifier, that location carries, and the mechanism it is claimed to show. A trailing tool result is not the report: re-run that track once, and if it again ends without one, record it as no data, a `no data` row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`, never as refuted or as a track that found nothing.
+A code-search worker that searches the repository ends on a text message holding only its findings, one per line in the shape `path:line | symbol | mechanism`: the cited location, the named symbol, a bare identifier, that location carries, and the mechanism it is claimed to show. A trailing tool result is not the report: re-run that track once, and if it again ends without one, record it as no data, a `no data` row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`, never as refuted or as a track that found nothing.
 
 Before reusing a citation, read only the cited line and confirm the path resolves inside the repository and that line carries the named symbol as a whole identifier. That check grounds the location only, never the claimed runtime mechanism: a load-bearing mechanism claim still goes through `evidence`.
 
