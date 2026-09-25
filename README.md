@@ -19,7 +19,7 @@ The harness this machine's Claude Code and OpenCode installations run: one vendo
 
 ## Development lifecycle
 
-Every change reaches `/ship` through one of three contract routes, and exactly one is required. `grilling` pressure-tests the chosen route first, interactively when a human drives and in self-grill mode when a workflow needs its own approach broken without blocking. Delivery ends at a green, reviewed, ready-for-human pull request; a human decides to merge it, and `/land` closes the lifecycle, merging it first when that human explicitly invokes `/land`.
+Every change reaches `/ship` through one of three contract routes, and exactly one is required. The chosen route's load-bearing assumptions are checked against repository evidence first. `grilling` runs only when a human asks for it or an ambiguity survives that check; when it runs, it is interactive when a human drives and in self-grill mode when a workflow needs its own approach broken without blocking. Delivery ends at a green, reviewed, ready-for-human pull request; a human decides to merge it, and `/land` closes the lifecycle, merging it first when that human explicitly invokes `/land`.
 
 ```mermaid
 flowchart TD
@@ -80,7 +80,7 @@ flowchart TD
     end
 
     subgraph AFTER["after"]
-        ready --> feedback["/feedback<br>a bullet list from you;<br>deferred rounds apply only,<br>a full round validates locally,<br>then publishes only an<br>approved batch"]
+        ready --> feedback["/feedback<br>a bullet list from you;<br>deferred rounds apply only,<br>a full round, the default,<br>validates locally,<br>then publishes only an<br>approved batch"]
         ready --> addressreview["/address-review<br>review threads, red CI"]
         feedback --> merge{"a human decides to merge"}
         addressreview --> merge

@@ -27,10 +27,10 @@ Check each item against the contract and implementation. Preserve settled decisi
 
 Choose one round type:
 
-- **Deferred**: apply the items, verify each has a corresponding change, report what changed and how to try it, then stop. No ladder, no review, no commit, no push. The unvalidated delta accumulates as debt.
+- **Deferred**: apply the items not held under step 3, verify each has a corresponding change, report what changed and how to try it, then stop. No ladder, no review, no commit, no push. The unvalidated delta accumulates as debt.
 - **Full**: steps 4 through 7 below, over the entire accumulated delta since the last validated state, not only this round's items. It validates locally first and publishes only an approved batch.
 
-Choose at the start: defer when requested or more rounds are coming; run full when asked to finalize or check. If unspecified on the first round, ask once and reuse the answer. Settle all deferred debt in a full round before finalizing. Never push a deferred round.
+Choose at the start without asking: defer when the human asks for it; otherwise run full, which validates locally and never by itself authorizes publication. The chosen round type carries to later rounds until the human names another. Settle all deferred debt in a full round before finalizing. Never push a deferred round.
 
 <batch-gate>
 
@@ -56,13 +56,13 @@ Choose at the start: defer when requested or more rounds are coming; run full wh
 
 ## Steps
 
-1. Resolve the current branch and its open pull request with `gh pr view`, then resolve its contract and inspect `git status --short`. Prefer the inline `## Contract` when present; otherwise fall back to the ticket from its closing reference. If neither exists, continue in legacy mode, state that contract conformance cannot be reconstructed, and evaluate only the explicit feedback and current implementation. Stop only if no open pull request exists or the worktree holds pre-existing changes not part of this feedback run; a deferred or unapproved earlier round's local delta is part of it. Never absorb unrelated changes. Read `workflow-checkpoint`, derive the topic key from the branch, and retrieve the checkpoint; reuse only what validates against current Git, tracker, and pull request state. The contract governs conformance; the checkpoint supplies retained result references, distinct escalation context, and the next action, and a needed requirement missing from both is asked about, never inferred.
+1. Resolve the current branch and its open pull request with `gh pr view`, then resolve its contract and inspect `git status --short`. Prefer the inline `## Contract` when present; otherwise fall back to the ticket from its closing reference. If neither exists, continue in legacy mode, state that contract conformance cannot be reconstructed, and evaluate only the explicit feedback and current implementation. Stop only if no open pull request exists, or the ownership or safe separation of pre-existing changes not part of this feedback run is unresolved; a deferred or unapproved earlier round's local delta is part of it. Leave separable unrelated changes as found, never absorbing, discarding, resetting, or stashing them merely to proceed. Read `workflow-checkpoint`, derive the topic key from the branch, and retrieve the checkpoint; reuse only what validates against current Git, tracker, and pull request state. The contract governs conformance; the checkpoint supplies retained result references, distinct escalation context, and the next action, and a needed requirement missing from both is asked about, never inferred.
 
 2. Parse every bullet into a separate actionable item and investigate the relevant code before deciding how to implement it.
 
-3. Batch ambiguous, contradictory, or product-decision questions in the policy's format and stop. This is the only pre-implementation clarification point.
+3. Batch ambiguous, contradictory, or product-decision questions in the policy's format, and hold only the items that depend on an answer. Ask the batch once, in the round's closing report: beside step 6's publication question in a full round, or in a deferred round's report. When every item is held, ask now and stop. A held item is applied in a later round once its answer arrives. This is the only point that raises clarification questions.
 
-4. Apply every item. Verify each has a corresponding change or an explicit reason it needed none. Run the narrowest checks for the changed surface first, then the policy's oracle ladder. For data, auth, concurrency, migration, or public-contract changes, also verify failure behavior, compatibility, and rollback.
+4. Apply every item not held in step 3. Verify each has a corresponding change or an explicit reason it needed none. Run the narrowest checks for the changed surface first, then the policy's oracle ladder. For data, auth, concurrency, migration, or public-contract changes, also verify failure behavior, compatibility, and rollback.
 
 5. Read and run `adversarial-review`, launching each role by its Orca orchestration instructions, over the accumulated delta, which is still uncommitted: snapshot and stage it the way `/ship` step 2 does, but with `git diff HEAD` as the first snapshot. Nothing is committed until step 6.
 

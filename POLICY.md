@@ -89,7 +89,7 @@ Every change needs an agreed contract before implementation. There are three rou
 
 Never combine routes. An approved spec continues through `/create-ticket` without another approval, because re-entering plan mode to restate it would add a second gate over the same decisions. Its implementation-ready tickets then go to `/ship`.
 
-Whichever route, pressure-test with `grilling` before committing to it: interactively when the user is driving, in self-grill mode when a workflow needs its own approach broken without blocking on a human.
+Whichever route, check its load-bearing assumptions against repository evidence before committing to it. Read `grilling` only when the human asks for it or a load-bearing ambiguity survives that check. When it runs, it runs interactively when the user is driving and in self-grill mode when a workflow needs its own approach broken without blocking on a human.
 
 A `/triage` plan brief or `/research` finding ledger is planning input, not an implementation contract. Do not re-investigate what either already grounded with a `path:line` or a linked number. Carry its verification concerns forward verbatim and its open questions in as decisions with defaults. Re-run only evidence it marked refuted or unchecked, or that predates the most recent deploy: a deploy is what turns a checked claim back into an unchecked one. A `/proto` requirements ledger the human accepted is itself a contract, so do not re-derive what its iterations settled.
 
@@ -148,7 +148,7 @@ On approval, continue without being asked. An approved spec goes directly throug
 
 `/address-review` and `/feedback` are the deliberate exceptions to this blanket autonomy. `/address-review` keeps a single confirmation gate before any external write, because it replies inside shared review threads and updates a shared branch. That one gate approves the already-batched write set once; it does not add a second approval for the already-approved write batch. `/feedback` publishes a batch only on the human's approval of that batch, under **Publication authority**.
 
-Stop early only when implementation reveals the contract is invalid against repository evidence, a load-bearing decision is genuinely unresolvable, or pre-existing unrelated changes cannot be safely separated. Otherwise pick the minimal option, record it in the pull request body, and continue.
+Stop early only when implementation reveals the contract is invalid against repository evidence, a load-bearing decision is genuinely unresolvable, which stops only the work that depends on it, or the ownership or safe separation of pre-existing unrelated changes is unresolved. Unrelated changes that separate safely are left byte for byte as found while the work continues: never absorb, discard, reset, or stash them merely to proceed. Otherwise pick the minimal option, record it in the pull request body, and continue.
 
 Never commit implementation to the default branch, in any mode. `/ship` branches before editing; interactive work does the same. Work found sitting on the default branch moves to a branch before pushing, not after. The exceptions are bookkeeping and never implementation, and each requires an unprotected default branch: the post-merge reconciliation in `/land`, which names the destination and contents and confirms once before writing, and tracker state where the tracker is committed files rather than a service, which is what makes it visible to the next run at all. The `local-tracker` skill's own list of transitions is the authority on which commits that second exception covers, so the two cannot drift apart; nothing outside that list qualifies. Where the default branch is protected, a bookkeeping write escalates under the escalation contract rather than being routed through a pull request, which `/ship` could never merge.
 
@@ -179,7 +179,9 @@ Resolving review threads is not a rung. Threads appear only after a human review
 Asking is not caution, it is a cost transfer. Ask only when both hold:
 
 1. The answer is not derivable from repository evidence, telemetry, or an existing convention in this codebase. If three or fewer read-only actions would settle it, take them instead of asking.
-2. Choosing wrong is expensive to reverse, or the choice is not yours. Expensive to reverse means a schema or data migration, any write visible outside this machine, a public-contract or auth-boundary change, money, or deleting something you cannot reconstruct. Not yours to make means product intent, priority, and scope-versus-ship tradeoffs.
+2. Choosing wrong is expensive to reverse, or the choice is not yours. Expensive to reverse means a schema or data migration, any write visible outside this machine, a public-contract or auth-boundary change, money, or deleting something you cannot reconstruct. Not yours to make means the human's decisions: purpose, scope, acceptance criteria, consequential architecture and product tradeoffs, important test seams, priority, and accepting reduced assurance, such as a skipped rung or deferred validation.
+
+Yours to make are repository facts, individual test cases derived from agreed behavior, implementation details inside the contract, and repairs to failures. Investigate what is derivable before asking. An unresolved human decision blocks only the implementation that depends on it: ask before that part, and continue independent work that is safe without the answer.
 
 Otherwise decide, then declare: the decision, the alternative you rejected, and the one fact that would flip it. A recorded decision with a stated flip condition is cheaper to audit than a question is to answer.
 
@@ -260,4 +262,4 @@ This policy, these commands, and these skills are themselves a surface with an o
 
 Cost and friction are the measured part; quality stays a human judgment made by reading transcripts. Compare populations, not pairs: a single session proves nothing.
 
-Re-reading a harness change and judging it plausible is not validation.
+Re-reading a harness change and judging it plausible is not validation. A change that widens agent discretion keeps every evidence requirement: claim an improvement only after inspecting actual workflow outcomes, and treat consistency across models as unverified until it is observed.
