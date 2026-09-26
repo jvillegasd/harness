@@ -24,26 +24,26 @@ Launch independent reviewers before running the coordinator's conformance pass, 
 
 When Orca reports an unavailable or uncertain operation, follow its version-matched recovery guide and receipt. Preserve its task, dispatch, and request identities. A required review waits or escalates; it never becomes inline or switches backend. An executor may work inline only when the policy permits and Orca has established that no earlier worker can still act. Inspect partial edits before repeating a failed implementation slice. Report unavailable review evidence under `## Checks`, or in the `/proto` ledger.
 
-A missing or stale named agent requires a human to run `harness install`; never provision the machine to unblock a review or substitute a general agent. Preserve completed output through Orca's retained references, verifying retrieval before and after release. When retention is not guaranteed, save the complete original report as a durable artifact outside the disposable terminal and worktree before release, and retain its locator. Treat a clipped, missing, or unreadable report as unavailable evidence, never as a successful review.
+A missing or stale named agent requires a human to run `harness install`; never provision the machine to unblock a review or substitute a general agent. Preserve completed output through Orca's retained references, verifying retrieval before and after release. When retention is not guaranteed, save the complete original report as a durable artifact outside the disposable terminal and worktree before release, and retain its locator. Treat a clipped, missing, or unreadable report as unavailable evidence, never as a successful review. After a release succeeds, close each terminal the coordinator created for a role, whole tab included, with the selected executable's terminal close command as its `--help` documents it, because Orca releases an adopted terminal without closing it. A pending or unknown release follows its recovery receipt, never a close.
 
 The named agents' restrictions are best effort: each client enforces what its own controls support, and `harness install` reports the gaps.
 
-Give Reviewer A the requirements, the diff snapshot path, and the exact absolute path of the project's own instruction file as its standards, never the implementation rationale. Nothing else.
+Give Reviewer A the requirements, the diff snapshot, and the project's own instruction file as its standards, never the implementation rationale. Nothing else.
 
-Give Reviewer B only the diff snapshot path and the exact absolute paths of its review standards: the loaded `ponytail` body and the project's own instruction file. No requirements, no rationale, no ticket.
+Give Reviewer B only the diff snapshot and its review standards: the loaded `ponytail` body and the project's own instruction file. No requirements, no rationale, no ticket.
 
-Standards are paths, never requirements or rationale, so supplying them leaves each reviewer's information boundary where it was. Count a standards file as read only when the reviewer's `loaded:` line names it: supplying a path, or a reviewer recalling what a standard says, is not evidence that it was read.
+Standards are the project's rules, never requirements or rationale, so supplying them leaves each reviewer's information boundary where it was. Count a standards file as read only when the reviewer's `loaded:` line names it: supplying a path, or a reviewer recalling what a standard says, is not evidence that it was read.
 
-The project's own instruction file is `AGENTS.md` at the repository root, or `CLAUDE.md` there when no `AGENTS.md` exists, and is left out when neither does. Where the client is known to refuse a standards path, such as OpenCode for a file outside the project, paste that file's text into the first launch instead of its path. When a supplied standards file is missing from a reviewer's `loaded:` line, relaunch that reviewer once with that file's text pasted in; the relaunch replaces that reviewer's output for the same round and never counts toward the cap. A reviewer names a pasted standard as `inline:<absolute path>`. If a standard is still unread, disclose it under the pull request's `## Checks`, or in the requirements ledger under `/proto`.
+The project's own instruction file is `AGENTS.md` at the repository root, or `CLAUDE.md` there when no `AGENTS.md` exists, and is left out when neither does. Give a standards file inside the project by absolute path, and paste the text of one outside it, such as the installed `ponytail` body, into the first launch: a read-only role cannot read outside the project. When a supplied standards file is missing from a reviewer's `loaded:` line, relaunch that reviewer once with that file's text pasted in; the relaunch replaces that reviewer's output for the same round and never counts toward the cap. A reviewer names a pasted standard as `inline:<absolute path>`. If a standard is still unread, disclose it under the pull request's `## Checks`, or in the requirements ledger under `/proto`.
 
-This block defines permitted inputs. Withhold everything else; use absolute standards paths.
+This block defines permitted inputs. Withhold everything else.
 
 ```json
 {
   "inputs": {
-    "reviewer-a": ["requirements", "diff_snapshot_path"],
-    "reviewer-b": ["diff_snapshot_path"],
-    "review-refuter": ["contested_finding", "diff_snapshot_path"]
+    "reviewer-a": ["requirements", "diff_snapshot"],
+    "reviewer-b": ["diff_snapshot"],
+    "review-refuter": ["contested_finding", "diff_snapshot"]
   },
   "standards": {
     "reviewer-a": ["project_instruction_file"],
@@ -53,8 +53,7 @@ This block defines permitted inputs. Withhold everything else; use absolute stan
   "optional_standards": ["project_instruction_file"],
   "loaded_prefix": "loaded: ",
   "inline_prefix": "inline:",
-  "verdict_prefix": "verdict: ",
-  "unreadable_prefix": "unreadable: "
+  "verdict_prefix": "verdict: "
 }
 ```
 
@@ -66,7 +65,7 @@ Scale to blast radius:
 
 ## Diff delivery
 
-Snapshot the complete diff once per round into a readable temporary file outside the worktree, and give each reviewer that path. A reviewer that answers `unreadable: <path>` gets the same snapshot inline instead. Never truncate the diff: when neither the file nor inline text can carry the complete snapshot, stop and escalate per the escalation contract.
+Snapshot the complete diff once per round into a temporary file outside the worktree, which is the round's record and the refuter's source. Paste that file's complete text into each reviewer's launch prompt rather than its path, because a read-only role cannot read outside the project. Never truncate the diff: when a launch prompt cannot carry the complete snapshot, stop and escalate per the escalation contract.
 
 Reviewers and the refuter never edit files, and neither findings nor verdicts reach the forge.
 
@@ -121,7 +120,7 @@ A `q:` is answered. It becomes a `bug:` or `risk:` only when evidence exposes a 
 
 Before rejecting a contested `bug:` or `risk:`, launch the named `review-refuter` agent once for that finding, with a fresh context. The installer generates it from `roles/review-refuter.md` beside this skill, and it runs on its central assignment, launched through the Orca orchestration instructions above. A refuter that cannot be launched is the `unavailable` verdict, which escalates.
 
-Give the refuter only the contested finding, verbatim, and the path of the diff snapshot that finding was raised against. Never the implementation rationale, the requirements, your reason for contesting it, or the conversation. A refuter that answers `unreadable: <path>` gets that snapshot inline under Diff delivery, and the relaunch completes the same invocation rather than adding one.
+Give the refuter only the contested finding, verbatim, and the diff snapshot that finding was raised against, pasted in full under Diff delivery. Never the implementation rationale, the requirements, your reason for contesting it, or the conversation.
 
 Its verdict decides the finding:
 
@@ -131,7 +130,7 @@ Its verdict decides the finding:
 
 A finding requiring an unseen requirement or standard is `inconclusive`. Judge the snapshot, never a later worktree. A human's decision on an escalated finding closes it, recorded like a rejection.
 
-A result is `missing` if empty; `malformed` if its first line is not a `verdict:` line naming `corroborated`, `refuted`, or `inconclusive`, or a `corroborated` or `refuted` verdict lacks a `path:Lline:` evidence line; `unavailable` if the refuter cannot be launched or the inline retry cannot carry the snapshot. Allow only one `unreadable:` answer, preceding its retry, per invocation.
+A result is `missing` if empty; `malformed` if its first line is not a `verdict:` line naming `corroborated`, `refuted`, or `inconclusive`, or a `corroborated` or `refuted` verdict lacks a `path:Lline:` evidence line; `unavailable` if the refuter cannot be launched or its launch prompt cannot carry the complete snapshot.
 
 The refuter is not a reviewer and not a round: it changes neither count nor cap and runs once per contested finding, never for a second opinion. A fix after `corroborated` triggers the usual fixed-blocker rule.
 

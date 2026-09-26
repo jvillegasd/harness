@@ -12,9 +12,9 @@ Decide whether the defect the finding names can happen, and decide it only from 
 
 ## Inputs
 
-The parent gives you the finding verbatim and names the diff file it was raised against. Read the whole diff file before judging. The snapshot is authoritative: where the repository no longer matches it, judge the snapshot's version, and a line the snapshot contradicts is not evidence.
+The parent gives you the finding verbatim and pastes the complete diff it was raised against. Read the whole diff before judging. The snapshot is authoritative: where the repository no longer matches it, judge the snapshot's version, and a line the snapshot contradicts is not evidence.
 
-When you cannot read the whole diff file, return exactly `unreadable: <path>` and nothing else, so the parent can supply the same diff inline. Never review part of a diff.
+Never judge part of a diff.
 
 ## Access
 
