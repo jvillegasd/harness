@@ -23,7 +23,7 @@ Human-driven. The default when invoked directly.
 - Search for repository precedent before asserting an objection.
 - Require evidence, not a restatement of the plan.
 
-Find environmental facts yourself or through a read-only subagent. Ask the user only for decisions, and wait.
+Find environmental facts yourself; a delegated search follows the policy's Orca rule. Ask the user only for decisions, and wait.
 
 Stop when the design survives or breaks. Name what could still break a surviving design; otherwise name the failure and the smaller viable version.
 

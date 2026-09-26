@@ -51,7 +51,7 @@ var claudeEfforts = map[string][]string{
 	"inherit": {""},
 	"fable":   {"", "low", "medium", "high", "xhigh", "max"},
 	"opus":    {"", "low", "medium", "high", "xhigh", "max"},
-	"sonnet":  {"", "low", "medium", "high", "max"},
+	"sonnet":  {"", "low", "medium", "high", "xhigh", "max"},
 	"haiku":   {""},
 }
 

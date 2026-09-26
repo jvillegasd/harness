@@ -26,7 +26,6 @@ func TestSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
 		"unknown opencode id":      {"reviewer-b", "--client", "opencode", "--model", "openai/nope"},
 		"unknown claude alias":     {"reviewer-b", "--client", "claude", "--model", "claudius"},
 		"unsupported haiku effort": {"reviewer-b", "--client", "claude", "--model", "haiku", "--effort", "high"},
-		"sonnet has no xhigh":      {"reviewer-b", "--client", "claude", "--model", "sonnet", "--effort", "xhigh"},
 		"unknown role":             {"planner", "--client", "claude", "--model", "opus"},
 		"unknown preset":           {"--preset", "lavish"},
 		"unknown client":           {"reviewer-b", "--client", "cursor", "--model", "opus"},
@@ -70,5 +69,16 @@ func TestShowRejectsAStaleChoice(t *testing.T) {
 		if err := run(path, []string{"show"}, &strings.Builder{}); err != nil {
 			t.Errorf("%s: show after reset failed: %v", name, err)
 		}
+	}
+}
+
+// TestSetAcceptsSonnetXhigh pins Sonnet 5's effort range, which Claude Code's docs list with xhigh.
+func TestSetAcceptsSonnetXhigh(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	if err := os.WriteFile(path, []byte(`{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(path, []string{"set", "reviewer-b", "--client", "claude", "--model", "sonnet", "--effort", "xhigh"}, &strings.Builder{}); err != nil {
+		t.Fatalf("set sonnet xhigh: %v", err)
 	}
 }
