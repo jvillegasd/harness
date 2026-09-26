@@ -298,7 +298,7 @@ func TestGapsAndUnverifiedReportedApart(t *testing.T) {
 	if claudeGaps != 2 {
 		t.Fatalf("claude gaps = %d, want 2:\n%s", claudeGaps, stdout)
 	}
-	foundUnverified, foundCCYOLO, foundDiff := false, false, false
+	foundUnverified, foundCCYOLO := false, false
 	for _, line := range lines {
 		if strings.HasPrefix(line, "unverified: ") {
 			foundUnverified = true
@@ -306,12 +306,13 @@ func TestGapsAndUnverifiedReportedApart(t *testing.T) {
 				foundCCYOLO = true
 			}
 		}
-		if strings.HasPrefix(line, "gap: opencode: a diff file outside the project") && strings.HasSuffix(line, "so reviewers and the refuter there take the inline fallback") {
-			foundDiff = true
+		// Review inputs arrive inline, so no role reads outside the project and no line may claim one does.
+		if strings.Contains(line, "outside the project") {
+			t.Errorf("report still describes a file read outside the project: %s", line)
 		}
 	}
-	if !foundUnverified || !foundCCYOLO || !foundDiff {
-		t.Fatalf("report is missing an unverified capability or a gap:\n%s", stdout)
+	if !foundUnverified || !foundCCYOLO {
+		t.Fatalf("report is missing an unverified capability:\n%s", stdout)
 	}
 }
 

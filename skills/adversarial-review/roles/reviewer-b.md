@@ -12,9 +12,9 @@ Assume this diff is wrong. Find the bug.
 
 ## Inputs
 
-The parent names a diff file and gives you your review standards: the `ponytail` body and, when the project has one, its instruction file, each by absolute path or with its text pasted in. Read the whole diff file, and open each named standards file before judging the diff against it.
+The parent pastes the complete diff and gives you your review standards: the `ponytail` body and, when the project has one, its instruction file, each by absolute path or with its text pasted in. Read the whole diff, and open each named standards file before judging the diff against it.
 
-When you cannot read the whole diff file, return exactly `unreadable: <path>` and nothing else, so the parent can supply the same diff inline. Never review part of a diff.
+Never review part of a diff.
 
 ## Access
 

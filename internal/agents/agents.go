@@ -64,8 +64,6 @@ var opencodeControls = map[string]string{
 
 // Known from each client's documentation. What no control covers is a gap; what a control should cover but only an installed client can prove is unverified.
 var gaps = []string{
-	"gap: opencode: a diff file outside the project needs external_directory, which the agent's * deny refuses, so reviewers and the refuter there take the inline fallback",
-	"gap: opencode: a standards file outside the project, such as the installed ponytail body, needs the same external_directory, so reviewers there get it inline after their loaded: line omits it",
 	"gap: claude: the executor keeps Bash, because a disallowedTools specifier removes the whole tool, so its commit, push, pull request, merge, and tracker limits are instructions only",
 	"gap: claude: a model parameter passed at launch overrides an agent's model frontmatter, and an availableModels allowlist substitutes a blocked model with a warning, so the policy forbids the parameter and neither is enforced",
 	"gap: opencode: the executor's bash denies match command prefixes, so the same action spelled another way is not denied, including an Orca executable taken from ORCA_CLI_COMMAND, and the denied orca worktree rm spelling came from the installed Orca CLI's help rather than this tree, so a new Orca needs it re-verified",
@@ -73,10 +71,9 @@ var gaps = []string{
 
 var unverified = []string{
 	"unverified: every restriction above is static configuration until an installed client is probed at runtime",
-	"unverified: claude reading a diff or standards file outside the project without a permission prompt",
 	"unverified: opencode applying the * deny to MCP tools",
 	"unverified: the ccyolo and ocyolo launchers leaving agent restrictions in force, since each bypasses or overrides the parent's permissions",
-	"unverified: diff delivery's inline fallback and escalation, which are protocol rather than exercised behavior",
+	"unverified: diff delivery's escalation when a launch prompt cannot carry the complete snapshot, which is protocol rather than exercised behavior",
 	"unverified: claude applying a main-thread --agent session's model and effort frontmatter, and the session's effort when effort is absent",
 	"unverified: opencode sending an agent's reasoningEffort with its model requests",
 	"unverified: claude disallowedTools: Agent and opencode task: deny stopping the executor from delegating",
