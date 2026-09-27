@@ -1,48 +1,31 @@
 ---
 name: grilling
-description: Challenge a plan's load-bearing assumptions through an interactive interview or self-grill.
+description: Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.
 disable-model-invocation: true
 metadata:
   opencode/autoinvoke: "false"
 ---
 
-# Grilling
+Interview the user relentlessly until you reach a shared understanding. Map this as a **design tree**: every decision branches into the decisions that hang off it.
 
-Try to break the plan before implementation, rather than summarize it or run a checklist.
+Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already settled: the questions you can ask _now_ without guessing at answers you haven't heard yet. Ask the whole frontier in one round: number each question and give your recommended answer. Then wait for the user's answers before the next round.
 
-## Find the load-bearing assumption first
+Format a round like so:
 
-Before asking, identify assumptions whose failure changes the approach, scope, or whether the work happens. Rank by consequence and challenge the worst first, before details.
+```
+❓ **Q1** - **<question title>**: <question body, might be multiple paragraphs, including multiple choices>
 
-## Mode: interactive
+➡️ <your recommended answer>
 
-Human-driven. The default when invoked directly.
+---
 
-- Ask one question at a time, hardest first, and wait for the answer.
-- Probe vague, hedged, or evasive answers rather than moving on.
-- Search for repository precedent before asserting an objection.
-- Require evidence, not a restatement of the plan.
+❓ **Q2** - **<question title>**: <question body, might be multiple paragraphs, including multiple choices>
 
-Find environmental facts yourself; a delegated search follows the policy's Orca rule. Ask the user only for decisions, and wait.
+➡️ <your recommended answer>
+```
 
-Stop when the design survives or breaks. Name what could still break a surviving design; otherwise name the failure and the smaller viable version.
+Each round the user answers reshapes the tree: settled decisions push the frontier outward and unblock questions that depended on them. Recompute the frontier and ask the next round. A question whose answer depends on another question still open in this round belongs to a _later_ round, not this one.
 
-## Mode: self-grill
+Finding _facts_ is your job, never the user's. When a frontier question needs a fact from the environment (filesystem, tools, etc.), dispatch a sub-agent to find it; don't ask the user for anything you could look up yourself. Don't block on it: a running exploration is an unsettled prerequisite, so only the questions downstream of it wait for the sub-agent to report; ask the rest of the frontier now. The _decisions_ are the user's: put each to them and wait.
 
-Pressure-test without serial human questions: `/ship` uses this for load-bearing ambiguity surviving a repository search; `/triage` uses it before escalation.
-
-1. **List the assumptions** the approach depends on, ranked by consequence.
-2. **Resolve what you can**, in order: search repository precedent, check history for earlier attempts, then read and follow `evidence` for runtime, impact, or frequency claims.
-3. **Stop if evidence refutes the premise.** Report why the plan should die.
-4. **Batch only unresolved decisions.** For each, give the checks and what they ruled out, options and consequences, your default, and its cost if wrong. Take up to three read-only actions that would settle a question before asking it, per the escalation contract.
-
-## What makes a good question
-
-- Falsifiable: answerable with evidence, not opinion.
-- Consequential: a different answer changes what gets built.
-- Specific: names the file, endpoint, state, or number in question.
-- Not already answered: check the conversation before asking again.
-
-## What is not grilling
-
-Restating the plan back as a question. Asking for confirmation. Listing risks without ranking them. Interrogating edge cases while the core mechanism is unverified. Producing one question per section because there are sections.
+The session is done when the frontier is empty: every branch of the design tree visited, nothing left silently assumed. Do not act on it until the user confirms you have reached a shared understanding.

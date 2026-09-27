@@ -26,7 +26,7 @@ Accept a tracker item, pasted ticket, or production error signal for a bug, feat
 
 4. Investigate the code to ground the analysis, citing `path:line`. Search the repository directly by default. Delegate only when a worker earns its launch: independent searches that can run in parallel, or context isolation that keeps a large search's file contents out of this context. Name that purpose in one line, launch each track as the named `code-search` role per the policy's **Launching a role**, and give each worker one bounded repository question; its citations come back in the `## Code-search citations` shape and are verified there before reuse. Then confirm or refute the root-cause hypothesis with at most two further evidence queries.
 
-5. For remaining load-bearing ambiguity, read `grilling` and self-grill against precedent, history, and `evidence` before escalating. Stop if the premise is refuted. Batch only surviving questions into one stop under the escalation contract.
+5. For remaining load-bearing ambiguity, rank the assumptions behind it by consequence, resolve each through repository precedent, history, and `evidence`, and stop if the premise is refuted. Batch only surviving questions into one stop under the escalation contract.
 
 ## Code-search citations
 
@@ -56,6 +56,5 @@ The brief is planning input, not an implementation contract. Continue to `/spec`
 ## Skills this loads
 
 - `evidence`, read from its path
-- `grilling`, read from its path, self-grill mode only, before escalating an unresolved load-bearing question
 - `diagnosing-bugs` when the root cause resists the first two evidence queries
 - `local-tracker`, read from its path, only when the input is a ticket id or path and `docs/agents/harness.json` sets `"tracker": "local-markdown"`

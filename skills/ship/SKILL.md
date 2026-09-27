@@ -34,7 +34,7 @@ Derive a conversation contract's branch slug from it. Retain bound ticket metada
 
 For a `/proto` ledger, continue on the prototype's branch, squash its WIP checkpoints at commit time, harden whatever the ledger marks prototype-quality, and give retained prototype code meaningful regression coverage, as the delivery loop's first step orders. Do not re-derive what the iterations already settled.
 
-For load-bearing ambiguity surviving repository search, read `grilling` and self-grill against precedent, history, and `evidence`. Ask only surviving questions under the escalation contract. An unanswered question holds only the slices that depend on it; independent slices continue.
+For load-bearing ambiguity surviving repository search, rank the assumptions behind it by consequence, resolve each through repository precedent, history, and `evidence`, and stop if the premise is refuted. Ask only surviving questions under the escalation contract. An unanswered question holds only the slices that depend on it; independent slices continue.
 
 With a ticket, escalate before changing code if any blocker is not closed by a merged pull request.
 
@@ -143,7 +143,6 @@ Return the pull request, checks, review result, and retained worktree path. Neve
 - `ponytail`
 - `caveman-commit` at commit time
 - `tdd`
-- `grilling`, read from its path, self-grill mode only, for an ambiguity that survives a repository search
 - `evidence`, read from its path, when a load-bearing runtime claim decides the approach
 - `codebase-design` when an agreed seam needs implementation vocabulary
 - `diagnosing-bugs` for failures that do not have an obvious local cause
