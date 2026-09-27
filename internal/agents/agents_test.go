@@ -11,8 +11,8 @@ import (
 )
 
 var outputNames = []string{
-	"claude/code-search.md", "claude/executor.md", "claude/review-refuter.md", "claude/reviewer-a.md", "claude/reviewer-b.md",
-	"opencode/code-search.md", "opencode/executor.md", "opencode/review-refuter.md", "opencode/reviewer-a.md", "opencode/reviewer-b.md",
+	"claude/code-search.md", "claude/executor.md", "claude/reviewer.md",
+	"opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md",
 }
 
 // temp returns a resolved temporary directory, because macOS temp paths pass through a symlink and the renderer refuses a symlinked output ancestor.
@@ -190,7 +190,7 @@ func TestEachClientGetsItsControlsAndTheWholeRole(t *testing.T) {
 	if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
-	for _, role := range []string{"reviewer-a", "reviewer-b", "review-refuter"} {
+	for _, role := range []string{"reviewer"} {
 		raw, err := os.ReadFile(filepath.Join(repoRoot(), "skills", "adversarial-review", "roles", role+".md"))
 		if err != nil {
 			t.Fatal(err)
@@ -252,8 +252,8 @@ func TestOnlyTheExecutorMayImplement(t *testing.T) {
 		name, target, access string
 		want                 int
 	}{
-		{"review-refuter", "review-refuter", "implement", 1},
-		{"review-refuter", "review-refuter", "read-search", 0},
+		{"reviewer", "reviewer", "implement", 1},
+		{"reviewer", "reviewer", "read-search", 0},
 		{"executor", "executor", "read-search", 1},
 	}
 	for _, c := range cases {
@@ -266,7 +266,7 @@ func TestOnlyTheExecutorMayImplement(t *testing.T) {
 				t.Fatal(err)
 			}
 			text := string(raw)
-			if c.target == "review-refuter" {
+			if c.target == "reviewer" {
 				text = strings.Replace(text, "access: read-search", "access: "+c.access, 1)
 			} else {
 				text = strings.Replace(text, "access: implement", "access: "+c.access, 1)
@@ -318,13 +318,13 @@ func TestGapsAndUnverifiedReportedApart(t *testing.T) {
 
 func TestCheckDetectsWidening(t *testing.T) {
 	mutations := []struct{ path, old, new string }{
-		{"claude/reviewer-a.md", "permissionMode: dontAsk\n", "permissionMode: bypassPermissions\n"},
-		{"claude/reviewer-b.md", "tools: Read, Grep, Glob, Bash\n", ""},
-		{"opencode/reviewer-a.md", "  \"*\": deny", "  \"*\": allow"},
-		{"opencode/reviewer-b.md", "  list: allow\n", "  list: allow\n  bash: allow\n"},
-		{"opencode/reviewer-b.md", "mode: all\n", "mode: all\ntools:\n  bash: true\n"},
-		{"claude/review-refuter.md", "tools: Read, Grep, Glob, Bash\n", "tools: Read, Grep, Glob, Edit\n"},
-		{"opencode/review-refuter.md", "  grep: allow\n", "  grep: allow\n  task: allow\n"},
+		{"claude/reviewer.md", "permissionMode: dontAsk\n", "permissionMode: bypassPermissions\n"},
+		{"claude/reviewer.md", "tools: Read, Grep, Glob, Bash\n", ""},
+		{"opencode/reviewer.md", "  \"*\": deny", "  \"*\": allow"},
+		{"opencode/reviewer.md", "  list: allow\n", "  list: allow\n  bash: allow\n"},
+		{"opencode/reviewer.md", "mode: all\n", "mode: all\ntools:\n  bash: true\n"},
+		{"claude/code-search.md", "tools: Read, Grep, Glob, Bash\n", "tools: Read, Grep, Glob, Edit\n"},
+		{"opencode/code-search.md", "  grep: allow\n", "  grep: allow\n  task: allow\n"},
 		{"claude/executor.md", "disallowedTools: Agent\n", ""},
 		{"opencode/executor.md", "  task: deny\n", "  task: allow\n"},
 	}
@@ -355,20 +355,20 @@ func TestCheckDetectsMissingAndDrifted(t *testing.T) {
 	if code, _, _ := runCommand(t, configPath(), out); code != 0 {
 		t.Fatal("generate failed")
 	}
-	target := filepath.Join(out, "claude", "reviewer-a.md")
+	target := filepath.Join(out, "claude", "reviewer.md")
 	raw := readFile(t, target)
 	if err := os.WriteFile(target, []byte(raw+"\nExtra instruction.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	code, stdout, _ := runCommand(t, "--check", configPath(), out)
-	if code != 1 || !strings.Contains(stdout, "changed: claude/reviewer-a.md") {
+	if code != 1 || !strings.Contains(stdout, "changed: claude/reviewer.md") {
 		t.Fatalf("check = %d, %q", code, stdout)
 	}
 	if err := os.Remove(target); err != nil {
 		t.Fatal(err)
 	}
 	code, stdout, _ = runCommand(t, "--check", configPath(), out)
-	if code != 1 || !strings.Contains(stdout, "missing: claude/reviewer-a.md") {
+	if code != 1 || !strings.Contains(stdout, "missing: claude/reviewer.md") {
 		t.Fatalf("check = %d, %q", code, stdout)
 	}
 }
@@ -404,7 +404,7 @@ func TestSymlinkedOutputPathsAreRefusedWithoutWrites(t *testing.T) {
 			var link string
 			switch kind {
 			case "file":
-				link = filepath.Join(output, "claude", "reviewer-a.md")
+				link = filepath.Join(output, "claude", "reviewer.md")
 			case "client":
 				link = filepath.Join(output, "claude")
 			case "output":
@@ -412,7 +412,7 @@ func TestSymlinkedOutputPathsAreRefusedWithoutWrites(t *testing.T) {
 			case "ancestor":
 				link = filepath.Dir(output)
 			case "dangling":
-				link = filepath.Join(output, "claude", "reviewer-a.md")
+				link = filepath.Join(output, "claude", "reviewer.md")
 			}
 			external := filepath.Join(base, "external")
 			if err := os.Rename(link, external); err != nil {
@@ -462,24 +462,24 @@ func TestMissingDroppedAndMisnamedRolesPreserveOutputs(t *testing.T) {
 			dir := temp(t)
 			var edit func(map[string]any)
 			if kind == "dropped" {
-				edit = func(data map[string]any) { delete(data["roles"].(map[string]any), "reviewer-b") }
+				edit = func(data map[string]any) { delete(data["roles"].(map[string]any), "reviewer") }
 			}
 			config := configCopy(t, dir, edit)
-			role := filepath.Join(dir, "roles", "reviewer-b.md")
+			role := filepath.Join(dir, "roles", "reviewer.md")
 			if kind == "missing" {
 				if err := os.Remove(role); err != nil {
 					t.Fatal(err)
 				}
 			} else if kind == "misnamed" {
 				raw := readFile(t, role)
-				if err := os.WriteFile(role, []byte(strings.Replace(raw, "name: reviewer-b", "name: other", 1)), 0o644); err != nil {
+				if err := os.WriteFile(role, []byte(strings.Replace(raw, "name: reviewer", "name: other", 1)), 0o644); err != nil {
 					t.Fatal(err)
 				}
 			}
 			for _, flags := range [][]string{{}, {"--check"}} {
 				args := append(append([]string{}, flags...), config, out)
 				code, _, stderr := runCommand(t, args...)
-				if code != 1 || !strings.Contains(stderr, "reviewer-b") {
+				if code != 1 || !strings.Contains(stderr, "reviewer") {
 					t.Fatalf("flags %v: exit %d, stderr %q", flags, code, stderr)
 				}
 				if !deepEqualStrings(treeOf(t, out), before) {
@@ -501,14 +501,14 @@ func TestIncompleteOrWidenedRoleRefused(t *testing.T) {
 		t.Run(label, func(t *testing.T) {
 			dir := temp(t)
 			config := configCopy(t, dir, nil)
-			role := filepath.Join(dir, "roles", "reviewer-b.md")
+			role := filepath.Join(dir, "roles", "reviewer.md")
 			raw := readFile(t, role)
 			if err := os.WriteFile(role, []byte(strings.Replace(raw, edit[0], edit[1], 1)), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			output := filepath.Join(dir, "out")
 			code, _, stderr := runCommand(t, config, output)
-			if code != 1 || !strings.Contains(stderr, "reviewer-b.md") {
+			if code != 1 || !strings.Contains(stderr, "reviewer.md") {
 				t.Fatalf("exit %d, stderr %q", code, stderr)
 			}
 			if _, err := os.Stat(output); err == nil {
@@ -522,20 +522,20 @@ func TestAssignments(t *testing.T) {
 	t.Run("inherit is explicit and translated per client", func(t *testing.T) {
 		out := temp(t)
 		_, stdout, _ := runCommand(t, configPath(), out)
-		if !containsLine(head(t, filepath.Join(out, "claude", "reviewer-a.md")), "model: inherit") {
-			t.Error("claude reviewer-a does not inherit the model")
+		if !containsLine(head(t, filepath.Join(out, "claude", "reviewer.md")), "model: inherit") {
+			t.Error("claude reviewer does not inherit the model")
 		}
-		for _, line := range head(t, filepath.Join(out, "claude", "reviewer-a.md")) {
+		for _, line := range head(t, filepath.Join(out, "claude", "reviewer.md")) {
 			if strings.HasPrefix(line, "effort:") {
-				t.Error("claude reviewer-a writes an effort it inherits")
+				t.Error("claude reviewer writes an effort it inherits")
 			}
 		}
-		for _, line := range head(t, filepath.Join(out, "opencode", "reviewer-a.md")) {
+		for _, line := range head(t, filepath.Join(out, "opencode", "reviewer.md")) {
 			if strings.HasPrefix(line, "model:") || strings.HasPrefix(line, "reasoningEffort:") {
-				t.Error("opencode reviewer-a writes a setting it inherits")
+				t.Error("opencode reviewer writes a setting it inherits")
 			}
 		}
-		if !strings.Contains(stdout, "assignment: claude reviewer-a model=inherit (client default) effort=inherit (client default)") {
+		if !strings.Contains(stdout, "assignment: claude reviewer model=inherit (client default) effort=inherit (client default)") {
 			t.Errorf("report = %s", stdout)
 		}
 	})
@@ -548,21 +548,21 @@ func TestAssignments(t *testing.T) {
 				"opencode": map[string]any{"model": "openai/gpt-5.5", "effort": "low"},
 			}
 			roles := data["roles"].(map[string]any)
-			roles["reviewer-b"].(map[string]any)["claude"] = map[string]any{"model": "sonnet"}
+			roles["reviewer"].(map[string]any)["claude"] = map[string]any{"model": "sonnet"}
 			roles["executor"].(map[string]any)["opencode"] = map[string]any{"effort": "high"}
-			roles["review-refuter"].(map[string]any)["claude"] = map[string]any{"model": "haiku", "effort": "low"}
+			roles["code-search"].(map[string]any)["claude"] = map[string]any{"model": "haiku", "effort": "low"}
 		})
 		out := filepath.Join(dir, "out")
 		_, stdout, _ := runCommand(t, config, out)
-		assertHead(t, filepath.Join(out, "claude", "reviewer-b.md"), []string{"model: sonnet", "effort: medium"})
-		assertHead(t, filepath.Join(out, "claude", "reviewer-a.md"), []string{"model: opus", "effort: medium"})
+		assertHead(t, filepath.Join(out, "claude", "reviewer.md"), []string{"model: sonnet", "effort: medium"})
+		assertHead(t, filepath.Join(out, "claude", "executor.md"), []string{"model: opus", "effort: medium"})
 		assertHead(t, filepath.Join(out, "opencode", "executor.md"), []string{"model: openai/gpt-5.5", "reasoningEffort: high"})
-		assertHead(t, filepath.Join(out, "opencode", "reviewer-b.md"), []string{"model: openai/gpt-5.5", "reasoningEffort: low"})
-		assertHead(t, filepath.Join(out, "claude", "review-refuter.md"), []string{"model: haiku", "effort: low"})
+		assertHead(t, filepath.Join(out, "opencode", "reviewer.md"), []string{"model: openai/gpt-5.5", "reasoningEffort: low"})
+		assertHead(t, filepath.Join(out, "claude", "code-search.md"), []string{"model: haiku", "effort: low"})
 		if code, _, stderr := runCommand(t, "--check", config, out); code != 0 {
 			t.Fatalf("check exited %d: %s", code, stderr)
 		}
-		if !strings.Contains(stdout, "assignment: claude reviewer-b model=sonnet (role) effort=medium (client default)") ||
+		if !strings.Contains(stdout, "assignment: claude reviewer model=sonnet (role) effort=medium (client default)") ||
 			!strings.Contains(stdout, "assignment: opencode executor model=openai/gpt-5.5 (client default) effort=high (role)") {
 			t.Errorf("report = %s", stdout)
 		}
@@ -576,7 +576,7 @@ func TestAssignments(t *testing.T) {
 		before := treeOf(t, out)
 		cases := map[string]func(map[string]any){
 			"gpt-5": func(data map[string]any) {
-				data["roles"].(map[string]any)["reviewer-a"].(map[string]any)["claude"] = map[string]any{"model": "gpt-5"}
+				data["roles"].(map[string]any)["reviewer"].(map[string]any)["claude"] = map[string]any{"model": "gpt-5"}
 			},
 			"extreme": func(data map[string]any) {
 				data["clients"].(map[string]any)["claude"].(map[string]any)["effort"] = "extreme"
@@ -591,10 +591,10 @@ func TestAssignments(t *testing.T) {
 				data["clients"].(map[string]any)["opencode"] = map[string]any{"model": "anthropic/claude-opus-5", "effort": "high"}
 			},
 			"codex": func(data map[string]any) {
-				data["roles"].(map[string]any)["reviewer-a"].(map[string]any)["codex"] = map[string]any{"model": "gpt-5"}
+				data["roles"].(map[string]any)["reviewer"].(map[string]any)["codex"] = map[string]any{"model": "gpt-5"}
 			},
 			"temperature": func(data map[string]any) {
-				data["roles"].(map[string]any)["reviewer-a"].(map[string]any)["claude"] = map[string]any{"temperature": 0}
+				data["roles"].(map[string]any)["reviewer"].(map[string]any)["claude"] = map[string]any{"temperature": 0}
 			},
 			"effort": func(data map[string]any) {
 				delete(data["clients"].(map[string]any)["claude"].(map[string]any), "effort")
@@ -602,14 +602,14 @@ func TestAssignments(t *testing.T) {
 			"opencode": func(data map[string]any) {
 				delete(data["clients"].(map[string]any), "opencode")
 			},
-			"review-refuter": func(data map[string]any) {
-				data["roles"].(map[string]any)["review-refuter"].(map[string]any)["claude"] = map[string]any{"model": "gpt-5"}
+			"code-search": func(data map[string]any) {
+				data["roles"].(map[string]any)["code-search"].(map[string]any)["claude"] = map[string]any{"model": "gpt-5"}
 			},
 			"../x": func(data map[string]any) {
 				data["roles"].(map[string]any)["../x"] = map[string]any{}
 			},
-			"roles.reviewer-a.definition": func(data map[string]any) {
-				data["roles"].(map[string]any)["reviewer-a"].(map[string]any)["definition"] = 5
+			"roles.reviewer.definition": func(data map[string]any) {
+				data["roles"].(map[string]any)["reviewer"].(map[string]any)["definition"] = 5
 			},
 			"roles.executor.definition": func(data map[string]any) {
 				data["roles"].(map[string]any)["executor"].(map[string]any)["definition"] = nil
@@ -637,7 +637,7 @@ func TestAssignments(t *testing.T) {
 		dir := temp(t)
 		config := configCopy(t, dir, nil)
 		raw := readFile(t, config)
-		if err := os.WriteFile(config, []byte(strings.Replace(raw, `"roles":{`, `"roles":{"reviewer-a":{},`, 1)), 0o644); err != nil {
+		if err := os.WriteFile(config, []byte(strings.Replace(raw, `"roles":{`, `"roles":{"reviewer":{},`, 1)), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		out := filepath.Join(dir, "out")
@@ -658,19 +658,19 @@ func TestAssignments(t *testing.T) {
 			t.Fatal("generate failed")
 		}
 		data := readConfig(t, config)
-		data["roles"].(map[string]any)["reviewer-a"].(map[string]any)["claude"] = map[string]any{"model": "sonnet"}
+		data["roles"].(map[string]any)["reviewer"].(map[string]any)["claude"] = map[string]any{"model": "sonnet"}
 		encoded, _ := json.Marshal(data)
 		if err := os.WriteFile(config, encoded, 0o644); err != nil {
 			t.Fatal(err)
 		}
 		code, stdout, _ := runCommand(t, "--check", config, out)
-		if code != 1 || !strings.Contains(stdout, "changed: claude/reviewer-a.md") {
+		if code != 1 || !strings.Contains(stdout, "changed: claude/reviewer.md") {
 			t.Fatalf("check = %d, %q", code, stdout)
 		}
 		if code, _, stderr := runCommand(t, config, out); code != 0 {
 			t.Fatalf("regenerate exited %d: %s", code, stderr)
 		}
-		assertHead(t, filepath.Join(out, "claude", "reviewer-a.md"), []string{"model: sonnet"})
+		assertHead(t, filepath.Join(out, "claude", "reviewer.md"), []string{"model: sonnet"})
 	})
 
 	t.Run("assigned role without definition generates nothing", func(t *testing.T) {
@@ -688,13 +688,13 @@ func TestAssignments(t *testing.T) {
 		}
 	})
 
-	t.Run("the refuter is required", func(t *testing.T) {
+	t.Run("the reviewer is required", func(t *testing.T) {
 		dir := temp(t)
 		config := configCopy(t, dir, func(data map[string]any) {
-			delete(data["roles"].(map[string]any)["review-refuter"].(map[string]any), "definition")
+			delete(data["roles"].(map[string]any)["reviewer"].(map[string]any), "definition")
 		})
 		code, _, stderr := runCommand(t, config, filepath.Join(dir, "out"))
-		if code != 1 || !strings.Contains(stderr, "review-refuter must be assigned with a definition") {
+		if code != 1 || !strings.Contains(stderr, "reviewer must be assigned with a definition") {
 			t.Fatalf("exit %d, stderr %q", code, stderr)
 		}
 	})
@@ -707,11 +707,11 @@ func TestAssignments(t *testing.T) {
 		}
 		dir := temp(t)
 		config := configCopy(t, dir, func(data map[string]any) {
-			data["roles"].(map[string]any)["reviewer-b"].(map[string]any)["claude"] = map[string]any{"model": "sonnet", "effort": "max"}
+			data["roles"].(map[string]any)["reviewer"].(map[string]any)["claude"] = map[string]any{"model": "sonnet", "effort": "max"}
 		})
 		_, stdout, _ = runCommand(t, config, filepath.Join(dir, "out"))
-		if !strings.Contains(stdout, "unverified: claude reviewer-b model sonnet is available to this account") ||
-			!strings.Contains(stdout, "unverified: claude reviewer-b effort max is supported by its model") {
+		if !strings.Contains(stdout, "unverified: claude reviewer model sonnet is available to this account") ||
+			!strings.Contains(stdout, "unverified: claude reviewer effort max is supported by its model") {
 			t.Errorf("report = %s", stdout)
 		}
 	})
@@ -756,13 +756,13 @@ func TestCheckDetectsWideningBesideAssignments(t *testing.T) {
 	if code, _, stderr := runCommand(t, config, out); code != 0 {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
-	target := filepath.Join(out, "opencode", "reviewer-a.md")
+	target := filepath.Join(out, "opencode", "reviewer.md")
 	text := readFile(t, target)
 	if err := os.WriteFile(target, []byte(strings.Replace(text, "  \"*\": deny", "  \"*\": allow", 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	code, stdout, _ := runCommand(t, "--check", config, out)
-	if code != 1 || !strings.Contains(stdout, "widened: opencode/reviewer-a.md") {
+	if code != 1 || !strings.Contains(stdout, "widened: opencode/reviewer.md") {
 		t.Fatalf("check = %d, %q", code, stdout)
 	}
 }

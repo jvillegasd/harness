@@ -1,5 +1,6 @@
 ---
-description: Answer one bounded question with read-only investigation.
+name: ask
+description: "Answer one bounded question with read-only investigation. Use for \"what does X do\", \"why does Y happen\", \"where is Z\", or any single question about the code that needs no edits."
 argument-hint: "[question]"
 ---
 

@@ -11,7 +11,13 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-// Unguarded reports every skill absent from the lock that lacks an invocation guard, as "<name>: missing <key>". Claude Code reads `disable-model-invocation: true` at the top level and OpenCode reads `opencode/autoinvoke: "false"` under `metadata:`, so a guard anywhere else does not count. Locked bodies are exempt, because their frontmatter is upstream content.
+// mustGuard are the local skills that must never fire on a description match: merging, discarding work, producing a review, provisioning a repository, and the protocol bodies workflows read by path.
+var mustGuard = map[string]bool{
+	"land": true, "abandon": true, "adversarial-review": true, "setup-harness": true,
+	"evidence": true, "grilling": true, "grill-with-docs": true, "local-tracker": true, "workflow-checkpoint": true,
+}
+
+// Unguarded reports every skill absent from the lock whose invocation guard is required or half present, as "<name>: missing <key>". A skill in mustGuard needs both guards, and any other local skill carrying one needs the other, because a guard only one client reads fires in the other. Claude Code reads `disable-model-invocation: true` at the top level and OpenCode reads `opencode/autoinvoke: "false"` under `metadata:`, so a guard anywhere else does not count. Locked bodies are exempt, because their frontmatter is upstream content.
 func Unguarded(c checkout.Checkout) ([]string, error) {
 	lf, err := readLock(c.Lock())
 	if err != nil {
@@ -45,6 +51,9 @@ func Unguarded(c checkout.Checkout) ([]string, error) {
 			continue
 		}
 		claude, opencode := guarded(string(data))
+		if !mustGuard[e.Name()] && !claude && !opencode {
+			continue
+		}
 		if !claude {
 			problems = append(problems, e.Name()+": missing disable-model-invocation")
 		}

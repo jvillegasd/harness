@@ -35,7 +35,7 @@ func TestLaunchArgsPreparesWithoutLaunching(t *testing.T) {
 		role, client, model string
 		want                []string
 	}{
-		{"reviewer-a", "claude", "inherit", []string{"claude", "--agent", "reviewer-a"}},
+		{"reviewer", "claude", "inherit", []string{"claude", "--agent", "reviewer"}},
 		{"code-search", "claude", "inherit", []string{"claude", "--agent", "code-search"}},
 		{"executor", "opencode", "opencode-go/glm-5.3", []string{"opencode", "-m", "opencode-go/glm-5.3", "--agent", "executor"}},
 	} {
@@ -78,9 +78,9 @@ func TestLaunchArgsPreparesWithoutLaunching(t *testing.T) {
 
 func TestLaunchArgsRefusesMissingOrStaleAgent(t *testing.T) {
 	for _, tc := range []struct{ name, client, role, model, effort string }{
-		{"missing", "claude", "reviewer-a", "", ""},
-		{"model", "claude", "reviewer-a", "opus", ""},
-		{"effort", "claude", "reviewer-a", "inherit", "high"},
+		{"missing", "claude", "reviewer", "", ""},
+		{"model", "claude", "reviewer", "opus", ""},
+		{"effort", "claude", "reviewer", "inherit", "high"},
 		{"mode", "opencode", "executor", "opencode-go/glm-5.3", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -112,9 +112,9 @@ func TestOpenCodeLifecyclePluginBlocksGeneralShell(t *testing.T) {
 	script := `
  const {OrcaLifecycle} = await import(process.env.TEST_PLUGIN);
  const hooks = await OrcaLifecycle();
- const config = {agent: {'reviewer-b': {permission: {'*': 'deny', read: 'allow'}}}};
+ const config = {agent: {'reviewer': {permission: {'*': 'deny', read: 'allow'}}}};
  await hooks.config(config);
- if (config.agent['reviewer-b'].permission.bash !== 'allow' || config.agent['reviewer-b'].permission['*'] !== 'deny') throw Error('bad scope');
+ if (config.agent['reviewer'].permission.bash !== 'allow' || config.agent['reviewer'].permission['*'] !== 'deny') throw Error('bad scope');
  const before = hooks['tool.execute.before'];
  await before({tool:'bash'}, {args:{command:'orca orchestration check --terminal t --json'}});
  for (const command of ['git status', 'orca orchestration check > file', 'orca orchestration check; touch file']) {
@@ -128,14 +128,14 @@ func TestOpenCodeLifecyclePluginBlocksGeneralShell(t *testing.T) {
  if (!denied) throw Error('missing guard did not block');
  `
 	cmd := exec.Command(node, "--input-type=module", "-e", script)
-	cmd.Env = append(os.Environ(), "TEST_PLUGIN="+plugin, "HARNESS_ORCA_COMMAND=orca", "HARNESS_LIFECYCLE_GUARD="+binary, "HARNESS_LIFECYCLE_ROLE=reviewer-b")
+	cmd.Env = append(os.Environ(), "TEST_PLUGIN="+plugin, "HARNESS_ORCA_COMMAND=orca", "HARNESS_LIFECYCLE_GUARD="+binary, "HARNESS_LIFECYCLE_ROLE=reviewer")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("plugin: %v\n%s", err, output)
 	}
 }
 
 func TestClaudeLifecycleHookFailsClosed(t *testing.T) {
-	role := readFile(t, "../../internal/agents/testdata/agents/claude/reviewer-a.md")
+	role := readFile(t, "../../internal/agents/testdata/agents/claude/reviewer.md")
 	var hook string
 	for _, line := range strings.Split(role, "\n") {
 		if strings.HasPrefix(line, "          command: '") {
@@ -174,14 +174,14 @@ func TestClaudeLifecycleHookFailsClosed(t *testing.T) {
 
 func TestOpenCodeLaunchPreparesBlockingPlugin(t *testing.T) {
 	base := modelsBase(t)
-	ok(t, runModels(t, base, "set", "reviewer-b", "--client", "opencode", "--model", "openai/gpt-5.6-sol"), "set role")
-	renderAgent(t, base, "opencode", "reviewer-b", "openai/gpt-5.6-sol", "")
-	if r := runModels(t, base, "launch-args", "reviewer-b", "--orca-command", "orca"); r.code == 0 {
+	ok(t, runModels(t, base, "set", "reviewer", "--client", "opencode", "--model", "openai/gpt-5.6-sol"), "set role")
+	renderAgent(t, base, "opencode", "reviewer", "openai/gpt-5.6-sol", "")
+	if r := runModels(t, base, "launch-args", "reviewer", "--orca-command", "orca"); r.code == 0 {
 		t.Fatal("missing plugin accepted")
 	}
 	plugin := filepath.Join(base, "home", ".agents", "skills", "adversarial-review", "scripts", "orca-lifecycle.mjs")
 	writeMode(t, plugin, readFile(t, "../../skills/adversarial-review/scripts/orca-lifecycle.mjs"), 0o644)
-	r := ok(t, runModels(t, base, "launch-args", "reviewer-b", "--orca-command", "orca"), "prepare")
+	r := ok(t, runModels(t, base, "launch-args", "reviewer", "--orca-command", "orca"), "prepare")
 	var argv []string
 	if err := json.Unmarshal([]byte(r.stdout), &argv); err != nil {
 		t.Fatal(err)

@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 export const OrcaLifecycle = async () => ({
   config: async (config) => {
     const role = process.env.HARNESS_LIFECYCLE_ROLE;
-    if (!['reviewer-a', 'reviewer-b', 'review-refuter', 'code-search'].includes(role)) {
+    if (!['reviewer', 'code-search'].includes(role)) {
       throw new Error('Missing read-only role identity');
     }
     const agent = config.agent?.[role];

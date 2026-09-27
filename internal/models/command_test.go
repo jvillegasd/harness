@@ -23,12 +23,12 @@ func TestSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
 	listingPath(t)
 	const seed = `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}` + "\n"
 	for name, args := range map[string][]string{
-		"unknown opencode id":      {"reviewer-b", "--client", "opencode", "--model", "openai/nope"},
-		"unknown claude alias":     {"reviewer-b", "--client", "claude", "--model", "claudius"},
-		"unsupported haiku effort": {"reviewer-b", "--client", "claude", "--model", "haiku", "--effort", "high"},
+		"unknown opencode id":      {"reviewer", "--client", "opencode", "--model", "openai/nope"},
+		"unknown claude alias":     {"reviewer", "--client", "claude", "--model", "claudius"},
+		"unsupported haiku effort": {"reviewer", "--client", "claude", "--model", "haiku", "--effort", "high"},
 		"unknown role":             {"planner", "--client", "claude", "--model", "opus"},
 		"unknown preset":           {"--preset", "lavish"},
-		"unknown client":           {"reviewer-b", "--client", "cursor", "--model", "opus"},
+		"unknown client":           {"reviewer", "--client", "cursor", "--model", "opus"},
 	} {
 		path := filepath.Join(t.TempDir(), "state.json")
 		if err := os.WriteFile(path, []byte(seed), 0o644); err != nil {
@@ -78,7 +78,23 @@ func TestSetAcceptsSonnetXhigh(t *testing.T) {
 	if err := os.WriteFile(path, []byte(`{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}`+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := run(path, []string{"set", "reviewer-b", "--client", "claude", "--model", "sonnet", "--effort", "xhigh"}, &strings.Builder{}); err != nil {
+	if err := run(path, []string{"set", "reviewer", "--client", "claude", "--model", "sonnet", "--effort", "xhigh"}, &strings.Builder{}); err != nil {
 		t.Fatalf("set sonnet xhigh: %v", err)
+	}
+}
+
+// TestLoadDropsRetiredRoleOverrides keeps an install working after the reviewers merged: an override for a retired role is dropped, and a live one is kept.
+func TestLoadDropsRetiredRoleOverrides(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	block := `{"roles": {"reviewer-b": {"client": "claude", "model": "opus"}, "review-refuter": {"client": "claude", "model": "opus"}, "reviewer": {"client": "claude", "model": "sonnet"}}}`
+	if err := os.WriteFile(path, []byte(`{"version": 1, "installed": {}, "files": [], "models": `+block+"}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Roles) != 1 || c.Roles["reviewer"].Model != "sonnet" {
+		t.Errorf("Roles = %v, want only the reviewer override", c.Roles)
 	}
 }

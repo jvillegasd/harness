@@ -26,10 +26,6 @@ F .claude/agents/mine.md
   |private agent
   |
 L .claude/agents/retired.md -> $CHECKOUT/.generated/agents/claude/retired.md
-D .claude/commands
-L .claude/commands/foreign.md -> /nonexistent/foreign.md
-L .claude/commands/renamed.md -> $CHECKOUT/commands/ship.md
-L .claude/commands/retired.md -> $CHECKOUT/commands/retired.md
 D .claude/mcp
 F .claude/settings.json
   |{
@@ -51,17 +47,19 @@ F .claude/settings.json
   |}
   |
 D .claude/skills
+L .claude/skills/foreign -> /nonexistent/foreign
 D .claude/skills/mine
 F .claude/skills/mine/SKILL.md
   |private skill
   |
+L .claude/skills/renamed -> $CHECKOUT/skills/ship
+L .claude/skills/retired -> $CHECKOUT/skills/retired
 F .claude.json
   |{"mcpServers": {"other": {}}}
   |
 D .config
 D .config/opencode
 D .config/opencode/agents
-D .config/opencode/command
 F .config/opencode/opencode.json
   |{
   |  "$schema": "https://opencode.ai/config.json",
@@ -102,8 +100,6 @@ D .dotfiles-backups/harness/<stamp>/.claude
 F .dotfiles-backups/harness/<stamp>/.claude/CLAUDE.md
   |a hand-written policy
   |
-D .dotfiles-backups/harness/<stamp>/.claude/commands
-L .dotfiles-backups/harness/<stamp>/.claude/commands/ship.md -> $CHECKOUT/commands/ship.md
 F .dotfiles-backups/harness/<stamp>/.claude/settings.json.pre-reconcile
   |{
   |  "env": {
@@ -130,9 +126,10 @@ F .dotfiles-backups/harness/<stamp>/.claude/settings.json.pre-reconcile
   |  }
   |}
   |
+D .dotfiles-backups/harness/<stamp>/.claude/skills
+L .dotfiles-backups/harness/<stamp>/.claude/skills/ship -> $CHECKOUT/skills/ship
 D .dotfiles-backups/harness/<stamp>/.config
 D .dotfiles-backups/harness/<stamp>/.config/opencode
-L .dotfiles-backups/harness/<stamp>/.config/opencode/command.previous-link -> $BASE/elsewhere
 D .dotfiles-backups/harness/<stamp>/.config/opencode/skills
 D .dotfiles-backups/harness/<stamp>/.config/opencode/skills/grilling
 F .dotfiles-backups/harness/<stamp>/.config/opencode/skills/grilling/SKILL.md

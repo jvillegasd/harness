@@ -114,7 +114,7 @@ func sandbox(t *testing.T) string {
 		t.Fatal(err)
 	}
 	root := filepath.Join("..", "..")
-	out, err := exec.Command("git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "POLICY.md", "aliases.sh", "bench", "clients", "commands", "roles", "skills", "skills-lock.json", "cmd", "internal", "go.mod", "go.sum").Output()
+	out, err := exec.Command("git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "POLICY.md", "aliases.sh", "bench", "clients", "roles", "skills", "skills-lock.json", "cmd", "internal", "go.mod", "go.sum").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,18 +223,13 @@ func seedLived(t *testing.T, base string) {
 	} {
 		writeMode(t, filepath.Join(home, rel), text, 0o644)
 	}
-	elsewhere := filepath.Join(base, "elsewhere")
-	if err := os.MkdirAll(elsewhere, 0o755); err != nil {
-		t.Fatal(err)
-	}
 	for rel, target := range map[string]string{
-		".claude/commands/retired.md": checkoutRoot + "/commands/retired.md",
-		".claude/commands/renamed.md": checkoutRoot + "/commands/ship.md",
+		".claude/skills/retired": checkoutRoot + "/skills/retired",
+		".claude/skills/renamed": checkoutRoot + "/skills/ship",
 		// A link an install from before the copies left at a managed path: archived, then replaced by a copy.
-		".claude/commands/ship.md":    checkoutRoot + "/commands/ship.md",
-		".claude/commands/foreign.md": "/nonexistent/foreign.md",
-		".claude/agents/retired.md":   checkoutRoot + "/.generated/agents/claude/retired.md",
-		".config/opencode/command":    elsewhere,
+		".claude/skills/ship":       checkoutRoot + "/skills/ship",
+		".claude/skills/foreign":    "/nonexistent/foreign",
+		".claude/agents/retired.md": checkoutRoot + "/.generated/agents/claude/retired.md",
 	} {
 		path := filepath.Join(home, rel)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

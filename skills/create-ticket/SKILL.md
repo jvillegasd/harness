@@ -1,5 +1,6 @@
 ---
-description: Slice an approved spec into linked tickets, or promote it in place when it yields one slice.
+name: create-ticket
+description: "Slice an approved spec into linked tickets, or promote it in place when it yields one slice. Use for \"break this into tickets\", \"slice this\", or after a spec is approved."
 argument-hint: "[spec path, issue number, or URL]"
 ---
 

@@ -24,7 +24,7 @@ const stateVersion = 1
 
 var (
 	allClients    = []string{"claude", "opencode"}
-	allComponents = []string{"agents", "aliases", "commands", "mcp", "policy", "settings", "skills"}
+	allComponents = []string{"agents", "aliases", "mcp", "policy", "settings", "skills"}
 )
 
 // supports reports whether a client has the component at all; the tracked settings are Claude Code's alone.
@@ -185,10 +185,6 @@ func (in *installer) desired() []entry {
 		source := filepath.Join(in.dir.Skills(), skill)
 		add(source, filepath.Join(in.home, ".agents", "skills", skill), "skills", "claude", "opencode")
 		add(source, filepath.Join(in.home, ".claude", "skills", skill), "skills", "claude")
-	}
-	for _, command := range in.commands() {
-		add(command, filepath.Join(in.home, ".claude", "commands", filepath.Base(command)), "commands", "claude")
-		add(command, filepath.Join(in.config, "opencode", "command", filepath.Base(command)), "commands", "opencode")
 	}
 	add(in.dir.Policy(), filepath.Join(in.home, ".claude", "CLAUDE.md"), "policy", "claude")
 	add(in.dir.Policy(), filepath.Join(in.config, "opencode", "AGENTS.md"), "policy", "opencode")

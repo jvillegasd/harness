@@ -24,7 +24,7 @@ func newLockRun(t *testing.T) lockRun {
 		shims: filepath.Join(base, "shims"),
 		home:  filepath.Join(base, "home"),
 	}
-	for _, dir := range []string{"skills", "commands", ".claude/skills"} {
+	for _, dir := range []string{"skills", ".claude/skills"} {
 		if err := os.MkdirAll(filepath.Join(lr.root, dir), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -164,9 +164,6 @@ func TestSkillsAddRefusesBeforeNpx(t *testing.T) {
 		{"existing skill path", []string{"skills", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
 			os.MkdirAll(filepath.Join(lr.root, "skills/myskill"), 0o755)
 		}, "skill path already exists"},
-		{"existing command", []string{"skills", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
-			writeMode(t, filepath.Join(lr.root, "commands/myskill.md"), "x\n", 0o644)
-		}, "command name already exists"},
 		{"existing claude path", []string{"skills", "add", "owner/repo", "myskill"}, func(t *testing.T, lr lockRun) {
 			writeMode(t, filepath.Join(lr.root, ".claude/skills/myskill"), "x\n", 0o644)
 		}, "claude path already exists"},

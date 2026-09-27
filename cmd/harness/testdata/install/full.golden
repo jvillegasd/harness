@@ -22,46 +22,43 @@ claude plugin validate $BASE/tmp/harness-assets-<n>/skills <>
 == home
 D .agents
 D .agents/skills
+C .agents/skills/abandon
+C .agents/skills/address-review
 C .agents/skills/adversarial-review
+C .agents/skills/ask
 C .agents/skills/caveman-commit
 C .agents/skills/codebase-design
+C .agents/skills/create-ticket
 C .agents/skills/diagnosing-bugs
 C .agents/skills/domain-modeling
 C .agents/skills/evidence
+C .agents/skills/feedback
 C .agents/skills/grill-with-docs
 C .agents/skills/grilling
 C .agents/skills/handoff
+C .agents/skills/harness-audit
 C .agents/skills/impeccable
 C .agents/skills/improve-codebase-architecture
+C .agents/skills/land
 C .agents/skills/local-tracker
 C .agents/skills/orchestration
 C .agents/skills/ponytail
+C .agents/skills/proto
+C .agents/skills/research
 C .agents/skills/resolving-merge-conflicts
 C .agents/skills/security-audit
 C .agents/skills/setup-harness
+C .agents/skills/ship
+C .agents/skills/spec
 C .agents/skills/tdd
+C .agents/skills/triage
 C .agents/skills/workflow-checkpoint
 D .claude
 C .claude/CLAUDE.md
 D .claude/agents
 C .claude/agents/code-search.md
 C .claude/agents/executor.md
-C .claude/agents/review-refuter.md
-C .claude/agents/reviewer-a.md
-C .claude/agents/reviewer-b.md
-D .claude/commands
-C .claude/commands/abandon.md
-C .claude/commands/address-review.md
-C .claude/commands/ask.md
-C .claude/commands/create-ticket.md
-C .claude/commands/feedback.md
-C .claude/commands/harness-audit.md
-C .claude/commands/land.md
-C .claude/commands/proto.md
-C .claude/commands/research.md
-C .claude/commands/ship.md
-C .claude/commands/spec.md
-C .claude/commands/triage.md
+C .claude/agents/reviewer.md
 D .claude/mcp
 F .claude/mcp/engram.json
   |{}
@@ -113,24 +110,36 @@ F .claude/settings.json
   |}
   |
 D .claude/skills
+C .claude/skills/abandon
+C .claude/skills/address-review
 C .claude/skills/adversarial-review
+C .claude/skills/ask
 C .claude/skills/caveman-commit
 C .claude/skills/codebase-design
+C .claude/skills/create-ticket
 C .claude/skills/diagnosing-bugs
 C .claude/skills/domain-modeling
 C .claude/skills/evidence
+C .claude/skills/feedback
 C .claude/skills/grill-with-docs
 C .claude/skills/grilling
 C .claude/skills/handoff
+C .claude/skills/harness-audit
 C .claude/skills/impeccable
 C .claude/skills/improve-codebase-architecture
+C .claude/skills/land
 C .claude/skills/local-tracker
 C .claude/skills/orchestration
 C .claude/skills/ponytail
+C .claude/skills/proto
+C .claude/skills/research
 C .claude/skills/resolving-merge-conflicts
 C .claude/skills/security-audit
 C .claude/skills/setup-harness
+C .claude/skills/ship
+C .claude/skills/spec
 C .claude/skills/tdd
+C .claude/skills/triage
 C .claude/skills/workflow-checkpoint
 D .config
 D .config/opencode
@@ -138,22 +147,7 @@ C .config/opencode/AGENTS.md
 D .config/opencode/agents
 C .config/opencode/agents/code-search.md
 C .config/opencode/agents/executor.md
-C .config/opencode/agents/review-refuter.md
-C .config/opencode/agents/reviewer-a.md
-C .config/opencode/agents/reviewer-b.md
-D .config/opencode/command
-C .config/opencode/command/abandon.md
-C .config/opencode/command/address-review.md
-C .config/opencode/command/ask.md
-C .config/opencode/command/create-ticket.md
-C .config/opencode/command/feedback.md
-C .config/opencode/command/harness-audit.md
-C .config/opencode/command/land.md
-C .config/opencode/command/proto.md
-C .config/opencode/command/research.md
-C .config/opencode/command/ship.md
-C .config/opencode/command/spec.md
-C .config/opencode/command/triage.md
+C .config/opencode/agents/reviewer.md
 F .config/opencode/opencode.json
   |{
   |  "mcp": {
@@ -186,7 +180,6 @@ F .harness/state.json
   |    "claude": [
   |      "agents",
   |      "aliases",
-  |      "commands",
   |      "mcp",
   |      "policy",
   |      "settings",
@@ -195,13 +188,46 @@ F .harness/state.json
   |    "opencode": [
   |      "agents",
   |      "aliases",
-  |      "commands",
   |      "mcp",
   |      "policy",
   |      "skills"
   |    ]
   |  },
   |  "files": [
+  |    {
+  |      "path": "$HOME/.agents/skills/abandon",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/abandon",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.agents/skills/address-review",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/address-review",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
   |    {
   |      "path": "$HOME/.agents/skills/adversarial-review",
   |      "component": "skills",
@@ -213,6 +239,23 @@ F .harness/state.json
   |    },
   |    {
   |      "path": "$HOME/.claude/skills/adversarial-review",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.agents/skills/ask",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/ask",
   |      "component": "skills",
   |      "clients": [
   |        "claude"
@@ -247,6 +290,23 @@ F .harness/state.json
   |    },
   |    {
   |      "path": "$HOME/.claude/skills/codebase-design",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.agents/skills/create-ticket",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/create-ticket",
   |      "component": "skills",
   |      "clients": [
   |        "claude"
@@ -305,6 +365,23 @@ F .harness/state.json
   |      "sha256": "sha256:<digest>"
   |    },
   |    {
+  |      "path": "$HOME/.agents/skills/feedback",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/feedback",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
   |      "path": "$HOME/.agents/skills/grill-with-docs",
   |      "component": "skills",
   |      "clients": [
@@ -356,6 +433,23 @@ F .harness/state.json
   |      "sha256": "sha256:<digest>"
   |    },
   |    {
+  |      "path": "$HOME/.agents/skills/harness-audit",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/harness-audit",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
   |      "path": "$HOME/.agents/skills/impeccable",
   |      "component": "skills",
   |      "clients": [
@@ -383,6 +477,23 @@ F .harness/state.json
   |    },
   |    {
   |      "path": "$HOME/.claude/skills/improve-codebase-architecture",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.agents/skills/land",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/land",
   |      "component": "skills",
   |      "clients": [
   |        "claude"
@@ -441,6 +552,40 @@ F .harness/state.json
   |      "sha256": "sha256:<digest>"
   |    },
   |    {
+  |      "path": "$HOME/.agents/skills/proto",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/proto",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.agents/skills/research",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/research",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
   |      "path": "$HOME/.agents/skills/resolving-merge-conflicts",
   |      "component": "skills",
   |      "clients": [
@@ -492,6 +637,40 @@ F .harness/state.json
   |      "sha256": "sha256:<digest>"
   |    },
   |    {
+  |      "path": "$HOME/.agents/skills/ship",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/ship",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.agents/skills/spec",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/spec",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
   |      "path": "$HOME/.agents/skills/tdd",
   |      "component": "skills",
   |      "clients": [
@@ -502,6 +681,23 @@ F .harness/state.json
   |    },
   |    {
   |      "path": "$HOME/.claude/skills/tdd",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.agents/skills/triage",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/triage",
   |      "component": "skills",
   |      "clients": [
   |        "claude"
@@ -522,198 +718,6 @@ F .harness/state.json
   |      "component": "skills",
   |      "clients": [
   |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/commands/abandon.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/command/abandon.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "opencode"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/commands/address-review.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/command/address-review.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "opencode"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/commands/ask.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/command/ask.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "opencode"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/commands/create-ticket.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/command/create-ticket.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "opencode"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/commands/feedback.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/command/feedback.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "opencode"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/commands/harness-audit.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/command/harness-audit.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "opencode"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/commands/land.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/command/land.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "opencode"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/commands/proto.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/command/proto.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "opencode"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/commands/research.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/command/research.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "opencode"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/commands/ship.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/command/ship.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "opencode"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/commands/spec.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/command/spec.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "opencode"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/commands/triage.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/command/triage.md",
-  |      "component": "commands",
-  |      "clients": [
-  |        "opencode"
   |      ],
   |      "sha256": "sha256:<digest>"
   |    },
@@ -750,23 +754,7 @@ F .harness/state.json
   |      "sha256": "sha256:<digest>"
   |    },
   |    {
-  |      "path": "$HOME/.claude/agents/review-refuter.md",
-  |      "component": "agents",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/agents/reviewer-a.md",
-  |      "component": "agents",
-  |      "clients": [
-  |        "claude"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.claude/agents/reviewer-b.md",
+  |      "path": "$HOME/.claude/agents/reviewer.md",
   |      "component": "agents",
   |      "clients": [
   |        "claude"
@@ -790,23 +778,7 @@ F .harness/state.json
   |      "sha256": "sha256:<digest>"
   |    },
   |    {
-  |      "path": "$HOME/.config/opencode/agents/review-refuter.md",
-  |      "component": "agents",
-  |      "clients": [
-  |        "opencode"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/agents/reviewer-a.md",
-  |      "component": "agents",
-  |      "clients": [
-  |        "opencode"
-  |      ],
-  |      "sha256": "sha256:<digest>"
-  |    },
-  |    {
-  |      "path": "$HOME/.config/opencode/agents/reviewer-b.md",
+  |      "path": "$HOME/.config/opencode/agents/reviewer.md",
   |      "component": "agents",
   |      "clients": [
   |        "opencode"

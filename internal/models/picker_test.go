@@ -84,7 +84,7 @@ func TestPickerPresetStoresWhatSetStores(t *testing.T) {
 
 func TestPickerCustomOverridesRole(t *testing.T) {
 	p := choose(t, newPicker(nil, nil), "custom")
-	p = choose(t, p, "reviewer-b")
+	p = choose(t, p, "reviewer")
 	p = choose(t, p, "claude")
 	p = choose(t, p, "sonnet")
 	if got := p.options(); !slices.Equal(got, claudeEfforts["sonnet"]) {
@@ -97,10 +97,10 @@ func TestPickerCustomOverridesRole(t *testing.T) {
 		t.Fatalf("save wrote=%v err=%v", wrote, err)
 	}
 	out := show(t, path)
-	if !strings.Contains(out, "reviewer-b client=claude model=sonnet effort=high (override)") {
+	if !strings.Contains(out, "reviewer client=claude model=sonnet effort=high (override)") {
 		t.Errorf("override not stored:\n%s", out)
 	}
-	if !strings.Contains(out, "reviewer-a client=claude model=inherit effort=inherit (preset:balanced)") {
+	if !strings.Contains(out, "code-search client=claude model=inherit effort=inherit (preset:balanced)") {
 		t.Errorf("override leaked into another role:\n%s", out)
 	}
 }

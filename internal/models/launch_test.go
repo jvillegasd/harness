@@ -21,7 +21,7 @@ func TestClaudeExecutorArgvKeepsTheParentsActions(t *testing.T) {
 
 // A reviewer holds no shell, so nothing is subtracted from its launch.
 func TestReviewerArgvCarriesNoDenies(t *testing.T) {
-	if got := launchArgs("reviewer-a", Assignment{Client: "claude", Model: "inherit"}); !reflect.DeepEqual(got, []string{"claude", "--agent", "reviewer-a"}) {
+	if got := launchArgs("reviewer", Assignment{Client: "claude", Model: "inherit"}); !reflect.DeepEqual(got, []string{"claude", "--agent", "reviewer"}) {
 		t.Fatalf("argv = %v", got)
 	}
 }

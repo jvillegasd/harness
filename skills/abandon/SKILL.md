@@ -1,6 +1,10 @@
 ---
-description: Release an abandoned attempt or reconcile explicitly cancelled scope, then retire its worktree.
+name: abandon
+description: "Release an abandoned attempt or reconcile explicitly cancelled scope, then retire its worktree. Invoke only by name: \"abandon this\", \"this spike is dead\", \"the PR was closed without merging\", \"release the ticket\"."
 argument-hint: "[ticket id, branch, or pull request number; omit to detect]"
+disable-model-invocation: true
+metadata:
+  opencode/autoinvoke: "false"
 ---
 
 Close the lifecycle for work that will not land.

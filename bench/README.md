@@ -29,7 +29,7 @@ Eight per session, each a median across the cohort. The first three are cost, th
 | `turns` | Human turns. A tool result, either shape of slash-command entry, a `<task-notification>`, local-command stdout, an `isMeta` caveat, an injected `<system-reminder>` and an interrupt marker are all the client writing to its own transcript, and none is a turn. |
 | `tool_calls` | Tool invocations the assistant made. |
 | `minutes` | First stamped entry to last. |
-| `commands` | Slash-command invocations, so routing adoption is visible: `POLICY.md` is mostly a routing table. |
+| `commands` | Slash-command invocations, including workflow skills invoked as `/name`, so explicit routing adoption is visible. |
 | `delegation` | Messages the session's subagents produced. `POLICY.md` names subagent overspawn as a failure mode. A role dispatched through Orca runs as a session of its own rather than a subagent, so it never reaches this metric and instead joins the population every median is taken over. |
 | `interrupts` | Times a human stopped a run. |
 | `denials` | Times a human refused a tool call. |

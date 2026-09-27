@@ -11,13 +11,11 @@ package agents
 
 import "errors"
 
-// adversarial-review launches the reviewers and the refuter, /triage and /research launch code-search, and POLICY.md names the executor, so each must exist with exactly this access. Every other role is read-search: only the executor may implement.
+// adversarial-review launches the reviewer, triage and research launch code-search, and POLICY.md names the executor, so each must exist with exactly this access. Every other role is read-search: only the executor may implement.
 var required = map[string]string{
-	"executor":       "implement",
-	"code-search":    "read-search",
-	"review-refuter": "read-search",
-	"reviewer-a":     "read-search",
-	"reviewer-b":     "read-search",
+	"executor":    "implement",
+	"code-search": "read-search",
+	"reviewer":    "read-search",
 }
 
 // Documented agent frontmatter values: https://code.claude.com/docs/en/sub-agents (model, effort) and https://opencode.ai/docs/agents/ (model, plus provider options such as OpenAI's reasoningEffort). OpenCode passes effort to the provider, so it is accepted only beside an openai/ model.
@@ -35,7 +33,7 @@ var claudeControls = map[string][]string{
 	"implement":   {"disallowedTools: Agent"},
 }
 
-// OpenCode appends an agent's rules after its defaults and the last matching rule wins. A reviewer denies every permission and re-allows only reading, keeping the default .env guard a bare `read: allow` would override; whether MCP tools resolve through the same wildcard is unverified. The executor keeps the defaults and denies delegation plus the commit, push, worktree, and forge commands its parent owns.
+// OpenCode appends an agent's rules after its defaults and the last matching rule wins. A read-search role denies every permission and re-allows only reading, keeping the default .env guard a bare `read: allow` would override; whether MCP tools resolve through the same wildcard is unverified. The executor keeps the defaults and denies delegation plus the commit, push, worktree, and forge commands its parent owns.
 var opencodeControls = map[string]string{
 	"read-search": "permission:\n" +
 		"  \"*\": deny\n" +
