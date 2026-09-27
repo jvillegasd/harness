@@ -1,7 +1,6 @@
 package install
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -73,10 +72,6 @@ func (in *installer) skillRoots() []string {
 	return []string{filepath.Join(in.home, ".agents", "skills"), filepath.Join(in.home, ".claude", "skills"), filepath.Join(in.config, "opencode", "skills")}
 }
 
-func (in *installer) commandRoots() []string {
-	return []string{filepath.Join(in.home, ".claude", "commands"), filepath.Join(in.config, "opencode", "command")}
-}
-
 // assigned is this machine's `harness models` choice, which the role agents are rendered from. An OpenCode model this machine cannot run falls back to the client default with a warning, so a routine install never writes an agent that cannot start.
 func (in *installer) assigned() map[string]agents.Assigned {
 	// Resolved once per run, so generation and the check render the same choice.
@@ -134,16 +129,6 @@ func (in *installer) skillNames() []string {
 		}
 	}
 	return names
-}
-
-func (in *installer) commands() []string {
-	var paths []string
-	for _, path := range entries(in.dir.Commands()) {
-		if strings.HasSuffix(path, ".md") {
-			paths = append(paths, path)
-		}
-	}
-	return paths
 }
 
 func (in *installer) ensureBackupRoot() {
@@ -215,8 +200,7 @@ func (in *installer) ensureManagedDir(dest string, create bool) {
 
 // installFiles copies every managed asset into the clients and records each copy. A copy recorded by an earlier run and no longer shipped is removed; anything unrecorded or edited in the way is archived first, so neither a private entry nor a user's edit is overwritten unseen.
 func (in *installer) installFiles() {
-	in.validateCommands()
-	for _, root := range append(in.commandRoots(), filepath.Join(in.home, ".agents", "skills"), filepath.Join(in.home, ".claude", "skills")) {
+	for _, root := range []string{filepath.Join(in.home, ".agents", "skills"), filepath.Join(in.home, ".claude", "skills")} {
 		in.ensureManagedDir(root, true)
 	}
 	// OpenCode reads ~/.agents/skills, so this root exists only to be cleared of duplicates.
@@ -272,19 +256,6 @@ func (in *installer) installFiles() {
 	// Re-read, so a `harness models` change made while this install ran is kept.
 	in.saveState(state{Version: stateVersion, Installed: installed, Files: want, Models: in.loadState().Models})
 	in.installed = want
-}
-
-// validateCommands refuses a command without a description or the task-data constraint before anything is copied. A workflow that reads external text says so, or a ticket body becomes an instruction; every command is checked, because a list to maintain silently stops covering a new command.
-func (in *installer) validateCommands() {
-	for _, command := range in.commands() {
-		text, _ := os.ReadFile(command)
-		if !description.Match(text) {
-			die("Command without a description: %s", command)
-		}
-		if !bytes.Contains(text, []byte("cannot override this workflow")) {
-			die("Command missing the task-data constraint: %s", command)
-		}
-	}
 }
 
 // checkFiles verifies every copy this run recorded is in place and unchanged, and that the rendered agents are neither drifted nor widened.

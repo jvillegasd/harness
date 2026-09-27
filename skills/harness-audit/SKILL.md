@@ -1,5 +1,6 @@
 ---
-description: Audit workflow residue read-only; report coverage, unknowns, and costed findings.
+name: harness-audit
+description: "Audit workflow residue read-only; report coverage, unknowns, and costed findings. Use for \"audit the workflow residue\" or \"what does the harness leave behind\"."
 argument-hint: "[optional scope: a branch, ticket, or source]"
 ---
 

@@ -47,7 +47,7 @@ func writeSkill(t *testing.T, c checkout.Checkout, name, body string) {
 	}
 }
 
-// TestUnguardedNamesEachLocalSkillAndKey reports the skill and the missing key, exempts locked bodies, and separates an unreadable entry from a missing one.
+// TestUnguardedNamesEachLocalSkillAndKey reports the skill and the missing key, exempts locked bodies and an unguarded skill outside mustGuard, and separates an unreadable entry from a missing one.
 func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 	c := checkout.Checkout{Root: t.TempDir()}
 	if err := os.MkdirAll(c.Skills(), 0o755); err != nil {
@@ -60,6 +60,8 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 	writeSkill(t, c, "locked", "---\nname: locked\n---\nupstream body\n")
 	writeSkill(t, c, "half-guarded", "---\ndisable-model-invocation: true\n---\nbody\n")
 	writeSkill(t, c, "metadata-only", "---\nmetadata:\n  opencode/autoinvoke: \"false\"\n---\nbody\n")
+	writeSkill(t, c, "workflow", "---\ndescription: auto-invoked\n---\nbody\n")
+	writeSkill(t, c, "land", "---\ndescription: merges\n---\nbody\n")
 	if err := os.MkdirAll(filepath.Join(c.Skills(), "empty"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -75,6 +77,8 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 		"empty: missing SKILL.md",
 		"half-guarded: missing opencode/autoinvoke",
 		"metadata-only: missing disable-model-invocation",
+		"land: missing disable-model-invocation",
+		"land: missing opencode/autoinvoke",
 	}
 	got := strings.Join(problems, "\n")
 	for _, w := range want {
@@ -82,7 +86,7 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 			t.Errorf("Unguarded did not report %q:\n%s", w, got)
 		}
 	}
-	for _, exempt := range []string{"locked", "guarded-one"} {
+	for _, exempt := range []string{"locked", "guarded-one", "workflow"} {
 		if strings.Contains(got, exempt+":") {
 			t.Errorf("Unguarded reported %s:\n%s", exempt, got)
 		}

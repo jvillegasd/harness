@@ -1,6 +1,10 @@
 ---
-description: Land a reviewed pull request: squash merge it when it is still open, then reconcile the tracker and retire the worktree.
+name: land
+description: "Land a reviewed pull request: squash merge it when it is still open, then reconcile the tracker and retire the worktree. Invoke only by name, never by routing: \"merge it\", \"the PR merged, clean up\"."
 argument-hint: "[pull request number or ticket id; omit to detect. Invoking authorizes squash merge if open.]"
+disable-model-invocation: true
+metadata:
+  opencode/autoinvoke: "false"
 ---
 
 Close the lifecycle for work that is ready to land.

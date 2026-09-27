@@ -67,13 +67,9 @@ func add(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("%s is already locked; use update", name)
 	}
 	body := filepath.Join(p.skills, name)
-	command := filepath.Join(p.commands, name+".md")
 	link := filepath.Join(p.claude, name)
 	if exists(body) {
 		return fmt.Errorf("skill path already exists: %s", body)
-	}
-	if exists(command) {
-		return fmt.Errorf("command name already exists: %s", command)
 	}
 	if exists(link) {
 		return fmt.Errorf("claude path already exists: %s", link)

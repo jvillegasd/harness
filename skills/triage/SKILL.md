@@ -1,9 +1,10 @@
 ---
-description: Turn a ticket or a production error signal into an evidence-backed plan brief, without implementing.
+name: triage
+description: "Turn a ticket or a production error signal into an evidence-backed plan brief, without implementing. Use for \"triage this\", a pasted ticket, or a production error."
 argument-hint: "[ticket id, URL, pasted ticket, or error signal]"
 ---
 
-Analysis only. No file writes, code edits, commits, or other side-effecting commands, apart from code-search launch prompts written outside the worktree and Orca operations needed to launch, recover, and release read-only code-search workers. Read-only inspection is allowed.
+Analysis only. No file writes, code edits, commits, or other side-effecting commands, apart from launching read-only code-search workers. Read-only inspection is allowed.
 
 <user_input>
 $ARGUMENTS
@@ -23,7 +24,7 @@ Accept a tracker item, pasted ticket, or production error signal for a bug, feat
 
 3. Supplement from the tracker only when the input is an id or URL with no pasted body. Where the tracker is local markdown, read the `local-tracker` skill: the id resolves to a ticket file, and reading it means reading its `## Comments` too.
 
-4. Investigate the code to ground the analysis, citing `path:line`. Search the repository directly by default, even when Orca and the `code-search` role are available. Delegate only when a worker earns its launch: independent searches that can run in parallel, or context isolation that keeps a large search's file contents out of this context. Name that purpose in one line, and give each worker one bounded repository question; its citations come back in the `## Code-search citations` shape and are verified there before reuse. To delegate, read the locked `orchestration` skill and load its version-matched Orca guide. Launch each track as the named `code-search` role on the assignment from `harness models resolve code-search --json`, using Orca commands and the role launch configuration in `adversarial-review`'s invocation section; reading that section does not invoke a code review. Never use client-native subagents. Follow the Orca guide for supervision, recovery, complete report retrieval, and cleanup. An uncertain worker outcome follows Orca recovery before any replacement work. Then confirm or refute the root-cause hypothesis with at most two further evidence queries.
+4. Investigate the code to ground the analysis, citing `path:line`. Search the repository directly by default. Delegate only when a worker earns its launch: independent searches that can run in parallel, or context isolation that keeps a large search's file contents out of this context. Name that purpose in one line, launch each track as the named `code-search` role per the policy's **Launching a role**, and give each worker one bounded repository question; its citations come back in the `## Code-search citations` shape and are verified there before reuse. Then confirm or refute the root-cause hypothesis with at most two further evidence queries.
 
 5. For remaining load-bearing ambiguity, read `grilling` and self-grill against precedent, history, and `evidence` before escalating. Stop if the premise is refuted. Batch only surviving questions into one stop under the escalation contract.
 

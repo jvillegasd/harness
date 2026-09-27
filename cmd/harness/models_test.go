@@ -30,9 +30,8 @@ func TestModelsShowDefaultsToBalanced(t *testing.T) {
 	r := ok(t, runModels(t, base, "show"), "models show")
 	for _, want := range []string{
 		"executor client=opencode model=opencode-go/glm-5.3 effort=inherit (preset:balanced)",
-		"reviewer-a client=claude model=inherit effort=inherit (preset:balanced)",
-		"reviewer-b client=claude model=inherit effort=inherit (preset:balanced)",
-		"review-refuter client=claude model=inherit effort=inherit (preset:balanced)",
+		"code-search client=claude model=inherit effort=inherit (preset:balanced)",
+		"reviewer client=claude model=inherit effort=inherit (preset:balanced)",
 	} {
 		if !strings.Contains(r.stdout, want) {
 			t.Errorf("show lacks %q:\n%s", want, r.stdout)
@@ -58,7 +57,7 @@ func TestModelsSetPresetKeepsOtherStateKeys(t *testing.T) {
 	writeMode(t, stateFile(base), `{"version": 1, "installed": {"claude": ["policy"]}, "files": []}`+"\n", 0o644)
 	ok(t, runModels(t, base, "set", "--preset", "diversity"), "set preset")
 	r := ok(t, runModels(t, base, "show"), "models show")
-	if !strings.Contains(r.stdout, "reviewer-b client=opencode model=openai/gpt-5.6-sol effort=inherit (preset:diversity)") {
+	if !strings.Contains(r.stdout, "reviewer client=opencode model=openai/gpt-5.6-sol effort=inherit (preset:diversity)") {
 		t.Errorf("show does not report diversity:\n%s", r.stdout)
 	}
 	var s map[string]any
@@ -72,12 +71,12 @@ func TestModelsSetPresetKeepsOtherStateKeys(t *testing.T) {
 
 func TestModelsSetRoleOverridesOnlyThatRole(t *testing.T) {
 	base := modelsBase(t)
-	ok(t, runModels(t, base, "set", "reviewer-b", "--client", "opencode", "--model", "openai/gpt-5.6-sol"), "set role")
+	ok(t, runModels(t, base, "set", "reviewer", "--client", "opencode", "--model", "openai/gpt-5.6-sol"), "set role")
 	r := ok(t, runModels(t, base, "show"), "models show")
-	if !strings.Contains(r.stdout, "reviewer-b client=opencode model=openai/gpt-5.6-sol effort=inherit (override)") {
+	if !strings.Contains(r.stdout, "reviewer client=opencode model=openai/gpt-5.6-sol effort=inherit (override)") {
 		t.Errorf("override not reported:\n%s", r.stdout)
 	}
-	if !strings.Contains(r.stdout, "reviewer-a client=claude model=inherit effort=inherit (preset:balanced)") {
+	if !strings.Contains(r.stdout, "code-search client=claude model=inherit effort=inherit (preset:balanced)") {
 		t.Errorf("the override leaked into another role:\n%s", r.stdout)
 	}
 }
@@ -87,7 +86,7 @@ func TestModelsSetRejectsAnInvalidValue(t *testing.T) {
 	base := modelsBase(t)
 	seed := `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}` + "\n"
 	writeMode(t, stateFile(base), seed, 0o644)
-	if r := runModels(t, base, "set", "reviewer-b", "--client", "claude", "--model", "claudius"); r.code == 0 {
+	if r := runModels(t, base, "set", "reviewer", "--client", "claude", "--model", "claudius"); r.code == 0 {
 		t.Error("set exited 0")
 	}
 	if readFile(t, stateFile(base)) != seed {
@@ -98,9 +97,9 @@ func TestModelsSetRejectsAnInvalidValue(t *testing.T) {
 func TestModelsResetRemovesOverrideThenBlock(t *testing.T) {
 	base := modelsBase(t)
 	ok(t, runModels(t, base, "set", "--preset", "economy"), "set preset")
-	ok(t, runModels(t, base, "set", "reviewer-b", "--client", "claude", "--model", "opus", "--effort", "high"), "set role")
-	ok(t, runModels(t, base, "reset", "reviewer-b"), "reset role")
-	if r := ok(t, runModels(t, base, "show"), "show"); !strings.Contains(r.stdout, "reviewer-b client=claude model=sonnet effort=inherit (preset:economy)") {
+	ok(t, runModels(t, base, "set", "reviewer", "--client", "claude", "--model", "opus", "--effort", "high"), "set role")
+	ok(t, runModels(t, base, "reset", "reviewer"), "reset role")
+	if r := ok(t, runModels(t, base, "show"), "show"); !strings.Contains(r.stdout, "reviewer client=claude model=sonnet effort=inherit (preset:economy)") {
 		t.Errorf("reset role did not fall back to the preset:\n%s", r.stdout)
 	}
 	ok(t, runModels(t, base, "reset"), "reset all")
@@ -128,13 +127,13 @@ func TestModelsResolveReportsTheAssignment(t *testing.T) {
 		t.Errorf("executor: %v", got)
 	}
 	// A role on the session's own client is reported the same way, because it is launched the same way.
-	if got := resolved("reviewer-a"); got["client"] != "claude" || got["route"] != "" {
-		t.Errorf("reviewer-a: %v", got)
+	if got := resolved("reviewer"); got["client"] != "claude" || got["route"] != "" {
+		t.Errorf("reviewer: %v", got)
 	}
 	if r := runModels(t, base, "resolve", "executor", "--session", "claude", "--json"); r.code == 0 {
 		t.Error("resolve still accepted --session")
 	}
-	if r := ok(t, runModels(t, base, "resolve", "reviewer-b"), "resolve, plain"); !strings.Contains(r.stdout, "reviewer-b client=claude model=inherit effort=inherit (preset:balanced)") || strings.Contains(r.stdout, "route=") {
+	if r := ok(t, runModels(t, base, "resolve", "reviewer"), "resolve, plain"); !strings.Contains(r.stdout, "reviewer client=claude model=inherit effort=inherit (preset:balanced)") || strings.Contains(r.stdout, "route=") {
 		t.Errorf("plain resolve: %s", r.stdout)
 	}
 }
@@ -163,11 +162,11 @@ func TestInstallRendersTheResolvedAssignments(t *testing.T) {
 	if r := ok(t, runModels(t, base, "show"), "show after install"); !strings.Contains(r.stdout, "(preset:performance)") {
 		t.Errorf("install dropped the model choice:\n%s", r.stdout)
 	}
-	if a := agent("claude", "reviewer-a"); !strings.Contains(a, "model: fable\n") || !strings.Contains(a, "effort: high\n") {
-		t.Errorf("claude reviewer-a lacks fable at high effort:\n%s", a)
+	if a := agent("claude", "reviewer"); !strings.Contains(a, "model: fable\n") || !strings.Contains(a, "effort: high\n") {
+		t.Errorf("claude reviewer lacks fable at high effort:\n%s", a)
 	}
-	if strings.Contains(agent("opencode", "reviewer-a"), "model:") {
-		t.Error("opencode reviewer-a, assigned to Claude, carries a model instead of the client default")
+	if strings.Contains(agent("opencode", "reviewer"), "model:") {
+		t.Error("opencode reviewer, assigned to Claude, carries a model instead of the client default")
 	}
 }
 
@@ -236,7 +235,7 @@ func TestInstallRefusesATrackedPerRoleAssignment(t *testing.T) {
 	if err := json.Unmarshal([]byte(readFile(t, path)), &config); err != nil {
 		t.Fatal(err)
 	}
-	config["roles"].(map[string]any)["reviewer-b"].(map[string]any)["opencode"] = map[string]any{"model": "openai/gpt-5.6-sol"}
+	config["roles"].(map[string]any)["reviewer"].(map[string]any)["opencode"] = map[string]any{"model": "openai/gpt-5.6-sol"}
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		t.Fatal(err)

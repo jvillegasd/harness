@@ -116,7 +116,6 @@ func TestAssetLocations(t *testing.T) {
 	cases := map[string]string{
 		c.Policy():       filepath.Join(root, "POLICY.md"),
 		c.Skills():       filepath.Join(root, "skills"),
-		c.Commands():     filepath.Join(root, "commands"),
 		c.Aliases():      filepath.Join(root, "aliases.sh"),
 		c.Clients():      filepath.Join(root, "clients"),
 		c.Generated():    filepath.Join(root, ".generated"),
@@ -137,7 +136,6 @@ func TestManagedIsExplicitNamespaces(t *testing.T) {
 	managed := []string{
 		"/repo/skills",
 		"/repo/skills/tdd/SKILL.md",
-		"/repo/commands/ship.md",
 		"/repo/POLICY.md",
 		"/repo/.generated/agents/claude/executor.md",
 	}

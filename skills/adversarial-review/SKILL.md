@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: Review before pushing with requirements-aware and diff-only reviewers; triage findings and adjudicate contested blockers.
+description: Review before pushing with one blind reviewer that holds the requirements but never the implementation rationale; triage its findings.
 disable-model-invocation: true
 metadata:
   opencode/autoinvoke: "false"
@@ -8,70 +8,37 @@ metadata:
 
 # Adversarial Review
 
-Withhold implementation rationale so reviewers judge the diff independently.
+Withhold implementation rationale so the reviewer judges the diff independently.
 
 ## Invocation
 
-Launch each reviewer as its named agent, in parallel, each with a fresh context: `reviewer-a` and `reviewer-b`. The installer generates them from `roles/reviewer-a.md` and `roles/reviewer-b.md` beside this skill, which own each reviewer's standing instructions, lenses, and output format.
+Launch the named `reviewer` agent once per round with a fresh context, following the policy's **Launching a role**. The installer generates it from `roles/reviewer.md` beside this skill, which owns its lenses and output format. Never pass the conversation, the implementation rationale, the plan, or prior rounds.
 
-Never pass the conversation, implementation rationale, implementation plan, or prior rounds.
+Give the reviewer:
 
-Read the locked `orchestration` skill before launching a role, and load the version-matched guide from the Orca executable it resolves. The coordinator uses Orca commands directly and follows that guide for the complete supervised loop, including worker messages, settlement, recovery, retries, output retrieval, and cleanup. Do not implement a separate polling loop, reason taxonomy, or retry policy in harness code or prose.
+- the requirements;
+- the complete diff snapshot;
+- its standards: the `ponytail` body and the project's own instruction file (`AGENTS.md` at the repository root, else `CLAUDE.md` there, else none).
 
-Resolve the role's assignment with `harness models resolve <role> --json`. Preserve its named agent, assigned client/model/effort, and permissions when following Orca's documented custom-terminal adoption path. Run `harness models launch-args <role> --orca-command <executable>` to validate the installed role and obtain its client argv as JSON. Pass the exact executable selected by the locked skill; never resolve a second executable. Keep the preparation binary available for the worker’s lifetime, because its permission hook calls it. Use that argv in the guide's custom-terminal adoption path, quoting each argument for the terminal's shell. This read-only preparation launches nothing and implements no Orca protocol. The read-only role's hook permits only literal `orchestration send`, `ask`, and `check` commands for that executable. Follow the live preamble's exact authority arguments; these three command permissions grant no coordinator powers or task scope. If the preamble requires a different executable or operation, report the role unavailable instead of weakening the guard. Keep message prose free of shell syntax, even when quoted.
-
-Launch independent reviewers before running the coordinator's conformance pass, and process their Orca messages while they work. Keep the existing reviewer input boundaries: Orca's live lifecycle preamble is transport context, never implementation rationale or extra task scope. Do not repair or commit until all dispatched reviewers have settled and their complete reports have been retrieved through Orca.
-
-When Orca reports an unavailable or uncertain operation, follow its version-matched recovery guide and receipt. Preserve its task, dispatch, and request identities. A required review waits or escalates; it never becomes inline or switches backend. An executor may work inline only when the policy permits and Orca has established that no earlier worker can still act. Inspect partial edits before repeating a failed implementation slice. Report unavailable review evidence under `## Checks`, or in the `/proto` ledger.
-
-A missing or stale named agent requires a human to run `harness install`; never provision the machine to unblock a review or substitute a general agent. Preserve completed output through Orca's retained references, verifying retrieval before and after release. When retention is not guaranteed, save the complete original report as a durable artifact outside the disposable terminal and worktree before release, and retain its locator. Treat a clipped, missing, or unreadable report as unavailable evidence, never as a successful review. After a release succeeds, close each terminal the coordinator created for a role, whole tab included, with the selected executable's terminal close command as its `--help` documents it, because Orca releases an adopted terminal without closing it. A pending or unknown release follows its recovery receipt, never a close.
-
-The named agents' restrictions are best effort: each client enforces what its own controls support, and `harness install` reports the gaps.
-
-Give Reviewer A the requirements, the diff snapshot, and the project's own instruction file as its standards, never the implementation rationale. Nothing else.
-
-Give Reviewer B only the diff snapshot and its review standards: the loaded `ponytail` body and the project's own instruction file. No requirements, no rationale, no ticket.
-
-Standards are the project's rules, never requirements or rationale, so supplying them leaves each reviewer's information boundary where it was. Count a standards file as read only when the reviewer's `loaded:` line names it: supplying a path, or a reviewer recalling what a standard says, is not evidence that it was read.
-
-The project's own instruction file is `AGENTS.md` at the repository root, or `CLAUDE.md` there when no `AGENTS.md` exists, and is left out when neither does. Give a standards file inside the project by absolute path, and paste the text of one outside it, such as the installed `ponytail` body, into the first launch: a read-only role cannot read outside the project. When a supplied standards file is missing from a reviewer's `loaded:` line, relaunch that reviewer once with that file's text pasted in; the relaunch replaces that reviewer's output for the same round and never counts toward the cap. A reviewer names a pasted standard as `inline:<absolute path>`. If a standard is still unread, disclose it under the pull request's `## Checks`, or in the requirements ledger under `/proto`.
-
-This block defines permitted inputs. Withhold everything else.
+Give a standards file inside the project by absolute path. Paste the text of one outside it, such as the installed `ponytail` body, because a read-only role cannot read outside the project. Count a standard as read only when the reviewer's `loaded:` line names it; relaunch once with a missing file's text pasted in (the relaunch replaces that round's output and never counts toward the cap), and disclose a standard still unread under `## Checks`.
 
 ```json
 {
-  "inputs": {
-    "reviewer-a": ["requirements", "diff_snapshot"],
-    "reviewer-b": ["diff_snapshot"],
-    "review-refuter": ["contested_finding", "diff_snapshot"]
-  },
-  "standards": {
-    "reviewer-a": ["project_instruction_file"],
-    "reviewer-b": ["ponytail", "project_instruction_file"],
-    "review-refuter": []
-  },
+  "inputs": {"reviewer": ["requirements", "diff_snapshot"]},
+  "standards": {"reviewer": ["ponytail", "project_instruction_file"]},
   "optional_standards": ["project_instruction_file"],
   "loaded_prefix": "loaded: ",
-  "inline_prefix": "inline:",
-  "verdict_prefix": "verdict: "
+  "inline_prefix": "inline:"
 }
 ```
 
-Scale to blast radius:
-
-- Use Reviewer A alone for a single-file diff under roughly 50 changed lines touching no data, auth, concurrency, migration, or public-contract surface. Keep its input boundary unchanged.
-- Two reviewers otherwise.
-- Never three.
+A missing or stale named agent requires a human to run `harness install`; never substitute a general agent. A clipped, missing, or unreadable report is unavailable evidence, never a passing review: rerun once, then escalate.
 
 ## Diff delivery
 
-Snapshot the complete diff once per round into a temporary file outside the worktree, which is the round's record and the refuter's source. Paste that file's complete text into each reviewer's launch prompt rather than its path, because a read-only role cannot read outside the project. Never truncate the diff: when a launch prompt cannot carry the complete snapshot, stop and escalate per the escalation contract.
-
-Reviewers and the refuter never edit files, and neither findings nor verdicts reach the forge.
+Snapshot the complete diff once per round into a temporary file outside the worktree, and paste its complete text into the launch prompt. Never truncate it: when a launch prompt cannot carry the complete snapshot, stop and escalate per the escalation contract. The reviewer never edits files, and its findings never reach the forge.
 
 ## Triage, by the implementer
-
-Every consumer follows this canonical triage block. The prose explains it without adding rules.
 
 ```json
 {
@@ -87,54 +54,17 @@ Every consumer follows this canonical triage block. The prose explains it withou
   "conformance_repair_after_cap": "recheck_and_disclose",
   "max_rounds": 2,
   "new_blocking_in_repaired_code": "escalate",
-  "refuter": {
-    "applies_to": ["bug", "risk"],
-    "required_before": "reject",
-    "invocations_per_finding": 1,
-    "counts_as_round": false,
-    "escalation_closes_on": "human_decision",
-    "evidence_required": ["corroborated", "refuted"],
-    "verdicts": {
-      "corroborated": "fix",
-      "refuted": "reject",
-      "inconclusive": "escalate",
-      "missing": "escalate",
-      "malformed": "escalate",
-      "unavailable": "escalate"
-    }
-  }
+  "reject_requires": "path_line_evidence"
 }
 ```
 
 Only `bug:` and `risk:` block. For each, exactly one of:
 
 - Fix it, with the smallest change that resolves it, per `ponytail`.
-- Reject it, only on the refuter's `refuted` verdict or a human decision on its escalation, recording that verdict and its evidence, or that decision, in the pull request body under `## Rejected review findings`, or in the requirements ledger under `/proto`.
-- Escalate it, per the escalation contract, when it is a product decision.
+- Reject it, only with concrete `path:line` evidence that the finding is wrong, recorded in the pull request body under `## Rejected review findings`, or in the `/proto` ledger. Disagreement without evidence is not a rejection.
+- Escalate it, per the escalation contract, when it is a product decision or the evidence is inconclusive.
 
-A `nit:` is fixed only when the fix is smaller than the argument, and otherwise dropped. A nit fix never starts another review round.
-
-A `q:` is answered. It becomes a `bug:` or `risk:` only when evidence exposes a defect, and is then triaged as one. A question alone never blocks delivery.
-
-## Refuter
-
-Before rejecting a contested `bug:` or `risk:`, launch the named `review-refuter` agent once for that finding, with a fresh context. The installer generates it from `roles/review-refuter.md` beside this skill, and it runs on its central assignment, launched through the Orca orchestration instructions above. A refuter that cannot be launched is the `unavailable` verdict, which escalates.
-
-Give the refuter only the contested finding, verbatim, and the diff snapshot that finding was raised against, pasted in full under Diff delivery. Never the implementation rationale, the requirements, your reason for contesting it, or the conversation.
-
-Its verdict decides the finding:
-
-- `corroborated`: fix it, subject to the escalation contract's scope and safety rules.
-- `refuted`: reject it, recording the verdict and the refuter's `path:Lline:` evidence.
-- `inconclusive`, `missing`, `malformed`, or `unavailable`: escalate for evidence or a human decision. Never dismiss the finding, and never make a speculative fix.
-
-A finding requiring an unseen requirement or standard is `inconclusive`. Judge the snapshot, never a later worktree. A human's decision on an escalated finding closes it, recorded like a rejection.
-
-A result is `missing` if empty; `malformed` if its first line is not a `verdict:` line naming `corroborated`, `refuted`, or `inconclusive`, or a `corroborated` or `refuted` verdict lacks a `path:Lline:` evidence line; `unavailable` if the refuter cannot be launched or its launch prompt cannot carry the complete snapshot.
-
-The refuter is not a reviewer and not a round: it changes neither count nor cap and runs once per contested finding, never for a second opinion. A fix after `corroborated` triggers the usual fixed-blocker rule.
-
-Do not claim contest frequency, adjudication cost, or verdict accuracy without evidence. Session cost and friction do not prove correctness.
+A `nit:` is fixed only when the fix is smaller than the argument, and otherwise dropped. A nit fix never starts another round. A `q:` is answered; it becomes a `bug:` or `risk:` only when evidence exposes a defect.
 
 ## Loop cap
 

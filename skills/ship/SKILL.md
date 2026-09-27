@@ -1,5 +1,6 @@
 ---
-description: Implement a contract end to end and leave a green, reviewed, ready-for-human pull request.
+name: ship
+description: "Implement a contract end to end and leave a green, reviewed, ready-for-human pull request. Use for \"ship it\", \"go build it\", \"implement this\" with an approved plan, spec, ticket id, accepted proto ledger, or a message stating a bounded scope."
 argument-hint: "[ticket id, issue URL, or approved conversation contract]"
 ---
 
@@ -45,7 +46,7 @@ Inspect `git status --short` before creating anything. Report pre-existing chang
 {
   "review_before_commit": true,
   "commit_before_review_allowed": false,
-  "review_markers": ["reviewer-a", "reviewer-b", "review-refuter"],
+  "review_markers": ["reviewer"],
   "commit_marker": "git commit"
 }
 ```
@@ -56,7 +57,7 @@ Inspect `git status --short` before creating anything. Report pre-existing chang
 
 1. Fetch the remote default branch. For a `/proto` ledger, reuse its existing branch and retained worktree rather than creating another; it committed its work there, and a fresh worktree from the default branch would not contain it. Locate that exact branch with the worktree protocol in the policy and reuse its existing checkout.
 2. For any other contract, derive `<type>/<tracker-id>-<short-slug>` when tracker-bound, or `<type>/<short-slug>` otherwise.
-3. For any other contract, create the isolated task checkout from the updated remote default branch using the policy's worktree protocol. Orca owns delegated placement; never guess its commands.
+3. For any other contract, create the isolated task checkout from the updated remote default branch using the policy's worktree protocol.
 4. Work only in the resolved task checkout and verify its branch matches the derived name.
 5. When tracker-bound, claim mapped `ready_for_agent` as mapped `in_progress`; skip when trackerless. If already `in_progress`, continue without a write only for a `/proto` ledger reusing its existing branch whose ledger claim record names this ticket and this branch. Otherwise another run claimed it: abort. Branch names alone cannot establish ownership. For local markdown, read `local-tracker` and commit the transition on the default branch, outside this diff. On a claim-race abort, retire only the worktree this run created. Never retire a reused prototype worktree; `/proto` owns its discard decision.
 6. Read `workflow-checkpoint`. Derive the topic key from the branch and retrieve the checkpoint. For a `/proto` ledger reusing the prototype's branch, validate it against current Git, tracker, and pull request state and reuse only what survives; a fresh branch has no checkpoint. A requirement the work needs that is missing from the validated record and the contract is asked about, never inferred.
@@ -78,16 +79,14 @@ Inspect `git status --short` before creating anything. Report pre-existing chang
 
 1. Treat the contract's test seams as pre-agreed. For a `/proto` ledger, first cover the retained prototype code with regression tests; they follow the code, so they are not red/green slices and are never presented as test-first evidence. Then use `tdd` one red/green vertical slice at a time for every behavioral change, and drive the oracle ladder in the policy to green, preferring the narrowest variant of each rung. On a UI change, build from the project's existing styling layer rather than a fresh palette.
 
-   Choose per slice between the `executor` and inline implementation under the policy's delegation rule, and state the choice in one line. Launch a delegated slice by `adversarial-review`'s Orca orchestration instructions. `harness models resolve executor --json` names the client and model it will run on; do not compare that against the session's own, because an Orca-launched role is its own top-level session and `inherit` there is the client's configured model rather than this session's. Either way this run still owns the contract, the ladder, the review passes, the commits, and every gate, and step 2's independent review runs unchanged.
-
-   After a delegated slice returns, read `workflow-checkpoint` to retrieve its complete result, preserve unresolved requirements and artifact references before release, and verify retrieval after release. Record only the Dispatch/artifact reference in the branch checkpoint. On recovery retrieve that result explicitly and validate branch, revision, pending changes, and check validity against Git and the contract. Missing output is unavailable evidence, never a successful handoff.
+   Choose per slice between the `executor` and inline implementation under the policy's delegation rule, and state the choice in one line. Launch a delegated slice per the policy's **Launching a role**. Either way this run still owns the contract, the ladder, the review passes, the commits, and every gate, and step 2's independent review runs unchanged. Validate a returned slice's branch, changed files, and checks against Git and the contract; missing output is unavailable evidence, never a successful handoff.
 
 2. Review the uncommitted diff before committing anything, in two passes over the same snapshot. List untracked files with `git ls-files --others --exclude-standard`. Leave out any the contract does not ship, such as scratch or generated output, without deleting them, and report them. Mark the rest with `git add --intent-to-add -- <paths>` so the snapshot includes them, then snapshot `git diff` of the working tree against its merge base with the remote default branch, which also carries a `/proto` branch's WIP checkpoints. After every reviewed round, stage the reviewed tree with `git add --update`, so the next round's snapshot is the unstaged `git diff` after the same untracked-file step.
 
-   - Read and run `adversarial-review` first: Reviewer A holds the requirements and the project's standards but not the implementation rationale, Reviewer B holds only the diff and its review standards, and the small-diff single reviewer follows Reviewer A's rule, so the diff has to defend itself.
+   - Read and run `adversarial-review` first: its reviewer holds the requirements and the standards but not the implementation rationale, so the diff has to defend itself.
    - Then perform the separate, authoritative spec-conformance pass yourself. Check every acceptance criterion and agreed test seam against the diff. Identify missing requirements, unrequested behavior, and violations of documented repository standards.
 
-   Triage every finding by `adversarial-review`'s canonical triage block: only `bug:` and `risk:` block, a `nit:` is fixed only when the fix is smaller than the argument and is otherwise dropped, a `q:` is answered and blocks only once evidence reclassifies it, a contested `bug:` or `risk:` is rejected only on the refuter's `refuted` verdict or a human decision on its escalation, and a second adversarial round runs only after a fixed blocking finding, over the repair delta alone.
+   Triage every finding by `adversarial-review`'s canonical triage block: only `bug:` and `risk:` block, a `nit:` is fixed only when the fix is smaller than the argument and is otherwise dropped, a `q:` is answered and blocks only once evidence reclassifies it, a `bug:` or `risk:` is rejected only with `path:line` evidence or a human decision on its escalation, and a second adversarial round runs only after a fixed blocking finding, over the repair delta alone.
 
    Repair every conformance finding; the triage block's conformance rule decides whether that repair gets a delta round. Conformance rechecks the criteria and test seams the repair touched; it repeats the complete pass only when the contract or broad behavior changed.
 
@@ -115,18 +114,15 @@ Inspect `git status --short` before creating anything. Report pre-existing chang
    ## Assumptions
    - <decision made without asking>; rejected <alternative>. Flips if <fact>.
 
-   ## Refuted evidence
-   - <claim the evidence contradicted>; <what changed as a result>.
-
    ## Rejected review findings
-   - <bug or risk not fixed>; refuted: <the refuter's path:Lline: evidence>, or human decision: <the decision that closed its escalation>.
+   - <bug or risk not fixed>; evidence: <path:line showing the finding is wrong>, or human decision: <the decision that closed its escalation>.
    ```
 
    Whatever the presentation, the body carries what later workflows read, under these exact headings, because `/feedback`, `/address-review`, `/land`, and `/harness-audit` find them by name. The project's presentation decides order, prose, and its own sections, never these names. Always add each applicable one verbatim, even when the template has an equivalent section; where a template section asks for the same content, such as a testing section, point it at `## Checks` rather than repeating the evidence:
 
    - `## Contract`, with the `Agreed behavior`, `Acceptance criteria`, and `Verification` fields, criteria in their source wording. Omit it only for a tracker-bound ticket-sourced contract retained in its ticket.
    - `## Checks`, one entry per ladder rung with its result, including skipped, unrun, and unavailable evidence.
-   - `## Assumptions`, `## Refuted evidence`, and `## Rejected review findings`, each only when it has an entry. A rejected finding keeps the refuter's `path:Lline:` evidence or the human decision that closed its escalation.
+   - `## Assumptions` and `## Rejected review findings`, each only when it has an entry. A rejected finding keeps its `path:line` evidence or the human decision that closed its escalation.
 
    When tracker-bound, include the closing reference where the presentation puts issue links, or as the prose `Closes` line above the opening by default. Fill the template's own sections from the change and keep the ones it requires. Draft the body outside the worktree under `$TMPDIR` or `/tmp` to keep pre-flight clean. On later edits, preserve human-written text, issue links, and closing references.
 
@@ -136,7 +132,7 @@ Inspect `git status --short` before creating anything. Report pre-existing chang
 
    Do not wait for review threads; `/address-review` owns them.
 
-6. When required checks and both review passes are green, mark the pull request ready and refresh `## Checks` with the remote rung's result. When tracker-bound, also change the ticket from mapped `in_progress` to mapped `ready_for_human`; skip label transitions for trackerless work. Then read `workflow-checkpoint` and save the branch checkpoint for the final tip: state, the branch, branch tip, the pull request URL and ticket reference, every resolved ladder result, and the next action, which is human review followed by `/land`. Retrieve it back and confirm it matches. Requirements already recorded in the ticket or the pull request contract are referenced, not copied.
+6. When required checks and the review and conformance passes are green, mark the pull request ready and refresh `## Checks` with the remote rung's result. When tracker-bound, also change the ticket from mapped `in_progress` to mapped `ready_for_human`; skip label transitions for trackerless work. Then read `workflow-checkpoint` and save the branch checkpoint for the final tip: state, the branch, branch tip, the pull request URL and ticket reference, every resolved ladder result, and the next action, which is human review followed by `/land`. Retrieve it back and confirm it matches. Requirements already recorded in the ticket or the pull request contract are referenced, not copied.
 
 A run that stops before step 6, on an escalation, a rabbit-hole trip, or an interruption, saves the branch checkpoint under `workflow-checkpoint`'s pending work rules before it returns: the current tip, every unfinished requirement or unresolved finding as pending with its affected files and open decisions, each rung's result, and the next action. Read it back, and report a failed save or read-back as unavailable rather than a durable handoff.
 

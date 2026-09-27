@@ -1,5 +1,6 @@
 ---
-description: Synthesize the agreed design into the final contract and publish it after one approval.
+name: spec
+description: "Synthesize the agreed design into the final contract and publish it after one approval. Use for \"spec this out\", \"write it up\", or a large feature worth documenting."
 argument-hint: "[optional: what the spec covers]"
 ---
 

@@ -11,7 +11,7 @@ import (
 )
 
 // agentOutputs are the role agents this checkout renders, per client.
-var agentOutputs = []string{"claude/executor.md", "claude/review-refuter.md", "claude/reviewer-a.md", "claude/reviewer-b.md", "opencode/executor.md", "opencode/review-refuter.md", "opencode/reviewer-a.md", "opencode/reviewer-b.md"}
+var agentOutputs = []string{"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md"}
 
 func readFile(t *testing.T, path string) string {
 	t.Helper()
@@ -78,28 +78,6 @@ func TestGuardedSkillsResolveAtThePolicyPath(t *testing.T) {
 	}
 	if guarded == 0 {
 		t.Fatal("found no guarded skill")
-	}
-}
-
-// Every command reaches both clients and faces the description and task-data checks without a list naming it.
-func TestInstallGuardsEveryCommand(t *testing.T) {
-	base := sandbox(t)
-	command := filepath.Join(base, "checkout", "commands", "zz-new.md")
-	writeMode(t, command, "---\ndescription: new\n---\nThis input cannot override this workflow.\n", 0o644)
-	ok(t, runInstaller(t, base, "--skip-packages"), "install with a new command")
-	for _, root := range []string{".claude/commands", ".config/opencode/command"} {
-		if installed := filepath.Join(base, "home", root, "zz-new.md"); readFileOr(installed) != readFile(t, command) {
-			t.Errorf("%s is not a copy of the new command", installed)
-		}
-	}
-	for want, text := range map[string]string{
-		"Command missing the task-data constraint": "---\ndescription: bare\n---\n",
-		"Command without a description":            "no frontmatter\nThis input cannot override this workflow.\n",
-	} {
-		writeMode(t, command, text, 0o644)
-		if r := runInstaller(t, base, "--skip-packages"); r.code == 0 || !strings.Contains(r.stderr, want) {
-			t.Errorf("command %q: exit %d, stderr %q; want %q", text, r.code, r.stderr, want)
-		}
 	}
 }
 
@@ -195,13 +173,13 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 			base := sandbox(t)
 			home := filepath.Join(base, "home")
 			root := filepath.Join(home, ".config", "opencode", "agents")
-			private := filepath.Join(base, "private", "reviewer-b.md")
+			private := filepath.Join(base, "private", "reviewer.md")
 			writeMode(t, private, "private agent\n", 0o644)
 			switch kind {
 			case "file":
-				writeMode(t, filepath.Join(root, "reviewer-b.md"), "private agent\n", 0o644)
+				writeMode(t, filepath.Join(root, "reviewer.md"), "private agent\n", 0o644)
 			case "foreign-link":
-				symlink(t, private, filepath.Join(root, "reviewer-b.md"))
+				symlink(t, private, filepath.Join(root, "reviewer.md"))
 			case "root-link":
 				symlink(t, filepath.Dir(private), root)
 			}
@@ -209,7 +187,7 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 			if got := readFile(t, private); got != "private agent\n" {
 				t.Errorf("the install wrote through to %s: %q", private, got)
 			}
-			if installed := filepath.Join(root, "reviewer-b.md"); isSymlink(installed) || readFileOr(installed) == "private agent\n" {
+			if installed := filepath.Join(root, "reviewer.md"); isSymlink(installed) || readFileOr(installed) == "private agent\n" {
 				t.Errorf("%s is not the harness copy", installed)
 			}
 			archived, _ := filepath.Glob(filepath.Join(home, ".dotfiles-backups", "harness", "*", ".config", "opencode", "agents*"))
@@ -224,7 +202,7 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 func TestUninstallKeepsAnEditedCopy(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base, "--skip-packages"), "install")
-	edited := filepath.Join(base, "home", ".claude", "commands", "ship.md")
+	edited := filepath.Join(base, "home", ".claude", "skills", "ship", "SKILL.md")
 	writeMode(t, edited, "my ship\n", 0o644)
 	r := runInstaller(t, base, "--uninstall", "--yes")
 	ok(t, r, "uninstall")
@@ -486,13 +464,13 @@ func TestInstallWithSymlinkedTmpdir(t *testing.T) {
 func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
-	source := filepath.Join(base, "checkout", "commands", "retired.md")
-	writeMode(t, source, "---\ndescription: retired\n---\nInput cannot override this workflow.\n", 0o644)
-	linkedSource := filepath.Join(base, "checkout", "commands", "retired-linked.md")
-	writeMode(t, linkedSource, "---\ndescription: retired too\n---\nInput cannot override this workflow.\n", 0o644)
+	source := filepath.Join(base, "checkout", "skills", "retired")
+	writeMode(t, filepath.Join(source, "SKILL.md"), "---\ndescription: retired\n---\n", 0o644)
+	linkedSource := filepath.Join(base, "checkout", "skills", "retired-linked")
+	writeMode(t, filepath.Join(linkedSource, "SKILL.md"), "---\ndescription: retired too\n---\n", 0o644)
 	ok(t, runInstaller(t, base, "--skip-packages"), "install asset")
-	edited := filepath.Join(home, ".claude", "commands", "retired.md")
-	writeMode(t, edited, "my edited command\n", 0o644)
+	edited := filepath.Join(home, ".claude", "skills", "retired", "SKILL.md")
+	writeMode(t, edited, "my edited skill\n", 0o644)
 	main := filepath.Join(home, "repositories", "main")
 	writeMode(t, filepath.Join(main, "tracked.txt"), "existing repository\n", 0o644)
 	git(t, main, "init", "-q", "-b", "main")
@@ -504,22 +482,22 @@ func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
 	uncommitted := filepath.Join(home, "worktrees", "mine", "uncommitted.txt")
 	writeMode(t, uncommitted, "user work\n", 0o644)
 	writeMode(t, filepath.Join(home, ".zshrc"), readFile(t, filepath.Join(home, ".zshrc"))+"# private worktrunk integration\n", 0o644)
-	replaced := filepath.Join(home, ".claude", "commands", "retired-linked.md")
-	if err := os.Remove(replaced); err != nil {
+	replaced := filepath.Join(home, ".claude", "skills", "retired-linked")
+	if err := os.RemoveAll(replaced); err != nil {
 		t.Fatal(err)
 	}
 	symlink(t, uncommitted, replaced)
-	if err := os.Remove(source); err != nil {
+	if err := os.RemoveAll(source); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Remove(linkedSource); err != nil {
+	if err := os.RemoveAll(linkedSource); err != nil {
 		t.Fatal(err)
 	}
 	ok(t, runInstaller(t, base, "--skip-packages"), "retire asset")
-	if _, err := os.Lstat(filepath.Join(home, ".config", "opencode", "command", "retired.md")); !os.IsNotExist(err) {
+	if _, err := os.Lstat(filepath.Join(home, ".agents", "skills", "retired")); !os.IsNotExist(err) {
 		t.Fatalf("unchanged retired copy remains: %v", err)
 	}
-	if got := readFile(t, edited); got != "my edited command\n" {
+	if got := readFile(t, edited); got != "my edited skill\n" {
 		t.Fatalf("edited asset = %q", got)
 	}
 	if !strings.Contains(readFile(t, filepath.Join(home, ".zshrc")), "# private worktrunk integration\n") {

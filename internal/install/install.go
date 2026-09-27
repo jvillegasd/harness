@@ -30,7 +30,7 @@ const usage = `Usage: harness install [--skip-packages] [--no-backup]
        harness install --clear-backups
 
   --skip-packages
-                 Reconcile the policy, command, skill, and role agent copies,
+                 Reconcile the policy, skill, and role agent copies,
                  the tracked client settings, and the Engram and agent-browser
                  registrations, without installing packages. No package manager is called,
                  so Engram, agent-browser, and Claude Code have to be installed
@@ -47,7 +47,7 @@ const usage = `Usage: harness install [--skip-packages] [--no-backup]
                  and ~/.dotfiles-backups are not touched. It asks before
                  removing anything.
   --client       With --uninstall, limit it to claude or opencode; repeatable.
-  --component    With --uninstall, limit it to agents, aliases, commands, mcp,
+  --component    With --uninstall, limit it to agents, aliases, mcp,
                  policy, settings, or skills; repeatable. A copy another
                  installed client still uses stays.
   --yes          With --uninstall, skip the confirmation.
@@ -64,7 +64,7 @@ to ~/.local/bin/harness, where the Claude Code status line runs it, copies the
 assets it was built with into each client, and records every copy in
 ~/.harness/state.json. Set HARNESS_ASSETS to a directory to install that tree
 instead; it must carry skills-lock.json, which tells an install which skills
-are locally authored and must carry both invocation guards.
+are locally authored and so checked for invocation guards.
 `
 
 const summaryText = `Next steps (interactive; not run by this installer):
@@ -78,7 +78,7 @@ const summaryText = `Next steps (interactive; not run by this installer):
 Status line: harness statusline, which Claude Code runs on every draw.
 OpenCode exposes no status line surface, so it gets none.
 
-Commands use /name in Claude Code and OpenCode.
+Workflow skills also answer to /name in Claude Code and OpenCode.
 Yolo aliases (ccyolo, ocyolo) are sourced from ~/.harness/aliases.sh; open a
 new shell or run: source ~/.zshrc
 

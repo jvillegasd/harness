@@ -1,9 +1,10 @@
 ---
-description: Investigate a question or claim against primary sources and return a sourced finding ledger.
+name: research
+description: "Investigate a question or claim against primary sources and return a sourced finding ledger. Use for \"look into X\", \"is it true that\", or a question needing external or telemetry evidence."
 argument-hint: "[question or claim]"
 ---
 
-Deep investigation, not implementation. No file writes, code edits, configuration changes, commits, or other side-effecting commands, apart from code-search launch prompts written outside the worktree and Orca operations needed to launch, recover, and release read-only code-search workers. Read-only inspection and queries are allowed.
+Deep investigation, not implementation. No file writes, code edits, configuration changes, commits, or other side-effecting commands, apart from launching read-only code-search workers. Read-only inspection and queries are allowed.
 
 <user_input>
 $ARGUMENTS
@@ -29,7 +30,7 @@ Resolve the effective input:
 
 4. Compare independent evidence, test counterexamples, and resolve contradictions. Separate fact, inference, and unknown; fabricate none. Runtime claims unchecked against available telemetry belong in `Contradictions and unknowns`, never `Conclusion`.
 
-5. Delegate parallel repository search only for genuinely independent tracks or a large search space. Read the locked `orchestration` skill and load its version-matched Orca guide. Launch each track as the named `code-search` role on the assignment from `harness models resolve code-search --json`, using Orca commands and the role launch configuration in `adversarial-review`'s invocation section; reading that section does not invoke a code review. Never use client-native subagents. Follow the Orca guide for supervision, recovery, complete report retrieval, and cleanup. The search may run inline when the runtime or role is unavailable before launch; disclose that choice. An uncertain worker outcome follows Orca recovery before any replacement work. Give each a distinct question and reconcile their evidence rather than concatenating their reports. A track searching the repository reports in the `## Code-search citations` shape, and every citation is verified there before reuse; external and telemetry queries stay in this context and keep the Findings ledger's `Evidence:` form.
+5. Delegate parallel repository search only for genuinely independent tracks or a large search space. Launch each track as the named `code-search` role per the policy's **Launching a role**; the search may run inline when the role is unavailable, and you disclose that choice. Give each a distinct question and reconcile their evidence rather than concatenating their reports. A track searching the repository reports in the `## Code-search citations` shape, and every citation is verified there before reuse; external and telemetry queries stay in this context and keep the Findings ledger's `Evidence:` form.
 
 ## Code-search citations
 

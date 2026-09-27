@@ -91,9 +91,6 @@ func (c Checkout) Policy() string { return filepath.Join(c.Root, policyMarker) }
 // Skills is the directory of harness skills.
 func (c Checkout) Skills() string { return filepath.Join(c.Root, "skills") }
 
-// Commands is the directory of harness commands.
-func (c Checkout) Commands() string { return filepath.Join(c.Root, "commands") }
-
 // Aliases is the shell file holding the managed yolo aliases.
 func (c Checkout) Aliases() string { return filepath.Join(c.Root, "aliases.sh") }
 
@@ -114,7 +111,7 @@ func (c Checkout) ClaudeSkills() string { return filepath.Join(c.Root, ".claude"
 
 // Managed names the assets the installer owns as link sources. Ownership is these namespaces alone, never everything beneath the checkout, so promoting the assets to the repository root does not make an unrelated repository file, a private skill, or private data installer-owned.
 func (c Checkout) Managed() []string {
-	return []string{c.Skills(), c.Commands(), c.Policy(), c.Generated()}
+	return []string{c.Skills(), c.Policy(), c.Generated()}
 }
 
 // Manages reports whether path is a managed asset or sits beneath one, which is the only predicate an install or uninstall may use to claim a link.

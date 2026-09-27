@@ -1,5 +1,6 @@
 ---
-description: Discover requirements through human-tested prototypes; hand a ledger the human accepted to /ship.
+name: proto
+description: "Discover requirements through human-tested prototypes; hand a ledger the human accepted to /ship. Use for \"prototype this\", \"spike it\", \"mock up this ticket's frontend\", or \"implement this\" when the contract is still open."
 argument-hint: "[requirements, ticket id, or a half-formed idea]"
 ---
 
@@ -48,10 +49,8 @@ State the goal, the requirements already settled, the explicit assumptions, and 
 Each iteration:
 
 1. **Agree** with the human the meaningful behavior the next slice should show and its important test seams, for that slice only; the whole product need not settle first. The input or the previous round's feedback may already carry this agreement, so ask only for what it lacks. Derive individual cases from the agreed behavior without asking test by test. An important product rule the agreement does not settle needs a human decision before the implementation that depends on it; independent parts of the slice continue.
-2. **Build** the smallest slice that answers the next question. Test-first sequencing is not required here, because prototype code may be discarded: red before green is not a gate, and `tdd` is not loaded. The exemption covers ordering only; relevant local checks, the sensitive-surface review below, and meaningful evidence about the slice remain. A test may explore an explicit assumption, but passing it never promotes that assumption to a confirmed requirement; only the human's decision does.
-3. **Validate** on the relevant local rungs only. Green before showing. No adversarial review, no push, no pull request. One exception: a slice touching data, auth, concurrency, migration, or a public contract gets a single Reviewer B pass from `adversarial-review`, launched by its Orca orchestration instructions (diff and standards only, one reviewer, one round, plus the refuter for a contested blocking finding), read from its path, before it is presented, because those are the surfaces where a prototype's shortcuts become an incident.
-
-   Triage that pass by `adversarial-review`'s canonical triage block within this workflow's single-pass limit: fix, reject only on the refuter's `refuted` verdict or a human decision on its escalation, with that verdict and its evidence or that decision written into the requirements ledger, or escalate each blocking finding before presenting the slice, apply the nit and question rules unchanged, and never start a second round here.
+2. **Build** the smallest slice that answers the next question. Test-first sequencing is not required here, because prototype code may be discarded: red before green is not a gate, and `tdd` is not loaded. The exemption covers ordering only; relevant local checks and meaningful evidence about the slice remain. A test may explore an explicit assumption, but passing it never promotes that assumption to a confirmed requirement; only the human's decision does.
+3. **Validate** on the relevant local rungs only. Green before showing. No adversarial review, no push, no pull request. The human trying the slice is the review; `/ship` reviews the whole diff before anything is published.
 4. **Checkpoint** the validated slice with a WIP commit so every iteration is individually revertable. These are squash fodder, not history; the commit-message rules do not apply to them. Save the branch checkpoint alongside it, following `workflow-checkpoint`: state, the branch, branch tip, the contract references (the ledger path on the branch, plus the ticket URL when the input is tracker-bound), the resolved local checks, distinct unresolved escalation context, and the next action, with the ledger updated first so the requirements are durable too. Retrieve it back and confirm the record matches. Work that is blocked or interrupted before validation is pending, not an iteration: never WIP-commit or present it, and never record it as validated. Before returning, save the branch checkpoint under `workflow-checkpoint`'s pending work rules with the unfinished requirements or feedback as pending, their affected files and open decisions, and the checks not yet green, then read it back; report a failed save or read-back rather than a durable handoff. The pending checkpoint is context, not a rollback point: the last WIP commit stays that.
 5. **Present** what was built, what to try and how, what the evidence establishes and what it does not, what remains unresolved, the ledger changes, and the behavior and test seams proposed for the next slice. Stop and wait for the human's feedback every round; the policy's autonomous-execution rule does not apply inside this loop.
 6. **Incorporate feedback** into code, requirements, or both. Record retained, changed, and dropped requirements with reasons. Flag a requirement reversed twice as needing `grilling`.
@@ -68,6 +67,5 @@ Never push the prototype branch, never open a pull request, never merge from her
 ## Skills this loads
 
 - `ponytail`
-- `adversarial-review`, read from its path, Reviewer B only, and only for a slice touching data, auth, concurrency, migration, or a public contract
 - `workflow-checkpoint`, read from its path
 - `local-tracker`, read from its path, only when the input is ticket-bound and `docs/agents/harness.json` sets `"tracker": "local-markdown"`

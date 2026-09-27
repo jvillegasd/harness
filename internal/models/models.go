@@ -1,4 +1,4 @@
-// Package models chooses, per machine, which client, model, and effort each delegated role runs on. The choice lives in the models block of ~/.harness/state.json: a preset, plus per-role overrides. The installer renders it into each client's role agents, and a workflow asks it which client and model a role carries before following the Orca orchestration skill.
+// Package models chooses, per machine, which client, model, and effort each delegated role runs on. The choice lives in the models block of ~/.harness/state.json: a preset, plus per-role overrides. The installer renders it into each client's role agents, and a workflow asks it which client a role carries: its own client launches the role as a native subagent, and another client goes through Orca.
 package models
 
 import (
@@ -23,7 +23,10 @@ type Assignment struct {
 }
 
 // Roles are the delegated roles a preset assigns, in report order.
-var Roles = []string{"executor", "code-search", "reviewer-a", "reviewer-b", "review-refuter"}
+var Roles = []string{"executor", "code-search", "reviewer"}
+
+// retired roles were merged into reviewer or removed; an override left for one is dropped on load rather than failing every install.
+var retired = map[string]bool{"reviewer-a": true, "reviewer-b": true, "review-refuter": true}
 
 const defaultPreset = "balanced"
 
@@ -33,16 +36,16 @@ func opencode(model string) Assignment       { return Assignment{"opencode", mod
 // Presets are the named assignment tables. balanced sends implementation to a cheaper OpenCode model and keeps review on the session's Claude model, because a reviewer too weak to find the bug is no saving.
 var Presets = map[string]map[string]Assignment{
 	"balanced": {
-		"executor": opencode("opencode-go/glm-5.3"), "code-search": claude("inherit", ""), "reviewer-a": claude("inherit", ""), "reviewer-b": claude("inherit", ""), "review-refuter": claude("inherit", ""),
+		"executor": opencode("opencode-go/glm-5.3"), "code-search": claude("inherit", ""), "reviewer": claude("inherit", ""),
 	},
 	"performance": {
-		"executor": claude("opus", "high"), "code-search": claude("fable", "high"), "reviewer-a": claude("fable", "high"), "reviewer-b": claude("fable", "high"), "review-refuter": claude("opus", "high"),
+		"executor": claude("opus", "high"), "code-search": claude("fable", "high"), "reviewer": claude("fable", "high"),
 	},
 	"economy": {
-		"executor": opencode("opencode-go/deepseek-v4-flash"), "code-search": claude("sonnet", ""), "reviewer-a": claude("sonnet", ""), "reviewer-b": claude("sonnet", ""), "review-refuter": claude("sonnet", ""),
+		"executor": opencode("opencode-go/deepseek-v4-flash"), "code-search": claude("sonnet", ""), "reviewer": claude("sonnet", ""),
 	},
 	"diversity": {
-		"executor": claude("sonnet", ""), "code-search": claude("inherit", ""), "reviewer-a": claude("inherit", ""), "reviewer-b": opencode("openai/gpt-5.6-sol"), "review-refuter": opencode("opencode-go/glm-5.3"),
+		"executor": claude("sonnet", ""), "code-search": claude("inherit", ""), "reviewer": opencode("openai/gpt-5.6-sol"),
 	},
 }
 
@@ -167,6 +170,10 @@ func Load(path string) (Choice, error) {
 		return Choice{}, fmt.Errorf("%s: unknown preset %q; run `harness models reset`", path, c.Preset)
 	}
 	for role, a := range c.Roles {
+		if retired[role] {
+			delete(c.Roles, role)
+			continue
+		}
 		if err := knownRole(role); err != nil {
 			return Choice{}, fmt.Errorf("%s: %v; run `harness models reset`", path, err)
 		}

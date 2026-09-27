@@ -94,19 +94,17 @@ func validateInvocation(sub string, rest []string) error {
 
 // paths are the checkout-relative locations the lock tool reads and writes.
 type paths struct {
-	root     string
-	lock     string
-	skills   string
-	commands string
-	claude   string
+	root   string
+	lock   string
+	skills string
+	claude string
 }
 
 func pathsFor(c checkout.Checkout) paths {
 	return paths{
-		root:     c.Root,
-		lock:     c.Lock(),
-		skills:   c.Skills(),
-		commands: c.Commands(),
-		claude:   c.ClaudeSkills(),
+		root:   c.Root,
+		lock:   c.Lock(),
+		skills: c.Skills(),
+		claude: c.ClaudeSkills(),
 	}
 }
