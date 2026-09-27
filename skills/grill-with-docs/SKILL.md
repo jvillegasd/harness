@@ -8,7 +8,7 @@ metadata:
 
 # Grill With Docs
 
-Read and follow `grilling` and load `domain-modeling`. Keep the interview protocol and its interactive or self-grill mode unchanged. Record settled terms and decisions in `CONTEXT.md` or an ADR before the next question, while their context is available.
+Read and follow `grilling` and load `domain-modeling`. Keep the interview protocol unchanged. Record settled terms and decisions in `CONTEXT.md` or an ADR before the next round, while their context is available.
 
 ## When this instead of bare `grilling`
 
