@@ -40,12 +40,12 @@ flowchart TD
         codesearch -.->|grounded citations only| ledger
         codesearch -.->|grounded citations only| brief
 
-        doc_in["work worth documenting"] --> spec["/spec<br>the only approval gate<br>before publication"]
+        doc_in["work worth documenting"] --> spec["/spec<br>one approval gate covers<br>the spec and its tickets"]
         spec --> createticket["/create-ticket"]
-        ledger --> createticket
+        ledger -->|one batch confirmation| createticket
         createticket --> ticket["implementation-ready tickets"]
         createticket -->|research ticket,<br>contract fields missing| planning["planning-only ticket<br>no lifecycle label"]
-        planning -->|fields supplied,<br>/create-ticket promotes| ticket
+        planning -->|plan mode or /spec supplies fields,<br>/create-ticket promotes| ticket
 
         proto_in["requirements that<br>will not settle on paper,<br>implement this with<br>the contract still open"] --> proto["/proto<br>build a slice, local rungs green,<br>a human tries it, fold feedback in"]
         proto --> protoledger["requirements ledger"]
@@ -68,11 +68,12 @@ flowchart TD
     subgraph BUILD["build"]
         approval --> ship["/ship<br>worktree and branch first,<br>never the default branch"]
         ship --> ladder["resolve the oracle ladder<br>project instructions, else task runner,<br>else the toolchain"]
-        ladder --> implement["implement<br>loading ponytail"]
+        ladder --> implement["implement per slice with tdd,<br>inline or the executor role,<br>loading ponytail"]
         implement --> rungs["local rungs green:<br>types, lint, tests, build"]
         rungs --> review["adversarial-review<br>uncommitted diff snapshot,<br>untracked files included<br>one blind reviewer:<br>requirements, diff, standards<br>only bug and risk block,<br>rejected only with path:line evidence"]
         review -->|fixed bug or risk:<br>one delta round| review
         review --> conform["spec-conformance pass<br>diff against the contract"]
+        conform -->|repair:<br>one delta round| review
         conform --> commit["commit<br>after triage settles"] --> push["push"] --> pr["open the draft pull request<br>project-native body keeping contract,<br>checks, assumptions, rejected"]
         pr --> checks(["remote required checks<br>and the review passes green"])
         checks -->|mark the draft ready| ready(["ready-for-human<br>terminal state"])
@@ -143,6 +144,8 @@ flowchart TD
     triage -->|q| question["answer it"]
     question -.->|evidence exposes a defect| blocking
     blocking -->|fixed in round one| delta["second round<br>repair delta only"]
+    conformance["spec-conformance repair<br>counts as a fixed blocking finding"] -->|in round one| delta
+    conformance -->|after round two| disclose(["rechecked by conformance alone,<br>disclosed under ## Checks"])
     delta --> findings
     blocking -->|new blocking finding in round two,<br>in code round one repaired| escalate(["escalate: rabbit-hole trip,<br>never a third round"])
 ```
@@ -160,7 +163,7 @@ A cross-vendor launch follows the locked `orchestration` skill, which resolves t
 | Claude Code | `model:` an alias, `sonnet`, `opus`, `haiku`, or `fable`, or a `claude-` model ID | `effort:` `low`, `medium`, `high`, `xhigh`, or `max` | `model: inherit` and no `effort:` line, so the session's model and effort apply |
 | OpenCode | `model:` a `provider/model` ID | `reasoningEffort:` `none`, `minimal`, `low`, `medium`, `high`, or `xhigh`, only beside an `openai/` model, since OpenCode passes it to the provider | neither line, so the invoking agent's model applies |
 
-A value outside those sets, an unknown or duplicate key, a missing client default, or effort beside a non-OpenAI OpenCode model fails generation before anything is written, and nothing is substituted. A set model or effort prints as `unverified:` until that account is observed running it, because a client's documentation is not proof of access. A role with an assignment and no definition is validated and prints as `pending:`, and no agent is generated until its definition lands. Change an assignment by editing its entry and rerunning `go run ./cmd/harness install --skip-packages`; never edit a generated file, which `--check` reports as changed.
+A value outside those sets, an unknown or duplicate key, a missing client default, or effort beside a non-OpenAI OpenCode model fails generation before anything is written, and nothing is substituted. A set model or effort prints as `unverified:` until that account is observed running it, because a client's documentation is not proof of access. A role with an assignment and no definition is validated and prints as `pending:`, and no agent is generated until its definition lands. Change a role's assignment with `harness models` and a client default by editing `clients/assignments.json`, then rerun `go run ./cmd/harness install --skip-packages`; never edit a generated file, which `--check` reports as changed.
 
 Acceptance on 2026-09-14 made no model request. `claude plugin validate` in Claude Code 2.1.270 parsed generated agents carrying `model: sonnet`, `effort: high`, and `disallowedTools: Agent`, which proves the frontmatter parses, not that Claude Code applies those fields. `opencode debug agent` in OpenCode 1.18.30 resolved `openai/gpt-5.5` with `reasoningEffort` from both a client default and a role override, and resolved the reviewer and executor denies. Neither proves a request runs on the assigned model or that the account can reach it.
 
@@ -168,8 +171,9 @@ OpenCode is the preferred main client, for OpenAI model access, subject to the s
 
 ```mermaid
 flowchart TD
-    config["clients/assignments.json"] --> role{"does the role set this field<br>for this client?"}
-    role -->|yes| override["role override"]
+    choice["harness models choice in ~/.harness/state.json<br>role override, else preset, else balanced"] --> role{"is this the role's<br>assigned client?"}
+    config["clients/assignments.json<br>client defaults only; a per-role<br>model or effort there is refused"] --> default
+    role -->|yes| override["the machine's choice"]
     role -->|no| default["client default"]
     override --> supported{"a value that client supports?"}
     default --> supported
@@ -353,6 +357,9 @@ flowchart TD
     subgraph AGENT["what the agent does with it"]
         ready --> ship["/ship picks up a ready ticket<br>branch: type/tracker-id-slug"]
         ship --> inprogress["label: in-progress"]
+        ready --> protoclaim["/proto claims a ready ticket,<br>confirmed once"]
+        protoclaim --> inprogress
+        protoclaim -.->|accepted ledger| ship
         inprogress --> prready["pull request green and reviewed<br>label: ready-for-human"]
         prready --> humanmerge["a human decides to merge"]
         humanmerge -->|they merge it on GitHub| merged["merged, the closing reference<br>closes the ticket"]
