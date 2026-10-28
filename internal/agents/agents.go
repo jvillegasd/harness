@@ -11,7 +11,7 @@ package agents
 
 import "errors"
 
-// adversarial-review launches the reviewer, triage and research launch code-search, and POLICY.md names the executor, so each must exist with exactly this access. Every other role is read-search: only the executor may implement.
+// review launches the reviewer, triage and research launch code-search, and POLICY.md names the executor, so each must exist with exactly this access. Every other role is read-search: only the executor may implement.
 var required = map[string]string{
 	"executor":    "implement",
 	"code-search": "read-search",

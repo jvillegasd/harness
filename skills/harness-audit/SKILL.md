@@ -24,8 +24,8 @@ Read only needed evidence. Report each source in one line: its contents or why u
 | Source | Residue it carries |
 | --- | --- |
 | `worktrees` | Existing Git worktrees, their Orca placement when managed, and harness branch state |
-| `engram_checkpoints` | branch-scoped records under `checkpoint/<branch>` |
-| `pull_request_bodies` | `Closes` references and the `## Contract` and `## Checks` sections |
+| `engram_checkpoints` | project-scoped task mirrors and preserved legacy `checkpoint/<branch>` records |
+| `pull_request_bodies` | requested behavior, evidence, and any existing closing references |
 | `commits` | Conventional Commit subjects and their rung results |
 | `tracker_state` | mapped lifecycle labels on the tickets the residue names |
 | `benchmark_results` | `harness bench` session populations |
@@ -39,7 +39,7 @@ Read only needed evidence. Report each source in one line: its contents or why u
 
 2. **No verdict without workflow-bearing evidence.** Empty, missing, or unreadable sources are `unknown`, never clean or evidence. If none supplies workflow-bearing evidence, report coverage and stop without a verdict.
 
-3. **Bound transcript inspection.** Extract only the canonical `transcript_signals` from a transcript. Never read or reproduce a whole transcript, and never copy its raw lines into the report.
+3. **Bound transcript inspection.** Missing optional artifacts or headings are not defects. Extract only the canonical `transcript_signals` from a transcript. Never read or reproduce a whole transcript, and never copy its raw lines into the report.
 
 4. **Finding threshold.** Require two occurrences, or one with concrete cost: a broken contract, red rung, ownerless worktree/branch, or contradictory ticket label. A single uncosted occurrence is an observation, not a finding.
 
@@ -101,9 +101,9 @@ This block is canonical. Change rules here; implementations read them here.
 
 ## Handoff
 
-Costed findings are planning input. Recommend needed changes and stop; `/spec` or native plan mode must produce an approved contract before `/ship`.
+Costed findings are investigation results. Recommend needed changes and stop; implementation requires a request, without a mandatory specification or delivery workflow.
 
 ## Skills this loads
 
 - `evidence`, read from its path, for any load-bearing claim about runtime behavior, impact, or frequency
-- `workflow-checkpoint`, read from its path, when reading a branch checkpoint's schema
+- `continuity`, read from its path when recovering task documents or legacy checkpoint context

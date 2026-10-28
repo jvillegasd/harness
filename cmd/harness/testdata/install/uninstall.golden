@@ -52,7 +52,7 @@ D .claude/skills/mine
 F .claude/skills/mine/SKILL.md
   |private skill
   |
-L .claude/skills/renamed -> $CHECKOUT/skills/ship
+L .claude/skills/renamed -> $CHECKOUT/skills/open-pr
 L .claude/skills/retired -> $CHECKOUT/skills/retired
 F .claude.json
   |{"mcpServers": {"other": {}}}
@@ -127,7 +127,7 @@ F .dotfiles-backups/harness/<stamp>/.claude/settings.json.pre-reconcile
   |}
   |
 D .dotfiles-backups/harness/<stamp>/.claude/skills
-L .dotfiles-backups/harness/<stamp>/.claude/skills/ship -> $CHECKOUT/skills/ship
+L .dotfiles-backups/harness/<stamp>/.claude/skills/open-pr -> $CHECKOUT/skills/open-pr
 D .dotfiles-backups/harness/<stamp>/.config
 D .dotfiles-backups/harness/<stamp>/.config/opencode
 D .dotfiles-backups/harness/<stamp>/.config/opencode/skills

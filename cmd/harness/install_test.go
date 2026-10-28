@@ -225,9 +225,9 @@ func seedLived(t *testing.T, base string) {
 	}
 	for rel, target := range map[string]string{
 		".claude/skills/retired": checkoutRoot + "/skills/retired",
-		".claude/skills/renamed": checkoutRoot + "/skills/ship",
+		".claude/skills/renamed": checkoutRoot + "/skills/open-pr",
 		// A link an install from before the copies left at a managed path: archived, then replaced by a copy.
-		".claude/skills/ship":       checkoutRoot + "/skills/ship",
+		".claude/skills/open-pr":    checkoutRoot + "/skills/open-pr",
 		".claude/skills/foreign":    "/nonexistent/foreign",
 		".claude/agents/retired.md": checkoutRoot + "/.generated/agents/claude/retired.md",
 	} {

@@ -53,7 +53,7 @@ func preparedArgs(choice Choice, role, orca string) ([]string, error) {
 		if os.Getenv("OPENCODE_CONFIG_CONTENT") != "" {
 			return nil, errors.New("launch preparation cannot replace existing OPENCODE_CONFIG_CONTENT; reconcile that runtime configuration first")
 		}
-		plugin := filepath.Join(home, ".agents", "skills", "adversarial-review", "scripts", "orca-lifecycle.mjs")
+		plugin := filepath.Join(home, ".agents", "skills", "review", "scripts", "orca-lifecycle.mjs")
 		if _, err := os.Stat(plugin); err != nil {
 			return nil, fmt.Errorf("missing lifecycle permission plugin; a human must run harness install")
 		}

@@ -51,7 +51,7 @@ Drop a citation whose path is missing or outside the repository, whose line does
 
 ## Handoff
 
-The brief is planning input, not an implementation contract. Continue to `/spec` for durable reasoning, otherwise native plan mode. If already in plan mode, continue without restating the brief. Never implement here.
+The brief is planning input, not an implementation contract. Return the brief without automatic routing. A later implementation request can use it directly; a specification or native plan is optional. Never implement during this analysis-only request.
 
 ## Skills this loads
 

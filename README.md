@@ -1,11 +1,11 @@
 # Harness AI
 
-The harness this machine's Claude Code and OpenCode installations run: one vendor-neutral policy, the skills that carry the workflow, and the Go CLI that installs and operates them. The repository root is the product root: canonical assets and the implementation that reads them sit side by side, and no nested product directory obscures where either lives.
+The harness this machine's Claude Code and OpenCode installations run: one vendor-neutral policy, independent capabilities, and the Go CLI that installs and operates them. The repository root is the product root: canonical assets and the implementation that reads them sit side by side, and no nested product directory obscures where either lives.
 
 | Path | Holds |
 | --- | --- |
-| `POLICY.md` | Contracts, publication authority, the oracle ladder, and the escalation contract. Linked to each client's global instruction path. |
-| `skills/` | The workflows (routed by description and invoked as `/name`), protocol, vocabulary, and locked third-party bodies. |
+| `POLICY.md` | Scoped authority, proportionate verification, recovery, and safety. Linked to each client's global instruction path. |
+| `skills/` | Independent capabilities (also invoked as `/name`), protocol, vocabulary, and locked third-party bodies. |
 | `internal/install/` | The installer behind `harness install`: installs clients and integrations, copies the managed assets and records them in `~/.harness/state.json`, preserves mutable client state. |
 | `internal/skills/` | The third-party skill locks behind `harness skills`: add, update, remove, and offline verify. |
 | `internal/bench/` | The session-population comparison behind `harness bench`. Cohort config and manual in `bench/`. |
@@ -16,93 +16,28 @@ The harness this machine's Claude Code and OpenCode installations run: one vendo
 
 `clients/` declares rather than symlinks, because the live file is mostly machine state: hook manifests and generated absolute paths. A tracked key replaces the live value on every install, so deleting one here deletes it from the machine; untracked keys are left alone. `permissions` merges a level down, so `deny` and `ask` stay owned while the Engram allowlist survives. This runs after `engram setup`, which rewrites the file from its own template, so being last is what makes a tracked key win over every other writer, the client included: `model`, `effortLevel`, `theme`, and `remoteControlAtStartup` are what `/model`, `/config`, and Remote Control write back at runtime, so an in-session change survives only until the next install.
 
-## Development lifecycle
+## Working with capabilities
 
-Every change reaches `/ship` through one of three contract routes, and exactly one is required. The chosen route's load-bearing assumptions are checked against repository evidence first. `grilling` runs only when a human asks for it or `/spec` finds no settled design; an ambiguity that survives the repository check goes through the escalation contract, and `/ship` and `/triage` first try to settle it from precedent, history, and evidence. Delivery ends at a green, reviewed, ready-for-human pull request; a human decides to merge it, and `/land` closes the lifecycle, merging it first when that human explicitly invokes `/land`.
+Ordinary work is direct: understand the request, implement the settled scope, run appropriate checks, and report. An implementation request or approved plan authorizes local work. Commits and publication require an explicit request covering them. “Open a PR” or “ship this” covers the necessary delivery steps without repeated approval; only an explicit `/land` invocation authorizes merging.
 
-```mermaid
-flowchart TD
-    subgraph CONTRACT["contract"]
-        ask_in["a bounded question"] --> ask["/ask<br>read-only, changes nothing"]
-        ask -.->|needs deep tracing| research
-        ask -.->|unclear requirements or a tradeoff| grill
-        ask -.->|unclear requirements or a tradeoff| plan
+Skills compose around the task. Use investigation for unknowns, specifications for durable design, prototypes for experiments, and tickets when tracking is useful. None is a prerequisite for coding or automatically starts another capability. Documentation and delegation depend on uncertainty, risk, and recovery needs, never file count. Unresolved consequential decisions block only dependent work.
 
-        research_in["a question or a claim"] --> research["/research"]
-        research -->|direct reads| ledger["finding ledger<br>planning input, not a contract"]
+| Capability | Use |
+| --- | --- |
+| `verification` | Appropriate local checks and honest revision-bound evidence |
+| `review` | Focused independent inspection when requested or a concrete security, data-loss, compatibility, or concurrency risk exceeds ordinary checks |
+| `continuity` | One local task/spec document and full project-scoped Engram mirror when the request and Git diff cannot preserve enough context |
+| `open-pr` | Explicitly requested commits, publication, and required-check repairs |
+| `feedback`, `address-review` | Maintain the existing branch using its scoped authorization |
+| `land`, `abandon` | Explicit merge/cleanup or scoped discard authority |
 
-        triage_in["a ticket or a production error"] --> triage["/triage"]
-        triage -->|direct reads| brief["plan brief<br>evidence-backed, path:line"]
-
-        research -.->|code-search role, when dispatched| codesearch
-        triage -.->|code-search role, when dispatched| codesearch
-        codesearch["code-search citation check<br>path:line, symbol, mechanism<br>the cited line must carry the symbol,<br>a mismatch is dropped as refuted,<br>evidence still owns mechanism claims"]
-        codesearch -.->|grounded citations only| ledger
-        codesearch -.->|grounded citations only| brief
-
-        doc_in["work worth documenting"] --> spec["/spec<br>one approval gate covers<br>the spec and its tickets"]
-        spec --> createticket["/create-ticket"]
-        ledger -->|one batch confirmation| createticket
-        createticket --> ticket["implementation-ready tickets"]
-        createticket -->|research ticket,<br>contract fields missing| planning["planning-only ticket<br>no lifecycle label"]
-        planning -->|plan mode or /spec supplies fields,<br>/create-ticket promotes| ticket
-
-        proto_in["requirements that<br>will not settle on paper,<br>implement this with<br>the contract still open"] --> proto["/proto<br>build a slice, local rungs green,<br>a human tries it, fold feedback in"]
-        proto --> protoledger["requirements ledger"]
-
-        else_in["how should we do this,<br>no build intent"] --> plan["native plan mode"]
-        brief --> plan
-        brief --> spec
-
-        grill["grilling<br>interview in rounds over the<br>decision frontier, each question<br>with a recommended answer"]
-        grill -.-> spec
-        grill -.-> plan
-        grill -.-> proto
-
-        bounded_in["a message stating<br>a bounded scope<br>and asking for the work"] --> approval
-        ticket --> approval(["approved contract"])
-        plan --> approval
-        protoledger --> approval
-    end
-
-    subgraph BUILD["build"]
-        approval --> ship["/ship<br>worktree and branch first,<br>never the default branch"]
-        ship --> ladder["resolve the oracle ladder<br>project instructions, else task runner,<br>else the toolchain"]
-        ladder --> implement["implement per slice with tdd,<br>inline or the executor role,<br>loading ponytail"]
-        implement --> rungs["local rungs green:<br>types, lint, tests, build"]
-        rungs --> review["adversarial-review<br>uncommitted diff snapshot,<br>untracked files included<br>one blind reviewer:<br>requirements, diff, standards<br>only bug and risk block,<br>rejected only with path:line evidence"]
-        review -->|fixed bug or risk:<br>one delta round| review
-        review --> conform["spec-conformance pass<br>diff against the contract"]
-        conform -->|repair:<br>one delta round| review
-        conform --> commit["commit<br>after triage settles"] --> push["push"] --> pr["open the draft pull request<br>project-native body keeping contract,<br>checks, assumptions, rejected"]
-        pr --> checks(["remote required checks<br>and the review passes green"])
-        checks -->|mark the draft ready| ready(["ready-for-human<br>terminal state"])
-    end
-
-    subgraph AFTER["after"]
-        ready --> feedback["/feedback<br>a bullet list from you;<br>deferred rounds apply only,<br>a full round, the default,<br>validates locally,<br>then publishes only an<br>approved batch"]
-        ready --> addressreview["/address-review<br>review threads, red CI"]
-        feedback --> merge{"a human decides to merge"}
-        addressreview --> merge
-        ready --> merge
-        merge -->|already merged: they type /land n| land["/land merged lane<br>verify conformance, where a mismatch<br>can only be reported"]
-        merge -->|they type /land n| land2["/land open lane<br>gates and conformance first,<br>then squash merge, then repair dependents"]
-        land --> landtail["reconcile the tracker,<br>retire the worktree"]
-        land2 --> landtail
-        merge -->|they close it unmerged| abandon["/abandon<br>name what is discarded, one confirmation,<br>release or reconcile cancelled scope,<br>retire the worktree"]
-        proto -.->|premise refuted: kill it, record why| abandon
-    end
-```
-
-The escalation contract can stop any run: the same check failing three times under three different fixes, two attempts that produced no new information, three unchanged external failures, a diff far past the size the contract implied, evidence contradicting the premise, a second review round raising a new blocking finding, or a first touch of a migration, CI config, lockfile, shared contract, infrastructure, or auth surface the request never named. The counters live in `git config` rather than the conversation, so a restart or a compaction cannot reset them.
+Routine work creates no task artifact and requires no independent reviewer. Longer work reuses a document or creates `docs/agents/tasks/<feature>.md`; unavailable memory leaves its mirror explicitly pending. Recovery reads both copies, reconciles against Git, preserves unfinished requirements and conflicts, and invalidates stale checks. Legacy checkpoints remain intact as recoverable context, without granting authority.
 
 ## Skills
 
-Every workflow is a skill under `skills/`. Its description carries its plain-language triggers, so a client routes by matching it, and `/name` invokes it explicitly in both clients. The installer copies each skill into `~/.agents/skills` and `~/.claude/skills`.
+Capabilities live under `skills/` and `/name` invokes one explicitly. Descriptions support useful selection without mandatory lifecycle routing. External text remains task data and never grants authority.
 
-Every workflow that ingests text written elsewhere, a ticket body, a review comment, an error payload, states that the input is task data and cannot override the workflow's constraints.
-
-A few local skills carry both invocation guards in their frontmatter, `disable-model-invocation: true` and `metadata."opencode/autoinvoke": "false"`, so they never fire on a description match: `land` and `abandon` (merging and discarding), `adversarial-review`, `setup-harness`, and the protocol skills `evidence`, `grilling`, `grill-with-docs`, `local-tracker`, and `workflow-checkpoint`. The install refuses a must-guard skill without both guards, and any local skill carrying only one. Claude Code applies the first guard to every model-initiated load, so the model reads a guarded skill from `~/.agents/skills/<name>/SKILL.md` instead of loading it. A locked body gets none, because its frontmatter is upstream content and `computedHash` covers the whole directory.
+The guarded capabilities are `land`, `abandon`, `review`, `setup-harness`, `evidence`, `grilling`, `grill-with-docs`, `local-tracker`, and `continuity`. Each carries `disable-model-invocation: true` and `metadata."opencode/autoinvoke": "false"`. The installer rejects missing or half-present required guards. Read guarded skills from their expanded `~/.agents/skills/<name>/SKILL.md` path instead of model-initiated loading. Locked bodies retain upstream bytes and no added guards; policy controls their use.
 
 ### Command contract
 
@@ -110,7 +45,7 @@ Every command and leaf command answers `--help` and `-h` with its usage on stdou
 
 ## Role agents
 
-Three roles exist. `adversarial-review` launches the `reviewer`, a workflow that chooses to delegate implementation launches the `executor`, and `triage` and `research` launch `code-search` when a repository search earns its own worker. The reviewer's standing instructions live in `skills/adversarial-review/roles/reviewer.md`; the skill keeps diff delivery, triage, and the loop cap. The executor lives in `roles/executor.md` and keeps implementation access inside the slice it was handed, while the delegating workflow keeps scope, commits, review, conformance, and every gate. `code-search` lives in `roles/code-search.md` and returns only `path:line | symbol | mechanism` citations, which its caller verifies before reuse.
+Three named roles remain: `executor` implements a bounded slice, `code-search` answers a repository question, and `reviewer` inspects a named concern independently. Delegate only for useful parallel work, context isolation, or independent inspection. `review` owns diff delivery and bounded triage; its role lives in `skills/review/roles/reviewer.md`. The other definitions remain under `roles/`. Client/model resolution is unchanged.
 
 A role assigned to the session's own client launches as a native subagent (the Agent tool in Claude Code, `task` in OpenCode), which loads only the rendered agent. A role assigned to the other client launches through Orca, per the policy's **Launching a role**.
 
@@ -125,30 +60,7 @@ The installer renders the role definitions during each run and copies each into 
 
 Every restriction is best effort: the table is what each client documents, the generator prints the same gaps on every install, and no row is runtime-verified until a probe runs against an installed client. Probe during an intentional installation, never as a validation shortcut: in each client, launch each named agent, ask it to write a file, run a command, fetch a URL, and delegate, and record each result as enforced, not enforced, or unverified. The unverified rows are whether OpenCode's deny covers MCP tools, whether the `ccyolo` and `ocyolo` launchers leave agent restrictions in force, diff delivery's escalation when a launch prompt cannot carry the complete snapshot, whether Claude Code applies a main-thread `--agent` session's `model` and `effort`, and the session's effort when `effort` is absent, whether OpenCode sends an agent's `reasoningEffort` with its requests, and whether the executor's delegation denies hold.
 
-The reviewer receives the requirements, the diff, and its standards (the `ponytail` body pasted in and the project's instruction file by absolute path), never the implementation rationale. Its output opens with a `loaded:` line, and a standards file counts as read only when that line names it. The parent writes one complete diff snapshot per round to a temporary file outside the worktree and pastes its text into the launch prompt; when a prompt cannot carry the whole diff, the review escalates instead of truncating. It never substitutes a general agent or skips required review.
-
-The implementer rejects a `bug:` or `risk:` only with concrete `path:line` evidence, recorded under the pull request's `## Rejected review findings` or in the `/proto` ledger; without evidence it fixes or escalates.
-
-```mermaid
-flowchart TD
-    assign["clients/assignments.json<br>model and effort per role and client"] --> role["skills/adversarial-review/roles/reviewer.md<br>rendered per client by harness install"]
-    role --> r["reviewer<br>is it wrong, does it do the job"]
-    req["requirements"] --> r
-    snap["diff snapshot<br>one per round, pasted inline"] --> r
-    standards["ponytail body and<br>project instruction file"] --> r
-    rationale["implementation rationale"] --x|withheld| r
-    r --> findings["findings, opening with a loaded: line"]
-    findings --> triage{"canonical triage block"}
-    triage -->|bug or risk| blocking["fix, reject with path:line evidence,<br>or escalate a product decision"]
-    triage -->|nit| nit["fix when smaller than the argument,<br>else drop; never starts a round"]
-    triage -->|q| question["answer it"]
-    question -.->|evidence exposes a defect| blocking
-    blocking -->|fixed in round one| delta["second round<br>repair delta only"]
-    conformance["spec-conformance repair<br>counts as a fixed blocking finding"] -->|in round one| delta
-    conformance -->|after round two| disclose(["rechecked by conformance alone,<br>disclosed under ## Checks"])
-    delta --> findings
-    blocking -->|new blocking finding in round two,<br>in code round one repaired| escalate(["escalate: rabbit-hole trip,<br>never a third round"])
-```
+The reviewer receives the concern, requirements, revision/content identity, complete scoped diff, and standards. It never receives implementation rationale, continuity notes, or earlier findings. Standards outside the project arrive inline. Findings identify the inspected snapshot; substantive repairs get at most one repair round, with blockers at the cap escalated. Missing required review remains unverified, never replaced by self-review. Routine changes need none.
 
 ### Assignments
 
@@ -156,7 +68,7 @@ flowchart TD
 
 A cross-vendor launch follows the locked `orchestration` skill, which resolves the Orca executable and loads its version-matched guide; Harness has no dispatcher or supervision loop. A same-client role never touches Orca.
 
-`harness models launch-args <role> --orca-command <executable>` validates the assigned client, model, and installed agent, then prints a JSON argv array without launching a worker or calling Orca. Follow the guide's custom-terminal adoption path to run that named agent with those arguments; plain agent launch must not drop its role controls. The executable comes from the locked skill. Read-only roles receive a blocking permission hook that permits only that executable’s `orchestration send`, `ask`, and `check`; it rejects shell syntax even in quoted message prose. OpenCode loads the hook through a local plugin, which grants Bash only when loaded. The helper prints environment assignments and argv but executes neither. Preparation also refuses an existing `OPENCODE_CONFIG_CONTENT` override rather than discard it. Preparation refuses missing or stale agents, including an OpenCode agent that is not `mode: all`, and asks for a human reinstall. It never provisions the machine. A Claude executor's arguments preserve its editing permission and publication restrictions. `/ship` delegates an implementation slice to the executor when its isolation or parallelism is useful and implements it inline otherwise. `harness install --uninstall` of every client removes `~/.harness`, and the model choice with it. A different effort is never presented as a different model. In Claude Code the session's choice is `claude.json`'s tracked `model` and `effortLevel` unless changed in the session; in OpenCode it is the invoking agent's. Claude Code still lets a `model` parameter passed at launch override an agent's frontmatter, and an organization `availableModels` allowlist substitute a blocked model with a warning, so the policy never passes one and the generator reports both as a gap.
+`harness models launch-args <role> --orca-command <executable>` validates the assigned client, model, and installed agent, then prints a JSON argv array without launching a worker or calling Orca. Follow the guide's custom-terminal adoption path to run that named agent with those arguments; plain agent launch must not drop its role controls. The executable comes from the locked skill. Read-only roles receive a blocking permission hook that permits only that executable’s `orchestration send`, `ask`, and `check`; it rejects shell syntax even in quoted message prose. OpenCode loads the hook through a local plugin, which grants Bash only when loaded. The helper prints environment assignments and argv but executes neither. Preparation also refuses an existing `OPENCODE_CONFIG_CONTENT` override rather than discard it. Preparation refuses missing or stale agents, including an OpenCode agent that is not `mode: all`, and asks for a human reinstall. It never provisions the machine. A Claude executor's arguments preserve its editing permission and publication restrictions. The parent delegates an implementation slice to the executor when its isolation or parallelism is useful and implements it inline otherwise. `harness install --uninstall` of every client removes `~/.harness`, and the model choice with it. A different effort is never presented as a different model. In Claude Code the session's choice is `claude.json`'s tracked `model` and `effortLevel` unless changed in the session; in OpenCode it is the invoking agent's. Claude Code still lets a `model` parameter passed at launch override an agent's frontmatter, and an organization `availableModels` allowlist substitute a blocked model with a warning, so the policy never passes one and the generator reports both as a gap.
 
 | Client | Model | Effort | `inherit` |
 | --- | --- | --- | --- |
@@ -289,21 +201,15 @@ Binaries are the deliberate exception. Every prose body has its hash in `skills-
 
 ## Roster
 
-Workflow skills are `/ask`, `/research`, `/triage`, `/harness-audit`, `/spec`, `/create-ticket`, `/proto`, `/ship`, `/feedback`, `/address-review`, `/land`, and `/abandon`.
+Investigation capabilities are `ask`, `research`, `triage`, and `harness-audit`. Optional planning capabilities are `spec`, `proto`, and `create-ticket`. Verification, inspection, recovery, and delivery are `verification`, `review`, `continuity`, and `open-pr`. Maintenance uses `feedback` and `address-review`; explicit terminal actions use `land` and `abandon`.
 
-`/land` has two lanes, selected by the pull request's state. Explicit `/land <n>` authorizes squash-merging an open non-draft pull request after its gates pass; an already-merged one runs only the remaining cleanup. No extra argument or second confirmation. Automatic routing and other workflows never invoke it. Both the mergeability gate and the conformance check precede the merge, so a blocking mismatch prevents it, where the merged lane can only report one. With no argument it resolves the current worktree's head branch, falling back to a search over merged pull requests only.
+`land` merges only on explicit invocation after required checks and any required review settle, or cleans up an already merged request. It verifies the result against available requirements without demanding a separate contract artifact. `abandon` inventories the proposed discard and preserves required scope unless cancellation was explicitly authorized. Neither automatically follows delivery or experimentation.
 
-`/abandon` is the other exit, for work that will not land. No tracker automation recovers a ticket stranded at `in-progress`, since the reconciler skips an active label and fires only on close or reopen, so the worktree and the claim would have no owner. It is a workflow rather than a lane inside `/land` because `/proto` calls it to kill a prototype. Being the only workflow that discards unmerged work, it lists every commit and uncommitted change and takes one confirmation on that list. An abandoned attempt preserves scope and dependencies for retry; explicit cancellation reconciles parent scope and obsolete edges in the same confirmation, and never counts as merge evidence.
-
-Local protocol skills are `adversarial-review`, `evidence`, `grilling`, `grill-with-docs`, `local-tracker`, `setup-harness`, and `workflow-checkpoint`, each carrying both guards, alongside the guarded `land` and `abandon`. `local-tracker` holds what a tracker operation means when the tracker is committed markdown, so the delivery workflows gain one pointer each instead of a files-mode branch apiece. `workflow-checkpoint` is the one definition of the branch-scoped Engram checkpoint: its topic key, record schema, recovery validation, and terminal states, so the delivery workflows can read it from its installed path instead of each restating the schema. `setup-harness` stays a skill because it installs bundled assets only a skill directory can carry. `grilling` carries the upstream `mattpocock/skills` body verbatim but is local rather than locked, because a locked body cannot carry the guards. `grill-with-docs` composes it with `domain-modeling`, and is the only surface that writes `CONTEXT.md` or an ADR. A `/research` ledger stays planning input until a route produces a complete contract; a `/proto` ledger the human accepted is itself a contract.
-
-Locked Matt Pocock skills provide domain and module vocabulary, `improve-codebase-architecture`, TDD, diagnosis, handoff, and conflict resolution. Locked `DietrichGebert/ponytail` provides lazy mode. Locked `JuliusBrussee/caveman` provides `caveman-commit`; only `skills/` is taken, which that repository licenses MIT. Where a locked body and the policy disagree the policy wins: caveman allows a 72-character subject, `POLICY.md` allows 50. Locked `cloudflare/security-audit-skill` provides `security-audit`. Locked `stablyai/orca` provides `orchestration`, description-matchable like `impeccable`, and tells an agent how to resolve the Orca executable before coordinating Orca workers.
-
-`improve-codebase-architecture` produces planning input, never a change contract: keep its report read-only and route a candidate through native plan mode, `/spec`, or `/proto` before changing files.
+`evidence`, `grilling`, `grill-with-docs`, `local-tracker`, and `setup-harness` remain independent support. Locked Matt Pocock skills provide domain/module vocabulary, architecture investigation, TDD, diagnosis, handoff, and conflict resolution. Ponytail supplies coding guidance, Caveman commit phrasing, Cloudflare security guidance, and Orca cross-client orchestration. Locked bodies stay unchanged; policy overrides compulsory process or publication instructions inside them.
 
 ### Impeccable
 
-Locked `pbakaus/impeccable` is the one frontend design body. It is description-matchable, so the control is scope rather than a guard: no workflow or local skill loads it, and `POLICY.md` keeps the project's existing styling layer winning inside `/proto` and `/ship`.
+Locked `pbakaus/impeccable` is the one frontend design body. It is description-matchable, so the control is scope rather than a guard: no workflow or local skill loads it, and `POLICY.md` keeps the project's existing styling layer winning during frontend work.
 
 It arrives only through `harness skills`. Four of its own routes are forbidden, because each writes outside the lock: `npx impeccable install` and `$impeccable hooks on` wire `PostToolUse` and `Stop` hooks into a project unasked, `npx impeccable update` rewrites the locked directory out from under `skills-lock.json`, and `scripts/pin.mjs` mints a `$<command>` shortcut as a real skill directory that `harness install` would link everywhere and neither sweep would reclaim. The lock covers the body's bytes, not its runtime egress: several scripts call the author's site. At 4.8 MB across 168 files it is the largest thing in `skills/`, against about 460 KB for everything else combined.
 
@@ -315,11 +221,11 @@ Its two validators, `validate-findings.cjs` and `validate-coverage-ledger.cjs`, 
 
 ### Ponytail
 
-Ponytail is a locked skill body, not a plugin. None of the plugin is installed, and the install's check asserts the body is present. What replaces its `SessionStart` hook is one line in each workflow that writes code, `/ship`, `/proto`, `/feedback`, and `/address-review`, plus `adversarial-review` using ponytail violations as a review lens. Lazy mode then applies where code is written rather than to every conversation, and delivers the full `SKILL.md` instead of the hook's level-filtered condensation. The trade is that `/ponytail lite|ultra` switching and the auxiliary skills are gone, and in exchange the body changes only through a reviewed update, where the plugin once moved 4.7.0 to 4.9.0 mid-install with six agent-steering bodies changing unread.
+Ponytail is a locked skill body, not an installed plugin. Policy selects it for coding decisions, with no mandatory delivery workflow. Its bytes change only through reviewed `harness skills` updates.
 
 ## Invocation guards
 
-Workflow skills are description-matched by design, so their descriptions carry their triggers. The two guards keep `land`, `abandon`, `adversarial-review`, `setup-harness`, and the protocol skills from firing on their own. For a locked body prose is the only control, which is why a body that must never fire on its own is not installed at all.
+Both guards protect explicit actions and protocol bodies from automatic invocation. `review` and `continuity` are read by path when their conditions apply; reading `land` or `abandon` never supplies action authority.
 
 ## GitHub lifecycle
 
@@ -327,60 +233,9 @@ In GitHub mode, `setup-harness` writes `docs/agents/harness.json`, creates the f
 
 The other mode is local markdown, where `setup-harness` writes the config and compatibility file and nothing else: no labels, no workflow, no reconciler. Lifecycle state is a `Status:` line and a `Blocked by:` line committed beside the code, and the `local-tracker` skill holds what each operation means there.
 
-```mermaid
-flowchart TD
-    setup["setup-harness<br>invoked by hand, per repository"] --> config["docs/agents/harness.json<br>tracker, spec home, label mapping"]
-    setup --> labels["gh label create --force<br>blocked · ready-for-agent<br>in-progress · ready-for-human"]
-    setup --> trackerdoc["docs/agents/issue-tracker.md<br>compatibility contract for locked skills"]
-    setup --> files[".github/workflows/agent-lifecycle.yml<br>.github/scripts/reconcile-agent-lifecycle.go"]
-    files --> active(["active once that reviewed change<br>reaches the default branch"])
+Tracker integration is optional. Explicit ticket publication uses native issue relationships and the configured label mapping. Authorized claims mark work in progress; authorized PR handoff marks it ready for human review once required evidence settles. Ordinary local implementation needs neither transition. `open-pr` does not create tickets automatically.
 
-    subgraph GRAPH["issue graph, GitHub native"]
-        parent["parent issue"] --- children["sub-issues"]
-        children --- deps["blocked-by / blocking"]
-    end
-
-    subgraph RUN["reconciler, on issues closed or reopened"]
-        active --> trigger["workflow run"]
-        trigger --> frontier["reconcileFrontier<br>on the event issue and everything it blocks"]
-        frontier -->|any blocker unsatisfied| blocked["label: blocked<br>in-progress and ready-for-human cleared"]
-        frontier -->|every blocker satisfied,<br>nothing active| ready["label: ready-for-agent"]
-        trigger --> parentstate["reconcileParent"]
-        parentstate -->|every child closed by a merged PR| closeparent["parent closed"]
-        parentstate -->|a child reopened| reopenparent["parent reopened,<br>label: in-progress"]
-        parentstate -->|state changed| parentqueue["parent queued for<br>a full reconcile pass"]
-        parentqueue --> trigger
-    end
-
-    GRAPH --> trigger
-
-    subgraph AGENT["what the agent does with it"]
-        ready --> ship["/ship picks up a ready ticket<br>branch: type/tracker-id-slug"]
-        ship --> inprogress["label: in-progress"]
-        ready --> protoclaim["/proto claims a ready ticket,<br>confirmed once"]
-        protoclaim --> inprogress
-        protoclaim -.->|accepted ledger| ship
-        inprogress --> prready["pull request green and reviewed<br>label: ready-for-human"]
-        prready --> humanmerge["a human decides to merge"]
-        humanmerge -->|they merge it on GitHub| merged["merged, the closing reference<br>closes the ticket"]
-        humanmerge -->|they type /land n| landopen["/land open lane:<br>gates and conformance first,<br>then squash merge"]
-        landopen --> mergedself["merged by this run, the closing<br>reference closes the ticket"]
-        mergedself --> trigger
-        merged --> trigger
-        merged -->|already merged: they type /land n| landmerged["/land merged lane<br>verify conformance, report a mismatch"]
-        landmerged -->|conformance clean| landtail["reconcile the tracker,<br>retire the worktree"]
-        mergedself -->|the same run continues| landtail
-        humanmerge -->|closed unmerged: requirement retained| abandonlabel["/abandon releases the claim by hand:<br>the reconciler skips an active label<br>and fires only on close or reopen"]
-        humanmerge -->|requirement explicitly cancelled| cancelscope["/abandon: confirm scope changes,<br>preserve history, remove obsolete edges,<br>reconcile remaining required scope"]
-        inprogress -->|the run died| abandonlabel
-        abandonlabel -->|every blocker still satisfied| ready
-        abandonlabel -->|a blocker reopened meanwhile| blocked
-    end
-```
-
-Contract source and tracker binding are independent: the source controls conformance, the binding controls branch names, closing references, and label transitions. An in-conversation, `/proto`, or trackerless ticket contract is preserved in an inline `## Contract`; only a tracker-bound ticket-sourced contract can remain solely in its ticket.
-
-`/land` resolves the pull request first and lets that state pick the lane, prefers the inline contract for conformance, and falls back to the ticket when none exists. Trackerless work skips tracker transitions. A legacy trackerless pull request with neither source reports that conformance cannot be reconstructed, verifies merge and default-branch health, and removes only a clean retained worktree.
+`land` verifies merge evidence and reconciles only the bound tracker scope. `abandon` releases an attempt for retry or reconciles explicitly cancelled scope without treating cancellation as delivery. The reconciler and its merge-evidence rule are unchanged. Optional specs, task documents, and existing inline PR requirements can inform verification; no special contract heading is required.
 
 ## Operational ownership
 
@@ -390,9 +245,11 @@ Branch state writes only repository-local `harness.<branch>.<key>` Git configura
 
 Do not enable the Worktrunk Claude Code plugin. Its `UserPromptSubmit` hook writes the same per-branch `worktrunk.state.<branch>.vars.<key>` slot that fallback reads, so on a branch harness has not written yet, whatever that hook left is what `harness state` reports.
 
-The Engram checkpoint carries contract and branch references, revision-bound checks, retained Dispatch/artifact references, pending work kept apart from completed work, a next action, and distinct escalation context. Worker output is retrieved through Orca or an explicit durable artifact, never copied into another Engram handoff record. Recovery rejects wrong-branch or missing output and invalidates stale or dirty-tree checks while carrying pending items forward as context. Task completion supplies no publication approval. The `workflow-checkpoint` skill defines this protocol; fresh-parent acceptance through both clients needs a separately authorized model budget.
+The `continuity` capability keeps longer work in one task/spec document, mirrored in full to one project-scoped Engram observation with its locator. It reconciles conflicts and stale evidence against Git, preserves legacy checkpoint records, and reports unavailable mirroring as pending. It creates no artifact for bounded work that the request and diff can reconstruct. Worker output stays retrievable through Orca or a retained artifact; task completion supplies no delivery or merge authority.
 
 ## Validation
+
+Disposable scenario preparation and fixture checks are documented in `docs/agents/acceptance.md`. Deterministic checks validate the fixture mechanics, not agent compliance. Live runs require an explicitly authorized model budget and separate transcript assessment; until then behavioral compliance is unverified. Preparing these changes never installs them into live clients.
 
 Validate a change to this directory against the sessions it produced, as `bench/README.md` explains:
 

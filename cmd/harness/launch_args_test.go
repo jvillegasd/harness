@@ -105,7 +105,7 @@ func TestOpenCodeLifecyclePluginBlocksGeneralShell(t *testing.T) {
 	if err != nil {
 		t.Skip("node is needed to exercise the OpenCode plugin")
 	}
-	plugin, err := filepath.Abs("../../skills/adversarial-review/scripts/orca-lifecycle.mjs")
+	plugin, err := filepath.Abs("../../skills/review/scripts/orca-lifecycle.mjs")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,8 +179,8 @@ func TestOpenCodeLaunchPreparesBlockingPlugin(t *testing.T) {
 	if r := runModels(t, base, "launch-args", "reviewer", "--orca-command", "orca"); r.code == 0 {
 		t.Fatal("missing plugin accepted")
 	}
-	plugin := filepath.Join(base, "home", ".agents", "skills", "adversarial-review", "scripts", "orca-lifecycle.mjs")
-	writeMode(t, plugin, readFile(t, "../../skills/adversarial-review/scripts/orca-lifecycle.mjs"), 0o644)
+	plugin := filepath.Join(base, "home", ".agents", "skills", "review", "scripts", "orca-lifecycle.mjs")
+	writeMode(t, plugin, readFile(t, "../../skills/review/scripts/orca-lifecycle.mjs"), 0o644)
 	r := ok(t, runModels(t, base, "launch-args", "reviewer", "--orca-command", "orca"), "prepare")
 	var argv []string
 	if err := json.Unmarshal([]byte(r.stdout), &argv); err != nil {

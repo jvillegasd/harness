@@ -1,6 +1,6 @@
 # Issue tracker: GitHub
 
-This repository keeps its contracts as GitHub issues on `jvillegasd/harness`. A spec is an issue, its slices are that issue's native sub-issues, and the ordering between them is native issue dependencies. Nothing here lives in a file; the tracker is the service.
+This repository uses GitHub issues on `jvillegasd/harness` for published tracking. Local specification and task drafts need no issue or tracker write. When publication is explicitly requested, related slices use native sub-issues and dependencies. Implementation and spec approval alone do not publish.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ Native GitHub relationships are the source of truth for this repository. Do not 
 
 - **Parent and child**: native sub-issues. `gh api repos/jvillegasd/harness/issues/<n> --jq .sub_issues_summary` reports a parent's children; the sub-issues endpoint adds and removes them. Both are enabled on this repository.
 - **Ordering**: native issue dependencies. A slice declares what must finish first as a `blocked_by` edge, added with `gh api --method POST repos/jvillegasd/harness/issues/<child>/dependencies/blocked_by -F issue_id=<blocker-database-id>`. The `issue_id` is the blocker's numeric **database id** from `gh api repos/jvillegasd/harness/issues/<n> --jq .id`, not its `#number` and not its `node_id`. Passing the number silently addresses the wrong issue or fails, so resolve the id first.
-- **Reading the gate**: `issue_dependencies_summary.blocked_by` counts open blockers only, which is the live gate. `total_blocked_by` counts every edge including satisfied ones, so it never answers "can this start".
+- **Reading the gate**: `issue_dependencies_summary.blocked_by` counts open blockers, while `total_blocked_by` counts all edges. Neither count proves merge evidence. Read each blocker's `closedByPullRequestsReferences` and confirm a referenced pull request is `MERGED` with `mergedAt`, as the reconciler does.
 
 ## Lifecycle labels
 
@@ -33,15 +33,15 @@ Four labels carry ticket state, and they exist on the remote already:
 
 `docs/agents/harness.json` maps these four keys to those values. Read the mapping from that file rather than hardcoding the strings, so a renamed label stays a one-line change.
 
-An implementation-ready ticket carries `blocked` while any blocker is open and `ready-for-agent` once none is. A ticket that lacks acceptance criteria and test seams is planning-only and carries no lifecycle label at all, which is what keeps it out of the ready frontier until its contract is completed.
+An implementation-ready ticket carries `blocked` while any blocker lacks merge evidence and `ready-for-agent` once every blocker has it. A ticket that lacks acceptance criteria and test seams is planning-only and carries no lifecycle label at all, which is what keeps it out of the ready frontier until its contract is completed.
 
 ## The ready frontier
 
-The tickets an agent may start: open, carrying `ready-for-agent`, with no open blocker. `gh issue list --label ready-for-agent --state open` lists the candidates, and `issue_dependencies_summary.blocked_by` on each confirms the gate.
+The tickets an agent may start: open, carrying `ready-for-agent`, with merge evidence for every blocker. `gh issue list --label ready-for-agent --state open` lists the candidates; verify each dependency using the merge-evidence rule above.
 
 ## Automatic reconciliation
 
-`.github/workflows/agent-lifecycle.yml` installs Go and runs `.github/scripts/reconcile-agent-lifecycle.go` with `go run` whenever an issue is closed or reopened. It walks the closed issue's dependents, moves each newly unblocked one from `blocked` to `ready-for-agent`, and closes a parent once every child is closed. Closing an issue is therefore how the frontier advances; nothing needs to relabel dependents by hand.
+`.github/workflows/agent-lifecycle.yml` installs Go and runs `.github/scripts/reconcile-agent-lifecycle.go` with `go run` whenever an issue is closed or reopened. It walks the closed issue's dependents, moves each newly unblocked one from `blocked` to `ready-for-agent`, and closes a parent once every required child has a merged pull request closing it. Closing or reopening an issue triggers reconciliation; manual closure without merge evidence does not advance the frontier.
 
 The workflow reacts to any issue in this repository, not only to harness tickets, but it only transitions tickets that already carry a lifecycle label. A planning-only ticket with no label keeps no lifecycle label until explicit promotion labels it.
 
