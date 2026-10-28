@@ -191,7 +191,7 @@ func TestEachClientGetsItsControlsAndTheWholeRole(t *testing.T) {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
 	for _, role := range []string{"reviewer"} {
-		raw, err := os.ReadFile(filepath.Join(repoRoot(), "skills", "adversarial-review", "roles", role+".md"))
+		raw, err := os.ReadFile(filepath.Join(repoRoot(), "skills", "review", "roles", role+".md"))
 		if err != nil {
 			t.Fatal(err)
 		}

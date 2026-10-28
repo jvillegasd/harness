@@ -2,7 +2,7 @@
 
 This file tells an agent how to navigate, prepare, and verify this repository. It carries repository facts and conventions only.
 
-The harness policy in `POLICY.md` is linked into each client's global instruction path and governs every repository: workflow routing, the oracle ladder, planning, the escalation contract, and safety. Read that policy for process. This file never restates it, and where the two meet it is more specific: this repository's own commands, paths, and conventions win.
+The harness policy in `POLICY.md` is linked into each client's global instruction path and governs every repository: composable capabilities, scoped authority, verification, recovery, and safety. Read that policy for process. This file never restates it, and where the two meet it is more specific: this repository's own commands, paths, and conventions win.
 
 A nested `AGENTS.md` in a subtree, when one is added, scopes to that subtree and overrides this file there. Keep repository-wide rules here, not in a subtree, and do not widen a subtree's rules to the repository.
 
@@ -23,7 +23,7 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 | `internal/agents/` | The role-agent renderer the installer calls in-process |
 | `internal/models/` | The per-machine role model presets behind `harness models` |
 | `POLICY.md` | The vendor-neutral global policy linked into each client |
-| `skills/` | Workflows (also invoked as `/name`), protocol, vocabulary, and locked third-party bodies |
+| `skills/` | Independent capabilities (also invoked as `/name`), protocol, vocabulary, and locked third-party bodies |
 | `clients/` | Client settings and the role assignments the installer reconciles |
 | `roles/` | Canonical roles no skill owns, the executor and code-search |
 | `aliases.sh` | The managed yolo-mode shell aliases |
@@ -67,7 +67,7 @@ The suite protects one behavior set per retained boundary, at the lowest seam th
 | Orca adapter | `cmd/harness/launch_args_test.go` | Preparation validates the installed role and returns its client argv without launching, refuses a missing or stale agent, and the generated permission hooks fail closed. |
 | Branch continuity | `internal/state`, `cmd/harness/main_test.go` | Branch isolation, canonical values over legacy ones, legacy counter text preserved and named when replaced, and pruning limited to known keys of deleted branches. |
 | GitHub lifecycle | `skills/setup-harness/scripts/reconcile_agent_lifecycle_test.go` | Label transitions follow blockers and merge evidence, a parent closes only when every required child merged, and the deployed reconciler copy is byte identical to the harness copy. |
-| Skill integrity | `internal/skills`, `cmd/harness/skills_test.go` | The guard parser counts a guard only where its client reads it, a local skill carries both guards or neither, the must-guard skills (`land`, `abandon`, `adversarial-review`, `setup-harness`, `evidence`, `grilling`, `grill-with-docs`, `local-tracker`, `workflow-checkpoint`) carry both, a retired role override is dropped on load, lock verification separates drift from unverifiable, and an unsafe removal is refused. |
+| Skill integrity | `internal/skills`, `cmd/harness/skills_test.go` | The guard parser counts a guard only where its client reads it, a local skill carries both guards or neither, the must-guard skills (`land`, `abandon`, `review`, `setup-harness`, `evidence`, `grilling`, `grill-with-docs`, `local-tracker`, `continuity`) carry both, a retired role override is dropped on load, lock verification separates drift from unverifiable, and an unsafe removal is refused. |
 | CLI behavior | `cmd/harness/cli_test.go` | Help and invalid invocations exit 0 and 2, spawn no subprocess, write nothing, and read no stdin; retired commands are unlisted and unknown. |
 | Status line | `cmd/harness/statusline_test.go`, `internal/statusline` | Recorded payloads render byte for byte against the goldens captured from the shell renderer, and an empty payload reaches neither the keychain nor the usage cache. |
 | Documented structure | `cmd/harness/repo_test.go` | Every path this file names whose first segment is a current top-level entry resolves. A path whose top-level directory is itself renamed or deleted is skipped rather than reported, so a top-level move still needs reading this file. |
@@ -75,6 +75,8 @@ The suite protects one behavior set per retained boundary, at the lowest seam th
 | Bench accounting | `internal/bench`, `cmd/harness/bench_test.go` | Collection deduplicates clients, windows by date, and survives damaged or oversized records; the reports match the baselines recorded on the fixture population. |
 
 What the suite deliberately does not protect: the wording of this policy and these skills. Exact-sentence snapshots of prose made every documentation edit an artificial test failure, so they were retired. The structural properties that executable code reads stay covered above: skill frontmatter guards and documented paths. One gap is accepted knowingly. A skill or policy line that tells the model to load a guarded skill, rather than read it from its path, is refused by Claude Code at runtime and no test catches the wording, so review that wording when editing a workflow skill.
+
+The disposable scenario fixtures in `cmd/harness/acceptance_test.go` and their manual in `docs/agents/acceptance.md` validate preparation, local forge behavior, and evaluator separation. They never stand in for a live transcript assessment.
 
 What deterministic tests cannot settle: whether a client actually loads a rendered role, whether an Orca worker's retained output survives release, and fresh-parent recovery through each client launch mechanism. Those are behavioral acceptance below, and the live ones need a separately authorized model budget. A fixture or read-back check never stands in for them, and an unavailable check is recorded as unverified rather than as a pass.
 

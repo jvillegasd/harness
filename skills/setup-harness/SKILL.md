@@ -1,6 +1,6 @@
 ---
 name: setup-harness
-description: Configure a repository for the portable spec-to-PR workflow.
+description: Configure optional tracker and lifecycle capabilities for a repository.
 disable-model-invocation: true
 metadata:
   opencode/autoinvoke: "false"
@@ -8,7 +8,7 @@ metadata:
 
 # Setup Harness
 
-Explore before writing. Reuse clear domain and documentation conventions; ask only about unsafe inferences. Always ask for tracker mode: hosting does not determine where contracts belong.
+Explore before writing. Reuse clear domain and documentation conventions; ask only about unsafe inferences. Resolve tracker mode from the request or existing configuration first; ask only when it remains undecided. Hosting does not determine where published tracking belongs.
 
 Write `docs/agents/harness.json` with this stable shape:
 
@@ -27,7 +27,7 @@ Write `docs/agents/harness.json` with this stable shape:
 }
 ```
 
-Always present GitHub and local markdown by name and ask, even without a remote. First run `gh api repos/{owner}/{repo}/branches/<default> --jq .protected`: if true, offer only GitHub and explain that local markdown needs an unprotected default branch. Off GitHub, present both and state that requirement. Other trackers follow the last section. `tracker` and `spec_home` select the mode; commands resolve `<spec_home>` to this value. `domain_layout` may be project-specific.
+When tracker mode is undecided, present GitHub and local markdown by name and ask, even without a remote. First run `gh api repos/{owner}/{repo}/branches/<default> --jq .protected`: if true, offer only GitHub and explain that local markdown needs an unprotected default branch. Off GitHub, present both and state that requirement. Other trackers follow the last section. `tracker` and `spec_home` select the mode; commands resolve `<spec_home>` to this value. `domain_layout` may be project-specific.
 
 For local markdown, change only the two mode values. Propose `docs/specs` for `spec_home`, or the project's docs convention, and confirm the path with the mode:
 
@@ -54,7 +54,7 @@ For GitHub:
 2. Create or update the four mapped labels with `gh label create --force`.
 3. Write `docs/agents/issue-tracker.md` for locked Matt skills: identify GitHub, require the `gh` CLI, explain reading the source issue/spec, and name native sub-issues and dependencies as the relationship authority. Never require a second setup skill.
 4. Copy `assets/agent-lifecycle.yml` to `.github/workflows/agent-lifecycle.yml` and `scripts/reconcile-agent-lifecycle.go` to `.github/scripts/reconcile-agent-lifecycle.go`. Remove a superseded `.github/scripts/reconcile-agent-lifecycle.py` if present.
-5. Preserve unrelated workflows and configuration. Include both copies in the normal human-reviewed change, never push or merge them directly. Explain that automation activates only after both reach the default branch.
+5. Preserve unrelated workflows and configuration. Include both copies in the local change; publish only under explicit delivery authority, and never merge without `/land`. Explain that automation activates only after both reach the default branch.
 
 For local markdown:
 

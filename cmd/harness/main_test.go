@@ -15,6 +15,9 @@ var binary string
 
 // TestMain builds the real binary once, so every test drives the command boundary a caller sees.
 func TestMain(m *testing.M) {
+	if os.Getenv("HARNESS_FIXTURE_CONTROL") != "" {
+		os.Exit(m.Run()) // Local acceptance service; no CLI build or model launch.
+	}
 	dir, err := os.MkdirTemp("", "harness-bin")
 	if err != nil {
 		panic(err)

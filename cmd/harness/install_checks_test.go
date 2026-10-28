@@ -202,11 +202,11 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 func TestUninstallKeepsAnEditedCopy(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base, "--skip-packages"), "install")
-	edited := filepath.Join(base, "home", ".claude", "skills", "ship", "SKILL.md")
-	writeMode(t, edited, "my ship\n", 0o644)
+	edited := filepath.Join(base, "home", ".claude", "skills", "open-pr", "SKILL.md")
+	writeMode(t, edited, "my open-pr\n", 0o644)
 	r := runInstaller(t, base, "--uninstall", "--yes")
 	ok(t, r, "uninstall")
-	if got := readFileOr(edited); got != "my ship\n" {
+	if got := readFileOr(edited); got != "my open-pr\n" {
 		t.Errorf("the uninstall removed or changed the edited copy: %q", got)
 	}
 	if !strings.Contains(r.stderr, "changed since the harness wrote it") {
