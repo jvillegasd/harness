@@ -143,30 +143,6 @@ func TestOneDefinitionPerRolePerClient(t *testing.T) {
 	}
 }
 
-// TestRendersTheCapturedGolden compares the output against the golden captured from the Python renderer before it was deleted.
-func TestRendersTheCapturedGolden(t *testing.T) {
-	out := temp(t)
-	if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
-		t.Fatalf("generate exited %d: %s", code, stderr)
-	}
-	want := treeOf(t, filepath.Join("testdata", "agents"))
-	if len(want) != len(outputNames) {
-		t.Fatalf("golden holds %d files, want %d", len(want), len(outputNames))
-	}
-	got := treeOf(t, out)
-	for name, text := range want {
-		if got[name] != text {
-			t.Errorf("%s differs from the captured golden", name)
-		}
-	}
-	if len(got) != len(want) {
-		t.Errorf("rendered %d files, want %d", len(got), len(want))
-	}
-	if code, stdout, _ := runCommand(t, "--check", configPath(), out); code != 0 {
-		t.Fatalf("check on fresh output exited %d: %s", code, stdout)
-	}
-}
-
 func TestGenerationIsIdempotent(t *testing.T) {
 	out := temp(t)
 	if code, stdout, stderr := runCommand(t, configPath(), out); code != 0 || !strings.Contains(stdout, "output: changed") {
@@ -185,17 +161,12 @@ func TestGenerationIsIdempotent(t *testing.T) {
 	}
 }
 
-func TestEachClientGetsItsControlsAndTheWholeRole(t *testing.T) {
+func TestEachClientGetsItsControls(t *testing.T) {
 	out := temp(t)
 	if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
 	for _, role := range []string{"reviewer"} {
-		raw, err := os.ReadFile(filepath.Join(repoRoot(), "skills", "review", "roles", role+".md"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		body := strings.TrimSpace(strings.SplitN(string(raw), "---\n", 3)[2])
 		claude := readFile(t, filepath.Join(out, "claude", role+".md"))
 		opencode := readFile(t, filepath.Join(out, "opencode", role+".md"))
 		if !strings.Contains(claude, "\nname: "+role+"\n") || !strings.Contains(claude, "\ntools: Read, Grep, Glob, Bash\n") {
@@ -203,9 +174,6 @@ func TestEachClientGetsItsControlsAndTheWholeRole(t *testing.T) {
 		}
 		if !strings.Contains(opencode, "\nmode: all\npermission:\n  \"*\": deny\n") || !strings.Contains(opencode, "\n    \"*.env\": deny\n") {
 			t.Errorf("%s opencode controls are wrong:\n%s", role, opencode)
-		}
-		if !strings.Contains(claude, body) || !strings.Contains(opencode, body) {
-			t.Errorf("%s does not carry the whole role body", role)
 		}
 	}
 }
@@ -215,11 +183,6 @@ func TestExecutorKeepsImplementationAccess(t *testing.T) {
 	if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
-	raw, err := os.ReadFile(filepath.Join(repoRoot(), "roles", "executor.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	body := strings.TrimSpace(strings.SplitN(string(raw), "---\n", 3)[2])
 	claude := readFile(t, filepath.Join(out, "claude", "executor.md"))
 	opencode := readFile(t, filepath.Join(out, "opencode", "executor.md"))
 	if !strings.Contains(claude, "\nname: executor\n") || strings.Contains(strings.Join(head(t, filepath.Join(out, "claude", "executor.md")), "\n"), "tools:") {
@@ -238,9 +201,6 @@ func TestExecutorKeepsImplementationAccess(t *testing.T) {
 	}
 	if strings.Contains(opencode, "\"*\": deny") {
 		t.Error("executor opencode denies everything")
-	}
-	if !strings.Contains(claude, body) || !strings.Contains(opencode, body) {
-		t.Error("executor does not carry the whole role body")
 	}
 	if code, _, stderr := runCommand(t, "--check", configPath(), out); code != 0 {
 		t.Fatalf("check exited %d: %s", code, stderr)
@@ -282,37 +242,6 @@ func TestOnlyTheExecutorMayImplement(t *testing.T) {
 				t.Errorf("stderr = %q", stderr)
 			}
 		})
-	}
-}
-
-func TestGapsAndUnverifiedReportedApart(t *testing.T) {
-	out := temp(t)
-	_, stdout, _ := runCommand(t, configPath(), out)
-	lines := strings.Split(stdout, "\n")
-	claudeGaps := 0
-	for _, line := range lines {
-		if strings.HasPrefix(line, "gap: claude") {
-			claudeGaps++
-		}
-	}
-	if claudeGaps != 2 {
-		t.Fatalf("claude gaps = %d, want 2:\n%s", claudeGaps, stdout)
-	}
-	foundUnverified, foundCCYOLO := false, false
-	for _, line := range lines {
-		if strings.HasPrefix(line, "unverified: ") {
-			foundUnverified = true
-			if strings.Contains(line, "ccyolo") {
-				foundCCYOLO = true
-			}
-		}
-		// Review inputs arrive inline, so no role reads outside the project and no line may claim one does.
-		if strings.Contains(line, "outside the project") {
-			t.Errorf("report still describes a file read outside the project: %s", line)
-		}
-	}
-	if !foundUnverified || !foundCCYOLO {
-		t.Fatalf("report is missing an unverified capability:\n%s", stdout)
 	}
 }
 

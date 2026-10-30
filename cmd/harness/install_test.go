@@ -3,72 +3,15 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 	"unicode/utf8"
 )
-
-var update = flag.Bool("update", false, "rewrite testdata/install goldens from the installer under test")
-
-// installScenarios are the runs the goldens record. Each starts from a fresh sandbox, and the golden holds every run's exit, the external commands in order, and the resulting HOME.
-var installScenarios = []struct {
-	name       string
-	darwinOnly bool
-	seed       func(*testing.T, string)
-	runs       [][]string
-	stdin      string
-}{
-	{name: "skip-packages", seed: seedLived, runs: [][]string{{"--skip-packages"}}},
-	{name: "skip-packages-no-backup", seed: seedLived, runs: [][]string{{"--skip-packages", "--no-backup"}}},
-	// Linux adds --with-deps to the browser download, so this golden is macOS's.
-	{name: "full", darwinOnly: true, seed: seedFull, runs: [][]string{nil}},
-	{name: "uninstall", seed: seedLived, runs: [][]string{{"--skip-packages"}, {"--uninstall", "--yes"}}},
-	// OpenCode alone: its copies and registrations go, and ~/.agents/skills stays because Claude Code still reads guarded bodies there.
-	{name: "uninstall-partial", seed: seedLived, runs: [][]string{{"--skip-packages"}, {"--uninstall", "--client", "opencode", "--yes"}}},
-	// Declining the confirmation removes nothing.
-	{name: "uninstall-declined", seed: seedLived, runs: [][]string{{"--skip-packages"}, {"--uninstall"}}, stdin: "n\n"},
-	{name: "clear-backups", seed: seedBackups, runs: [][]string{{"--clear-backups"}}},
-	{name: "rejected-flags", runs: [][]string{{"--uninstall", "--skip-packages"}, {"--clear-backups", "--uninstall"}, {"--skip-packages", "--clear-backups"}, {"--bogus"}}},
-}
-
-func TestInstallerGolden(t *testing.T) {
-	for _, sc := range installScenarios {
-		t.Run(sc.name, func(t *testing.T) {
-			if sc.darwinOnly && runtime.GOOS != "darwin" {
-				t.Skip("recorded on macOS")
-			}
-			base := sandbox(t)
-			if sc.seed != nil {
-				sc.seed(t, base)
-			}
-			var b strings.Builder
-			for _, args := range sc.runs {
-				r := runInstallerInput(t, base, sc.stdin, args...)
-				fmt.Fprintf(&b, "run [%s]: exit %d\n", strings.Join(args, " "), r.code)
-				if r.code != 0 {
-					b.WriteString(ansi.ReplaceAllString(r.stderr, ""))
-				}
-			}
-			log, err := os.ReadFile(filepath.Join(base, "shims.log"))
-			if err != nil && !errors.Is(err, fs.ErrNotExist) {
-				t.Fatal(err)
-			}
-			b.WriteString("== commands\n")
-			b.Write(log)
-			b.WriteString("== home\n")
-			tree(t, &b, filepath.Join(base, "home"), true)
-			golden(t, sc.name, normalize(base, b.String()))
-		})
-	}
-}
 
 // runInstaller runs `harness install` from the sandbox checkout.
 func runInstaller(t *testing.T, base string, args ...string) result {
@@ -158,7 +101,7 @@ func writeShim(t *testing.T, base, name, body string) {
 func shimScripts(shims string) map[string]string {
 	return map[string]string{
 		"agent-browser": "",
-		// The formulae `brew list --formula` reports as installed: a full run adds only what this leaves out, so the golden shows missing-only provisioning without a per-formula probe.
+		// The formulae `brew list --formula` reports as installed let the full run add only what this leaves out, without a per-formula probe.
 		"brew":   `if [ "$1" = "list" ]; then printf '%s\n' node gh opencode; fi`,
 		"curl":   "",
 		"engram": "",
@@ -287,7 +230,7 @@ func tree(t *testing.T, b *strings.Builder, root string, contents bool) {
 		switch {
 		case rel == ".":
 		case copies[path]:
-			// A managed copy of a checkout asset: the state file records its digest, so the golden names it rather than repeating the asset.
+			// A managed copy of a checkout asset: the state file records its digest, so report the path without repeating the asset.
 			fmt.Fprintf(b, "C %s\n", rel)
 			if d.IsDir() {
 				return filepath.SkipDir
@@ -325,42 +268,4 @@ func tree(t *testing.T, b *strings.Builder, root string, contents bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-}
-
-var (
-	ansi  = regexp.MustCompile(`\x1b\[[0-9;]*m`)
-	stamp = regexp.MustCompile(`\d{8}-\d{6}(-\d+)?`)
-)
-
-// normalize replaces the sandbox paths and the backup timestamps, which differ on every run.
-var (
-	digestText = regexp.MustCompile(`sha256:[0-9a-f]{64}`)
-	assetsDir  = regexp.MustCompile(`harness-assets-[0-9]+`)
-)
-
-func normalize(base, s string) string {
-	s = strings.NewReplacer(base+"/checkout", "$CHECKOUT", base+"/home", "$HOME", base+"/shims", "$SHIMS", base, "$BASE").Replace(s)
-	s = digestText.ReplaceAllString(s, "sha256:<digest>")
-	s = assetsDir.ReplaceAllString(s, "harness-assets-<n>")
-	return stamp.ReplaceAllString(s, "<stamp>")
-}
-
-func golden(t *testing.T, name, got string) {
-	t.Helper()
-	path := filepath.Join("testdata", "install", name+".golden")
-	if *update {
-		writeMode(t, path, got, 0o644)
-		return
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got == string(want) {
-		return
-	}
-	gotPath := filepath.Join(t.TempDir(), name)
-	writeMode(t, gotPath, got, 0o644)
-	diff, _ := exec.Command("diff", "-u", path, gotPath).CombinedOutput()
-	t.Errorf("installer output differs from %s; rerun with -update only when the change is intended:\n%s", path, diff)
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/jvillegasd/harness/internal/agents"
 )
 
 // renderAgent writes the frontmatter `harness install` renders for a role agent on one client.
@@ -18,7 +21,11 @@ func renderAgent(t *testing.T, base, client, role, model, effort string) {
 	if client == "opencode" {
 		dir, effortKey = filepath.Join(base, "home", ".config", "opencode", "agents"), "reasoningEffort: "
 	}
-	raw := readFile(t, filepath.Join("..", "..", "internal", "agents", "testdata", "agents", client, role+".md"))
+	generated := filepath.Join(base, "generated")
+	if code := agents.Generate(filepath.Join("..", "..", "clients", "assignments.json"), generated, nil, io.Discard, io.Discard); code != 0 {
+		t.Fatal("generate role fixture")
+	}
+	raw := readFile(t, filepath.Join(generated, client, role+".md"))
 	if client == "claude" {
 		raw = strings.Replace(raw, "model: inherit\n", "model: "+model+"\n", 1)
 	} else {
@@ -135,7 +142,9 @@ func TestOpenCodeLifecyclePluginBlocksGeneralShell(t *testing.T) {
 }
 
 func TestClaudeLifecycleHookFailsClosed(t *testing.T) {
-	role := readFile(t, "../../internal/agents/testdata/agents/claude/reviewer.md")
+	base := modelsBase(t)
+	renderAgent(t, base, "claude", "reviewer", "inherit", "")
+	role := readFile(t, filepath.Join(base, "home", ".claude", "agents", "reviewer.md"))
 	var hook string
 	for _, line := range strings.Split(role, "\n") {
 		if strings.HasPrefix(line, "          command: '") {

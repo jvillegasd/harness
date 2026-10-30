@@ -251,7 +251,7 @@ func TestEveryAssignedRoleIsDispatchable(t *testing.T) {
 	var config struct {
 		Roles map[string]struct{} `json:"roles"`
 	}
-	raw := readRepo(t, "clients/assignments.json")
+	raw := readFile(t, filepath.Join("..", "..", "clients", "assignments.json"))
 	if err := json.Unmarshal([]byte(raw), &config); err != nil {
 		t.Fatal(err)
 	}

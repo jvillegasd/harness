@@ -107,7 +107,7 @@ git diff --check
 git diff --cached --check
 ```
 
-`AGENTS.md` explains each rung, the installer goldens, the core validation contract naming what the suite proves at which seam, and the behavioral acceptance that a static check cannot settle.
+`AGENTS.md` explains the local checks, the executable boundaries the suite covers, and behavioral acceptance that a static check cannot settle.
 
 ## Install
 
@@ -249,7 +249,7 @@ The `continuity` capability keeps longer work in one task/spec document, mirrore
 
 ## Validation
 
-Disposable scenario preparation and fixture checks are documented in `docs/agents/acceptance.md`. Deterministic checks validate the fixture mechanics, not agent compliance. Live runs require an explicitly authorized model budget and separate transcript assessment; until then behavioral compliance is unverified. Preparing these changes never installs them into live clients.
+Deterministic checks validate executable behavior at defined boundaries, not agent compliance. Live runs require an explicitly authorized model budget and separate transcript assessment; until then behavioral compliance is unverified. Preparing these changes never installs them into live clients.
 
 Validate a change to this directory against the sessions it produced, as `bench/README.md` explains:
 
