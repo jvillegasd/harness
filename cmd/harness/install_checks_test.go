@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 )
@@ -53,12 +52,8 @@ func readDir(dir string) []string {
 	return out
 }
 
-// The policy tells a model to read a guarded skill from one installed path, so an install has to put every guarded body there.
-func TestGuardedSkillsResolveAtThePolicyPath(t *testing.T) {
-	roots := regexp.MustCompile("`~/([^`]+)/<name>/SKILL\\.md`").FindAllStringSubmatch(readFile(t, filepath.Join("..", "..", "POLICY.md")), -1)
-	if len(roots) != 1 {
-		t.Fatalf("POLICY.md names %d guarded skill paths, want 1", len(roots))
-	}
+// Every guarded skill is installed in the shared namespace used by both clients.
+func TestGuardedSkillsAreInstalled(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base, "--skip-packages"), "skip-packages install")
 	bodies, err := filepath.Glob(filepath.Join(base, "checkout", "skills", "*", "SKILL.md"))
@@ -72,8 +67,8 @@ func TestGuardedSkillsResolveAtThePolicyPath(t *testing.T) {
 		}
 		guarded++
 		name := filepath.Base(filepath.Dir(body))
-		if _, err := os.Stat(filepath.Join(base, "home", roots[0][1], name, "SKILL.md")); err != nil {
-			t.Errorf("guarded skill %s is not readable at ~/%s/%s/SKILL.md: %v", name, roots[0][1], name, err)
+		if _, err := os.Stat(filepath.Join(base, "home", ".agents", "skills", name, "SKILL.md")); err != nil {
+			t.Errorf("guarded skill %s is not installed in the shared skill namespace: %v", name, err)
 		}
 	}
 	if guarded == 0 {
@@ -214,6 +209,44 @@ func TestUninstallKeepsAnEditedCopy(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(base, "home", ".harness")); err == nil {
 		t.Error("a full uninstall left ~/.harness")
+	}
+}
+
+func TestUninstallDeclinePreservesInstallation(t *testing.T) {
+	base := sandbox(t)
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	copy := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
+	before := readFile(t, copy)
+	r := runInstallerInput(t, base, "n\n", "--uninstall")
+	ok(t, r, "declined uninstall")
+	if got := readFileOr(copy); got != before {
+		t.Errorf("declined uninstall changed the installed copy: %q", got)
+	}
+}
+
+func TestUninstallOpenCodeLeavesClaudeCopies(t *testing.T) {
+	base := sandbox(t)
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	claude := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
+	ok(t, runInstaller(t, base, "--uninstall", "--client", "opencode", "--yes"), "OpenCode uninstall")
+	if readFileOr(claude) == "" {
+		t.Error("OpenCode uninstall removed the Claude role copy")
+	}
+	if _, err := os.Stat(filepath.Join(base, "home", ".config", "opencode", "agents", "executor.md")); err == nil {
+		t.Error("OpenCode uninstall kept its role copy")
+	}
+}
+
+func TestNoBackupReplacesCollisionWithoutArchiving(t *testing.T) {
+	base := sandbox(t)
+	path := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
+	writeMode(t, path, "private agent\n", 0o644)
+	ok(t, runInstaller(t, base, "--skip-packages", "--no-backup"), "no-backup install")
+	if got := readFile(t, path); got == "private agent\n" {
+		t.Error("no-backup left the colliding file in place")
+	}
+	if backups, _ := filepath.Glob(filepath.Join(base, "home", ".dotfiles-backups", "harness", "*")); len(backups) != 0 {
+		t.Errorf("no-backup archived the collision: %v", backups)
 	}
 }
 
@@ -378,7 +411,7 @@ func TestSkipPackagesCallsNoPackageManager(t *testing.T) {
 	}
 }
 
-// TestInstallAddsClaudeOnlyWhenAbsent covers the branch no golden reaches: every sandbox has the claude shim, so this run removes it and stands in for Anthropic's installer, which has to be reached exactly once.
+// Every other sandbox has the claude shim; this run stands in for Anthropic's installer and proves it is reached exactly once.
 func TestInstallAddsClaudeOnlyWhenAbsent(t *testing.T) {
 	base := sandbox(t)
 	seedFull(t, base)
