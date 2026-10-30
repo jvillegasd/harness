@@ -8,14 +8,13 @@
 //   await run.finish();   // writes <out>/results.json, closes the browser, sets the exit code
 // Filter tests with a regex argument: node e2e.mjs '^(E1|X1)$'
 import { chromium } from 'playwright-core';
-import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { createRequire } from 'node:module';
 
 const VIEW = 'http://pdfview.test'; // fake origin routed in-process, so pdf.js never needs a server
 
 export async function createRun({ out = 'shots', chrome, only = process.argv[2], viewport = { width: 1440, height: 1000 }, locale } = {}) {
-  rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
   const filter = only ? new RegExp(only) : null;
   const browser = await chromium.launch({ executablePath: chrome, headless: true });
@@ -39,6 +38,7 @@ export async function createRun({ out = 'shots', chrome, only = process.argv[2],
     cur = { id, area, title, checks: [], shots: [], ok: true, error: null };
     results.push(cur);
     try { await fn(); } catch (e) { cur.ok = false; cur.error = String(e.message || e).slice(0, 600); }
+    if (!cur.shots.length) { cur.ok = false; cur.error ||= 'no screenshot captured'; }
     console.log(`${cur.ok ? 'PASS' : 'FAIL'} ${id} ${title}${cur.error ? '  -> ' + cur.error : ''}`);
   }
 
