@@ -203,6 +203,8 @@ Binaries are the deliberate exception. Every prose body has its hash in `skills-
 
 Investigation capabilities are `ask`, `research`, `triage`, and `harness-audit`. Optional planning capabilities are `spec`, `proto`, and `create-ticket`. Verification, inspection, recovery, and delivery are `verification`, `review`, `continuity`, and `open-pr`. Maintenance uses `feedback` and `address-review`; explicit terminal actions use `land` and `abandon`.
 
+`be-ambitious` rewrites a task with stronger sources, methods, and external checks while preserving its scope. It stops after the rewrite. This is an editable local copy from [DannyMac180/skills](https://github.com/DannyMac180/skills/tree/7dc63b7a748b8bd14bf213c15ecddd4536409407/be-ambitious), with its MIT license retained under `skills/be-ambitious/`; it is not managed by `skills-lock.json`.
+
 `land` merges only on explicit invocation after required checks and any required review settle, or cleans up an already merged request. It verifies the result against available requirements without demanding a separate contract artifact. `abandon` inventories the proposed discard and preserves required scope unless cancellation was explicitly authorized. Neither automatically follows delivery or experimentation.
 
 `evidence`, `grilling`, `grill-with-docs`, `local-tracker`, and `setup-harness` remain independent support. Locked Matt Pocock skills provide domain/module vocabulary, architecture investigation, TDD, diagnosis, handoff, and conflict resolution. Ponytail supplies coding guidance, Caveman commit phrasing, Cloudflare security guidance, and Orca cross-client orchestration. Locked bodies stay unchanged; policy overrides compulsory process or publication instructions inside them.
