@@ -35,6 +35,7 @@ C .agents/skills/improve-codebase-architecture
 C .agents/skills/land
 C .agents/skills/local-tracker
 C .agents/skills/open-pr
+C .agents/skills/optimization
 C .agents/skills/orchestration
 C .agents/skills/ponytail
 C .agents/skills/proto
@@ -149,6 +150,7 @@ F .claude/skills/mine/SKILL.md
   |private skill
   |
 C .claude/skills/open-pr
+C .claude/skills/optimization
 C .claude/skills/orchestration
 C .claude/skills/ponytail
 C .claude/skills/proto
@@ -577,6 +579,23 @@ F .harness/state.json
   |    },
   |    {
   |      "path": "$HOME/.claude/skills/open-pr",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.agents/skills/optimization",
+  |      "component": "skills",
+  |      "clients": [
+  |        "claude",
+  |        "opencode"
+  |      ],
+  |      "sha256": "sha256:<digest>"
+  |    },
+  |    {
+  |      "path": "$HOME/.claude/skills/optimization",
   |      "component": "skills",
   |      "clients": [
   |        "claude"
