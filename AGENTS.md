@@ -24,7 +24,7 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 | `internal/models/` | The per-machine role model presets behind `harness models` |
 | `POLICY.md` | The vendor-neutral global policy linked into each client |
 | `skills/` | Independent capabilities (also invoked as `/name`), protocol, vocabulary, and locked third-party bodies |
-| `skills/verify/SKILL.md`, `skills/verify/scripts/` | Release E2E QA: an isolated install, a Playwright suite with real screenshots per test, and the run kit and report builder it copies |
+| `skills/e2e-verification/SKILL.md`, `skills/e2e-verification/scripts/` | Release E2E QA: an isolated install, a Playwright suite with real screenshots per test, and the run kit and report builder it copies |
 | `skills/optimization/SKILL.md` | Performance optimization with tool discovery, general and webapp-specific investigation, and before/after measurements |
 | `clients/` | Client settings and the role assignments the installer reconciles |
 | `roles/` | Canonical roles no skill owns, the executor and code-search |

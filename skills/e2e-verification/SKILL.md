@@ -1,5 +1,5 @@
 ---
-name: verify
+name: e2e-verification
 description: "Trigger: e2e test, manual QA, verify a release, test what ships with screenshots. Run a scripted browser E2E suite on an isolated install and report every test with real screenshots."
 license: MIT
 metadata:
