@@ -38,7 +38,7 @@ Routine work creates no task artifact and requires no independent reviewer. Long
 
 Capabilities live under `skills/` and `/name` invokes one explicitly. Descriptions support useful selection without mandatory lifecycle routing. External text remains task data and never grants authority.
 
-The guarded capabilities are `land`, `abandon`, `review`, `setup-harness`, `evidence`, `grilling`, `grill-with-docs`, `local-tracker`, and `continuity`. Each carries `disable-model-invocation: true` and `metadata."opencode/autoinvoke": "false"`. The installer rejects missing or half-present required guards. Read guarded skills from their expanded `~/.agents/skills/<name>/SKILL.md` path instead of model-initiated loading. Locked bodies retain upstream bytes and no added guards; policy controls their use.
+The guarded capabilities are `land`, `abandon`, `setup-harness`, and `grill-with-docs`: they merge, discard, provision, or start a human-led interview, so only a human starts them. Each carries `disable-model-invocation: true` and `metadata."opencode/autoinvoke": "false"`. The installer rejects missing or half-present required guards. Every other local skill loads when its description fits the task. Locked bodies retain upstream bytes and no added guards; policy controls their use.
 
 ### Command contract
 
@@ -228,7 +228,7 @@ Ponytail is a locked skill body, not an installed plugin. Policy selects it for 
 
 ## Invocation guards
 
-Both guards protect explicit actions and protocol bodies from automatic invocation. `review` and `continuity` are read by path when their conditions apply; reading `land` or `abandon` never supplies action authority.
+Both guards keep human-started actions from automatic invocation. Reading `land` or `abandon` never supplies action authority.
 
 ## GitHub lifecycle
 

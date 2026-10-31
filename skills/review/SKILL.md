@@ -2,11 +2,9 @@
 name: review
 description: "Trigger: requested independent review or a concrete risk beyond ordinary checks. Inspect a named concern without implementation rationale."
 license: MIT
-disable-model-invocation: true
 metadata:
   author: jvillegasd
   version: "1.0"
-  opencode/autoinvoke: "false"
 ---
 
 ## Activation Contract

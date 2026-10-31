@@ -175,7 +175,7 @@ func (in *installer) removeManaged(e entry) {
 	in.log("Removed %s", e.Path)
 }
 
-// desired lists every copy an install writes. ~/.agents/skills serves both clients: OpenCode loads skills from it, and the policy points Claude Code there for guarded skill bodies.
+// desired lists every copy an install writes. ~/.agents/skills serves both clients: OpenCode loads skills from it, and Claude Code finds the same bodies there.
 func (in *installer) desired() []entry {
 	var out []entry
 	add := func(source, dest, component string, clients ...string) {

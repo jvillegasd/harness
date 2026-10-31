@@ -2,11 +2,9 @@
 name: continuity
 description: "Trigger: long work, interruption, or resume needs recoverable intent. Keep one task document and a full project-scoped Engram mirror."
 license: MIT
-disable-model-invocation: true
 metadata:
   author: jvillegasd
   version: "1.0"
-  opencode/autoinvoke: "false"
 ---
 
 ## Activation Contract
