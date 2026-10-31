@@ -7,21 +7,19 @@ metadata:
   version: "1.0"
 ---
 
-## Activation Contract
+Draft a local specification when the human asks for one or when durable design reasoning is worth keeping. A spec is optional, and a local draft needs no tracker configuration.
 
-Use when the human requests a specification or durable design reasoning is useful. A spec is optional; no tracker configuration is required for a local draft.
+## Why
 
-## Hard Rules
+A spec records what was settled and what was not, so later work starts from agreed behavior instead of a reconstruction. That only helps if exact requirements stay verbatim and uncertainty stays visible as uncertainty.
 
-Approval of the draft does not publish it, create tickets, or start implementation. Preserve user requirements verbatim where exact wording matters. Do not turn uncertainty into an invented agreement.
+## Steps
 
-## Execution Steps
+1. Read the settled discussion and the relevant code, domain terms, and ADRs, and reuse grounded evidence. Ask only the unresolved consequential questions, and draft the independent settled sections meanwhile.
+2. Reuse an existing document; otherwise use the repository's spec location or `docs/agents/tasks/<feature>.md`. When the work needs recovery, fold the `continuity` information into this document instead of starting a second one.
+3. Draft the problem, the intended behavior, acceptance checks and meaningful test seams, scope boundaries, decisions, and unresolved risks. Include exact examples and identifiers, and preserve the user's wording where it matters. Use domain and design guidance only where it helps resolve uncertainty.
+4. Return the local draft. Approving it does not publish it, create tickets, or start implementation; each needs its own request. When publication is requested, use the tracker configuration for that destination and read back the result.
 
-1. Read the settled discussion and relevant code, domain terms, and ADRs. Reuse grounded evidence. Ask only unresolved consequential questions while drafting independent settled sections.
-2. Reuse an existing document; otherwise choose the repository's spec location or `docs/agents/tasks/<feature>.md`. Combine continuity information here when the work needs recovery, rather than creating a second ledger.
-3. Draft the problem, intended behavior, acceptance checks and meaningful test seams, scope boundaries, decisions, and unresolved risks. Include exact examples and identifiers. Use domain/design guidance only where it helps resolve uncertainty; no compulsory grilling.
-4. Return the local draft. Publish only when explicitly requested for that destination and scope, using tracker configuration when applicable. Read back any authorized publication. Ticket creation and implementation each need their own request; do not transition automatically.
+## Output
 
-## Output Contract
-
-Return the document locator, settled behavior, and consequential open questions. Clearly distinguish a draft from anything published.
+The document locator, the settled behavior, and the consequential open questions, with the draft clearly distinguished from anything published.

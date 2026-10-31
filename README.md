@@ -48,7 +48,7 @@ Every command and leaf command answers `--help` and `-h` with its usage on stdou
 
 Three named roles remain: `executor` implements a bounded slice, `code-search` answers a repository question, and `reviewer` inspects a named concern independently. Delegate only for useful parallel work, context isolation, or independent inspection. `review` owns diff delivery and bounded triage; its role lives in `skills/review/roles/reviewer.md`. The other definitions remain under `roles/`. Client/model resolution is unchanged.
 
-A role assigned to the session's own client launches as a native subagent (the Agent tool in Claude Code, `task` in OpenCode), which loads only the rendered agent. A role assigned to the other client launches through Orca, per the policy's **Launching a role**.
+A role assigned to the session's own client launches as a native subagent (the Agent tool in Claude Code, `task` in OpenCode), which loads only the rendered agent. A role assigned to the other client launches through Orca, per the policy's **Delegation** section.
 
 The installer renders the role definitions during each run and copies each into its client's agent directory, recording the copy in `~/.harness/state.json`. Only a recorded copy is the harness's: an install replaces an unchanged recorded copy, archives anything unrecorded or edited in its way, and removes a recorded copy whose definition was retired, and an uninstall removes the recorded copies while a private agent beside them is left alone. The install's check fails on a missing or changed copy or on a definition that lost its restrictions.
 

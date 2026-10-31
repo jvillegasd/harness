@@ -9,7 +9,7 @@ Find out whether the premise is wrong before writing code.
 
 ## What deserves a query
 
-Query only claims whose failure changes whether the work happens, its scope, or the fix location. Omit other claims; do not gather evidence for appearances.
+Query only claims whose failure changes whether the work happens, its scope, or the fix location. Leave other claims out; evidence gathered for appearances costs time and changes nothing.
 
 ## Challenge protocol
 
@@ -34,24 +34,23 @@ Lead with a kill result, such as "Zero occurrences in 30 days", rather than code
 
 ## Source map, by capability
 
-Name tools by server and bare tool name, never a client-specific prefix. Report and skip unconfigured capabilities; missing data neither blocks work nor permits invented numbers.
+Report and skip unconfigured capabilities; missing data neither blocks work nor permits invented numbers.
 
 - **Error tracking.** Search issues for frequency and first/last seen; aggregate events by release, environment, and time; read issue details for stacks. Verify automated root-cause hypotheses in code before treating them as findings.
-- **Product analytics.** Query affected people and funnel conversion. For what a user saw or did, prefer a replay confirming reproduction to event-count inference. Apply project test-account filters. Never infer current person properties from values captured at ingest.
-- **Metrics, logs, and traces.** Query rates and latency percentiles, logs for confirmation and uninstrumented failures, traces for time spent, and incident/alert history for prior pages. Generate deep links with the tool's link generator, never by hand.
+- **Product analytics.** Query affected people and funnel conversion. For what a user saw or did, prefer a replay confirming reproduction to event-count inference. Apply project test-account filters, and read current person properties from the source rather than inferring them from values captured at ingest.
+- **Metrics, logs, and traces.** Query rates and latency percentiles, logs for confirmation and uninstrumented failures, traces for time spent, and incident/alert history for prior pages. Generate deep links with the tool's link generator instead of writing them by hand.
 - **Database.** Verify tables, columns, and constraints before asserting they exist. Use row counts for blast radius, advisors for security/performance warnings on changed surfaces, and migration history before proposing migrations.
 - **Tracker.** Search prior art and duplicates before calling something new.
 - **Version history.** Use `git log` and `git blame` for behavior changes and accompanying work, release/deploy history to map telemetry changes to commits, and pull request discussion for rationale. Check regression claims against history, which every repository has.
 
-## No-fabrication guard
+## Keep the numbers honest
 
-Every number needs a source deep link and timeframe. Render links as complete absolute URLs.
+A number is only evidence if the reader can trace it. Give every number a source deep link and its timeframe, rendered as complete absolute URLs.
 
-- Never state a number you did not read from a tool result.
-- Never alter a timeframe to inflate or shrink a number.
-- For an empty result, write `no data in <source> for <window>`; do not omit the claim.
-- If a query fails or times out, say so. Never substitute an estimate.
-- Never infer affected users from error counts or an error rate from a sample.
+- Quote numbers exactly as read from a tool result, over the timeframe you queried. Changing the window changes the claim.
+- For an empty result, write `no data in <source> for <window>` and keep the claim.
+- If a query fails or times out, say so and leave the number unstated; an estimate would pass for data.
+- Error counts do not give affected users, and a sample does not give an error rate, so state only what the query measured.
 
 ## Budget
 

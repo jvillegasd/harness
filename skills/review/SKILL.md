@@ -7,25 +7,25 @@ metadata:
   version: "1.0"
 ---
 
-## Activation Contract
+Get an independent inspection of a named concern: a human-requested review, or a concrete security, data-loss, compatibility, or concurrency risk that ordinary checks cannot settle. Name the concern first, since routine work needs no review.
 
-Use for requested independent inspection, or a concrete security, data-loss, compatibility, or concurrency concern ordinary checks cannot adequately settle. Name the concern first; routine work needs no review.
+## Why
 
-## Hard Rules
+A reviewer that has not heard the implementer's reasoning judges the code instead of the story, so it can find what the author talked themselves past. That independence is the whole value, which is why a review that cannot run independently is reported as unverified instead of being replaced by self-review.
 
-Launch the named `reviewer` with a fresh context per policy. Never pass conversation history, implementation rationale, a rationale-bearing plan, continuity documents, worker results, or prior findings. A missing, stale, or unavailable reviewer is unverified, never replaced by self-review. No forge comments.
+## Steps
 
-## Execution Steps
+1. Define the concern and the requirements. Snapshot the complete relevant change, including owned untracked files and relevant caller context, without staging unrelated work. Identify the base, HEAD, and a content digest for uncommitted inputs, and keep that identity with every report.
+2. Launch the named `reviewer` in a fresh context and give it only the concern, the requirements stripped of rationale, the complete scoped diff, the revision identity, and the standards: project instructions and the `ponytail` body. Withhold conversation history, implementation rationale, rationale-bearing plans, continuity documents, worker results, and prior findings. Give project files by absolute path and paste external standards inline, because a read-only role cannot read outside the project. Keep the snapshot whole: narrow to a coherent scope or report the delivery as unavailable.
+3. Require `loaded:` to name each standard read or supplied inline, and `revision:` to match the snapshot. Retry once with the input repaired when standards are missing or the output is incomplete; then report unverified. Retain the complete report locally when recovery needs it.
+4. Triage `bug` and `risk` findings: fix, reject with concrete path and line evidence, or escalate an unresolved consequential decision. Keep the disposition with the evidence or report. Drop nits unless useful, answer questions, and reclassify only on evidence.
+5. Run a second inspection only after substantive repairs that affect the concern, over the repair delta with the context it needs. Give it the requirements and the new revision, not the earlier rationale or findings. A nit alone starts no round. Allow at most two rounds: new blocking findings in repaired code, or an unresolved blocker at the cap, escalate. A substantive repair after the cap stays unverified until the human decides.
 
-1. Define the concern and requirements. Snapshot the complete relevant change, including owned untracked files and relevant caller context, without staging unrelated work. Identify the base, HEAD, and content digest for uncommitted inputs. Keep that identity with every report.
-2. Give the reviewer the concern, requirements stripped of rationale, complete scoped diff, revision identity, and standards: project instructions and the `ponytail` body. Give project files by absolute path; paste external standards inline because a read-only role cannot read outside the project. Never truncate a snapshot: narrow a coherent scope or report unavailable delivery.
-3. Require `loaded:` to name each standard read or supplied inline, and `revision:` to match the snapshot. Retry missing standards or incomplete output once with the input repaired; then report unverified. Retain the complete report locally when recovery needs it.
-4. Triage `bug` and `risk`: fix, reject with concrete path/line evidence, or escalate an unresolved consequential decision. Keep the disposition with the evidence or report. Drop nits unless useful; answer questions and reclassify only on evidence.
-5. Run a second inspection only after substantive repairs affecting the concern, over the repair delta with needed context. Give requirements and the new revision, never the earlier rationale or findings. A nit alone starts no round. At most two rounds: new blocking findings in repaired code or an unresolved blocker at the cap escalate. A substantive repair after the cap remains unverified pending a human decision, never silently passed by self-review.
+A missing, stale, or unavailable reviewer leaves the change unverified. The report stays with the parent, and the review posts nothing to the forge.
 
-## Output Contract
+## Output
 
-Report the concern, inspected revision/content identity, standards loaded, findings and dispositions, and remaining uncertainty. A changed relevant snapshot invalidates the earlier verdict until affected evidence is rechecked.
+The concern, the inspected revision and content identity, the standards loaded, the findings with their dispositions, and the remaining uncertainty. A change to the relevant snapshot invalidates the earlier verdict until the affected evidence is rechecked.
 
 ## References
 
