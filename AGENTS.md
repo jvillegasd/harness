@@ -15,7 +15,6 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 | Path | Holds |
 | --- | --- |
 | `go.mod`, `cmd/harness/` | The Go module and the `harness` command, the single entry point for operating the harness |
-| `internal/state/` | The per-branch oracle ladder and rabbit-hole counters behind `harness state` |
 | `internal/checkout/` | Checkout discovery and canonical asset locations, shared by the commands that resolve a checkout |
 | `internal/install/` | The installer behind `harness install` |
 | `internal/skills/` | The third-party skill locks behind `harness skills`, and the invocation-guard check on local skills |
@@ -67,7 +66,6 @@ The suite protects one behavior set per retained boundary, at the lowest seam th
 | Managed installation | `cmd/harness/install_checks_test.go`, `cmd/harness/install_test.go` | Install and uninstall touch only unchanged recorded copies, archive collisions, refuse a missing or relative location, and leave edited copies, private entries, and user worktrees alone. Every guarded skill reaches the shared skill namespace, while installation preserves edited and private copies. |
 | Role and model configuration | `internal/models`, `internal/agents`, `cmd/harness/models_test.go` | Presets and per-role overrides resolve to a client, model, and effort; a rejected value writes nothing; install renders the resolved assignment into each client and widens no role's access. |
 | Orca adapter | `cmd/harness/launch_args_test.go` | Preparation validates the installed role and returns its client argv without launching, refuses a missing or stale agent, and the generated permission hooks fail closed. |
-| Branch continuity | `internal/state`, `cmd/harness/main_test.go` | Branch isolation, canonical values over legacy ones, legacy counter text preserved and named when replaced, and pruning limited to known keys of deleted branches. |
 | GitHub lifecycle | `skills/setup-harness/scripts/reconcile_agent_lifecycle_test.go` | Label transitions follow blockers and merge evidence, a parent closes only when every required child merged, and the deployed reconciler copy is byte identical to the harness copy. |
 | Skill integrity | `internal/skills`, `cmd/harness/skills_test.go` | The guard parser counts a guard only where its client reads it, a local skill carries both guards or neither, the must-guard skills (`land`, `abandon`, `setup-harness`, `grill-with-docs`) carry both, a retired role override is dropped on load, lock verification separates drift from unverifiable, and an unsafe removal is refused. |
 | CLI behavior | `cmd/harness/cli_test.go` | Help and invalid invocations exit 0 and 2, spawn no subprocess, write nothing, and read no stdin; retired commands are unlisted and unknown. |

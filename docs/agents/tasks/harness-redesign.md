@@ -27,9 +27,9 @@ Strategy: `ask-on-risk`. Each phase is one or two pull requests; Phase 0 is bran
 
 ## Phase 0: lighten the rules
 
-- [ ] P0.1 Rewrite `POLICY.md` as a short hard floor plus a judgment layer, with a rule-to-enforcer table and agent-branch commits. Route: inline (one file).
-- [ ] P0.2 Guard only human-triggered skills: `land`, `abandon`, `setup-harness`, `grill-with-docs`. Unguard `review`, `evidence`, `grilling`, `local-tracker`, `continuity`; drop the read-by-path rule. Route: inline (one Go rule plus mechanical frontmatter).
-- [ ] P0.3 Remove the unused `harness state` command and `internal/state`. Route: delegated writer (several files).
+- [x] P0.1 Rewrite `POLICY.md` as a short hard floor plus a judgment layer, with a rule-to-enforcer table and agent-branch commits. Route: inline (one file).
+- [x] P0.2 Guard only human-triggered skills: `land`, `abandon`, `setup-harness`, `grill-with-docs`. Unguard `review`, `evidence`, `grilling`, `local-tracker`, `continuity`; drop the read-by-path rule. Route: inline (one Go rule plus mechanical frontmatter).
+- [x] P0.3 Remove the unused `harness state` command and `internal/state`. Route: delegated writer (several files).
 - [ ] P0.4 Local skills: drop the Activation/Hard Rules skeleton and injection boilerplate, remove forced asks, fix stale cross-references. Route: delegated writer (many files).
 - [ ] P0.5 Roles and denies: optional code-search symbol plus `git log`/`git blame`, read-only `gh` for the executor, sliced review of large diffs, allow `git restore --staged`. Route: delegated writer.
 - [ ] P0.6 No-op pass: headless before/after scenarios for cut rules. Pending a separately authorized model budget.
@@ -51,8 +51,10 @@ Phase 0 started on `refactor/lighten-policy`.
 
 ## Evidence
 
-None yet.
+- P0.1 `ea53afc`: POLICY.md 1,772 to 1,578 words; never/must/always/do-not from 25 to 6; each hard rule stated once in the floor table with reason and enforcer, which shows OpenCode has no deny rules. `go test ./internal/checkout/ ./cmd/harness/` passed. RDD assess: medium, under budget.
+- P0.2 `2b9e8dd`: RED observed (`review: missing disable-model-invocation`), then GREEN for `go test ./internal/skills/` and `go test ./cmd/harness/ -run 'Skill|Install|Guard'`. The five unguarded skills appeared as model-invocable in the running session. RDD assess: medium, under budget.
+- P0.3: RED observed (`help still lists state`; `state exited 2 with stderr "Usage: harness state"`), then GREEN. Removed `internal/state` (514 lines), its seven command tests and their helpers, and the dead Worktrunk shim parameter of the `harness` test helper. `go vet`, `gofmt`, `go build`, `go test ./...`, and `git diff --check` all passed.
 
 ## Next step
 
-P0.1.
+P0.4 (delegated writer), then P0.5.

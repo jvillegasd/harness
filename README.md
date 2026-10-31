@@ -242,11 +242,7 @@ Tracker integration is optional. Explicit ticket publication uses native issue r
 
 ## Operational ownership
 
-Orca owns cross-vendor delegated execution, placement, messages, and retained worker results; a same-client role runs as a native subagent. Use Orca for worker and worktree visibility; `harness state`, `harness skills verify`, and `harness bench` remain directly available. The dashboard command and Worktrunk provisioning are retired. Existing worktrees, Worktrunk's installed configuration file and shell integration, and installed packages are left alone.
-
-Branch state writes only repository-local `harness.<branch>.<key>` Git configuration. Missing canonical values fall back to legacy `worktrunk.state.<branch>.vars.<key>` values without invoking Worktrunk. Canonical values win when both exist; replacing a value removes only its legacy copy. Pruning removes only known harness keys for deleted local branches, preserving foreign configuration.
-
-Do not enable the Worktrunk Claude Code plugin. Its `UserPromptSubmit` hook writes the same per-branch `worktrunk.state.<branch>.vars.<key>` slot that fallback reads, so on a branch harness has not written yet, whatever that hook left is what `harness state` reports.
+Orca owns cross-vendor delegated execution, placement, messages, and retained worker results; a same-client role runs as a native subagent. Use Orca for worker and worktree visibility; `harness skills verify` and `harness bench` remain directly available. The dashboard command and Worktrunk provisioning are retired. Existing worktrees, Worktrunk's installed configuration file and shell integration, and installed packages are left alone.
 
 The `continuity` capability keeps longer work in one task/spec document, mirrored in full to one project-scoped Engram observation with its locator. It reconciles conflicts and stale evidence against Git, preserves legacy checkpoint records, and reports unavailable mirroring as pending. It creates no artifact for bounded work that the request and diff can reconstruct. Worker output stays retrievable through Orca or a retained artifact; task completion supplies no delivery or merge authority.
 

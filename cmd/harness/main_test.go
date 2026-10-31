@@ -2,12 +2,9 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -59,14 +56,6 @@ func git(t *testing.T, dir string, args ...string) string {
 	return string(bytes.TrimSpace(out))
 }
 
-func configHas(t *testing.T, dir, key string) bool {
-	t.Helper()
-	cmd := exec.Command("git", "config", "--local", "--get", key)
-	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), env(dir)...)
-	return cmd.Run() == nil
-}
-
 type result struct {
 	stdout, stderr string
 	code           int
@@ -90,8 +79,8 @@ func runBinary(t *testing.T, dir string, args ...string) result {
 	return result{stdout.String(), stderr.String(), code}
 }
 
-// harness isolates Git and optionally provides a Worktrunk shim to prove it is ignored.
-func harness(t *testing.T, dir, wt string, args ...string) result {
+// harness runs the built binary with isolated Git on PATH.
+func harness(t *testing.T, dir string, args ...string) result {
 	t.Helper()
 	shims := t.TempDir()
 	gitPath, err := exec.LookPath("git")
@@ -102,18 +91,6 @@ func harness(t *testing.T, dir, wt string, args ...string) result {
 		t.Fatal(err)
 	}
 	path := shims + ":/usr/bin:/bin"
-	if wt == "" {
-		for _, d := range []string{"/usr/bin", "/bin"} {
-			if _, err := os.Stat(filepath.Join(d, "wt")); err == nil {
-				t.Fatalf("a real wt in %s makes the absent mode impossible", d)
-			}
-		}
-	} else {
-		script := "#!/bin/sh\n: > .wt-called\ncat <<'EOF'\n" + wt + "\nEOF\n"
-		if err := os.WriteFile(filepath.Join(shims, "wt"), []byte(script), 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
 	cmd := exec.Command(binary, args...)
 	cmd.Dir = dir
 	cmd.Env = append(env(dir), "PATH="+path)
@@ -135,164 +112,4 @@ func ok(t *testing.T, r result, what string) result {
 		t.Fatalf("%s exited %d: %s", what, r.code, r.stderr)
 	}
 	return r
-}
-
-func getJSON(t *testing.T, dir, wt string) map[string]any {
-	t.Helper()
-	r := ok(t, harness(t, dir, wt, "state", "get", "--json"), "get --json")
-	var got map[string]any
-	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil {
-		t.Fatalf("get --json printed invalid JSON %q: %v", r.stdout, err)
-	}
-	return got
-}
-
-func listing(b string) string {
-	return `{"schema":2,"items":[{"branch":"` + b + `","worktree":{"path":"/tmp/x","main":false}}]}`
-}
-
-func TestLadderSetWithoutWorktrunkUsesHarnessKeys(t *testing.T) {
-	dir := repo(t)
-	ok(t, harness(t, dir, "", "state", "ladder", "set", "go test ./..."), "ladder set")
-	if got := git(t, dir, "config", "harness."+branch+".ladder"); got != "go test ./..." {
-		t.Fatalf("harness ladder key = %q", got)
-	}
-	got := getJSON(t, dir, "")
-	if got["branch"] != branch || got["ladder"] != "go test ./..." {
-		t.Fatalf("get --json = %v", got)
-	}
-	if got["attempts"] != 0.0 || got["escalations"] != 0.0 {
-		t.Fatalf("unset counters should read 0, got %v", got)
-	}
-}
-
-func TestStateUsesHarnessKeysAndPreservesLegacyValues(t *testing.T) {
-	dir := repo(t)
-	old := "worktrunk.state." + branch + ".vars."
-	current := "harness." + branch + "."
-	for name, value := range map[string]string{"attempts": "4", "escalations": "2", "reason": "prior trip", "ladder": "go test ./..."} {
-		git(t, dir, "config", old+name, value)
-	}
-	git(t, dir, "config", "harness.other.attempts", "9")
-	got := getJSON(t, dir, listing(branch))
-	if got["attempts"] != 4.0 || got["escalations"] != 2.0 || got["reason"] != "prior trip" || got["ladder"] != "go test ./..." {
-		t.Fatalf("legacy state = %v", got)
-	}
-	ok(t, harness(t, dir, listing(branch), "state", "incr", "attempts"), "incr")
-	if got := git(t, dir, "config", current+"attempts"); got != "5" {
-		t.Fatalf("attempts = %q", got)
-	}
-	if configHas(t, dir, old+"attempts") {
-		t.Fatal("write retained a competing legacy value")
-	}
-	git(t, dir, "config", old+"attempts", "1")
-	if got := getJSON(t, dir, listing(branch)); got["attempts"] != 5.0 {
-		t.Fatalf("canonical value lost: %v", got)
-	}
-	if got := git(t, dir, "config", "harness.other.attempts"); got != "9" {
-		t.Fatalf("other branch changed: %q", got)
-	}
-	if _, err := os.Stat(filepath.Join(dir, ".wt-called")); !os.IsNotExist(err) {
-		t.Fatalf("state invoked Worktrunk: %v", err)
-	}
-	git(t, dir, "checkout", "-qb", "other")
-	if got := getJSON(t, dir, ""); got["branch"] != "other" || got["attempts"] != 9.0 || got["ladder"] != "" {
-		t.Fatalf("branch isolation lost: %v", got)
-	}
-}
-
-func TestEscalateRequiresReasonAndKeepsTheLatest(t *testing.T) {
-	dir := repo(t)
-	if r := harness(t, dir, "", "state", "escalate"); r.code == 0 || strings.Count(r.stderr, "\n") != 1 {
-		t.Fatalf("escalate without --reason exited %d with stderr %q, want non-zero and one line", r.code, r.stderr)
-	}
-	for i, reason := range []string{"round two found a new bug", "loop cap tripped"} {
-		ok(t, harness(t, dir, "", "state", "escalate", "--reason", reason), "escalate")
-		if got := git(t, dir, "config", "harness."+branch+".escalations"); got != fmt.Sprint(i+1) {
-			t.Fatalf("escalations = %q, want %d", got, i+1)
-		}
-	}
-	if got := getJSON(t, dir, ""); got["escalations"] != 2.0 || got["reason"] != "loop cap tripped" {
-		t.Fatalf("get --json = %v", got)
-	}
-}
-
-// TestLegacyCounterIsReportedAndReplaced is the command wiring for a legacy counter: which values read as legacy is settled at the parser, in internal/state.
-func TestLegacyCounterIsReportedAndReplaced(t *testing.T) {
-	dir := repo(t)
-	raw := "round two raised new blocking findings in round-one code.\nStopped before round three."
-	git(t, dir, "config", "harness."+branch+".attempts", raw)
-	git(t, dir, "config", "harness."+branch+".escalations", raw)
-	got := getJSON(t, dir, "")
-	legacy, _ := got["legacy"].(map[string]any)
-	if got["attempts"] != nil || legacy["attempts"] != raw {
-		t.Fatalf("get --json = %v, want attempts null and legacy.attempts %q", got, raw)
-	}
-	if r := harness(t, dir, "", "state", "get"); !strings.Contains(r.stdout, "attempts: legacy: "+raw) {
-		t.Fatalf("text get = %q", r.stdout)
-	}
-	if r := ok(t, harness(t, dir, "", "state", "incr", "attempts"), "incr"); !strings.Contains(r.stderr, raw) {
-		t.Fatalf("incr stderr %q should name the replaced text", r.stderr)
-	}
-	if got := git(t, dir, "config", "harness."+branch+".attempts"); got != "1" {
-		t.Fatalf("incr over legacy wrote %q, want 1", got)
-	}
-	r := ok(t, harness(t, dir, "", "state", "escalate", "--reason", "cap"), "escalate")
-	if !strings.Contains(r.stderr, raw) {
-		t.Fatalf("escalate stderr %q should name the replaced text", r.stderr)
-	}
-	if got := getJSON(t, dir, ""); got["escalations"] != 1.0 || got["reason"] != "cap" {
-		t.Fatalf("get --json = %v", got)
-	}
-}
-
-func TestUnscopedCounterIsIgnored(t *testing.T) {
-	dir := repo(t)
-	git(t, dir, "config", "harness.attempts", "round two stopped")
-	if got := getJSON(t, dir, ""); got["attempts"] != 0.0 || got["legacy"] != nil {
-		t.Fatalf("an unscoped key belongs to no branch, got %v", got)
-	}
-}
-
-func TestPruneRemovesOnlyGoneBranches(t *testing.T) {
-	dir := repo(t)
-	git(t, dir, "commit", "-q", "--allow-empty", "-m", "init")
-	git(t, dir, "branch", "live")
-	kept := []string{"worktrunk.state.live.vars.attempts", "harness.live.attempts", "harness.attempts", "worktrunk.state.gone/one.vars.private", "harness.gone/two.private"}
-	gone := []string{"worktrunk.state.gone/one.vars.attempts", "worktrunk.state.gone/one.vars.ladder", "harness.gone/two.escalations"}
-	for _, key := range append(append([]string{}, kept...), gone...) {
-		git(t, dir, "config", key, "1")
-	}
-	if err := os.MkdirAll(filepath.Join(dir, ".home"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	git(t, dir, "config", "--global", "worktrunk.state.gone/global.vars.attempts", "1")
-	r := ok(t, harness(t, dir, "", "state", "prune"), "prune")
-	if r.stdout != "removed gone/one\nremoved gone/two\n" {
-		t.Fatalf("prune reported %q, want one branch name per pruned branch", r.stdout)
-	}
-	for _, key := range kept {
-		if !configHas(t, dir, key) {
-			t.Errorf("prune removed %s", key)
-		}
-	}
-	for _, key := range gone {
-		if configHas(t, dir, key) {
-			t.Errorf("prune kept %s", key)
-		}
-	}
-}
-
-// TestStateUsageOutsideARepository keeps what the command matrix in cli_test.go does not check: state --help lists every operation, and one representative usage error carries the one-line stderr and the absence of a branch-lookup leak. The matrix checks exit 2 and a non-empty stderr for the rest.
-func TestStateUsageOutsideARepository(t *testing.T) {
-	outside := t.TempDir()
-	r := ok(t, harness(t, outside, "", "state", "--help"), "state --help outside a repository")
-	for _, op := range []string{"ladder set", "incr attempts", "escalate", "get", "prune"} {
-		if !strings.Contains(r.stdout, op) {
-			t.Errorf("state --help does not list %q", op)
-		}
-	}
-	if r := harness(t, outside, "", "state", "bogus"); r.code == 0 || strings.Count(r.stderr, "\n") != 1 || strings.Contains(r.stderr, "not on a branch") {
-		t.Errorf("state bogus exited %d with stderr %q, want a one-line usage error", r.code, r.stderr)
-	}
 }
