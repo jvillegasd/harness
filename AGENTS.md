@@ -19,6 +19,7 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 | `internal/install/` | The installer behind `harness install` |
 | `internal/skills/` | The third-party skill locks behind `harness skills`, and the invocation-guard check on local skills |
 | `internal/bench/` | The session-population comparison behind `harness bench` |
+| `internal/changemap/` | The deterministic floor tiers behind `harness change-map`, the first pass of the `change-map` skill |
 | `internal/agents/` | The role-agent renderer the installer calls in-process |
 | `internal/models/` | The per-machine role model presets behind `harness models` |
 | `POLICY.md` | The vendor-neutral global policy linked into each client |
@@ -72,6 +73,7 @@ The suite protects one behavior set per retained boundary, at the lowest seam th
 | Status line | `cmd/harness/statusline_test.go`, `internal/statusline` | Recorded payloads render byte for byte against the goldens captured from the shell renderer, and an empty payload reaches neither the keychain nor the usage cache. |
 | Checkout discovery | `internal/checkout` | The nearest enclosing checkout is resolved by the policy marker beside the Harness module, a different module is refused rather than substituted, and managed ownership is the explicit asset namespaces alone. |
 | Bench accounting | `internal/bench`, `cmd/harness/bench_test.go` | Collection deduplicates clients, windows by date, and survives damaged or oversized records; the reports match the baselines recorded on the fixture population. |
+| Change classification | `internal/changemap`, `cmd/harness/change_map_test.go` | Floor tiers are deterministic and first match wins, configured critical globs beat every other rule, mechanical is assigned only by the lockfile and generated rules, `criticalPaths` validation names the bad entry, and the changed-file listing covers committed, staged, unstaged, untracked, and deleted files. |
 
 The suite does not snapshot role, skill, or policy prose. It checks executable boundaries such as frontmatter guards, permission hooks, installation ownership, and configuration validation; instruction quality belongs in behavioral evaluation.
 

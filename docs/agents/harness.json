@@ -8,5 +8,15 @@
     "ready_for_agent": "ready-for-agent",
     "in_progress": "in-progress",
     "ready_for_human": "ready-for-human"
-  }
+  },
+  "criticalPaths": [
+    "POLICY.md",
+    "clients/**",
+    "internal/install/**",
+    "internal/models/**",
+    "skills/land/**",
+    "skills/abandon/**",
+    ".github/**",
+    "docs/agents/harness.json"
+  ]
 }
