@@ -39,7 +39,7 @@ Get an independent review (`review`) when the human asks, or when the change car
 
 ## Delivery
 
-"Open a PR" and "ship this" cover the delivery steps for that work: commits, push, opening or updating the pull request, and fixing required checks (`open-pr`). Steps already covered need no second approval. Feedback and review maintenance reuse the same branch and authority (`address-review`). A local-only request stays local; when a result is ready and publishing would help, ask once. Ticket creation, unrelated tracker changes, and messages need their own request. Approving a specification does not publish it, create tickets, or start implementation. Remote required checks belong to delivery, not to local verification.
+"Open a PR" and "ship this" cover the delivery steps for that work: commits, push, opening or updating the pull request, and fixing required checks (`open-pr`). Steps already covered need no second approval. Feedback, review comments, and check repairs reuse the same branch and authority (`address-review`). A local-only request stays local; when a result is ready and publishing would help, ask once. Ticket creation, unrelated tracker changes, and messages need their own request. Approving a specification does not publish it, create tickets, or start implementation. Remote required checks belong to delivery, not to local verification.
 
 ## Git
 
