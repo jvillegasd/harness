@@ -30,8 +30,8 @@ Strategy: `ask-on-risk`. Each phase is one or two pull requests; Phase 0 is bran
 - [x] P0.1 Rewrite `POLICY.md` as a short hard floor plus a judgment layer, with a rule-to-enforcer table and agent-branch commits. Route: inline (one file).
 - [x] P0.2 Guard only human-triggered skills: `land`, `abandon`, `setup-harness`, `grill-with-docs`. Unguard `review`, `evidence`, `grilling`, `local-tracker`, `continuity`; drop the read-by-path rule. Route: inline (one Go rule plus mechanical frontmatter).
 - [x] P0.3 Remove the unused `harness state` command and `internal/state`. Route: delegated writer (several files).
-- [ ] P0.4 Local skills: drop the Activation/Hard Rules skeleton and injection boilerplate, remove forced asks, fix stale cross-references. Route: delegated writer (many files).
-- [ ] P0.5 Roles and denies: optional code-search symbol plus `git log`/`git blame`, read-only `gh` for the executor, sliced review of large diffs, allow `git restore --staged`. Route: delegated writer.
+- [x] P0.4 Local skills: drop the Activation/Hard Rules skeleton and injection boilerplate, remove forced asks, fix stale cross-references. Route: delegated writer (many files).
+- [x] P0.5 Roles and denies: optional code-search symbol plus `git log`/`git blame`, read-only `gh` for the executor, sliced review of large diffs, allow `git restore --staged`. Route: delegated writer.
 - [ ] P0.6 No-op pass: headless before/after scenarios for cut rules. Pending a separately authorized model budget.
 
 ## Later phases
@@ -47,14 +47,17 @@ Strategy: `ask-on-risk`. Each phase is one or two pull requests; Phase 0 is bran
 
 ## Progress
 
-Phase 0 started on `refactor/lighten-policy`.
+Phase 0 P0.1 to P0.5 done on `refactor/lighten-policy`; P0.6 pending a model budget.
 
 ## Evidence
 
 - P0.1 `ea53afc`: POLICY.md 1,772 to 1,578 words; never/must/always/do-not from 25 to 6; each hard rule stated once in the floor table with reason and enforcer, which shows OpenCode has no deny rules. `go test ./internal/checkout/ ./cmd/harness/` passed. RDD assess: medium, under budget.
 - P0.2 `2b9e8dd`: RED observed (`review: missing disable-model-invocation`), then GREEN for `go test ./internal/skills/` and `go test ./cmd/harness/ -run 'Skill|Install|Guard'`. The five unguarded skills appeared as model-invocable in the running session. RDD assess: medium, under budget.
 - P0.3: RED observed (`help still lists state`; `state exited 2 with stderr "Usage: harness state"`), then GREEN. Removed `internal/state` (514 lines), its seven command tests and their helpers, and the dead Worktrunk shim parameter of the `harness` test helper. `go vet`, `gofmt`, `go build`, `go test ./...`, and `git diff --check` all passed.
+- P0.4 `1d26d89`: 18 local skills plus `aliases.sh` moved to purpose, why, steps, output. Emphatic words in the edited files went from 140 to 44, with total words about flat because reasons replaced boilerplate. Injection boilerplate, the landing-rule JSON, and restated policy were removed. `land` and `abandon` keep every safety mechanic (lease, fast-forward, required checks, inventory). `setup-harness` infers the tracker mode and asks only on conflicting evidence or when a GitHub remote is the only signal, because GitHub mode writes to the remote. `go test ./...` passed (writer); `git diff --check` clean.
+- P0.5: `code-search` symbol is optional (`-` when a line has none); `review` splits an oversized diff into slices for separate fresh reviewers. Kept as is, with reasons: the executor `gh` deny (allowing reads inside a deny list leaks, e.g. `gh api -X POST`); the `git restore` deny (deny rules win over allow, and unstaging works through `git reset -- <path>`). `--force-with-lease` is not matched by `Bash(git push --force:*)`, since the docs say the space before the wildcard is part of the rule; this is inferred from the docs, not run. Read-only `git log` and `git blame` for code-search move to Phase 4, where `explain why` needs them and the reviewer stays without commit rationale.
+- RDD: disabled for this clone at the user's choice after the preflight stalled on an undocumented untracked-selection format caused by Gentle AI's own `.atl/` cache.
 
 ## Next step
 
-P0.4 (delegated writer), then P0.5.
+P0.6 needs a model budget. Then Phase 1.
