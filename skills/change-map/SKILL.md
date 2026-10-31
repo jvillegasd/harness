@@ -1,0 +1,55 @@
+---
+name: change-map
+description: "Trigger: before opening or refreshing a PR, when the human asks what changed or what to review, or to catch them up since a commit or session. Classify every change into review tiers and tell the human exactly what to read."
+license: MIT
+metadata:
+  author: jvillegasd
+  version: "1.0"
+---
+
+Map a change for its human reviewer: sort every changed file and hunk into a review tier, say what must be read line by line and what can be skimmed or skipped, back each risky item with the one fact it is safe because of, and surface the decisions the agent made on its own.
+
+## Why
+
+Agents produce more code than a human can read carefully, and an undifferentiated diff spreads attention evenly across a lockfile and an auth check. A map puts the human's attention where a mistake would cost the most, and it makes the agent show its evidence instead of asserting that the change is fine. The deterministic floor keeps the map honest: the agent may raise a tier when the code warrants it, but it cannot talk a risky file down.
+
+## Tiers
+
+| Tier | Meaning | The human |
+| --- | --- | --- |
+| `critical` | A one-way door or a concrete security, data-loss, compatibility, or concurrency risk: auth and permissions, secrets, migrations and deletion, public interface removal, money, CI and infrastructure, concurrency. | Reads it line by line. An independent `review` runs on these hunks. |
+| `behavioral` | Observable behavior changes: outputs, UI, CLI flags, defaults, error handling, new interface surface, agent instructions. | Reads the intent and the tests, and spot-checks the code. |
+| `structural` | Claims to preserve behavior: refactors, moves, renames with logic, performance work. | Skims it; trusts it only when existing tests are unchanged and pass. |
+| `tests-docs` | Supporting material: new or changed tests, documentation. | Skims tests for assertions that cannot fail. |
+| `mechanical` | No semantic content: lockfiles, generated code, formatting. | Skips it once the deterministic check that classified it is named. |
+
+## Steps
+
+1. Pick the mode. Diff mode (the default) maps the branch against its base. Since mode (`since <ref>`, or since the start of this session) maps what changed after that point, for catching the human up.
+2. Get the floor. Run `harness change-map --json` (with `--base <ref>` when the base is not the default branch). It lists changed, staged, unstaged, untracked, and deleted files with a floor tier from the repository's `criticalPaths` in `docs/agents/harness.json` and built-in rules. If the command is unavailable, apply the same rules by hand and say so. A file only becomes `mechanical` through those deterministic rules.
+3. Read every hunk and raise tiers where the code warrants it: a `structural` file whose change alters observable behavior becomes `behavioral`; anything matching the `critical` meaning becomes `critical`. Never lower a floor tier. When unsure between two tiers, choose the higher one and say why.
+4. For each `critical` and `behavioral` item, name the one fact the change is safe because of, and how far it is proven on the certainty ladder in `verification` (said, cited, walked, ran, reproduced). A fact at "said" or "cited" is unproven; say so instead of implying safety. When the project has a feature map, name the feature the item touches so `verification` can drive it.
+5. Call the merge danger: a one-way door (hard to reverse: data migration, deletion, published interface, external message) or a two-way door, plus the blast radius in a few words.
+6. List the decisions the agent made that the human did not ask for (a default, a naming choice, a dependency, a skipped case), each with its reason. Take them from the task document's decisions when there is one, from the commits, and from the session. In since mode, also list the open decisions only the human can make, each with a recommendation.
+7. When any item is `critical`, run `review` on those hunks and their callers, naming the concern. When a critical change involves concurrency, retries, leases, or a lifecycle state machine, suggest a model-checked statechart where the repository has that capability.
+
+## Output
+
+Lead with the smallest view that makes the change clear: a few lines of pseudocode, a call tree, or a small Mermaid diagram. Then:
+
+```
+Tiers: critical N, behavioral N, structural N, tests-docs N, mechanical N
+
+Must read
+- path:Lstart-Lend (critical): why it matters. Behavior: one line. Safe because: <fact> (<ladder step>).
+- path:Lstart-Lend (behavioral): ...
+
+Skim: path, path (structural, tests unchanged and passing)
+Skip: path (mechanical: lockfile)
+
+Merge danger: one-way | two-way door; blast radius: <few words>
+Decisions you did not ask for: <decision>: <reason>
+Open decisions (since mode): <decision>: <recommendation>
+```
+
+In a pull request body, this map replaces a free-form summary. In chat, keep the same order and keep it short.
