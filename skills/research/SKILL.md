@@ -22,7 +22,7 @@ With no target above, use the latest unambiguous active question, claim, or unre
 
    Telemetry is a primary source on the same footing as code. Read and follow `evidence` for any claim about runtime behavior, impact, frequency, or performance.
 
-3. Bound suspected regressions with telemetry or release history, then `git bisect` in a disposable worktree: create a sibling worktree (`git worktree add`) at the suspected revision and bisect there. Use the cheapest decisive test, profile, or trace per candidate. If a probe cannot decide, report the narrowed range. This is your own disposable experiment, so remove only that worktree afterward (POLICY's floor row on worktrees and its Git section) and leave the main tree and repository history as they were.
+3. Bound suspected regressions with telemetry or release history, then `git bisect` in a disposable worktree: create a sibling worktree (`git worktree add`) at the suspected revision and bisect there. Use the cheapest decisive test, profile, or trace per candidate. If a probe cannot decide, report the narrowed range. This is your own disposable experiment, so remove only that worktree afterward (POLICY's floor row on worktrees) and leave the main tree and repository history as they were.
 
 4. Compare independent evidence, test counterexamples, and resolve contradictions. Separate fact, inference, and unknown. Runtime claims not checked against available telemetry belong in `Contradictions and unknowns`, not `Conclusion`.
 
