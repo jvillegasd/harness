@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -24,7 +25,7 @@ Compare the session population before and after a harness change.
             it are before, on or after it after. Required for the report, not
             for --rows.
   --since   Ignore sessions older than this date.
-  --client  Limit to claude or opencode; repeatable (default: both).
+  --client  Limit to claude, codex, or opencode; repeatable (default: all).
   --home    Session-store root (default: the current home).
   --rows    Print one JSON object per session instead of the report.
 
@@ -130,13 +131,13 @@ func Report(opts Options) (string, error) {
 type clientList []string
 
 // defaultClients is the population the command reads when no selection is given.
-var defaultClients = []string{"claude", "opencode"}
+var defaultClients = []string{"claude", "codex", "opencode"}
 
 func (c *clientList) String() string { return strings.Join(*c, ",") }
 
 func (c *clientList) Set(value string) error {
-	if value != "claude" && value != "opencode" {
-		return fmt.Errorf("invalid client %q (want claude or opencode)", value)
+	if !slices.Contains(defaultClients, value) {
+		return fmt.Errorf("invalid client %q (want claude, codex, or opencode)", value)
 	}
 	*c = append(*c, value)
 	return nil

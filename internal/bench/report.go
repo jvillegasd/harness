@@ -90,7 +90,7 @@ func renderReport(sessions []*session, split time.Time, since *time.Time) string
 			break
 		}
 	}
-	for _, client := range []string{"claude", "opencode"} {
+	for _, client := range defaultClients {
 		for _, group := range groups {
 			var selected []*session
 			for _, s := range sessions {

@@ -12,6 +12,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -136,6 +137,8 @@ func collect(home string, clients []string, work []string, since *time.Time) ([]
 		switch client {
 		case "claude":
 			found, err = claudeSessions(home, since)
+		case "codex":
+			found, err = codexSessions(home, since)
 		case "opencode":
 			found, err = opencodeSessions(home, since)
 		default:
@@ -411,6 +414,180 @@ func forEachEntry(path string, fn func(entry map[string]any) bool) error {
 		return err
 	}
 	return nil
+}
+
+// --- Codex: ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl -----------------------
+
+// codexDenials are the whole outputs Codex returns to the model when a human
+// declines an approval. Matched whole, so a tool output that quotes one is not
+// a denial.
+var codexDenials = []string{"rejected by user", "exec command rejected by user", "patch rejected by user"}
+
+// codexRollout is one rollout file. A subagent writes a rollout of its own
+// naming its parent thread, and is folded into that parent as delegation.
+type codexRollout struct {
+	id       string
+	parent   string
+	subagent bool
+	items    int
+	session  *session
+}
+
+func codexSessions(home string, since *time.Time) ([]*session, error) {
+	var paths []string
+	for _, dir := range []string{"sessions", "archived_sessions"} {
+		root := filepath.Join(home, ".codex", dir)
+		if !isDir(root) {
+			continue
+		}
+		err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			// A cold rollout Codex compressed to .jsonl.zst is not read; that
+			// compression is an off-by-default Codex feature.
+			if !entry.IsDir() && strings.HasPrefix(entry.Name(), "rollout-") && strings.HasSuffix(entry.Name(), ".jsonl") {
+				paths = append(paths, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	sort.Strings(paths)
+	var sessions []*session
+	byID := map[string]*session{}
+	parents := map[string]string{}
+	var subagents []*codexRollout
+	for _, path := range paths {
+		r, err := readCodex(path, since)
+		if err != nil {
+			return nil, err
+		}
+		switch {
+		case r == nil:
+		case r.subagent:
+			parents[r.id] = r.parent
+			subagents = append(subagents, r)
+		default:
+			sessions = append(sessions, r.session)
+			if r.id != "" {
+				byID[r.id] = r.session
+			}
+		}
+	}
+	// A nested subagent names the subagent that spawned it, so walk up to the
+	// top-level session. The hop bound stops a malformed cycle.
+	for _, sub := range subagents {
+		id := sub.parent
+		for hops := 0; id != "" && hops <= len(parents); hops++ {
+			if s, ok := byID[id]; ok {
+				s.values["delegation"] = s.values["delegation"].(int) + sub.items
+				break
+			}
+			id = parents[id]
+		}
+	}
+	return sessions, nil
+}
+
+func readCodex(path string, since *time.Time) (*codexRollout, error) {
+	var first, last time.Time
+	seen, excluded, hasMeta := false, false, false
+	r := &codexRollout{}
+	var project *string
+	turns, tools, interrupts, denials := 0, 0, 0, 0
+	err := forEachEntry(path, func(entry map[string]any) bool {
+		if stamp, ok := parseStamp(entry["timestamp"]); ok {
+			if !seen {
+				first = stamp
+				seen = true
+				if since != nil && startOfDay(first).Before(*since) {
+					excluded = true
+					return false
+				}
+			}
+			last = stamp
+		}
+		payload, _ := entry["payload"].(map[string]any)
+		switch entry["type"] {
+		case "session_meta":
+			// Only the first is this rollout's own; a forked thread copies its
+			// parent's after it.
+			if hasMeta {
+				return true
+			}
+			hasMeta = true
+			r.id, _ = payload["id"].(string)
+			r.parent, r.subagent = codexParent(payload)
+			if cwd, ok := payload["cwd"].(string); ok {
+				project = &cwd
+			}
+		case "event_msg":
+			switch payload["type"] {
+			case "user_message":
+				turns++
+			case "turn_aborted":
+				if payload["reason"] == "interrupted" {
+					interrupts++
+				}
+			}
+		case "response_item":
+			kind, _ := payload["type"].(string)
+			switch {
+			case kind == "message":
+				if role := payload["role"]; role == "user" || role == "assistant" {
+					r.items++
+				}
+			case strings.HasSuffix(kind, "_call"):
+				tools++
+				r.items++
+			case strings.HasSuffix(kind, "_output"):
+				r.items++
+				if output, ok := payload["output"].(string); ok && slices.Contains(codexDenials, output) {
+					denials++
+				}
+			}
+		}
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+	if excluded || !seen || !hasMeta {
+		return nil, nil
+	}
+	if r.subagent {
+		return r, nil
+	}
+	// Codex persists neither a tool call's success nor a slash command, so
+	// errors and commands are absent.
+	r.session = newSession("codex", first, project, map[string]any{
+		"turns": turns, "tool_calls": tools, "minutes": round1(last.Sub(first).Seconds() / 60),
+		"delegation": 0, "interrupts": interrupts, "denials": denials,
+	})
+	return r, nil
+}
+
+// codexParent reads a rollout's session metadata for the thread that spawned
+// it. A subagent or internal source is never a session of its own; one with no
+// parent, such as a guardian review, is dropped rather than counted.
+func codexParent(meta map[string]any) (string, bool) {
+	if parent, ok := meta["parent_thread_id"].(string); ok && parent != "" {
+		return parent, true
+	}
+	source, ok := meta["source"].(map[string]any)
+	if !ok {
+		return "", false
+	}
+	if sub, ok := source["subagent"]; ok {
+		spawn, _ := sub.(map[string]any)["thread_spawn"].(map[string]any)
+		parent, _ := spawn["parent_thread_id"].(string)
+		return parent, true
+	}
+	_, internal := source["internal"]
+	return "", internal
 }
 
 // --- OpenCode: ~/.local/share/opencode/opencode.db ---------------------------

@@ -90,7 +90,7 @@ func TestCollectSinceIsDateGranular(t *testing.T) {
 }
 
 func TestCollectRejectsUnknownClient(t *testing.T) {
-	if _, err := collect(t.TempDir(), []string{"codex"}, nil, nil); err == nil {
+	if _, err := collect(t.TempDir(), []string{"cursor"}, nil, nil); err == nil {
 		t.Fatal("an unknown client was accepted")
 	}
 }
@@ -189,5 +189,85 @@ func TestReportCallableDirectly(t *testing.T) {
 	}
 	if _, err := Report(Options{Home: home}); err == nil {
 		t.Fatal("a report without a split date was accepted")
+	}
+}
+
+// codexLine is one rollout record in Codex's wire shape.
+func codexLine(stamp, kind, payload string) string {
+	return fmt.Sprintf(`{"timestamp":"2026-03-01T%s.000Z","type":%q,"payload":%s}`, stamp, kind, payload) + "\n"
+}
+
+func TestCodexRolloutMetrics(t *testing.T) {
+	home := t.TempDir()
+	day := filepath.Join(home, ".codex", "sessions", "2026", "03", "01")
+	writeTranscript(t, filepath.Join(day, "rollout-2026-03-01T09-00-00-parent.jsonl"),
+		codexLine("09:00:00", "session_meta", `{"id":"parent","cwd":"/tmp/acme/app","source":"cli"}`)+
+			codexLine("09:00:00", "response_item", `{"type":"message","role":"user","content":[{"type":"input_text","text":"<environment_context>"}]}`)+
+			codexLine("09:00:01", "event_msg", `{"type":"user_message","message":"fix it"}`)+
+			codexLine("09:00:02", "response_item", `{"type":"function_call","name":"exec_command","arguments":"{}"}`)+
+			codexLine("09:00:03", "response_item", `{"type":"function_call_output","output":"exec command rejected by user"}`)+
+			codexLine("09:00:04", "response_item", `{"type":"custom_tool_call","name":"apply_patch","input":""}`)+
+			codexLine("09:00:05", "response_item", `{"type":"custom_tool_call_output","output":"grep: rejected by user"}`)+
+			codexLine("09:00:06", "event_msg", `{"type":"turn_aborted","reason":"interrupted"}`)+
+			codexLine("09:00:07", "event_msg", `{"type":"turn_aborted","reason":"replaced"}`)+
+			codexLine("09:03:00", "event_msg", `{"type":"user_message","message":"again"}`))
+	// A spawned subagent, its own subagent, and a guardian review are not sessions.
+	writeTranscript(t, filepath.Join(day, "rollout-2026-03-01T09-01-00-child.jsonl"),
+		codexLine("09:01:00", "session_meta", `{"id":"child","cwd":"/tmp/acme/app","source":{"subagent":{"thread_spawn":{"parent_thread_id":"parent","depth":1}}}}`)+
+			codexLine("09:01:00", "event_msg", `{"type":"user_message","message":"task"}`)+
+			codexLine("09:01:01", "response_item", `{"type":"message","role":"developer","content":[]}`)+
+			codexLine("09:01:01", "response_item", `{"type":"message","role":"user","content":[]}`)+
+			codexLine("09:01:02", "response_item", `{"type":"reasoning","summary":[]}`)+
+			codexLine("09:01:02", "response_item", `{"type":"function_call","name":"exec_command"}`)+
+			codexLine("09:01:03", "response_item", `{"type":"function_call_output","output":"ok"}`)+
+			codexLine("09:01:04", "response_item", `{"type":"message","role":"assistant","content":[]}`))
+	writeTranscript(t, filepath.Join(day, "rollout-2026-03-01T09-02-00-grandchild.jsonl"),
+		codexLine("09:02:00", "session_meta", `{"id":"grandchild","parent_thread_id":"child","cwd":"/tmp/acme/app","source":{"subagent":{"thread_spawn":{"parent_thread_id":"child","depth":2}}}}`)+
+			codexLine("09:02:01", "response_item", `{"type":"message","role":"assistant","content":[]}`))
+	writeTranscript(t, filepath.Join(day, "rollout-2026-03-01T09-02-30-guardian.jsonl"),
+		codexLine("09:02:30", "session_meta", `{"id":"guardian","cwd":"/tmp/acme/app","source":{"internal":"guardian"}}`)+
+			codexLine("09:02:31", "event_msg", `{"type":"user_message","message":"review"}`))
+	// An archived session is still a session, and a fork's copied parent
+	// metadata does not replace its own.
+	writeTranscript(t, filepath.Join(home, ".codex", "archived_sessions", "rollout-2026-03-01T10-00-00-fork.jsonl"),
+		codexLine("10:00:00", "session_meta", `{"id":"fork","forked_from_id":"parent","cwd":"/tmp/home/lab","source":"cli"}`)+
+			codexLine("10:00:00", "session_meta", `{"id":"parent","cwd":"/tmp/acme/app","source":"cli"}`))
+
+	got, err := collect(home, []string{"codex"}, []string{"acme"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("collected %d sessions, want the parent and the archived fork", len(got))
+	}
+	parent, fork := got[1], got[0]
+	if *parent.project != "/tmp/acme/app" || parent.cohort != "work" || *fork.project != "/tmp/home/lab" {
+		t.Fatalf("projects = %q (%s), %q", *parent.project, parent.cohort, *fork.project)
+	}
+	for metric, want := range map[string]float64{
+		"turns": 2, "tool_calls": 2, "minutes": 3, "delegation": 5, "interrupts": 1, "denials": 1,
+	} {
+		if v, ok := parent.metric(metric); !ok || v != want {
+			t.Errorf("%s = %v, want %v", metric, v, want)
+		}
+	}
+	for _, metric := range []string{"commands", "errors"} {
+		if _, ok := parent.metric(metric); ok {
+			t.Errorf("%s is recorded, want absent", metric)
+		}
+	}
+}
+
+func TestCodexSinceSkipsOldRollout(t *testing.T) {
+	home := t.TempDir()
+	writeTranscript(t, filepath.Join(home, ".codex", "sessions", "2026", "03", "01", "rollout-2026-03-01T09-00-00-old.jsonl"),
+		codexLine("09:00:00", "session_meta", `{"id":"old","cwd":"/tmp/x","source":"cli"}`))
+	since := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+	got, err := collect(home, []string{"codex"}, nil, &since)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("collected %d sessions, want the old rollout dropped", len(got))
 	}
 }

@@ -119,6 +119,24 @@ func TestBenchClientFlagNarrowsThePopulation(t *testing.T) {
 	}
 }
 
+// TestBenchReadsCodex is the command wiring for the Codex reader; its counting
+// rules are settled in internal/bench.
+func TestBenchReadsCodex(t *testing.T) {
+	home := t.TempDir()
+	rollout := filepath.Join(home, ".codex", "sessions", "2026", "09", "03", "rollout-2026-09-03T10-00-00-a.jsonl")
+	if err := os.MkdirAll(filepath.Dir(rollout), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"timestamp":"2026-09-03T10:00:00.000Z","type":"session_meta","payload":{"id":"a","cwd":"/tmp/acme/app","source":"cli"}}` + "\n"
+	if err := os.WriteFile(rollout, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := ok(t, harness(t, benchDir(t), "bench", "--rows", "--client", "codex", "--home", home), "bench codex")
+	if !strings.Contains(r.stdout, `"client": "codex"`) {
+		t.Fatalf("the row export carried no codex session: %q", r.stdout)
+	}
+}
+
 func TestBenchEmptyHomeReportsNoSessions(t *testing.T) {
 	r := ok(t, harness(t, benchDir(t), "bench", "--split", "2026-01-01", "--since", "2026-01-01", "--home", t.TempDir()), "bench on an empty home")
 	if !strings.Contains(r.stdout, "no sessions found") {
@@ -155,7 +173,7 @@ func TestBenchUsageErrors(t *testing.T) {
 		{"bench"},
 		{"bench", "--home", benchHome(t)},
 		{"bench", "--split", "not-a-date", "--home", benchHome(t)},
-		{"bench", "--split", "2026-09-05", "--client", "codex", "--home", benchHome(t)},
+		{"bench", "--split", "2026-09-05", "--client", "cursor", "--home", benchHome(t)},
 		{"bench", "--split", "2026-09-05", "--bogus"},
 	}
 	for _, args := range cases {
