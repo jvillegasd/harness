@@ -28,6 +28,8 @@ type fakeAPI struct {
 	parents   map[int][]int
 	updates   []updateCall
 	history   map[int][]event
+	// foreign holds issues from other repositories, listed under a local issue's relation; their numbers may collide with local issues.
+	foreign map[int]map[string][]issue
 }
 
 type updateCall struct {
@@ -82,13 +84,13 @@ func (f *fakeAPI) related(number int, relation string) ([]issue, error) {
 				}
 			}
 		}
-		return children, nil
+		return append(children, f.foreign[number][relation]...), nil
 	case "blocked_by":
-		return f.byIDs(f.blockedBy[number]), nil
+		return append(f.byIDs(f.blockedBy[number]), f.foreign[number][relation]...), nil
 	case "blocking":
-		return f.byIDs(f.blocking[number]), nil
+		return append(f.byIDs(f.blocking[number]), f.foreign[number][relation]...), nil
 	case "parent":
-		return f.byIDs(f.parents[number]), nil
+		return append(f.byIDs(f.parents[number]), f.foreign[number][relation]...), nil
 	}
 	return nil, nil
 }
@@ -106,7 +108,25 @@ func (f *fakeAPI) events(number int) ([]event, error) {
 }
 
 func (f *fakeAPI) blockerSatisfied(blocker issue) (bool, error) {
+	if blocker.Foreign {
+		// A foreign issue's evidence lives in its own repository; the fake has none, so it never counts as merged.
+		return false, nil
+	}
 	return blocker.State == "closed" && f.satisfied[blocker.Number], nil
+}
+
+func (f *fakeAPI) openIssues(name string) ([]issue, error) {
+	var result []issue
+	for _, value := range f.issues {
+		if value.State == "open" && labelNames(*value)[name] {
+			result = append(result, *value)
+		}
+	}
+	return result, nil
+}
+
+func foreignIssue(number int, state string, labels ...string) issue {
+	return issue{Number: number, State: state, Labels: labelList(labels), RepositoryURL: "https://api.github.com/repos/o/other", Foreign: true}
 }
 
 func (f *fakeAPI) update(number int, changes map[string]any) error {
@@ -609,6 +629,85 @@ func TestGoRunWithoutModule(t *testing.T) {
 	)
 	if out, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("go run failed with no module: %v\n%s", err, out)
+	}
+}
+
+// TestSweepHealsAnUnrelatedTree replays a dropped event no later event reaches: the blocker merged, nothing in its tree moved since, and the scheduled sweep releases the dependent while a planning-only ticket stays off the frontier.
+func TestSweepHealsAnUnrelatedTree(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "closed", "ready-for-human"),
+			3: newIssue(3, "open", "blocked"),
+			4: newIssue(4, "open", "feature"),
+		},
+		[]int{1}, map[int][]int{3: {1}, 4: {1}}, map[int][]int{1: {3, 4}}, nil,
+	)
+	if err := sweep(f, defaultLabels()); err != nil {
+		t.Fatal(err)
+	}
+	assertLabels(t, f, 3, "ready-for-agent")
+	assertLabels(t, f, 4, "feature")
+	assertNoNewUpdates(t, f, func() error { return sweep(f, defaultLabels()) })
+}
+
+// TestSweepClosesAParentWhoseChildrenMerged covers the parent half of a dropped event: the last child merged and the sweep closes the parent.
+func TestSweepClosesAParentWhoseChildrenMerged(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "open", "in-progress"),
+			2: newIssue(2, "closed", "ready-for-human"),
+		},
+		[]int{2}, nil, nil, map[int][]int{2: {1}},
+	)
+	if err := sweep(f, defaultLabels()); err != nil {
+		t.Fatal(err)
+	}
+	if f.issues[1].State != "closed" {
+		t.Fatalf("parent state = %s, want closed; updates %v", f.issues[1].State, f.updates)
+	}
+}
+
+// TestForeignIssuesAreNeverRelabeled gives a parent a sub-issue and a dependent from another repository whose numbers collide with local issues. The local issues must stay untouched, and the open foreign child keeps the parent open.
+func TestForeignIssuesAreNeverRelabeled(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "open", "in-progress"),
+			5: newIssue(5, "open", "ready-for-agent"),
+			6: newIssue(6, "open"),
+			7: newIssue(7, "closed", "ready-for-human"),
+		},
+		[]int{7}, map[int][]int{5: {6}}, nil, map[int][]int{7: {1}},
+	)
+	f.foreign = map[int]map[string][]issue{
+		1: {"sub_issues": {foreignIssue(5, "open", "blocked")}},
+		7: {"blocking": {foreignIssue(5, "open", "blocked")}},
+	}
+	if err := reconcile(f, 7, defaultLabels(), "closed"); err != nil {
+		t.Fatal(err)
+	}
+	for _, call := range f.updates {
+		if call.Number == 5 {
+			t.Fatalf("local #5 was relabeled for a foreign #5: %v", f.updates)
+		}
+	}
+	if f.issues[1].State != "open" {
+		t.Fatalf("parent closed while a foreign child is open: %v", f.updates)
+	}
+}
+
+// TestMarkFlagsOnlyOtherRepositories pins the foreign check on the API's repository_url, case-insensitively, with a missing URL counting as this repository.
+func TestMarkFlagsOnlyOtherRepositories(t *testing.T) {
+	g := &gitHubAPI{repository: "Owner/Repo"}
+	values := g.mark([]issue{
+		{Number: 1, RepositoryURL: "https://api.github.com/repos/owner/repo"},
+		{Number: 2, RepositoryURL: "https://api.github.com/repos/owner/other"},
+		{Number: 3},
+	})
+	if values[0].Foreign || !values[1].Foreign || values[2].Foreign {
+		t.Fatalf("foreign flags = %v %v %v, want false true false", values[0].Foreign, values[1].Foreign, values[2].Foreign)
+	}
+	if got := repositoryOf(values[1].RepositoryURL); got != "owner/other" {
+		t.Fatalf("repositoryOf = %q, want owner/other", got)
 	}
 }
 

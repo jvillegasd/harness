@@ -3,6 +3,10 @@ name: Agent lifecycle
 on:
   issues:
     types: [closed, reopened]
+  # The concurrency group keeps one pending run, so a newer event can replace an older one; the hourly sweep reconciles every open enrolled issue and heals what a replaced event left behind.
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read

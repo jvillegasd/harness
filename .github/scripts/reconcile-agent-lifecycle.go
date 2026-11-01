@@ -10,6 +10,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -20,9 +21,13 @@ import (
 
 // issue is the subset of the GitHub issue payload the reconciler reads.
 type issue struct {
-	Number int       `json:"number"`
-	State  string    `json:"state"`
-	Labels labelList `json:"labels"`
+	Number        int             `json:"number"`
+	State         string          `json:"state"`
+	Labels        labelList       `json:"labels"`
+	RepositoryURL string          `json:"repository_url"`
+	PullRequest   json.RawMessage `json:"pull_request"`
+	// Foreign marks an issue from another repository, such as a cross-repository sub-issue or blocker. Its number names a different issue here, and this repository's token cannot relabel it, so the reconciler reads its merge evidence from its own repository and never updates it.
+	Foreign bool `json:"-"`
 }
 
 // label is one entry of the API's label objects.
@@ -61,13 +66,14 @@ type issueAPI interface {
 	events(number int) ([]event, error)
 	blockerSatisfied(value issue) (bool, error)
 	update(number int, changes map[string]any) error
+	openIssues(label string) ([]issue, error)
 }
 
 // gitHubAPI backs issueAPI with the gh CLI, which supplies the runner's token.
 type gitHubAPI struct {
 	repository string
 	binary     string
-	merged     map[int]bool
+	merged     map[string]bool
 }
 
 func (g *gitHubAPI) gh(args ...string) ([]byte, error) {
@@ -85,7 +91,7 @@ func (g *gitHubAPI) gh(args ...string) ([]byte, error) {
 	return out, nil
 }
 
-func (g *gitHubAPI) get(path string, paginate bool) ([]byte, error) {
+func (g *gitHubAPI) get(path string, paginate bool, fields ...string) ([]byte, error) {
 	args := []string{
 		"api", "--method", "GET",
 		"repos/" + g.repository + "/" + path,
@@ -94,7 +100,50 @@ func (g *gitHubAPI) get(path string, paginate bool) ([]byte, error) {
 	if paginate {
 		args = append(args, "--paginate", "--slurp", "-f", "per_page=100")
 	}
+	for _, field := range fields {
+		args = append(args, "-f", field)
+	}
 	return g.gh(args...)
+}
+
+// repositoryOf returns the owner/name an API repository_url points at, or "" when the URL has no /repos/ segment.
+func repositoryOf(url string) string {
+	_, name, ok := strings.Cut(url, "/repos/")
+	if !ok {
+		return ""
+	}
+	return name
+}
+
+// mark flags the issues that belong to another repository. An issue without a repository_url is this repository's, as in an event payload.
+func (g *gitHubAPI) mark(values []issue) []issue {
+	for i := range values {
+		if name := repositoryOf(values[i].RepositoryURL); name != "" && !strings.EqualFold(name, g.repository) {
+			values[i].Foreign = true
+		}
+	}
+	return values
+}
+
+// openIssues lists this repository's open issues carrying one label, without pull requests, which the issues endpoint also returns.
+func (g *gitHubAPI) openIssues(label string) ([]issue, error) {
+	out, err := g.get("issues", true, "state=open", "labels="+label)
+	if err != nil {
+		return nil, err
+	}
+	var pages [][]issue
+	if err := json.Unmarshal(out, &pages); err != nil {
+		return nil, err
+	}
+	var result []issue
+	for _, page := range pages {
+		for _, value := range page {
+			if len(value.PullRequest) == 0 {
+				result = append(result, value)
+			}
+		}
+	}
+	return result, nil
 }
 
 func (g *gitHubAPI) issue(number int) (issue, error) {
@@ -122,14 +171,15 @@ func (g *gitHubAPI) related(number int, relation string) ([]issue, error) {
 		if err := json.Unmarshal(out, &value); err != nil {
 			return nil, err
 		}
-		return []issue{value}, nil
+		return g.mark([]issue{value}), nil
 	}
 	paths := map[string]string{
 		"blocked_by": fmt.Sprintf("issues/%d/dependencies/blocked_by", number),
 		"blocking":   fmt.Sprintf("issues/%d/dependencies/blocking", number),
 		"sub_issues": fmt.Sprintf("issues/%d/sub_issues", number),
 	}
-	return g.getIssues(paths[relation])
+	values, err := g.getIssues(paths[relation])
+	return g.mark(values), err
 }
 
 // getIssues flattens a paginated issue list; --slurp returns an array of pages.
@@ -166,20 +216,32 @@ func (g *gitHubAPI) events(number int) ([]event, error) {
 }
 
 // blockerSatisfied reports whether a merged pull request closed the issue;
-// a hand-closed issue does not satisfy the frontier.
+// a hand-closed issue does not satisfy the frontier. A foreign issue's
+// evidence is read from its own repository; when that repository cannot be
+// read, it counts as unmerged, so a dependent stays blocked and a parent open
+// rather than released or closed on evidence nobody saw.
 func (g *gitHubAPI) blockerSatisfied(value issue) (bool, error) {
 	if value.State != "closed" {
 		return false, nil
 	}
-	number := value.Number
-	if g.merged == nil {
-		g.merged = map[int]bool{}
+	repository := g.repository
+	if value.Foreign {
+		repository = repositoryOf(value.RepositoryURL)
 	}
-	if satisfied, ok := g.merged[number]; ok {
+	key := repository + "#" + strconv.Itoa(value.Number)
+	if g.merged == nil {
+		g.merged = map[string]bool{}
+	}
+	if satisfied, ok := g.merged[key]; ok {
 		return satisfied, nil
 	}
-	out, err := g.gh("issue", "view", strconv.Itoa(number), "--repo", g.repository, "--json", "closedByPullRequestsReferences")
+	out, err := g.gh("issue", "view", strconv.Itoa(value.Number), "--repo", repository, "--json", "closedByPullRequestsReferences")
 	if err != nil {
+		if value.Foreign {
+			fmt.Fprintf(os.Stderr, "reconcile-agent-lifecycle: cannot read %s, so it counts as unmerged: %v\n", key, err)
+			g.merged[key] = false
+			return false, nil
+		}
 		return false, err
 	}
 	var view struct {
@@ -190,7 +252,7 @@ func (g *gitHubAPI) blockerSatisfied(value issue) (bool, error) {
 	if err := json.Unmarshal(out, &view); err != nil {
 		return false, err
 	}
-	g.merged[number] = false
+	g.merged[key] = false
 	for _, reference := range view.ClosedByPullRequestsReferences {
 		out, err := g.gh("pr", "view", reference.URL, "--json", "state,mergedAt")
 		if err != nil {
@@ -204,11 +266,11 @@ func (g *gitHubAPI) blockerSatisfied(value issue) (bool, error) {
 			return false, err
 		}
 		if state.State == "MERGED" || state.MergedAt != nil {
-			g.merged[number] = true
+			g.merged[key] = true
 			break
 		}
 	}
-	return g.merged[number], nil
+	return g.merged[key], nil
 }
 
 func (g *gitHubAPI) update(number int, changes map[string]any) error {
@@ -463,6 +525,9 @@ func reconcile(api issueAPI, eventNumber int, labels map[string]string, eventAct
 			return err
 		}
 		for _, dependent := range dependents {
+			if dependent.Foreign {
+				continue
+			}
 			if err := reconcileFrontier(api, dependent.Number, labels, false); err != nil {
 				return err
 			}
@@ -483,7 +548,7 @@ func reconcile(api issueAPI, eventNumber int, labels map[string]string, eventAct
 		if err != nil {
 			return err
 		}
-		if len(parents) > 0 {
+		if len(parents) > 0 && !parents[0].Foreign {
 			changed, err := reconcileParent(api, parents[0].Number, labels)
 			if err != nil {
 				return err
@@ -499,7 +564,44 @@ func reconcile(api issueAPI, eventNumber int, labels map[string]string, eventAct
 	return nil
 }
 
-// reconcileChildren recomputes the frontier of a parent's open, enrolled children. The workflow's concurrency group keeps at most one pending run, so a newer event can replace a blocker's close event; reconciling the event issue's children and siblings on each run heals a dropped event within that family, though not in deeper or unrelated trees. Closed and planning-only children are skipped from the listed payload so a large tree costs no extra calls for them.
+// sweep reconciles every open issue that carries a lifecycle label, in number order, so an event the workflow's one-slot queue dropped heals on the next scheduled run wherever it sits. One issue's failure does not stop the others; the errors are returned together.
+func sweep(api issueAPI, labels map[string]string) error {
+	seen := map[int]bool{}
+	var numbers []int
+	for _, name := range lifecycleSet(labels).sorted() {
+		values, err := api.openIssues(name)
+		if err != nil {
+			return err
+		}
+		for _, value := range values {
+			if !seen[value.Number] {
+				seen[value.Number] = true
+				numbers = append(numbers, value.Number)
+			}
+		}
+	}
+	sort.Ints(numbers)
+	var failures []error
+	for _, number := range numbers {
+		if err := reconcileFrontier(api, number, labels, false); err != nil {
+			failures = append(failures, fmt.Errorf("#%d: %w", number, err))
+			continue
+		}
+		changed, err := reconcileParent(api, number, labels)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("#%d: %w", number, err))
+			continue
+		}
+		if changed {
+			if err := reconcileFrontier(api, number, labels, false); err != nil {
+				failures = append(failures, fmt.Errorf("#%d: %w", number, err))
+			}
+		}
+	}
+	return errors.Join(failures...)
+}
+
+// reconcileChildren recomputes the frontier of a parent's open, enrolled children. The workflow's concurrency group keeps at most one pending run, so a newer event can replace a blocker's close event; reconciling the event issue's children and siblings on each run heals a dropped event within that family at once, and the scheduled sweep heals deeper and unrelated trees. Closed, planning-only, and foreign children are skipped from the listed payload so a large tree costs no extra calls for them.
 func reconcileChildren(api issueAPI, parent int, labels map[string]string) error {
 	children, err := api.related(parent, "sub_issues")
 	if err != nil {
@@ -507,7 +609,7 @@ func reconcileChildren(api issueAPI, parent int, labels map[string]string) error
 	}
 	lifecycle := lifecycleSet(labels)
 	for _, child := range children {
-		if child.State != "open" || !labelNames(child).intersects(lifecycle) {
+		if child.Foreign || child.State != "open" || !labelNames(child).intersects(lifecycle) {
 			continue
 		}
 		if err := reconcileFrontier(api, child.Number, labels, false); err != nil {
@@ -561,6 +663,10 @@ func run() error {
 		return fmt.Errorf("GITHUB_REPOSITORY is not set")
 	}
 	api := &gitHubAPI{repository: repository, binary: "gh"}
+	switch os.Getenv("GITHUB_EVENT_NAME") {
+	case "schedule", "workflow_dispatch":
+		return sweep(api, labels)
+	}
 	return reconcile(api, payload.Issue.Number, labels, payload.Action)
 }
 
