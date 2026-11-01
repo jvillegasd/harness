@@ -37,7 +37,7 @@ The Harness AI installation that serves Claude Code and OpenCode. `README.md` is
 
 ## Prerequisites
 
-macOS or Linux with zsh, Homebrew, and Go 1.26 or newer. The GitHub tracker operations need the `gh` CLI authenticated with issue write permission. A delegated role assigned to the session's own client runs as a native subagent; Orca, through the locked `orchestration` skill, runs only a role assigned to another client. Inline work needs neither.
+macOS or Linux with zsh, Homebrew, and Go 1.26 or newer. The GitHub tracker operations need the `gh` CLI authenticated with issue write permission. A delegated role assigned to the session's own client runs as a native subagent; Orca, through the `orchestration` skill that Orca itself installs and updates, runs only a role assigned to another client. Inline work needs neither.
 
 ## Task runners
 

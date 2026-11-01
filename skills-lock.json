@@ -43,12 +43,6 @@
       "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
       "computedHash": "f768cb44209e0d30e3449b8f95ea3dc8293093f73cfe02127d530db43412cf76"
     },
-    "orchestration": {
-      "source": "stablyai/orca",
-      "sourceType": "github",
-      "skillPath": "skills/orchestration/SKILL.md",
-      "computedHash": "247d274538eafa19d2fc622681dd7373d752e15e77b0efe41087e4790f062c50"
-    },
     "ponytail": {
       "source": "DietrichGebert/ponytail",
       "sourceType": "github",
