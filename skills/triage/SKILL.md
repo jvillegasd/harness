@@ -1,7 +1,10 @@
 ---
 name: triage
-description: "Turn a ticket or a production error signal into an evidence-backed plan brief, without implementing. Use for \"triage this\", a pasted ticket, or a production error."
+description: "Turn a ticket or production error into an evidence-backed plan brief, without implementing."
+disable-model-invocation: true
 argument-hint: "[ticket id, URL, pasted ticket, or error signal]"
+metadata:
+  opencode/autoinvoke: "false"
 ---
 
 Turn a ticket or a production error signal into an evidence-backed plan brief, without implementing. This is analysis only: it reads and queries, and may launch read-only `code-search` workers, but writes no files, edits no code, and makes no commits.

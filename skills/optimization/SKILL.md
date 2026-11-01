@@ -1,10 +1,12 @@
 ---
 name: optimization
-description: "Trigger: optimize performance, reduce latency, improve throughput, optimize a webapp. Measure bottlenecks, optimize, and verify before/after results."
+description: "Measure a performance bottleneck, optimize it, and verify the result before and after."
+disable-model-invocation: true
 license: MIT
 metadata:
   author: jvillegasd
   version: "1.0"
+  opencode/autoinvoke: "false"
 ---
 
 Improve measured performance in any codebase. Measure and implement by default, and stay analysis-only when asked. Look only at the areas the target system actually has.

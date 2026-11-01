@@ -1,11 +1,14 @@
 ---
 name: harness-help
-description: "Trigger: which skill should I use, how does this harness work, what's the workflow, /harness-help. Map the harness's workflow and skills for someone deciding what to reach for, and answer with the part of the map their situation needs."
+description: "Map the harness workflow and say which skill fits a situation."
+disable-model-invocation: true
+effort: low
 argument-hint: "[situation or question about the workflow]"
 license: MIT
 metadata:
   author: jvillegasd
   version: "1.0"
+  opencode/autoinvoke: "false"
 ---
 
 Tell the human which harness skill fits their situation and how the skills fit together. This is a read-only guide to the map below; the skills themselves hold their procedures, so point at them instead of restating them.
@@ -65,7 +68,7 @@ learn        /retro
 
 ## Skills only a human starts
 
-`land`, `abandon`, `setup-harness`, `grill-with-docs`, `build`, and `retro` run only when a human types them, because they merge, discard, provision, start a human-led interview, run unattended at model-budget scale, or read session records to change the harness itself. Starting one is the human's decision, so name it for them and let them invoke it. The locked `handoff` and `improve-codebase-architecture` carry an upstream guard of their own and are started by name the same way.
+`land`, `abandon`, `setup-harness`, `build`, and `retro` run only when a human types them, because they merge, discard, provision, run unattended at model-budget scale, or read session records to change the harness itself. The workflow entry points `/spec`, `/triage`, `/explain`, `/optimization`, `/e2e-verification`, and `/harness-help` are human-started too, matching their Matt Pocock and pstack equivalents. The locked `/grill-with-docs`, `/sharpen`, `/statechart`, `/handoff`, and `/improve-codebase-architecture` carry an upstream guard of their own. Starting any of them is the human's decision, so name it for them and let them invoke it.
 
 ## Crossing phases
 

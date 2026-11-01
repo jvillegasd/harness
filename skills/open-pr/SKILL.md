@@ -21,7 +21,7 @@ An explicit request to open or ship a PR covers these steps together (see POLICY
 4. Commit only owned changes, since unrelated staged work belongs to someone else. Read the staged content and stage explicit paths. When unrelated changes are already staged, commit through an isolated temporary index or an exact-path commit, and only after confirming each included path holds solely owned changes, so the original index entries survive. If shared paths cannot be separated, hold that commit and ask.
    When a review applied, commit first, then add one line `Reviewed: <base>..<sha>` to the PR body, where `<sha>` is the commit that contains exactly the reviewed content (after a second round, the round's repaired head; when any review slice stayed unreviewed, write no line and report the gap), so `land` can tell whether later commits changed what was reviewed.
 5. Push the task branch and open or refresh its PR with the prepared title and body. Read back the branch, base, head revision, and metadata. Drive the required checks green with scoped repairs and affected rechecks.
-6. Apply tracker transitions only when that write set is already authorized; read `local-tracker` for file-backed trackers. Update `continuity` only if this work already needs it.
+6. Apply tracker transitions only when that write set is already authorized; read `local-tracker` from its path for file-backed trackers. Update `continuity` only if this work already needs it.
 
 ## Output
 
