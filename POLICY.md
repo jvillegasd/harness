@@ -51,7 +51,7 @@ On a task branch you created, commit each coherent unit of work once its relevan
 
 Work inline by default. Delegate for a named benefit, such as independent inspection, useful parallel work, or context isolation, rather than because of file count or diff size. The roles are `executor` (a bounded implementation slice), `code-search` (a cited answer about the repository), and `reviewer` (an independent look at a named concern).
 
-To launch a role, run `harness models resolve <role> --json` and use the model and effort it returns. When the role is assigned to this session's client, launch the installed agent natively (Claude Code's Agent tool or OpenCode's `task`); otherwise follow the locked `orchestration` skill's Orca guide with `harness models launch-args <role> --orca-command <executable>`. If a role cannot launch, say so and work inline where independence is not required. A missing or stale agent needs deliberate provisioning with `harness install`, not a silent substitute.
+To launch a role, run `harness models resolve <role> --json` and use the model and effort it returns. When the role is assigned to this session's client, launch the installed agent natively (Claude Code's Agent tool or OpenCode's `task`); otherwise follow the Orca guide in Orca's own `orchestration` skill with `harness models launch-args <role> --orca-command <executable>`. If a role cannot launch, say so and work inline where independence is not required. A missing or stale agent needs deliberate provisioning with `harness install`, not a silent substitute.
 
 Check worker results against the assigned scope and the actual Git state; a completion message alone is not evidence. Keep complete results before releasing disposable resources when recovery may need them.
 
