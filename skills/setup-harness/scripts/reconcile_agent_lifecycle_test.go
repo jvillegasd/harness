@@ -500,6 +500,37 @@ func TestClosedStandaloneTicketKeepsLabels(t *testing.T) {
 	assertUpdates(t, f)
 }
 
+// TestReopenedParentIsNotReadyForAgent replays a path the statechart pilot found: a parent closed by hand and reopened before the workflow ran keeps in-progress, and the reopened run must not reset it to ready-for-agent like a ticket.
+func TestReopenedParentIsNotReadyForAgent(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "open", "ready-for-agent"),
+			2: newIssue(2, "open", "in-progress", "feature"),
+		},
+		nil, nil, nil, map[int][]int{1: {2}},
+	)
+	if err := reconcile(f, 2, defaultLabels(), "reopened"); err != nil {
+		t.Fatal(err)
+	}
+	assertLabels(t, f, 2, "in-progress", "feature")
+}
+
+// TestParentRunHealsAChildsFrontier replays the other path: the workflow's concurrency group keeps one pending run, so a blocker's close event can be replaced by a later event in the same tree. The later run must still unblock the dependent.
+func TestParentRunHealsAChildsFrontier(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "closed", "ready-for-human"),
+			3: newIssue(3, "open", "blocked"),
+			2: newIssue(2, "open", "in-progress"),
+		},
+		[]int{1}, map[int][]int{3: {1}}, map[int][]int{1: {3}}, map[int][]int{1: {2}, 3: {2}},
+	)
+	if err := reconcile(f, 2, defaultLabels(), "reopened"); err != nil {
+		t.Fatal(err)
+	}
+	assertLabels(t, f, 3, "ready-for-agent")
+}
+
 func TestDeployedCopyMatchesHarnessCopy(t *testing.T) {
 	harnessCopy, err := os.ReadFile("reconcile-agent-lifecycle.go")
 	if err != nil {
