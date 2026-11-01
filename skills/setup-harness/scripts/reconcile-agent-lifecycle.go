@@ -320,17 +320,6 @@ func reconcileFrontier(api issueAPI, number int, labels map[string]string, reset
 	if !current.intersects(lifecycleSet(labels)) {
 		return nil
 	}
-	// A parent is a container, not work an agent picks up, so a reopen does not reset it and a release returns it to in-progress rather than ready-for-agent.
-	children, err := api.related(number, "sub_issues")
-	if err != nil {
-		return err
-	}
-	parent := len(children) > 0
-	releasedTo := labels["ready_for_agent"]
-	if parent {
-		resetActive = false
-		releasedTo = labels["in_progress"]
-	}
 	desired := current.minus(released)
 	blockers, err := api.related(number, "blocked_by")
 	if err != nil {
@@ -352,8 +341,25 @@ func reconcileFrontier(api issueAPI, number int, labels map[string]string, reset
 		desired = desired.minus(active)
 		desired[labels["blocked"]] = true
 	case resetActive || !current.intersects(active) || current.intersects(released):
-		desired = desired.minus(active)
-		desired[releasedTo] = true
+		ticket := desired.minus(active)
+		ticket[labels["ready_for_agent"]] = true
+		if ticket.equals(current) {
+			break
+		}
+		// A parent is a container, not work an agent picks up: a reopen does not reset it, and a release returns it to in-progress. Any sub-issue makes it a parent, as in reconcileParent. The lookup runs only when the labels would change, so a steady frontier costs no extra call.
+		children, err := api.related(number, "sub_issues")
+		if err != nil {
+			return err
+		}
+		switch {
+		case len(children) == 0:
+			desired = ticket
+		case resetActive && current.intersects(active) && !current.intersects(released):
+			// A reopened parent keeps its active label.
+		default:
+			desired = desired.minus(active)
+			desired[labels["in_progress"]] = true
+		}
 	}
 	if !desired.equals(current) {
 		return api.update(number, map[string]any{"labels": desired.sorted()})
