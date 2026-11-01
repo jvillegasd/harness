@@ -4,7 +4,7 @@ The harness this machine's Claude Code and OpenCode installations run: one vendo
 
 ## How to work with it
 
-Ordinary work is direct: understand the request, implement the settled scope, run appropriate checks, and report. An implementation request or approved plan authorizes local work. Commits and publication require an explicit request covering them. “Open a PR” or “ship this” covers the necessary delivery steps without repeated approval; only an explicit `/land` invocation authorizes merging.
+Ordinary work is direct: understand the request, implement the settled scope, run appropriate checks, and report. An implementation request or approved plan authorizes local work, including commits on a task branch the agent created. Commits elsewhere and publication require an explicit request covering them. “Open a PR” or “ship this” covers the necessary delivery steps without repeated approval; only an explicit `/land` invocation authorizes merging.
 
 The workflow at a glance. Each stage is optional and entered when its situation appears; the order shows where work usually flows, not a sequence to follow.
 
