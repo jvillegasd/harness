@@ -611,3 +611,19 @@ func TestGoRunWithoutModule(t *testing.T) {
 		t.Fatalf("go run failed with no module: %v\n%s", err, out)
 	}
 }
+
+// TestSteadyReadyTicketKeepsItsLabel guards the no-change shortcut: re-reconciling a ready ticket whose blockers merged, as a sibling heal or the sweep does, must leave its label alone rather than strip it off the frontier.
+func TestSteadyReadyTicketKeepsItsLabel(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "closed", "ready-for-human"),
+			3: newIssue(3, "open", "ready-for-agent", "feature"),
+			4: newIssue(4, "open", "ready-for-agent"),
+		},
+		[]int{1}, map[int][]int{3: {1}}, nil, nil,
+	)
+	for _, number := range []int{3, 4} {
+		assertNoNewUpdates(t, f, func() error { return reconcileFrontier(f, number, defaultLabels(), false) })
+	}
+	assertLabels(t, f, 3, "ready-for-agent", "feature")
+}

@@ -344,6 +344,8 @@ func reconcileFrontier(api issueAPI, number int, labels map[string]string, reset
 		ticket := desired.minus(active)
 		ticket[labels["ready_for_agent"]] = true
 		if ticket.equals(current) {
+			// Already on the frontier: keep the labels as they are. desired has the released labels stripped, so leaving the switch without restoring it would take the ticket off the frontier.
+			desired = current
 			break
 		}
 		// A parent is a container, not work an agent picks up: a reopen does not reset it, and a release returns it to in-progress. Any sub-issue makes it a parent, as in reconcileParent. The lookup runs only when the labels would change, so a steady frontier costs no extra call.
