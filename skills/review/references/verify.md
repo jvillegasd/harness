@@ -15,7 +15,7 @@ Two briefs. The parent pastes the matching one together with the finding text an
 3. Run it. Confirm the failure comes from the cited path, because a check that fails for an unrelated reason proves nothing.
 4. Leave the code under test, Git history, and everything outside the worktree as you found them. For a security finding, use dummy principals and secrets, and keep every run off the network and away from shared services.
 
-Report `verdict: red`, `green`, or `could-not-run`, then:
+This report replaces the executor role's output fields, since a detached worktree has no branch. Report `verdict: red`, `green`, or `could-not-run`, then:
 - the command;
 - the decisive lines of its output;
 - the path of the test file;
