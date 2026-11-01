@@ -23,7 +23,7 @@ Make the harness simpler and less authoritative, add skills that explain the cod
 
 ## Delivery
 
-Strategy: `ask-on-risk`. Each phase is one or two pull requests; Phase 0 is branch `refactor/lighten-policy`.
+Strategy: one pull request per phase, stacked: each phase branch starts from the previous one and targets it, so each PR shows only its phase. Phase 0 is #123.
 
 ## Phase 0: lighten the rules
 
@@ -36,7 +36,7 @@ Strategy: `ask-on-risk`. Each phase is one or two pull requests; Phase 0 is bran
 
 ## Later phases
 
-- [ ] P1 Simplify and re-lock: remove `ask`, `create-ticket`, `feedback`, `harness-audit`, `resolving-merge-conflicts`; re-lock mattpocock bodies; `CONTEXT.md` to `GLOSSARY.md`.
+- [x] P1 Simplify and re-lock: fold `feedback` into `address-review`; remove `resolving-merge-conflicts` (retired upstream); re-lock the six mattpocock bodies; `CONTEXT.md` to `GLOSSARY.md`. `ask`, `create-ticket`, and `harness-audit` are removed in P4, P5, and P6 alongside their replacements so no PR leaves a gap. Branch `refactor/simplify-skills`, stacked on Phase 0.
 - [ ] P2 `change-map` skill with `criticalPaths`, wired into `open-pr`, `review`, and policy.
 - [ ] P3 Verification: certainty ladder, reviewer proof rule, adversary mode, patch-id check in `land`, benchmark checklist, feature-map modes in `e2e-verification`.
 - [ ] P4 `explain`: how, why, state view.
@@ -58,6 +58,7 @@ Phase 0 P0.1 to P0.5 done on `refactor/lighten-policy`; P0.6 pending a model bud
 - P0.5: `code-search` symbol is optional (`-` when a line has none); `review` splits an oversized diff into slices for separate fresh reviewers. Kept as is, with reasons: the executor `gh` deny (allowing reads inside a deny list leaks, e.g. `gh api -X POST`); the `git restore` deny (deny rules win over allow, and unstaging works through `git reset -- <path>`). `--force-with-lease` is not matched by `Bash(git push --force:*)`, since the docs say the space before the wildcard is part of the rule; this is inferred from the docs, not run. Read-only `git log` and `git blame` for code-search move to Phase 4, where `explain why` needs them and the reviewer stays without commit rationale.
 - RDD: disabled for this clone at the user's choice after the preflight stalled on an undocumented untracked-selection format caused by Gentle AI's own `.atl/` cache.
 - Review (data loss and merge authority, `land`, `abandon`, POLICY): the harness `reviewer` agent is not provisioned on this machine and installing was out of scope, so a fresh-context substitute ran with `skills/review/roles/reviewer.md` as its brief and no rationale. Round 1 on `40b4c50..db38579` found one bug (the worktree floor row read as permission to remove user worktrees) and four risks (a wide experiment-worktree exception, a force-push rule that contradicted `land` and `abandon`, overstated deny enforcement, memory and plans missing from the task-data row), plus two nits and one question. All were fixed in `a7cd929` and confirmed resolved in round 2. Round 2 found that `land`'s dependent repair used a bare `--force-with-lease` (pre-existing, now named by the floor); fixed in `48a0416` with a lease on the recorded `headRefOid`, and the `abandon` ticket-thread wording now makes the live confirmation the authority. These last fixes are self-checked only, because review caps at two rounds.
+- P1 `78993fe`, `8054a9b`: `harness skills update` refreshes every lock, so non-mattpocock skills (`impeccable`, `orchestration`, `ponytail`) were restored to their reviewed locks and only the six mattpocock entries changed. The upstream diff was read before commit: the glossary rename, fresh-context subagents, a mutation check in `diagnosing-bugs`, a `$TMPDIR` hint in `handoff`. `TestSkillsVerifyMatchesThePinnedLock` now expects 11 locks. Full `go test ./...` passed apart from that count, which was then fixed and rerun; `skills verify` matches all 11.
 
 ## Next step
 
