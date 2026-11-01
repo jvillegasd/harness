@@ -57,7 +57,7 @@ Check worker results against the assigned scope and the actual Git state; a comp
 
 ## Skills
 
-Skills live in `skills/` and are available as `/name`. `land`, `abandon`, `setup-harness`, and `grill-with-docs` run only when a human invokes them, because they merge, discard, provision, or start a human-led interview. Locked third-party skills change only through `harness skills update`. Where their process instructions (compulsory commits, publication, documentation, or test-first machinery) conflict with this policy, the policy wins and their bytes stay unchanged.
+Skills live in `skills/` and are available as `/name`. `land`, `abandon`, `setup-harness`, `grill-with-docs`, and `build` run only when a human invokes them, because they merge, discard, provision, start a human-led interview, or run unattended. Locked third-party skills change only through `harness skills update`. Where their process instructions (compulsory commits, publication, documentation, or test-first machinery) conflict with this policy, the policy wins and their bytes stay unchanged.
 
 Use `ponytail` for coding decisions, and domain or module guidance when it helps. Use `impeccable` for frontend work, with the project's styling layer taking precedence; leave its installer, updater, hooks, and pin unrun, because they change machine state. Run `security-audit`'s full audit only when an audit, pen test, or report is requested.
 

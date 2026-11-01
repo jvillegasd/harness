@@ -11,9 +11,10 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-// mustGuard are the local skills only a human may start: merging, discarding work, provisioning a repository, and a human-led interview. Every other local skill may be loaded by the model when its description fits.
+// mustGuard are the local skills only a human may start: merging, discarding work, provisioning a repository, a human-led interview, and unattended building, which spends model budget without supervision. Every other local skill may be loaded by the model when its description fits.
 var mustGuard = map[string]bool{
 	"land": true, "abandon": true, "setup-harness": true, "grill-with-docs": true,
+	"build": true,
 }
 
 // Unguarded reports every skill absent from the lock whose invocation guard is required or half present, as "<name>: missing <key>". A skill in mustGuard needs both guards, and any other local skill carrying one needs the other, because a guard only one client reads fires in the other. Claude Code reads `disable-model-invocation: true` at the top level and OpenCode reads `opencode/autoinvoke: "false"` under `metadata:`, so a guard anywhere else does not count. Locked bodies are exempt, because their frontmatter is upstream content.
