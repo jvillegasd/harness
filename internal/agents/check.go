@@ -44,6 +44,22 @@ func RestrictionsMatch(relative, text, level string) bool {
 		}
 		return true
 	}
+	if strings.HasPrefix(relative, "codex/") {
+		// Identity and model keys before the instructions, and exactly the level's controls after them.
+		start := strings.Index(text, "\n"+codexInstructions)
+		if start < 0 {
+			return false
+		}
+		for _, line := range splitLines(text[:start]) {
+			key, _, _ := strings.Cut(line, " = ")
+			if key != "name" && key != "description" && key != "model" && key != "model_reasoning_effort" {
+				return false
+			}
+		}
+		rest := text[start+1+len(codexInstructions):]
+		end := strings.Index(rest, codexClose)
+		return end >= 0 && rest[end+len(codexClose):] == codexTail(level)
+	}
 	head := ""
 	if strings.HasPrefix(text, "---\n") {
 		parts := strings.Split(text, "---\n")

@@ -35,7 +35,7 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 		// The machine's choice is the only per-role assignment, so a tracked one would silently compete with it.
 		for name, role := range roles {
 			if role, ok := role.(map[string]any); ok {
-				for _, client := range []string{"claude", "opencode"} {
+				for _, client := range []string{"claude", "codex", "opencode"} {
 					if _, ok := role[client]; ok {
 						return nil, nil, nil, fail(fmt.Sprintf("roles.%s.%s: per-role model and effort are chosen with `harness models`, not in the assignments file", name, client))
 					}
@@ -108,6 +108,7 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 		// JSON string quoting is valid YAML for this text.
 		quoted := `"` + strings.ReplaceAll(strings.ReplaceAll(description, `\`, `\\`), `"`, `\"`) + `"`
 		claude := resolved["claude/"+name]
+		codex := resolved["codex/"+name]
 		opencode := resolved["opencode/"+name]
 		// Claude Code documents model: inherit and inherits effort when the field is absent; OpenCode inherits both when absent.
 		claudeSettings := "model: " + claude["model"][0] + "\n"
@@ -128,7 +129,17 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 		outputs["claude/"+name+".md"] = "---\nname: " + name + "\ndescription: " + quoted + "\n" + controls + claudeSettings + "---\n\n" + body + "\n"
 		// mode: all, not subagent: `opencode run --agent` and `opencode --agent` silently fall back to the default agent for a subagent, which would drop every control below.
 		outputs["opencode/"+name+".md"] = "---\ndescription: " + quoted + "\nmode: all\n" + opencodeControls[accessLevel] + opencodeSettings + "---\n\n" + body + "\n"
+		// Codex inherits model and effort when absent, like OpenCode. The body is a multi-line literal string, which load keeps free of its ''' delimiter.
+		codexSettings := ""
+		if codex["model"][0] != "inherit" {
+			codexSettings += "model = \"" + codex["model"][0] + "\"\n"
+		}
+		if codex["effort"][0] != "inherit" {
+			codexSettings += "model_reasoning_effort = \"" + codex["effort"][0] + "\"\n"
+		}
+		outputs["codex/"+name+".toml"] = "name = \"" + name + "\"\ndescription = " + quoted + "\n" + codexSettings + codexInstructions + body + codexClose + codexTail(accessLevel)
 		accesses["claude/"+name+".md"] = accessLevel
+		accesses["codex/"+name+".toml"] = accessLevel
 		accesses["opencode/"+name+".md"] = accessLevel
 	}
 	return outputs, accesses, report, nil
@@ -165,7 +176,7 @@ func resolve(config map[string]any) (map[string]any, map[string]map[string][2]st
 		if !ok {
 			return nil, nil, fail(fmt.Sprintf("roles.%s must be an object", name))
 		}
-		allowed := []string{"definition", "claude", "opencode"}
+		allowed := []string{"definition", "claude", "codex", "opencode"}
 		if unknown := unknownKeys(roleObj, allowed); len(unknown) > 0 {
 			return nil, nil, fail(fmt.Sprintf("roles.%s: unknown keys %s; a role takes definition, %s", name, strings.Join(unknown, ", "), strings.Join(clientNames, ", ")))
 		}
