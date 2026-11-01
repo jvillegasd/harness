@@ -94,6 +94,12 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	// The floor counts the merge base's criticalPaths too, so the branch under review cannot lower it.
+	cfg, err = EffectiveConfig(root, changes.MergeBase)
+	if err != nil {
+		fmt.Fprintf(stderr, "harness change-map: %v\n", err)
+		return 2
+	}
 	report := Build(changes, cfg)
 	if asJSON {
 		encoder := json.NewEncoder(stdout)

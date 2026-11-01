@@ -74,6 +74,7 @@ func TestClassify(t *testing.T) {
 		{"skills/x/scripts/run_test.go", Structural, "agent instruction"},
 		{"roles/executor.md", Structural, "agent instruction"},
 		{"elsewhere/SKILL.md", Structural, "agent instruction"},
+		{"docs/agents/harness.json", Critical, "docs/agents/harness.json"},
 		{"AGENTS.md", Structural, "agent instruction"},
 		{"sub/AGENTS.md", Structural, "agent instruction"},
 		{"CLAUDE.md", Structural, "agent instruction"},
@@ -130,7 +131,7 @@ func TestMechanicalOnlyFromRules(t *testing.T) {
 }
 
 func TestBuiltinCriticalIsDocumented(t *testing.T) {
-	want := []string{".github/workflows/**", "**/migrations/**", "**/*.sql", "**/Dockerfile", "**/*.tf"}
+	want := []string{ConfigPath, ".github/workflows/**", "**/migrations/**", "**/*.sql", "**/Dockerfile", "**/*.tf"}
 	if len(BuiltinCritical) != len(want) {
 		t.Fatalf("BuiltinCritical = %v, want %v", BuiltinCritical, want)
 	}

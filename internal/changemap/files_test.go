@@ -193,3 +193,45 @@ func TestDefaultBase(t *testing.T) {
 		t.Fatalf("DefaultBase with origin/HEAD = %q, want origin/HEAD", got)
 	}
 }
+
+// TestBaseConfigKeepsADroppedCriticalPath is the floor guarantee: a branch that removes an entry from criticalPaths cannot lower the tier of the file that entry protected, because the base commit's entries still count.
+func TestBaseConfigKeepsADroppedCriticalPath(t *testing.T) {
+	dir := newRepo(t)
+	write(t, dir, ConfigPath, `{"criticalPaths": ["POLICY.md"]}`)
+	write(t, dir, "POLICY.md", "rules\n")
+	gitIn(t, dir, "add", "-A")
+	gitIn(t, dir, "commit", "-q", "-m", "protect policy")
+	gitIn(t, dir, "switch", "-q", "-c", "branch")
+	write(t, dir, ConfigPath, `{"tracker": "github"}`)
+	write(t, dir, "POLICY.md", "weaker rules\n")
+	changes, err := Changed(dir, "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := EffectiveConfig(dir, changes.MergeBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range []string{"POLICY.md", ConfigPath} {
+		if got := Classify(file, cfg); got.Tier != Critical {
+			t.Errorf("Classify(%q) = %v after the branch dropped its criticalPaths entry, want critical", file, got)
+		}
+	}
+}
+
+// TestEffectiveConfigUnionsBaseAndWorkingTree keeps entries the branch adds as well as entries the base had.
+func TestEffectiveConfigUnionsBaseAndWorkingTree(t *testing.T) {
+	dir := newRepo(t)
+	write(t, dir, ConfigPath, `{"criticalPaths": ["base/**"]}`)
+	gitIn(t, dir, "add", "-A")
+	gitIn(t, dir, "commit", "-q", "-m", "config")
+	write(t, dir, ConfigPath, `{"criticalPaths": ["base/**", "added/**"]}`)
+	base := gitIn(t, dir, "rev-parse", "HEAD")
+	cfg, err := EffectiveConfig(dir, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"base/**", "added/**"}; !reflect.DeepEqual(cfg.CriticalPaths, want) {
+		t.Errorf("EffectiveConfig = %v, want %v", cfg.CriticalPaths, want)
+	}
+}

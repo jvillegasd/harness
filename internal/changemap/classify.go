@@ -37,6 +37,7 @@ type Result struct {
 
 // BuiltinCritical are the paths critical in any repository: automation that runs with repository credentials, and schema or infrastructure definitions. A repository adds its own through criticalPaths.
 var BuiltinCritical = []string{
+	ConfigPath, // it decides every other file's floor
 	".github/workflows/**",
 	"**/migrations/**",
 	"**/*.sql",

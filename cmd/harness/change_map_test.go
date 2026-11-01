@@ -50,15 +50,15 @@ func TestChangeMapText(t *testing.T) {
 	}
 	// Files are ordered by tier descending, then path; each line carries a reason, whose wording the package tests own.
 	wantFiles := []string{
+		"critical\tdocs/agents/harness.json",
 		"critical\told.sql",
 		"critical\tsecret/key.go",
 		"structural\tmain.go",
 		"tests-docs\tREADME.md",
-		"tests-docs\tdocs/agents/harness.json",
 		"tests-docs\tnew_test.go",
 		"mechanical\tgo.sum",
 	}
-	wantTotals := []string{"total\tcritical\t2", "total\tbehavioral\t0", "total\tstructural\t1", "total\ttests-docs\t3", "total\tmechanical\t1"}
+	wantTotals := []string{"total\tcritical\t3", "total\tbehavioral\t0", "total\tstructural\t1", "total\ttests-docs\t2", "total\tmechanical\t1"}
 	lines := strings.Split(strings.TrimSpace(r.stdout), "\n")
 	if len(lines) != len(wantFiles)+len(wantTotals) {
 		t.Fatalf("got %d lines, want %d:\n%s", len(lines), len(wantFiles)+len(wantTotals), r.stdout)
@@ -107,7 +107,7 @@ func TestChangeMapJSON(t *testing.T) {
 	}
 	wantTiers := map[string]string{
 		"old.sql": "critical", "secret/key.go": "critical", "go.sum": "mechanical",
-		"README.md": "tests-docs", "docs/agents/harness.json": "tests-docs", "new_test.go": "tests-docs",
+		"README.md": "tests-docs", "docs/agents/harness.json": "critical", "new_test.go": "tests-docs",
 		"main.go": "structural",
 	}
 	for path, tier := range wantTiers {
@@ -118,7 +118,7 @@ func TestChangeMapJSON(t *testing.T) {
 	if len(out.Files) != len(wantTiers) {
 		t.Errorf("got %d files, want %d: %+v", len(out.Files), len(wantTiers), out.Files)
 	}
-	if out.Totals["critical"] != 2 || out.Totals["tests-docs"] != 3 || out.Totals["mechanical"] != 1 || out.Totals["structural"] != 1 || out.Totals["behavioral"] != 0 {
+	if out.Totals["critical"] != 3 || out.Totals["tests-docs"] != 2 || out.Totals["mechanical"] != 1 || out.Totals["structural"] != 1 || out.Totals["behavioral"] != 0 {
 		t.Errorf("totals = %v", out.Totals)
 	}
 }
