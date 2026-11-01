@@ -39,7 +39,7 @@ prove        verification                  checks and the certainty ladder
              /e2e-verification             release runs and feature maps
     |
 triage       change-map                    what the human must read
-             review                        on the critical items
+             review                        at the depth the map's tier sets
     |
 deliver      open-pr -> address-review -> the human's /land    (or /abandon)
     |
@@ -64,7 +64,7 @@ learn        /retro
 | A claim carries the whole decision | `evidence` | Start with the query that could cancel the work. |
 | UI work | `impeccable` | Frontend design and critique; the project's styling layer still wins. |
 | Prove a change works | `verification`, `/e2e-verification` | Revision-bound local checks; a scripted browser run with screenshots for a release. |
-| Tell the human what to read, or get an independent look | `change-map`, `review` | A tiered map of the change; review a named, concrete risk without the implementer's story. |
+| Tell the human what to read, or get an independent look | `change-map`, `review` | A tiered map of the change; blind review at the depth the tier sets, with each finding proven by a blind red test. |
 | The architecture feels shallow or hard to navigate | `/improve-codebase-architecture` | Finds deepening opportunities and walks through the one you pick. |
 | Security questions or an audit | `security-audit` | Guidance by default; the full audit runs only when an audit or pen test is requested. |
 | Work spans sessions, or you are handing it over | `continuity`, `/handoff` | One recoverable task document; a handoff document for a fresh agent. |
@@ -79,7 +79,7 @@ learn        /retro
 
 | Step | Session model and effort |
 | --- | --- |
-| `grilling`, `/spec`, `/triage`, `diagnosing-bugs`, triaging `review` findings | the strongest available, high effort |
+| `grilling`, `/spec`, `/triage`, `diagnosing-bugs`, disposing `review` findings | the strongest available, high effort |
 | inline building with `tdd` and `ponytail` | the session default |
 | `open-pr`, `address-review`, `/land` | a mid model at medium effort |
 

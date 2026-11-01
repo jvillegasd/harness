@@ -22,9 +22,9 @@ Take the highest tier from `change-map`:
 | only `mechanical` or `tests-docs` | none | None; record `no-review` in the ledger |
 | `structural` or `behavioral` | Quick | `bugs` |
 | `critical`, or the human asks | Standard | `bugs`; `spec` when a requirements source exists; `standards`; `security` when a critical item touches auth, permissions, secrets, an input boundary, CI, or an installer |
-| the human asks for Deep, or accepts it for a critical one-way door | Deep | Standard plus a second `bugs` hunter on another client |
+| the human asks for Deep, or accepts it for a critical one-way door | Deep | Standard plus a second `bugs` hunter from another vendor |
 
-Deep needs the reviewer assigned to a client other than the session's: check with `harness models resolve reviewer --json`. The `diversity` preset, or `harness models set reviewer --client <c> --model <m>` followed by `harness install`, does this. Both change machine state, so name them for the human rather than running them. When the reviewer resolves to the session's client, run Standard and say so. Launch the other-client hunter through `orchestration`, as POLICY's Delegation section describes.
+Deep needs the reviewer assigned to a client other than the session's: check with `harness models resolve reviewer --json`. The `diversity` preset, or `harness models set reviewer --client <c> --model <m>` followed by `harness install`, does this. Both change machine state, so name them for the human rather than running them. The assigned hunters then launch through `orchestration`, as POLICY's Delegation section describes, and the extra `bugs` hunter launches natively on the session's client, so two vendors hunt bugs. When the reviewer resolves to the session's client, run Standard and say so.
 
 ## Snapshot
 
