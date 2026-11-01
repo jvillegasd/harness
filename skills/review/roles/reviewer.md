@@ -35,7 +35,7 @@ loaded: <absolute path>, inline:<absolute path> | none
 revision: <the supplied revision/content identity>
 axis: <your axis>
 findings: <N> (bug <n>, risk <n>, q <n>, pre-existing <n>, nit <n>)
-summary: <the fact the change is safe because of, or what breaks it>
+summary: <what you checked, and the one fact your verdict rests on>
 path:Lline: <severity>: <class>: <problem, with the trace>. <fix>.
 ```
 

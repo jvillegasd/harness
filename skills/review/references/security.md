@@ -7,10 +7,9 @@ The parent pastes the `security-audit` sections "Require a boundary and result",
 | Category | Companion |
 | --- | --- |
 | auth, permissions | `WEB-PROTOCOL-AND-AUTH.md`, `DATA-ISOLATION-AND-LIFECYCLE.md` |
-| secrets, data lifecycle | `DATA-ISOLATION-AND-LIFECYCLE.md` |
+| secrets | `DATA-ISOLATION-AND-LIFECYCLE.md` |
 | input boundaries | `ATTACK-CLASSES.md` |
-| CI, installers, releases | `SUPPLY-CHAIN-AND-RELEASE.md` |
-| CLI tools, local IPC | `DESKTOP-MOBILE-AND-LOCAL-IPC.md` |
+| CI, installers | `SUPPLY-CHAIN-AND-RELEASE.md` |
 
 - A finding names five things: the lower-trust principal, the input or action it controls, the intended control, the boundary it crosses, and the affected resource. Then trace the path. When any of them is missing, it is a `q`.
 - A missing best practice, or defense in depth with no reachable boundary violation, is not a finding.

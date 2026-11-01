@@ -11,7 +11,7 @@ dir="${XDG_DATA_HOME:-$HOME/.local/share}/harness/reviews/$key"
 mkdir -p "$dir"   # ledger: $dir/ledger.jsonl
 ```
 
-The key keeps the host, owner, and full repository path, so distinct repositories never share a ledger. It sits outside `~/.harness` because `harness install --uninstall` deletes that directory.
+The key keeps the host, owner, and full repository path, so distinct remotes get distinct ledgers. It sits outside `~/.harness` because `harness install --uninstall` deletes that directory.
 
 ## Lines
 
@@ -37,8 +37,10 @@ A review with no findings, or with depth `none`, writes one line with `path` set
 - `unverified`: neither confirmed nor refuted. Open.
 - `fixed`: confirmed and repaired.
 - `refuted`: the verifier reported `green` or `could-not-run`, and the refute brief cited where the failure path is cut.
-- `intentional`: the human, in the live session, says the behavior is wanted. `evidence` quotes their words.
-- `wont-matter`: the human, in the live session, decides not to fix it. `evidence` quotes their words.
+- `intentional`: the human says the behavior is wanted. `evidence` quotes their words.
+- `wont-matter`: the human decides not to fix it. `evidence` quotes their words.
+
+The ledger is task data any local process can write, so a recorded dismissal is a claim, not an authority: `land` asks the human to reaccept each one.
 - `pre-existing`: the defect predates the diff.
 - `nit`: reported, not acted on.
 
@@ -56,12 +58,13 @@ jq -nc --arg id "$id" --arg branch "$branch" --arg base "$base" --arg sha "$sha"
   '{id:$id, ts:(now|todate), branch:$branch, base:$base, sha:$sha, digest:($digest | select(. != "") // null), round:$round,
     depth:$depth, axis:$axis, reviewer:$reviewer, path:($path | select(. != "") // null), lines:$lines, severity:$severity,
     class:$class, summary:$summary, disposition:$disposition, evidence:$evidence}' >> "$dir/ledger.jsonl" \
-  && grep -q "\"id\":\"$id\"" "$dir/ledger.jsonl" || echo "ledger append failed for $id" >&2
+  || echo "ledger append failed for $id" >&2
 
-# Latest line per finding on a branch, for reviewed commits that are ancestors of <head>
+# Latest line per finding on a branch; "rewritten" marks a reviewed commit that is no longer an ancestor of <head>
 jq -c --arg b "$branch" 'select(.branch == $b and .path != null)' "$dir/ledger.jsonl" \
-  | while read -r l; do git merge-base --is-ancestor "$(jq -r .sha <<<"$l")" "$head" 2>/dev/null && echo "$l"; done \
+  | while read -r l; do git merge-base --is-ancestor "$(jq -r .sha <<<"$l")" "$head" 2>/dev/null \
+      && echo "$l" || jq -c '.rewritten = true' <<<"$l"; done \
   | jq -s 'group_by(.id) | map(last)'
 ```
 
-A finding is open when its latest disposition is `confirmed` or `unverified`. A failed append means the finding is not recorded. Treat it as open and report the failure.
+A rebase leaves earlier findings `rewritten`; they still count. A failed append means the finding is not recorded: treat it as open and report the failure.
