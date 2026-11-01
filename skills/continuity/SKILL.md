@@ -35,7 +35,7 @@ Keep a `## Decisions` table in the task document and append a row when a decisio
 
 ## Phase boundaries
 
-Decide how to cross only at a boundary between phases, such as spec to build or build to review, and not mid-phase. Take the first option that fits:
+Decide how to cross only at a boundary between phases, such as spec to implementation or implementation to review, and not mid-phase. Choosing how to cross grants no authority to cross: the next phase needs its own request, and an unattended run needs the human's `/build`. Take the first option that fits:
 
 1. **Continue in this context** when the next phase needs this one's reasoning verbatim, or when context remains.
 2. **Clear** when everything held here is disposable and the files and the task document carry what matters.

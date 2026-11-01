@@ -20,7 +20,7 @@ An observable question is cheaper to answer by building the smallest slice than 
 3. Use `ponytail` and the project's existing styling layer. Build the slice and run the appropriate local checks. Keep assumptions distinct from confirmed requirements.
 4. Show what to try, what the evidence supports, and what remains unknown. When human testing is the next source of evidence, wait for it; otherwise continue the independent experiments already authorized.
 5. Incorporate feedback, and keep requirements in `continuity` when recovery needs them. Flag prototype-quality code or missing coverage that retained implementation must address.
-6. Keep a prototype worth keeping on a throwaway local branch named `prototype/<name>`, and link that branch from the spec or ticket as a primary source. Pushing it needs a request. Fold only the validated decision into the real code, since the prototype's own code was written to learn, not to last.
+6. Keep a prototype worth keeping on a throwaway local branch named `prototype/<name>`, and link that branch from the local spec or ticket draft as a primary source. Pushing it, or editing a published ticket to link it, needs its own request. Fold only the validated decision into the real code, since the prototype's own code was written to learn, not to last.
 7. Finish with the experimental result, or continue into implementation when asked. An explicit delivery request uses `open-pr`, and discarding the prototype goes through `abandon`.
 
 ## Shapes
