@@ -29,10 +29,10 @@ path:line | symbol | mechanism
 ```
 
 - `path:line` is repository-relative and names the single line the claim rests on.
-- `symbol` is one bare identifier that line carries. Not a qualified name, not a phrase, not a description.
+- `symbol` is the identifier on that line that anchors the claim, such as a function, type, or key name. Use `-` when the line has none, for example a comment or a prose line.
 - `mechanism` is what that location shows, in one clause.
 
-The parent verifies every citation by reading the cited line and matching the symbol as a whole identifier, then drops the ones that fail. A path outside the repository, a line that has drifted, or a symbol that is not literally on it all cost you the finding, so confirm each line before you report it rather than reconstructing it from memory.
+The parent checks each citation by reading the cited line, and the symbol when one is given, so confirm each line before you report it rather than reconstructing it from memory. A drifted line or a path outside the repository makes the finding unusable.
 
 Cite the location only. You are grounding where something is, never proving what it does at runtime: state the mechanism as what the code shows, and leave the parent's `evidence` protocol to test any claim about behavior, impact, or frequency.
 

@@ -62,6 +62,7 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 	writeSkill(t, c, "metadata-only", "---\nmetadata:\n  opencode/autoinvoke: \"false\"\n---\nbody\n")
 	writeSkill(t, c, "workflow", "---\ndescription: auto-invoked\n---\nbody\n")
 	writeSkill(t, c, "land", "---\ndescription: merges\n---\nbody\n")
+	writeSkill(t, c, "review", "---\ndescription: model-invoked when a change map flags a critical hunk\n---\nbody\n")
 	if err := os.MkdirAll(filepath.Join(c.Skills(), "empty"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +87,7 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 			t.Errorf("Unguarded did not report %q:\n%s", w, got)
 		}
 	}
-	for _, exempt := range []string{"locked", "guarded-one", "workflow"} {
+	for _, exempt := range []string{"locked", "guarded-one", "workflow", "review"} {
 		if strings.Contains(got, exempt+":") {
 			t.Errorf("Unguarded reported %s:\n%s", exempt, got)
 		}

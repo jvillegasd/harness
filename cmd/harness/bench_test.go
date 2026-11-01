@@ -69,14 +69,14 @@ func readGolden(t *testing.T, name string) string {
 // TestBenchMatchesRecordedReport holds the port to the numbers the pre-port
 // bench printed on the same fixture, recorded before it was deleted.
 func TestBenchMatchesRecordedReport(t *testing.T) {
-	r := ok(t, harness(t, benchDir(t), "", "bench", "--split", "2026-09-05", "--since", "2026-09-01", "--home", benchHome(t)), "bench")
+	r := ok(t, harness(t, benchDir(t), "bench", "--split", "2026-09-05", "--since", "2026-09-01", "--home", benchHome(t)), "bench")
 	if want := readGolden(t, "report.golden"); !sameReport(r.stdout, want) {
 		t.Fatalf("report differs from the recorded baseline:\n--- want\n%s\n--- got\n%s", want, r.stdout)
 	}
 }
 
 func TestBenchRowsMatchRecordedRows(t *testing.T) {
-	r := ok(t, harness(t, benchDir(t), "", "bench", "--split", "2026-09-05", "--since", "2026-09-01", "--home", benchHome(t), "--rows"), "bench --rows")
+	r := ok(t, harness(t, benchDir(t), "bench", "--split", "2026-09-05", "--since", "2026-09-01", "--home", benchHome(t), "--rows"), "bench --rows")
 	if want := readGolden(t, "rows.golden"); r.stdout != want {
 		t.Fatalf("rows differ from the recorded baseline:\n--- want\n%s\n--- got\n%s", want, r.stdout)
 	}
@@ -86,8 +86,8 @@ func TestBenchRowsMatchRecordedRows(t *testing.T) {
 // needs no split, and adding one changes nothing.
 func TestBenchRowsWithoutSplit(t *testing.T) {
 	dir := benchDir(t)
-	without := ok(t, harness(t, dir, "", "bench", "--rows", "--since", "2026-09-01", "--home", benchHome(t)), "bench --rows")
-	with := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--rows", "--since", "2026-09-01", "--home", benchHome(t)), "bench --split --rows")
+	without := ok(t, harness(t, dir, "bench", "--rows", "--since", "2026-09-01", "--home", benchHome(t)), "bench --rows")
+	with := ok(t, harness(t, dir, "bench", "--split", "2026-09-05", "--rows", "--since", "2026-09-01", "--home", benchHome(t)), "bench --split --rows")
 	if without.stdout != with.stdout {
 		t.Fatalf("adding --split changed the rows:\n--- without\n%s\n--- with\n%s", without.stdout, with.stdout)
 	}
@@ -98,11 +98,11 @@ func TestBenchRowsWithoutSplit(t *testing.T) {
 // fixture population.
 func TestBenchSinceFilteredMatchesRecorded(t *testing.T) {
 	dir := benchDir(t)
-	report := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--since", "2026-09-02", "--home", benchHome(t)), "bench --since report")
+	report := ok(t, harness(t, dir, "bench", "--split", "2026-09-05", "--since", "2026-09-02", "--home", benchHome(t)), "bench --since report")
 	if want := readGolden(t, "report-since.golden"); !sameReport(report.stdout, want) {
 		t.Fatalf("windowed report differs from the recorded baseline:\n--- want\n%s\n--- got\n%s", want, report.stdout)
 	}
-	rows := ok(t, harness(t, dir, "", "bench", "--split", "2026-09-05", "--rows", "--since", "2026-09-02", "--home", benchHome(t)), "bench --since rows")
+	rows := ok(t, harness(t, dir, "bench", "--split", "2026-09-05", "--rows", "--since", "2026-09-02", "--home", benchHome(t)), "bench --since rows")
 	if want := readGolden(t, "rows-since.golden"); rows.stdout != want {
 		t.Fatalf("windowed rows differ from the recorded baseline:\n--- want\n%s\n--- got\n%s", want, rows.stdout)
 	}
@@ -110,7 +110,7 @@ func TestBenchSinceFilteredMatchesRecorded(t *testing.T) {
 
 // TestBenchClientFlagNarrowsThePopulation is the command wiring for --client; that repeating a client collects it once is settled in internal/bench.
 func TestBenchClientFlagNarrowsThePopulation(t *testing.T) {
-	r := ok(t, harness(t, benchDir(t), "", "bench", "--split", "2026-09-05", "--since", "2026-09-01", "--client", "claude", "--rows", "--home", benchHome(t)), "bench one client")
+	r := ok(t, harness(t, benchDir(t), "bench", "--split", "2026-09-05", "--since", "2026-09-01", "--client", "claude", "--rows", "--home", benchHome(t)), "bench one client")
 	if !strings.Contains(r.stdout, `"client": "claude"`) {
 		t.Fatalf("the row export carried no claude session: %q", r.stdout)
 	}
@@ -120,7 +120,7 @@ func TestBenchClientFlagNarrowsThePopulation(t *testing.T) {
 }
 
 func TestBenchEmptyHomeReportsNoSessions(t *testing.T) {
-	r := ok(t, harness(t, benchDir(t), "", "bench", "--split", "2026-01-01", "--since", "2026-01-01", "--home", t.TempDir()), "bench on an empty home")
+	r := ok(t, harness(t, benchDir(t), "bench", "--split", "2026-01-01", "--since", "2026-01-01", "--home", t.TempDir()), "bench on an empty home")
 	if !strings.Contains(r.stdout, "no sessions found") {
 		t.Fatalf("bench on an empty home printed %q", r.stdout)
 	}
@@ -136,14 +136,14 @@ func TestBenchReportsUnreadableTranscript(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(project, "broken.jsonl"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	r := harness(t, benchDir(t), "", "bench", "--split", "2026-09-05", "--home", home)
+	r := harness(t, benchDir(t), "bench", "--split", "2026-09-05", "--home", home)
 	if r.code == 0 || r.stderr == "" {
 		t.Fatalf("an unreadable transcript exited %d with stderr %q, want a reported failure", r.code, r.stderr)
 	}
 }
 
 func TestBenchRefusesOutsideCheckout(t *testing.T) {
-	r := harness(t, t.TempDir(), "", "bench", "--split", "2026-09-05", "--home", benchHome(t))
+	r := harness(t, t.TempDir(), "bench", "--split", "2026-09-05", "--home", benchHome(t))
 	if r.code == 0 || r.stderr == "" {
 		t.Fatalf("outside a checkout exited %d with stderr %q, want a reported failure", r.code, r.stderr)
 	}
@@ -159,7 +159,7 @@ func TestBenchUsageErrors(t *testing.T) {
 		{"bench", "--split", "2026-09-05", "--bogus"},
 	}
 	for _, args := range cases {
-		r := harness(t, dir, "", args...)
+		r := harness(t, dir, args...)
 		if r.code != 2 {
 			t.Errorf("%v exited %d, want a usage error", args, r.code)
 		}

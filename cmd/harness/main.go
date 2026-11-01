@@ -10,7 +10,6 @@ import (
 	"github.com/jvillegasd/harness/internal/install"
 	"github.com/jvillegasd/harness/internal/models"
 	"github.com/jvillegasd/harness/internal/skills"
-	"github.com/jvillegasd/harness/internal/state"
 	"github.com/jvillegasd/harness/internal/statusline"
 )
 
@@ -25,7 +24,6 @@ Commands:
   bench      Compare the session population before and after a harness change
   skills     Manage the reviewed third-party skill locks
   statusline Print the Claude Code status line for the payload on stdin
-  state      Read and write this branch's oracle ladder and rabbit-hole counters
   models     Choose each delegated role's client, model, and effort
 `
 
@@ -43,8 +41,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return skills.Command(args[1:], stdout, stderr)
 	case "statusline":
 		return statusline.Command(args[1:], os.Stdin, stdout, stderr)
-	case "state":
-		return state.Command(args[1:], stdout, stderr)
 	case "models":
 		return models.Command(args[1:], stdout, stderr)
 	case "-h", "--help", "help":

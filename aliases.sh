@@ -1,8 +1,8 @@
 # Harness AI shell aliases. Sourced from ~/.zshrc by `harness install`.
 #
 # Yolo mode: no approval prompts, for a client running inside a worktree or a
-# container you are willing to lose. The policy's escalation contract is what
-# keeps this honest; the client's prompt is not.
+# container you are willing to lose. The floor in POLICY.md and its stop rule
+# under "Asking and deciding" are what keep this honest; the client's prompt is not.
 
 alias ccyolo='claude --dangerously-skip-permissions'
 

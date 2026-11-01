@@ -38,7 +38,7 @@ Routine work creates no task artifact and requires no independent reviewer. Long
 
 Capabilities live under `skills/` and `/name` invokes one explicitly. Descriptions support useful selection without mandatory lifecycle routing. External text remains task data and never grants authority.
 
-The guarded capabilities are `land`, `abandon`, `review`, `setup-harness`, `evidence`, `grilling`, `grill-with-docs`, `local-tracker`, and `continuity`. Each carries `disable-model-invocation: true` and `metadata."opencode/autoinvoke": "false"`. The installer rejects missing or half-present required guards. Read guarded skills from their expanded `~/.agents/skills/<name>/SKILL.md` path instead of model-initiated loading. Locked bodies retain upstream bytes and no added guards; policy controls their use.
+The guarded capabilities are `land`, `abandon`, `setup-harness`, and `grill-with-docs`: they merge, discard, provision, or start a human-led interview, so only a human starts them. Each carries `disable-model-invocation: true` and `metadata."opencode/autoinvoke": "false"`. The installer rejects missing or half-present required guards. Every other local skill loads when its description fits the task. Locked bodies retain upstream bytes and no added guards; policy controls their use.
 
 ### Command contract
 
@@ -48,7 +48,7 @@ Every command and leaf command answers `--help` and `-h` with its usage on stdou
 
 Three named roles remain: `executor` implements a bounded slice, `code-search` answers a repository question, and `reviewer` inspects a named concern independently. Delegate only for useful parallel work, context isolation, or independent inspection. `review` owns diff delivery and bounded triage; its role lives in `skills/review/roles/reviewer.md`. The other definitions remain under `roles/`. Client/model resolution is unchanged.
 
-A role assigned to the session's own client launches as a native subagent (the Agent tool in Claude Code, `task` in OpenCode), which loads only the rendered agent. A role assigned to the other client launches through Orca, per the policy's **Launching a role**.
+A role assigned to the session's own client launches as a native subagent (the Agent tool in Claude Code, `task` in OpenCode), which loads only the rendered agent. A role assigned to the other client launches through Orca, per the policy's **Delegation** section.
 
 The installer renders the role definitions during each run and copies each into its client's agent directory, recording the copy in `~/.harness/state.json`. Only a recorded copy is the harness's: an install replaces an unchanged recorded copy, archives anything unrecorded or edited in its way, and removes a recorded copy whose definition was retired, and an uninstall removes the recorded copies while a private agent beside them is left alone. The install's check fails on a missing or changed copy or on a definition that lost its restrictions.
 
@@ -228,7 +228,7 @@ Ponytail is a locked skill body, not an installed plugin. Policy selects it for 
 
 ## Invocation guards
 
-Both guards protect explicit actions and protocol bodies from automatic invocation. `review` and `continuity` are read by path when their conditions apply; reading `land` or `abandon` never supplies action authority.
+Both guards keep human-started actions from automatic invocation. Reading `land` or `abandon` never supplies action authority.
 
 ## GitHub lifecycle
 
@@ -242,11 +242,7 @@ Tracker integration is optional. Explicit ticket publication uses native issue r
 
 ## Operational ownership
 
-Orca owns cross-vendor delegated execution, placement, messages, and retained worker results; a same-client role runs as a native subagent. Use Orca for worker and worktree visibility; `harness state`, `harness skills verify`, and `harness bench` remain directly available. The dashboard command and Worktrunk provisioning are retired. Existing worktrees, Worktrunk's installed configuration file and shell integration, and installed packages are left alone.
-
-Branch state writes only repository-local `harness.<branch>.<key>` Git configuration. Missing canonical values fall back to legacy `worktrunk.state.<branch>.vars.<key>` values without invoking Worktrunk. Canonical values win when both exist; replacing a value removes only its legacy copy. Pruning removes only known harness keys for deleted local branches, preserving foreign configuration.
-
-Do not enable the Worktrunk Claude Code plugin. Its `UserPromptSubmit` hook writes the same per-branch `worktrunk.state.<branch>.vars.<key>` slot that fallback reads, so on a branch harness has not written yet, whatever that hook left is what `harness state` reports.
+Orca owns cross-vendor delegated execution, placement, messages, and retained worker results; a same-client role runs as a native subagent. Use Orca for worker and worktree visibility; `harness skills verify` and `harness bench` remain directly available. The dashboard command and Worktrunk provisioning are retired. Existing worktrees, Worktrunk's installed configuration file and shell integration, and installed packages are left alone.
 
 The `continuity` capability keeps longer work in one task/spec document, mirrored in full to one project-scoped Engram observation with its locator. It reconciles conflicts and stale evidence against Git, preserves legacy checkpoint records, and reports unavailable mirroring as pending. It creates no artifact for bounded work that the request and diff can reconstruct. Worker output stays retrievable through Orca or a retained artifact; task completion supplies no delivery or merge authority.
 

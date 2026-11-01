@@ -106,13 +106,6 @@ func TestCommandHelpMatrix(t *testing.T) {
 		{"skills", "update"},
 		{"skills", "remove"},
 		{"skills", "verify"},
-		{"state"},
-		{"state", "ladder"},
-		{"state", "ladder", "set"},
-		{"state", "incr"},
-		{"state", "escalate", "--reason", "why"},
-		{"state", "get", "--json"},
-		{"state", "prune"},
 		{"statusline"},
 	}
 	for _, command := range commands {
@@ -164,11 +157,6 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"skills", "check"},
 		{"skills", "verify", "extra"},
 		{"state"},
-		{"state", "bogus"},
-		{"state", "incr", "escalations"},
-		{"state", "escalate"},
-		{"state", "get", "--jsn"},
-		{"state", "prune", "extra"},
 		{"dash"},
 		{"scenarios"},
 		{"agents"},
@@ -211,7 +199,7 @@ func TestOperationalFailuresExitOne(t *testing.T) {
 // TestRetiredCommandsAreUnlisted keeps the retired commands off the help and on the ordinary unknown-command path, which the invocation matrix above drives for each of them.
 func TestRetiredCommandsAreUnlisted(t *testing.T) {
 	help := runBinary(t, t.TempDir(), "--help")
-	for _, name := range []string{"dash", "scenarios", "agents"} {
+	for _, name := range []string{"dash", "scenarios", "agents", "state"} {
 		if strings.Contains(help.stdout, "  "+name+" ") {
 			t.Errorf("help still lists %s: %q", name, help.stdout)
 		}

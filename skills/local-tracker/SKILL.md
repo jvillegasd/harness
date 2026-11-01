@@ -1,9 +1,6 @@
 ---
 name: local-tracker
 description: "Map authorized tracker operations to committed markdown files without gating local implementation."
-disable-model-invocation: true
-metadata:
-  opencode/autoinvoke: "false"
 ---
 
 # Local Tracker
@@ -22,7 +19,7 @@ An implementation-ready ticket has `Status: <mapped label>` and `Blocked by: <sa
 
 ## Authorized operations
 
-Local drafting stays local. Publishing tracker state needs explicit scope covering commits and pushes to its destination. When already covered by the request or an invoked capability, do not ask again. For default-branch bookkeeping, locate its worktree, fetch and fast-forward it, verify protection and preserve unrelated index/worktree state. If protected, report the need for a supported PR route rather than creating an unpushable commit. Only the operations below qualify for the policy's default-branch bookkeeping exception; implementation never does.
+Local drafting stays local. Publishing tracker state needs explicit scope covering commits and pushes to its destination. When already covered by the request or an invoked capability, do not ask again. For default-branch bookkeeping, locate its worktree, fetch and fast-forward it, verify protection and preserve unrelated index/worktree state. If protected, report the need for a supported PR route rather than creating an unpushable commit. POLICY's Git section limits default-branch bookkeeping to the operations below, and implementation never qualifies.
 
 | Operation | State change |
 | --- | --- |
