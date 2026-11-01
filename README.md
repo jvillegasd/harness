@@ -25,9 +25,9 @@ Skills compose around the task. Use investigation for unknowns, specifications f
 | Capability | Use |
 | --- | --- |
 | `verification` | Appropriate local checks and honest revision-bound evidence |
-| `e2e-verification` | Scripted browser E2E QA of what ships, on an isolated install, with real screenshots per test and a published report |
+| `e2e-verification` | Scripted browser E2E QA of what ships, on an isolated install, with real screenshots per test and a published report; `create` and `maintain` modes write and keep current a project-local `verify-<app>` skill with a feature map |
 | `change-map` | Sort a change into review tiers (critical, behavioral, structural, tests-docs, mechanical) on a deterministic floor from `harness change-map`, and tell the human what to read and what each risky item is safe because of |
-| `review` | Focused independent inspection when requested, when `change-map` finds critical items, or when a concrete security, data-loss, compatibility, or concurrency risk exceeds ordinary checks |
+| `review` | Focused independent inspection when requested, when `change-map` finds critical items, or when a concrete security, data-loss, compatibility, or concurrency risk exceeds ordinary checks; findings must be walked, the parent tries to reproduce them, and an opt-in adversary mode runs two reviewers on different clients |
 | `continuity` | One local task/spec document and full project-scoped Engram mirror when the request and Git diff cannot preserve enough context |
 | `open-pr` | Explicitly requested commits, publication, and required-check repairs |
 | `address-review` | Apply feedback, review comments, or check repairs on the existing branch using its scoped authorization |
