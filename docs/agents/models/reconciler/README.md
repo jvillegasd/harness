@@ -25,7 +25,7 @@ An independent review then found a third path the model could not reach, because
 
 ## What it leaves out
 
-Runs are atomic, so concurrent writes inside one run are not modeled. One level is modeled: healing covers the event issue's children and siblings, so a dropped event in a deeper level or an unrelated tree heals only on a later event in that family. The parent has no blockers of its own, which is how the third path stayed hidden. Label edits by hand, sub-issue changes, and blockers outside the tree are not modeled.
+Runs are atomic, so concurrent writes inside one run are not modeled. One level is modeled: healing covers the event issue's children and siblings, so a dropped event in a deeper level or an unrelated tree is outside the model; in the code, the hourly scheduled sweep heals it. The parent has no blockers of its own, which is how the third path stayed hidden. Label edits by hand, sub-issue changes, and blockers outside the tree are not modeled.
 
 ## Rerun
 

@@ -28,6 +28,8 @@ type fakeAPI struct {
 	parents   map[int][]int
 	updates   []updateCall
 	history   map[int][]event
+	// foreign holds issues from other repositories, listed under a local issue's relation; their numbers may collide with local issues.
+	foreign map[int]map[string][]issue
 }
 
 type updateCall struct {
@@ -82,13 +84,13 @@ func (f *fakeAPI) related(number int, relation string) ([]issue, error) {
 				}
 			}
 		}
-		return children, nil
+		return append(children, f.foreign[number][relation]...), nil
 	case "blocked_by":
-		return f.byIDs(f.blockedBy[number]), nil
+		return append(f.byIDs(f.blockedBy[number]), f.foreign[number][relation]...), nil
 	case "blocking":
-		return f.byIDs(f.blocking[number]), nil
+		return append(f.byIDs(f.blocking[number]), f.foreign[number][relation]...), nil
 	case "parent":
-		return f.byIDs(f.parents[number]), nil
+		return append(f.byIDs(f.parents[number]), f.foreign[number][relation]...), nil
 	}
 	return nil, nil
 }
@@ -106,7 +108,25 @@ func (f *fakeAPI) events(number int) ([]event, error) {
 }
 
 func (f *fakeAPI) blockerSatisfied(blocker issue) (bool, error) {
+	if blocker.Foreign {
+		// A foreign issue's evidence lives in its own repository; the fake has none, so it never counts as merged.
+		return false, nil
+	}
 	return blocker.State == "closed" && f.satisfied[blocker.Number], nil
+}
+
+func (f *fakeAPI) openIssues(name string) ([]issue, error) {
+	var result []issue
+	for _, value := range f.issues {
+		if value.State == "open" && labelNames(*value)[name] {
+			result = append(result, *value)
+		}
+	}
+	return result, nil
+}
+
+func foreignIssue(number int, state string, labels ...string) issue {
+	return issue{Number: number, State: state, Labels: labelList(labels), RepositoryURL: "https://api.github.com/repos/o/other", Foreign: true}
 }
 
 func (f *fakeAPI) update(number int, changes map[string]any) error {
@@ -609,5 +629,213 @@ func TestGoRunWithoutModule(t *testing.T) {
 	)
 	if out, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("go run failed with no module: %v\n%s", err, out)
+	}
+}
+
+// TestSweepHealsAnUnrelatedTree replays a dropped event no later event reaches: the blocker merged, nothing in its tree moved since, and the scheduled sweep releases the dependent while a planning-only ticket stays off the frontier.
+func TestSweepHealsAnUnrelatedTree(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "closed", "ready-for-human"),
+			3: newIssue(3, "open", "blocked"),
+			4: newIssue(4, "open", "feature"),
+		},
+		[]int{1}, map[int][]int{3: {1}, 4: {1}}, map[int][]int{1: {3, 4}}, nil,
+	)
+	if err := sweep(f, defaultLabels()); err != nil {
+		t.Fatal(err)
+	}
+	assertLabels(t, f, 3, "ready-for-agent")
+	assertLabels(t, f, 4, "feature")
+	assertNoNewUpdates(t, f, func() error { return sweep(f, defaultLabels()) })
+}
+
+// TestSweepClosesAParentWhoseChildrenMerged covers the parent half of a dropped event: the last child merged and the sweep closes the parent.
+func TestSweepClosesAParentWhoseChildrenMerged(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "open", "in-progress"),
+			2: newIssue(2, "closed", "ready-for-human"),
+		},
+		[]int{2}, nil, nil, map[int][]int{2: {1}},
+	)
+	if err := sweep(f, defaultLabels()); err != nil {
+		t.Fatal(err)
+	}
+	if f.issues[1].State != "closed" {
+		t.Fatalf("parent state = %s, want closed; updates %v", f.issues[1].State, f.updates)
+	}
+}
+
+// TestForeignIssuesAreNeverRelabeled gives a parent a sub-issue and a dependent from another repository whose numbers collide with local issues. The local issues must stay untouched, and the open foreign child keeps the parent open.
+func TestForeignIssuesAreNeverRelabeled(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "open", "in-progress"),
+			5: newIssue(5, "open", "ready-for-agent"),
+			6: newIssue(6, "open"),
+			7: newIssue(7, "closed", "ready-for-human"),
+		},
+		[]int{7}, map[int][]int{5: {6}}, nil, map[int][]int{7: {1}},
+	)
+	f.foreign = map[int]map[string][]issue{
+		1: {"sub_issues": {foreignIssue(5, "open", "blocked")}},
+		7: {"blocking": {foreignIssue(5, "open", "blocked")}},
+	}
+	if err := reconcile(f, 7, defaultLabels(), "closed"); err != nil {
+		t.Fatal(err)
+	}
+	for _, call := range f.updates {
+		if call.Number == 5 {
+			t.Fatalf("local #5 was relabeled for a foreign #5: %v", f.updates)
+		}
+	}
+	if f.issues[1].State != "open" {
+		t.Fatalf("parent closed while a foreign child is open: %v", f.updates)
+	}
+}
+
+// TestMarkFlagsOnlyOtherRepositories pins the foreign check on the API's repository_url, case-insensitively, with a missing URL counting as this repository.
+func TestMarkFlagsOnlyOtherRepositories(t *testing.T) {
+	g := &gitHubAPI{repository: "Owner/Repo"}
+	values := g.mark([]issue{
+		{Number: 1, RepositoryURL: "https://api.github.com/repos/owner/repo"},
+		{Number: 2, RepositoryURL: "https://api.github.com/repos/owner/other"},
+		{Number: 3},
+	})
+	if values[0].Foreign || !values[1].Foreign || values[2].Foreign {
+		t.Fatalf("foreign flags = %v %v %v, want false true false", values[0].Foreign, values[1].Foreign, values[2].Foreign)
+	}
+	if got := repositoryOf(values[1].RepositoryURL); got != "owner/other" {
+		t.Fatalf("repositoryOf = %q, want owner/other", got)
+	}
+}
+
+// TestSteadyReadyTicketKeepsItsLabel guards the no-change shortcut: re-reconciling a ready ticket whose blockers merged, as a sibling heal or the sweep does, must leave its label alone rather than strip it off the frontier.
+func TestSteadyReadyTicketKeepsItsLabel(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "closed", "ready-for-human"),
+			3: newIssue(3, "open", "ready-for-agent", "feature"),
+			4: newIssue(4, "open", "ready-for-agent"),
+		},
+		[]int{1}, map[int][]int{3: {1}}, nil, nil,
+	)
+	for _, number := range []int{3, 4} {
+		assertNoNewUpdates(t, f, func() error { return reconcileFrontier(f, number, defaultLabels(), false) })
+	}
+	assertLabels(t, f, 3, "ready-for-agent", "feature")
+}
+
+// TestReadyTicketThatGainsAChildGoesInProgress keeps "a parent is never ready-for-agent" when a ready ticket later gains a sub-issue: the frontier shortcut leaves its labels alone, so the parent pass must move it to in-progress.
+func TestReadyTicketThatGainsAChildGoesInProgress(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "open", "ready-for-agent"),
+			2: newIssue(2, "open", "ready-for-agent"),
+		},
+		nil, nil, nil, map[int][]int{2: {1}},
+	)
+	if err := sweep(f, defaultLabels()); err != nil {
+		t.Fatal(err)
+	}
+	assertLabels(t, f, 1, "in-progress")
+	assertLabels(t, f, 2, "ready-for-agent")
+}
+
+// TestSweepReopensAParentWhoseChildReopened heals a dropped reopen: the child is open again, its parent stayed closed, and the sweep reaches the parent through the child.
+func TestSweepReopensAParentWhoseChildReopened(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "closed"),
+			2: newIssue(2, "open", "ready-for-agent"),
+		},
+		nil, nil, nil, map[int][]int{2: {1}},
+	)
+	f.history[1] = []event{{Event: "labeled", Label: label{Name: "in-progress"}}}
+	if err := sweep(f, defaultLabels()); err != nil {
+		t.Fatal(err)
+	}
+	if f.issues[1].State != "open" {
+		t.Fatalf("parent state = %s, want open; updates %v", f.issues[1].State, f.updates)
+	}
+	assertLabels(t, f, 1, "in-progress")
+}
+
+// TestBlockerSatisfiedReadsForeignEvidenceInItsRepository drives the gh-backed check with a stand-in gh: a foreign issue is looked up in its own repository, an unreadable one counts as unmerged without failing the run, and a failed lookup is not cached as unmerged.
+func TestBlockerSatisfiedReadsForeignEvidenceInItsRepository(t *testing.T) {
+	dir := t.TempDir()
+	calls := filepath.Join(dir, "calls")
+	gh := filepath.Join(dir, "gh")
+	script := `#!/bin/sh
+echo "$*" >> "` + calls + `"
+case "$*" in
+  *"--repo o/private"*) echo "no access" >&2; exit 1 ;;
+  *"issue view 7 --repo o/repo"*) echo '{"closedByPullRequestsReferences":[{"url":"u7"}]}' ;;
+  *"pr view u7"*) echo "timeout" >&2; exit 1 ;;
+  *"issue view"*) echo '{"closedByPullRequestsReferences":[{"url":"u"}]}' ;;
+  *"pr view"*) echo '{"state":"MERGED","mergedAt":"2026-01-01T00:00:00Z"}' ;;
+esac
+`
+	if err := os.WriteFile(gh, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	g := &gitHubAPI{repository: "o/repo", binary: gh}
+	foreign := issue{Number: 5, State: "closed", RepositoryURL: "https://api.github.com/repos/o/other", Foreign: true}
+	if ok, err := g.blockerSatisfied(foreign); err != nil || !ok {
+		t.Fatalf("foreign merged issue = %v, %v; want true, nil", ok, err)
+	}
+	private := issue{Number: 6, State: "closed", RepositoryURL: "https://api.github.com/repos/o/private", Foreign: true}
+	if ok, err := g.blockerSatisfied(private); err != nil || ok {
+		t.Fatalf("unreadable foreign issue = %v, %v; want false, nil", ok, err)
+	}
+	if _, err := g.blockerSatisfied(issue{Number: 7, State: "closed"}); err == nil {
+		t.Fatal("a failed pull request lookup did not fail the check")
+	}
+	if cached, ok := g.merged["o/repo#7"]; ok {
+		t.Fatalf("a failed lookup was cached as %v, which would mislead the next issue in a sweep", cached)
+	}
+	log, _ := os.ReadFile(calls)
+	if !strings.Contains(string(log), "issue view 5 --repo o/other") {
+		t.Fatalf("foreign issue was not looked up in its own repository:\n%s", log)
+	}
+}
+
+// TestIssueMemoRefetchesAfterUpdate pins the memo: a second read in one run is served from memory, a write drops it, and the next read fetches fresh labels, so a PATCH never starts from a label set this run did not read after its own last write.
+func TestIssueMemoRefetchesAfterUpdate(t *testing.T) {
+	dir := t.TempDir()
+	calls := filepath.Join(dir, "calls")
+	gh := filepath.Join(dir, "gh")
+	script := `#!/bin/sh
+echo "$*" >> "` + calls + `"
+case "$*" in
+  *"--method PATCH"*) cat >/dev/null ;;
+  *"issues/5 "*) echo '{"number":5,"state":"open","labels":[{"name":"blocked"}]}' ;;
+esac
+`
+	if err := os.WriteFile(gh, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	g := &gitHubAPI{repository: "o/repo", binary: gh}
+	count := func() int {
+		log, _ := os.ReadFile(calls)
+		return strings.Count(string(log), "--method GET repos/o/repo/issues/5 -H")
+	}
+	for i := 0; i < 2; i++ {
+		if _, err := g.issue(5); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := count(); got != 1 {
+		t.Fatalf("two reads fetched %d times, want 1", got)
+	}
+	if err := g.update(5, map[string]any{"labels": []string{"ready-for-agent"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := g.issue(5); err != nil {
+		t.Fatal(err)
+	}
+	if got := count(); got != 2 {
+		t.Fatalf("a read after an update fetched %d times in total, want 2", got)
 	}
 }
