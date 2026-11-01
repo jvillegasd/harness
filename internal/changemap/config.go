@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -18,6 +20,46 @@ const ConfigPath = "docs/agents/harness.json"
 type Config struct {
 	// CriticalPaths are repo-relative, slash-separated globs for files that always need a human.
 	CriticalPaths []string
+	// Locked are the skill bodies skills-lock.json pins to an upstream source.
+	Locked []Lock
+}
+
+// SkillLockPath is the lock `harness skills` writes; each entry pins one vendored skill body to its upstream source and folder hash.
+const SkillLockPath = "skills-lock.json"
+
+// Lock is one locked skill body: its folder, name, and upstream source.
+type Lock struct {
+	Dir, Name, Source string
+}
+
+// LoadLocks reads the working tree's skill lock. The branch's own lock is the one that covers a body it adds, and it cannot hide code: the lock file itself stays structural, and a critical path is matched before any locked body. A missing lock means no locked bodies.
+func LoadLocks(root string) ([]Lock, error) {
+	raw, err := os.ReadFile(filepath.Join(root, SkillLockPath))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var doc struct {
+		Skills map[string]struct {
+			Source    string `json:"source"`
+			SkillPath string `json:"skillPath"`
+		} `json:"skills"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return nil, fmt.Errorf("%s: %v", SkillLockPath, err)
+	}
+	var locks []Lock
+	for name, entry := range doc.Skills {
+		dir := path.Dir(entry.SkillPath)
+		if entry.SkillPath == "" || dir == "." || dir == "/" || strings.HasPrefix(dir, "..") {
+			return nil, fmt.Errorf("%s: skill %q has no usable skillPath %q", SkillLockPath, name, entry.SkillPath)
+		}
+		locks = append(locks, Lock{Dir: dir, Name: name, Source: entry.Source})
+	}
+	sort.Slice(locks, func(i, j int) bool { return locks[i].Dir < locks[j].Dir })
+	return locks, nil
 }
 
 // LoadConfig reads criticalPaths from the repository root's ConfigPath. A missing file or field means no configured paths; a field of the wrong shape, or an entry that is not a valid glob, is an error that names the field and the entry, because silently dropping a critical path would lower the floor.
