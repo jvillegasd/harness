@@ -41,13 +41,13 @@ Strategy: one pull request per phase, stacked: each phase branch starts from the
 - [x] P3 Verification: certainty ladder (shipped with P2), reviewer proof rule, adversary mode, patch-id check in `land`, benchmark checklist, feature-map modes in `e2e-verification`. PR #126.
 - [x] P4 `explain`: how, why, state view; retires `ask`. Read-only history access for `code-search` was dropped: read-search roles share one hardened permission hook, and `explain why` runs `git log`/`blame` in the parent, which already has Git. PR #127.
 - [x] P5 Planning to building: `spec` absorbs `create-ticket` (seam checkpoint, rationale, tracer-bullet tickets), `proto` logic and UI shapes, `continuity` decisions table and phase boundaries, guarded `build` for unattended ticket graphs.
-- [ ] P6 `retro` with the landing table and bench registration.
-- [ ] P7 `harness-help` and README restructure.
-- [ ] P8 Statechart pilot on the lifecycle reconciler.
+- [x] P6 `retro` with the landing table and bench registration; retires `harness-audit`. PR #129.
+- [x] P7 `harness-help` and README restructure. PR #130.
+- [x] P8 Statechart pilot on the lifecycle reconciler: `statechart` locked from pstack; the model found two real reconciler bugs, both replayed as failing Go tests and fixed.
 
 ## Progress
 
-Phase 0 P0.1 to P0.5 done on `refactor/lighten-policy`; P0.6 pending a model budget.
+Phases 0 to 8 are done, one stacked pull request per phase (#123 to #131). P0.6, the no-op behavioral pass, waits for a model budget; live client loading waits for a deliberate `harness install`.
 
 ## Evidence
 
@@ -63,7 +63,10 @@ Phase 0 P0.1 to P0.5 done on `refactor/lighten-policy`; P0.6 pending a model bud
 - P3 `57767d5`, `a4bdbe3`, `e1d9fc1`: substitute review of `land` (critical path) reproduced two bugs in scratch repositories (`patch-id --stable` ignores whitespace; unresolvable refs give equal empty ids) and six risks; fixed and confirmed in round 2; the round-2 rebase false-stale risk was fixed after the cap (self-checked). The PR body's `Reviewed:` line names `a4bdbe3`, so `/land` will flag the self-checked commit honestly.
 - P4 `e93ee36`: `explain` skill; no critical items, so no review.
 - P5 `14b219c`, `792f148`: RED observed for the `build` guard, then GREEN; `go test ./...` passed. Substitute review (POLICY critical; `build` authority): one bug (`build` could remove worker worktrees outside the floor) and two risks (publishing a spec created tickets; a prototype link could edit a published ticket), plus three questions; all fixed and confirmed in round 2, and the floor now discloses that a native Claude Code executor's commit and push limits are instructions only.
+- P6 `bce9e13`, `b5b7a4e`, `1f816b6`: RED then GREEN for the `retro` guard. Substitute review: two risks (writing the proof check before any pick; recording unanswered items as rejected) and two questions, all resolved in round 2.
+- P7 `9a1fcf9`, README commit-rule fix: no critical items, so no review; no README inline code span was lost.
+- P8: `mise` installed with Homebrew at the human's request; the locked `statechart` body is byte-identical to the upstream tarball read before locking, and its only download is `tla2tools.jar`, pinned by sha256. The model (`docs/agents/models/reconciler/`) broke `ParentNeverReadyForAgent` (a parent closed by hand and reopened before the run was reset to ready-for-agent) and `BlockedExactlyWhileBlockerUnmerged` (the workflow's one-slot pending queue let a later event replace a blocker's close event). Both replayed as failing Go tests, fixed in `df6618f`, and the fixed model holds all four rules over 6,714 states. Residual: an event from an unrelated tree can still replace a pending run.
 
 ## Next step
 
-P0.6 needs a model budget. Then push and a pull request for Phase 0 when requested, and Phase 1.
+Land the stack bottom-up with `/land`, starting at #123. Then P0.6 when a model budget is authorized, and live client acceptance after a deliberate `harness install`.

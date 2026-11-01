@@ -34,6 +34,7 @@ Skills compose around the task. Use investigation for unknowns, specifications f
 | Capability | Use |
 | --- | --- |
 | `explain` | How a part of the code works, why it is the way it is, or what states it moves through, with every claim cited to code or history |
+| `statechart` | Locked from pstack and human-invoked: check the rules of a state machine with a TLA+ model and TLC, and draw it in the reader's words. Its Java and TLC toolchain installs through `mise` on first use, outside `harness install`. The reconciler model in `docs/agents/models/reconciler/` is the worked example |
 | `research` | Investigate a question or claim against primary sources and return a sourced finding ledger; read-only |
 | `triage` | Turn a ticket or a production error into an evidence-backed plan brief without implementing |
 | `spec` | Draft an optional local specification and its test seams, and tickets when asked; publishing needs its own request |
