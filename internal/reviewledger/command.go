@@ -31,8 +31,11 @@ Without --id, append a new line and print its id. A finding needs --depth,
 --disposition, --severity, --path, and --summary; a whole-review line
 (--disposition clean or no-review) takes no --path.
 
-With --id, copy that finding's latest line, override it with the flags given
-(usually --disposition and --evidence), and append the result.
+With --id, append a new state for that finding: only --disposition,
+--evidence, and --commit are accepted, and the rest is copied from its latest
+line. A fixed, refuted, intentional, or wont-matter disposition needs
+--evidence; fixed also needs --commit. A nit or pre-existing disposition fits
+only a finding of that severity.
 
   --id           Existing finding to update
   --branch       Branch (default: the current branch)
@@ -50,15 +53,17 @@ With --id, copy that finding's latest line, override it with the flags given
   --summary      One-line description
   --disposition  confirmed, unverified, fixed, refuted, intentional,
                  wont-matter, pre-existing, nit, clean, or no-review
-  --evidence     Fixing commit and test, verifier output, or the human's words
+  --evidence     Verifier output, the refute cut, or the human's words
+  --commit       The fixing commit, for --disposition fixed
 `
 
 const listUsage = `Usage: harness review list [--branch <name>] [--head <rev>]
 
-Print, as a JSON array, the latest line of each finding on the branch (default:
-the current branch). "open" is true for a latest disposition of confirmed or
-unverified. "rewritten" marks a finding whose reviewed commit is no longer an
-ancestor of --head (default: HEAD), as after a rebase; it still counts.
+Print, as a JSON array, the latest line of each finding and whole-review line
+on the branch (default: the current branch); [] means nothing is recorded for
+it here. "open" is true for confirmed and unverified, and for fixed until the
+fixing commit is in --head (default: HEAD). "rewritten" marks a reviewed commit
+no longer in --head's history, as after a rebase; the finding still counts.
 `
 
 const pathUsage = `Usage: harness review path
@@ -143,8 +148,22 @@ func record(args []string, stdout, stderr io.Writer) int {
 	flags.StringVar(&e.Summary, "summary", "", "")
 	flags.StringVar(&e.Disposition, "disposition", "", "")
 	flags.StringVar(&e.Evidence, "evidence", "", "")
+	flags.StringVar(&e.Commit, "commit", "", "")
 	if code := parse(flags, args, recordUsage, stdout, stderr); code >= 0 {
 		return code
+	}
+	if id != "" {
+		// An update changes a finding's state, never what the finding says, so its severity cannot be relabelled to close it.
+		var other []string
+		flags.Visit(func(f *flag.Flag) {
+			if f.Name != "id" && f.Name != "disposition" && f.Name != "evidence" && f.Name != "commit" {
+				other = append(other, "--"+f.Name)
+			}
+		})
+		if len(other) > 0 {
+			fmt.Fprintf(stderr, "harness review record: an update with --id takes only --disposition, --evidence, and --commit, not %s\n", strings.Join(other, ", "))
+			return 2
+		}
 	}
 	root, file, code := ledger("record", stderr)
 	if code >= 0 {
@@ -161,25 +180,8 @@ func record(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "harness review record: no finding %q in %s\n", id, file)
 			return 2
 		}
-		given := map[string]bool{}
-		flags.Visit(func(f *flag.Flag) { given[f.Name] = true })
-		merged := prior
-		override := map[string]func(){
-			"branch": func() { merged.Branch = e.Branch }, "base": func() { merged.Base = e.Base },
-			"sha": func() { merged.SHA = e.SHA }, "digest": func() { merged.Digest = optional(digest) },
-			"round": func() { merged.Round = e.Round }, "depth": func() { merged.Depth = e.Depth },
-			"axis": func() { merged.Axis = e.Axis }, "reviewer": func() { merged.Reviewer = e.Reviewer },
-			"path": func() { merged.Path = optional(path) }, "lines": func() { merged.Lines = e.Lines },
-			"severity": func() { merged.Severity = e.Severity }, "class": func() { merged.Class = e.Class },
-			"summary": func() { merged.Summary = e.Summary }, "disposition": func() { merged.Disposition = e.Disposition },
-			"evidence": func() { merged.Evidence = e.Evidence },
-		}
-		for name, apply := range override {
-			if given[name] {
-				apply()
-			}
-		}
-		e = merged
+		prior.Disposition, prior.Evidence, prior.Commit = e.Disposition, e.Evidence, e.Commit
+		e = prior
 	} else {
 		e.Digest, e.Path = optional(digest), optional(path)
 		if e.Branch == "" {
@@ -238,7 +240,7 @@ func list(args []string, stdout, stderr io.Writer) int {
 		return err == nil
 	})
 	if latest == nil {
-		latest = []Entry{}
+		latest = []Finding{}
 	}
 	out, _ := json.MarshalIndent(latest, "", "  ")
 	fmt.Fprintln(stdout, string(out))

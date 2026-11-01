@@ -69,14 +69,17 @@ func TestReviewLedgerCommand(t *testing.T) {
 		return strings.TrimSpace(r.stdout)
 	}
 	fixed, open := add("confirmed"), add("unverified")
-	if r := reviewRun(t, dir, data, "record", "--id", fixed, "--disposition", "fixed", "--evidence", "abc123"); r.code != 0 {
+	head := git(t, dir, "rev-parse", "HEAD")
+	if r := reviewRun(t, dir, data, "record", "--id", fixed, "--disposition", "fixed", "--evidence", "red test now green", "--commit", head); r.code != 0 {
 		t.Fatalf("update exited %d: %s", r.code, r.stderr)
 	}
 
 	before, _ := os.ReadFile(file)
 	for _, bad := range [][]string{
 		{"record", "--depth", "standard", "--path", "a.go", "--lines", "40-x", "--severity", "bug", "--summary", "s", "--disposition", "confirmed"},
-		{"record", "--id", "missing", "--disposition", "fixed"},
+		{"record", "--id", "missing", "--disposition", "fixed", "--evidence", "e", "--commit", head},
+		{"record", "--id", open, "--severity", "nit", "--disposition", "nit"},
+		{"record", "--id", open, "--disposition", "fixed", "--evidence", "e"},
 	} {
 		if r := reviewRun(t, dir, data, bad...); r.code != 2 || r.stderr == "" {
 			t.Errorf("%v exited %d with %q, want 2 and a diagnostic", bad, r.code, r.stderr)
@@ -93,7 +96,14 @@ func TestReviewLedgerCommand(t *testing.T) {
 
 	git(t, dir, "commit", "-q", "--amend", "--allow-empty", "-m", "rewritten")
 	got = listReview(t, dir, data)
-	if len(got) != 2 || !got[1].Open || !got[1].Rewritten {
-		t.Fatalf("after a rewrite the open finding must stay, marked rewritten: %+v", got)
+	if len(got) != 2 || !got[0].Open || !got[1].Open || !got[1].Rewritten {
+		t.Fatalf("after a rewrite the open finding must stay, marked rewritten, and a fix the head lost must reopen: %+v", got)
+	}
+
+	// Every worktree of a repository without a remote shares one ledger.
+	sibling := filepath.Join(t.TempDir(), "sibling")
+	git(t, dir, "worktree", "add", "-q", "--detach", sibling)
+	if s := reviewRun(t, sibling, data, "path"); strings.TrimSpace(s.stdout) != file {
+		t.Errorf("a sibling worktree uses %q, want %q", s.stdout, file)
 	}
 }
