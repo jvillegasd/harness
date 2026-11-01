@@ -47,7 +47,7 @@ learn        /retro
 | --- | --- | --- |
 | You need to understand code, or why it is the way it is | `explain` | How, why, or states; every claim cites code or history. |
 | A state machine, retry, lease, or concurrent flow must always keep a rule | `/statechart` | Model-checks the rules with TLA+ and draws the states; see `docs/agents/models/reconciler/`. |
-| The intent or plan is still fuzzy | `grilling` | An interview that settles the decision tree. `/grill-with-docs` also records settled terms in the glossary and ADRs. |
+| The intent or plan is still fuzzy | `grilling` | An interview that settles the decision tree. `/grill-with-docs` also records settled terms in `GLOSSARY.md` and ADRs: use it when a later session needs the decision and cannot rebuild it from code (a greenfield project, a multi-session design), and bare `grilling` when the pull request is record enough. |
 | A question an experiment can answer | `proto` | A throwaway logic model or UI variants, to answer one stated question. |
 | A design worth keeping across sessions | `spec` | A local spec with agreed test seams; tickets only when asked. |
 | Writing or changing code | `tdd`, `ponytail` | Test-first loop, and the simplest thing that works. |
