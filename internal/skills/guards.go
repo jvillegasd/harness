@@ -111,9 +111,9 @@ func guarded(text string) (claude, opencode bool) {
 	return false, false
 }
 
-// codexGuarded reads agents/openai.yaml, where the guard must be a direct child of the top-level `policy:` block, at the indent of that block's first child. A later policy block replaces the earlier one.
+// codexGuarded reads agents/openai.yaml, where the guard must be a direct child of the top-level `policy:` block, at the indent of that block's first child. A tab indent or a repeated policy key is not YAML a strict parser takes, so either one counts as unguarded.
 func codexGuarded(text string) bool {
-	guard, inPolicy, childIndent := false, false, ""
+	guard, inPolicy, childIndent, policies := false, false, "", 0
 	for _, line := range strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
 		if strings.TrimSpace(line) == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
 			continue
@@ -121,14 +121,17 @@ func codexGuarded(text string) bool {
 		if line[0] != ' ' && line[0] != '\t' {
 			inPolicy = line == "policy:"
 			if inPolicy {
-				guard, childIndent = false, ""
+				policies++
 			}
 			continue
+		}
+		indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+		if strings.Contains(indent, "\t") {
+			return false
 		}
 		if !inPolicy {
 			continue
 		}
-		indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
 		if childIndent == "" {
 			childIndent = indent
 		}
@@ -136,5 +139,5 @@ func codexGuarded(text string) bool {
 			guard = line[len(indent):] == "allow_implicit_invocation: false"
 		}
 	}
-	return guard
+	return guard && policies == 1
 }

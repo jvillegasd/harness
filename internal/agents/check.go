@@ -84,7 +84,8 @@ func CodexInstructions(text string) (string, bool) {
 	}
 	rest := text[start+1+len(codexInstructions):]
 	end := strings.Index(rest, codexClose)
-	if end < 0 {
+	// TOML ends the literal string at any triple quote, so a body holding one would hide keys inside what looks like instructions.
+	if end < 0 || strings.Contains(rest[:end], "'''") {
 		return "", false
 	}
 	return rest[:end], true

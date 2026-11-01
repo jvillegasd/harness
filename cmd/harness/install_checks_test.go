@@ -263,8 +263,11 @@ func TestCodexInstallsIntoHomeCodexAndUninstallsAlone(t *testing.T) {
 		t.Errorf("codex ran outside ~/.codex:\n%s", log)
 	}
 
+	for _, name := range []string{"engram-instructions.md", "engram-compact-prompt.md"} {
+		writeMode(t, filepath.Join(codexHome, name), "engram\n", 0o644)
+	}
 	ok(t, runHarness(t, base, extra, "install", "--uninstall", "--client", "codex", "--yes"), "Codex uninstall")
-	for _, gone := range []string{filepath.Join(codexHome, "AGENTS.md"), filepath.Join(codexHome, "agents", "executor.toml")} {
+	for _, gone := range []string{filepath.Join(codexHome, "AGENTS.md"), filepath.Join(codexHome, "agents", "executor.toml"), filepath.Join(codexHome, "engram-instructions.md")} {
 		if _, err := os.Stat(gone); err == nil {
 			t.Errorf("Codex uninstall kept %s", gone)
 		}
@@ -275,7 +278,7 @@ func TestCodexInstallsIntoHomeCodexAndUninstallsAlone(t *testing.T) {
 		}
 	}
 	log = readFile(t, filepath.Join(base, "shims.log"))
-	for _, want := range []string{"codex mcp remove agent-browser", "codex plugin remove engram@engram", "codex plugin marketplace remove engram"} {
+	for _, want := range []string{"codex mcp remove agent-browser", "codex mcp remove engram", "codex plugin remove engram@engram", "codex plugin marketplace remove engram"} {
 		if !strings.Contains(log, want) {
 			t.Errorf("uninstall skipped %q:\n%s", want, log)
 		}

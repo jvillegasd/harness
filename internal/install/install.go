@@ -288,10 +288,14 @@ func (in *installer) installPackages() {
 		in.log("Installing Claude Code from Anthropic's latest native channel")
 		in.run(nil, "bash", "-c", "set -o pipefail; curl -fsSL https://claude.ai/install.sh | bash")
 	}
-	// Only when absent too: Codex may come from the cask, npm, or an Orca-managed copy, and any of them is the one the user runs.
+	// Only when absent too: Codex may come from the cask, npm, or an Orca-managed copy, and any of them is the one the user runs. Homebrew on Linux takes no casks, and Codex has no formula, so Linux gets OpenAI's npm package.
 	if _, err := exec.LookPath("codex"); err != nil {
 		in.log("Installing Codex")
-		in.run(nil, "brew", "install", "--cask", "codex")
+		if runtime.GOOS == "darwin" {
+			in.run(nil, "brew", "install", "--cask", "codex")
+		} else {
+			in.run(nil, "npm", "install", "--global", "@openai/codex")
+		}
 	}
 }
 

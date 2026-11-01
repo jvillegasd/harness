@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 // Assigned is one role's machine-level assignment: the client it runs on, and the model and effort there. An empty Effort inherits. Source names where it came from in the report.
@@ -327,7 +328,23 @@ func load(path, name string) (string, string, string, error) {
 	if body == "" || strings.Contains(body, "'''") {
 		return "", "", "", fail(path + ": body must be non-empty and free of '''")
 	}
+	// TOML strings refuse invalid UTF-8 and every control character but tab and, in the body, line feed.
+	if !tomlText(front["description"], false) || !tomlText(body, true) {
+		return "", "", "", fail(path + ": description and body must be UTF-8 without control characters other than tab and line feed")
+	}
 	return front["description"], level, body, nil
+}
+
+func tomlText(s string, multiline bool) bool {
+	if !utf8.ValidString(s) {
+		return false
+	}
+	for _, r := range s {
+		if (r < 0x20 && r != '\t' && (r != '\n' || !multiline)) || r == 0x7f {
+			return false
+		}
+	}
+	return true
 }
 
 // splitLines matches Python's str.splitlines: it drops the empty tail a trailing newline would otherwise leave.

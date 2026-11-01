@@ -48,6 +48,8 @@ func TestCodexGuardCountsOnlyUnderPolicy(t *testing.T) {
 		"under another block":          {"interface:\n  allow_implicit_invocation: false\n", false},
 		"second policy block drops it": {"policy:\n  allow_implicit_invocation: false\npolicy:\n  other: 1\n", false},
 		"missing file":                 {"", false},
+		"tab indent":                   {"policy:\n\tallow_implicit_invocation: false\n", false},
+		"tab elsewhere":                {"interface:\n\tdisplay_name: x\npolicy:\n  allow_implicit_invocation: false\n", false},
 	} {
 		if got := codexGuarded(c.text); got != c.want {
 			t.Errorf("%s: codexGuarded = %v, want %v", name, got, c.want)

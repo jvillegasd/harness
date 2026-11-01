@@ -34,16 +34,17 @@ func TestSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
 	listingPath(t)
 	const seed = `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}` + "\n"
 	for name, args := range map[string][]string{
-		"unknown opencode id":      {"reviewer", "--client", "opencode", "--model", "openai/nope"},
-		"unknown codex model":      {"reviewer", "--client", "codex", "--model", "gpt-nope"},
-		"hidden codex model":       {"reviewer", "--client", "codex", "--model", "gpt-reserve"},
-		"unsupported codex effort": {"reviewer", "--client", "codex", "--model", "gpt-6-luna", "--effort", "ultra"},
-		"codex provider id":        {"reviewer", "--client", "codex", "--model", "openai/gpt-6-luna"},
-		"unknown claude alias":     {"reviewer", "--client", "claude", "--model", "claudius"},
-		"unsupported haiku effort": {"reviewer", "--client", "claude", "--model", "haiku", "--effort", "high"},
-		"unknown role":             {"planner", "--client", "claude", "--model", "opus"},
-		"unknown preset":           {"--preset", "lavish"},
-		"unknown client":           {"reviewer", "--client", "cursor", "--model", "opus"},
+		"unknown opencode id":       {"reviewer", "--client", "opencode", "--model", "openai/nope"},
+		"unknown codex model":       {"reviewer", "--client", "codex", "--model", "gpt-nope"},
+		"hidden codex model":        {"reviewer", "--client", "codex", "--model", "gpt-reserve"},
+		"unsupported codex effort":  {"reviewer", "--client", "codex", "--model", "gpt-6-luna", "--effort", "ultra"},
+		"codex provider id":         {"reviewer", "--client", "codex", "--model", "openai/gpt-6-luna"},
+		"codex inherit with effort": {"reviewer", "--client", "codex", "--model", "inherit", "--effort", "high"},
+		"unknown claude alias":      {"reviewer", "--client", "claude", "--model", "claudius"},
+		"unsupported haiku effort":  {"reviewer", "--client", "claude", "--model", "haiku", "--effort", "high"},
+		"unknown role":              {"planner", "--client", "claude", "--model", "opus"},
+		"unknown preset":            {"--preset", "lavish"},
+		"unknown client":            {"reviewer", "--client", "cursor", "--model", "opus"},
 	} {
 		path := filepath.Join(t.TempDir(), "state.json")
 		if err := os.WriteFile(path, []byte(seed), 0o644); err != nil {
@@ -68,7 +69,7 @@ func TestSetAcceptsListedCodexModels(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "state.json")
 	for _, args := range [][]string{
 		{"reviewer", "--client", "codex", "--model", "gpt-6.1-sol", "--effort", "ultra"},
-		{"executor", "--client", "codex", "--model", "inherit", "--effort", "high"},
+		{"executor", "--client", "codex", "--model", "inherit"},
 	} {
 		if err := run(path, append([]string{"set"}, args...), &strings.Builder{}); err != nil {
 			t.Errorf("set %v: %v", args, err)

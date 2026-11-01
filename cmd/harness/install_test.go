@@ -118,6 +118,7 @@ case "$*" in
 "mcp add agent-browser"*) touch '` + filepath.Join(shims, ".codex-agent-browser") + `' ;;
 "mcp remove agent-browser") rm -f '` + filepath.Join(shims, ".codex-agent-browser") + `' ;;
 "mcp get agent-browser") [ -e '` + filepath.Join(shims, ".codex-agent-browser") + `' ] || exit 1 ;;
+"mcp get engram") exit 1 ;;
 esac`,
 		"opencode": `if [ "$*" = "debug config" ]; then
 echo '{"plugin": ["engram"], "mcp": {"engram": {}, "agent-browser": {"type": "local", "enabled": true, "command": ["` + filepath.Join(shims, "agent-browser") + `", "mcp"]}}}'

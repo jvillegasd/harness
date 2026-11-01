@@ -178,19 +178,33 @@ func (in *installer) removeCodexMCP() {
 		return
 	}
 	_ = in.codex("mcp", "remove", "agent-browser").Run()
+	_ = in.codex("mcp", "remove", "engram").Run()
 	_ = in.codex("plugin", "remove", "engram@engram").Run()
 	_ = in.codex("plugin", "marketplace", "remove", "engram").Run()
+	for _, name := range codexEngramFiles {
+		removeFile(filepath.Join(in.codexHome(), name))
+	}
 }
+
+// codexEngramFiles are what `engram setup codex` writes beside config.toml.
+var codexEngramFiles = []string{"engram-instructions.md", "engram-compact-prompt.md"}
 
 // checkCodexMCPRemoved asks Codex, which reads its own config, rather than parsing the TOML; with Codex gone there is nothing to ask and the warning above stands.
 func (in *installer) checkCodexMCPRemoved() {
+	for _, name := range codexEngramFiles {
+		if path := filepath.Join(in.codexHome(), name); exists(path) {
+			die("Engram file survived the uninstall: %s", path)
+		}
+	}
 	if _, err := exec.LookPath("codex"); err != nil {
 		return
 	}
-	get := in.codex("mcp", "get", "agent-browser")
-	get.Stderr = nil
-	if get.Run() == nil {
-		die("The agent-browser MCP survived the uninstall in %s.", filepath.Join(in.codexHome(), "config.toml"))
+	for _, server := range []string{"agent-browser", "engram"} {
+		get := in.codex("mcp", "get", server)
+		get.Stderr = nil
+		if get.Run() == nil {
+			die("The %s MCP survived the uninstall in %s.", server, filepath.Join(in.codexHome(), "config.toml"))
+		}
 	}
 }
 

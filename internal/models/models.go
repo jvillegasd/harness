@@ -219,6 +219,10 @@ func shape(a Assignment) error {
 		if !slices.Contains(codexEfforts, a.Effort) {
 			return fmt.Errorf("codex has no effort %q; choose %s", a.Effort, strings.Join(codexEfforts[1:], ", "))
 		}
+		// Which efforts apply depends on the model the session picks, which nothing here can check.
+		if a.Model == "inherit" && a.Effort != "" {
+			return fmt.Errorf("codex inherit takes no effort; name a model to set one")
+		}
 	default:
 		return fmt.Errorf("unknown client %q; choose claude, codex, or opencode", a.Client)
 	}

@@ -268,6 +268,7 @@ func TestCheckDetectsWidening(t *testing.T) {
 		{"codex/reviewer.toml", "[features]\napps = false\n", "[features]\n"},
 		{"codex/code-search.toml", "developer_instructions = '''\n", "sandbox_mode = \"danger-full-access\"\ndeveloper_instructions = '''\n"},
 		{"codex/executor.toml", "\n'''\n", "\n'''\n\n[features]\nmulti_agent = true\n"},
+		{"codex/executor.toml", "\n'''\n", "'''\nsandbox_mode = \"danger-full-access\"\nnote = '''\nx\n'''\n"},
 	}
 	for _, mutation := range mutations {
 		t.Run(mutation.path+mutation.new, func(t *testing.T) {
@@ -288,6 +289,20 @@ func TestCheckDetectsWidening(t *testing.T) {
 				t.Fatalf("check = %d, %q; want widened %s", code, stdout, mutation.path)
 			}
 		})
+	}
+}
+
+// A control character TOML refuses never reaches a rendered Codex file.
+func TestControlCharactersInADefinitionAreRefused(t *testing.T) {
+	dir := temp(t)
+	config := configCopy(t, dir, nil)
+	path := filepath.Join(dir, "roles", "reviewer.md")
+	if err := os.WriteFile(path, []byte(strings.Replace(readFile(t, path), "# ", "# \x1b[1m", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, _, stderr := runCommand(t, config, filepath.Join(dir, "out"))
+	if code != 1 || !strings.Contains(stderr, "control characters") {
+		t.Fatalf("exit %d, stderr %q", code, stderr)
 	}
 }
 

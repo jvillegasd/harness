@@ -158,11 +158,11 @@ func codexArgs(home, role string, a Assignment) ([]string, error) {
 		return nil, errors.New("the installed codex " + role + " agent was not rendered for " + a.Model + " at effort " + effortOrInherit(a.Effort) + "; a human must run harness install")
 	}
 	instructions, _ := agents.CodexInstructions(text)
-	return codexLaunch(a, instructions), nil
+	return codexLaunch(a, level, instructions), nil
 }
 
-// codexLaunch is the argv for a Codex role whose installed file was proven current. The instructions travel as a TOML basic string, which JSON's escapes are a subset of.
-func codexLaunch(a Assignment, instructions string) []string {
+// codexLaunch is the argv for a Codex role whose installed file was proven current. The instructions travel as a TOML basic string, which JSON's escapes are a subset of; JSON leaves DEL raw, which TOML refuses. A top-level session never reads the agent file, so a read-search role's features block is repeated here.
+func codexLaunch(a Assignment, level, instructions string) []string {
 	argv := []string{"codex"}
 	if a.Model != "inherit" {
 		argv = append(argv, "-m", a.Model)
@@ -174,6 +174,9 @@ func codexLaunch(a Assignment, instructions string) []string {
 	enc := json.NewEncoder(&quoted)
 	enc.SetEscapeHTML(false)
 	_ = enc.Encode(instructions)
-	return append(argv, "-c", "developer_instructions="+strings.TrimSuffix(quoted.String(), "\n"),
+	if level == "read-search" {
+		argv = append(argv, "-c", "features.apps=false", "-c", "features.plugins=false")
+	}
+	return append(argv, "-c", "developer_instructions="+strings.ReplaceAll(strings.TrimSuffix(quoted.String(), "\n"), "\x7f", `\u007f`),
 		"--ask-for-approval", "never", "--sandbox", "workspace-write", "-c", "sandbox_workspace_write.network_access=true")
 }
