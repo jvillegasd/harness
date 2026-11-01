@@ -30,9 +30,11 @@ A mistake that is only noted gets repeated, and a mistake fixed by adding a rule
    | a behavior regression | a test at the lowest seam in `AGENTS.md`'s validation contract | The lowest seam fails for the right reason, and a higher copy of the rule protects nothing more |
    | a judgment call during review | an edit to `review` or the reviewer role | The reviewer is where the judgment is exercised |
    | a missing navigation fact | a one-line pointer in `AGENTS.md` | A pointer costs one line and removes a search |
-   | a skill that did not trigger or triggered wrongly | its `description` | The description is all the router reads |
+   | a skill that did not trigger or triggered wrongly | its `description`, or its invocation guard: a workflow entry point stays human-started and a helper stays model-invoked | The description is all the router reads |
    | cross-repository policy no check can enforce | a `POLICY.md` line, with an example of the failure | Last resort: it applies everywhere and depends on the model obeying it, so the example is what makes it checkable by a reader |
    | a one-off with no concrete cost | nothing | An unneeded rule is a cost every session pays |
+
+   Write any lesson that lands as prose (a skill, a description, a pointer, or a `POLICY.md` line) with `writing-for-agents`.
 
 5. **Plan the proof.** A new deterministic check must fail on the real past mistake before the fix and pass after. Before the human picks, state the proof plan, or demonstrate it only in a disposable scratch directory or worktree, leaving the repository untouched; once a pick covers the change, write the check, run it against the commit or file that showed the mistake, and report the observed failure. A check that never failed on the real case may guard nothing.
 6. **Prune in the same pass.** List the rules, skill lines, and checks to delete because the mistake can no longer happen (the structure or type now forbids it), because they restate another source, or because a run shows the model behaves the same without them (a no-op). Name the evidence for each, since a prune is a claim too.

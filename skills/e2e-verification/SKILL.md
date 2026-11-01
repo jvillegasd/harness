@@ -1,10 +1,12 @@
 ---
 name: e2e-verification
-description: "Trigger: e2e test, manual QA, verify a release, test what ships with screenshots, create or maintain a project verify skill. Run a scripted browser E2E suite on an isolated install with real screenshots, or build and keep current a project-local verify skill with a feature map."
+description: "Run a scripted browser E2E suite with real screenshots on an isolated install, or create or maintain a project verify skill."
+disable-model-invocation: true
 license: MIT
 metadata:
   author: jvillegasd
   version: "1.0"
+  opencode/autoinvoke: "false"
 ---
 
 Check, through the real UI, that what will be released works end to end, and show it with screenshots. Ordinary local checks belong to `verification`; a focused code inspection belongs to `review`.

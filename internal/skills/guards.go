@@ -11,10 +11,11 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-// mustGuard are the local skills only a human may start: merging, discarding work, provisioning a repository, a human-led interview, unattended building, which spends model budget without supervision, and retrospectives, which read session records and propose changes to the harness itself. Every other local skill may be loaded by the model when its description fits.
+// mustGuard are the local skills only a human may start. Some act with authority or at budget scale: merging, discarding work, provisioning a repository, unattended building, and retrospectives, which read session records and propose changes to the harness itself. The rest are workflow entry points whose Matt Pocock or pstack equivalent is explicit-only (specifying, triage, explaining, optimizing, release E2E runs, and the workflow map), and local-tracker, which every caller reads by path. Helpers that other skills or the policy call stay model-invoked, because nothing can invoke a guarded skill.
 var mustGuard = map[string]bool{
-	"land": true, "abandon": true, "setup-harness": true, "grill-with-docs": true,
-	"build": true, "retro": true,
+	"land": true, "abandon": true, "setup-harness": true, "build": true, "retro": true,
+	"spec": true, "triage": true, "explain": true, "optimization": true,
+	"e2e-verification": true, "harness-help": true, "local-tracker": true,
 }
 
 // Unguarded reports every skill absent from the lock whose invocation guard is required or partly present, as "<name>: missing <key>". A skill in mustGuard needs all three guards, and any other local skill carrying one needs the others, because a guard only one client reads fires in the rest. Claude Code reads `disable-model-invocation: true` at the top level, OpenCode reads `opencode/autoinvoke: "false"` under `metadata:`, and Codex reads `allow_implicit_invocation: false` under `policy:` in the skill's agents/openai.yaml, so a guard anywhere else does not count. Locked bodies are exempt, because their frontmatter is upstream content.

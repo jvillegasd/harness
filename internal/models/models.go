@@ -34,16 +34,16 @@ const defaultPreset = "balanced"
 func claude(model, effort string) Assignment { return Assignment{"claude", model, effort} }
 func codex(model, effort string) Assignment  { return Assignment{"codex", model, effort} }
 
-// Presets are the named assignment tables. balanced sends implementation to a cheaper Codex model and keeps review on the session's Claude model, because a reviewer too weak to find the bug is no saving. OpenCode stays available through `harness models set`.
+// Presets are the named assignment tables. balanced sends implementation to a cheaper Codex model and code search to Sonnet, whose citations the parent re-reads, and pins review to Opus at high effort, because a reviewer too weak to find the bug is no saving and inheriting the session would tie review strength to whatever the session runs. OpenCode stays available through `harness models set`.
 var Presets = map[string]map[string]Assignment{
 	"balanced": {
-		"executor": codex("gpt-6-luna", ""), "code-search": claude("inherit", ""), "reviewer": claude("inherit", ""),
+		"executor": codex("gpt-6-luna", ""), "code-search": claude("sonnet", ""), "reviewer": claude("opus", "high"),
 	},
 	"performance": {
 		"executor": claude("opus", "high"), "code-search": claude("fable", "high"), "reviewer": claude("fable", "high"),
 	},
 	"economy": {
-		"executor": codex("gpt-5.6-luna", ""), "code-search": claude("sonnet", ""), "reviewer": claude("sonnet", ""),
+		"executor": codex("gpt-5.6-luna", ""), "code-search": claude("haiku", ""), "reviewer": claude("sonnet", ""),
 	},
 	"diversity": {
 		"executor": claude("sonnet", ""), "code-search": claude("inherit", ""), "reviewer": codex("gpt-6.1-sol", "high"),

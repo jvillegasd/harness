@@ -1,6 +1,9 @@
 ---
 name: local-tracker
 description: "Map authorized tracker operations to committed markdown files without gating local implementation."
+disable-model-invocation: true
+metadata:
+  opencode/autoinvoke: "false"
 ---
 
 # Local Tracker

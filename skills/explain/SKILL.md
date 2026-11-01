@@ -1,11 +1,13 @@
 ---
 name: explain
-description: "Trigger: how does this work, why is it like this, what states can it be in, walk me through, explain this code or decision. Explain a part of the codebase or the reason behind it, grounded in cited code and history, for someone who has not read it."
+description: "Explain how part of the codebase works, or why it is that way, citing code and history."
+disable-model-invocation: true
 argument-hint: "[question about the code or a decision]"
 license: MIT
 metadata:
   author: jvillegasd
   version: "1.0"
+  opencode/autoinvoke: "false"
 ---
 
 Explain a part of the codebase so the human understands it well enough to judge it: how it works, why it is the way it is, or what states it moves through. Every claim points at the code or history it rests on. Explaining is read-only: it changes nothing unless the human asks to keep the explanation.

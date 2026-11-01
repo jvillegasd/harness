@@ -1,10 +1,12 @@
 ---
 name: spec
-description: "Trigger: spec this out, write a specification, or break work into tickets. Draft an optional local specification, its test seams, and when asked its tickets, without automatic publication or implementation."
+description: "Draft a local specification with agreed test seams, and tickets when asked, without publishing or implementing."
+disable-model-invocation: true
 license: MIT
 metadata:
   author: jvillegasd
   version: "2.0"
+  opencode/autoinvoke: "false"
 ---
 
 Draft a local specification when the human asks for one or when durable design reasoning is worth keeping, agree the test seams with the human, and when tickets are requested break the spec into vertical slices. A spec is optional, and a local draft needs no tracker configuration.
@@ -58,7 +60,7 @@ Tickets are optional, so skip this part unless the human asked for them. Draftin
 3. Put prefactoring first, following "make the change easy, then make the easy change". Break a wide refactor into expand, migrate in batches, and contract, so every slice leaves the system working.
 4. Show the breakdown as a numbered list with each slice's title, what blocks it, and what it delivers. Ask about granularity and blocking edges before publishing, because rewriting a published graph is costly.
 5. Write each ticket body with: what to build (behavioral and durable, with no file paths), acceptance criteria that fail on the base commit, blocked by, and out of scope. A research finding keeps its evidence and confidence; do not turn an uncertain finding into a settled requirement.
-6. When ticket publication is requested, resolve the configured tracker and the exact write set. Use native sub-issue and dependency relationships where supported and textual edges otherwise; for file-backed trackers use `local-tracker`. Publish blockers before dependents, preserve unrelated metadata, and read back every write. Apply a ready label only when the scope is settled and the blockers are satisfied; planning items stay outside the ready frontier.
+6. When ticket publication is requested, resolve the configured tracker and the exact write set. Use native sub-issue and dependency relationships where supported and textual edges otherwise; for file-backed trackers read `local-tracker` from its path. Publish blockers before dependents, preserve unrelated metadata, and read back every write. Apply a ready label only when the scope is settled and the blockers are satisfied; planning items stay outside the ready frontier.
 7. After a partial failure, report what was created and what remains, then read the actual state before retrying so no duplicate appears. Never invent a parent, claim work, or start implementation as part of ticketing.
 
 ## Output
