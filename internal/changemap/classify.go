@@ -38,7 +38,8 @@ type Result struct {
 
 // BuiltinCritical are the paths critical in any repository: automation that runs with repository credentials, and schema or infrastructure definitions. A repository adds its own through criticalPaths.
 var BuiltinCritical = []string{
-	ConfigPath, // it decides every other file's floor
+	ConfigPath,    // it decides every other file's floor
+	SkillLockPath, // it decides which vendored bodies collapse, and names their upstream source
 	".github/workflows/**",
 	"**/migrations/**",
 	"**/*.sql",
@@ -75,14 +76,15 @@ func Classify(file string, cfg Config) Result {
 		}
 	}
 
-	// The skill lock names the upstream source of every locked body below, so a new or changed entry is what a human reads instead of the body.
-	if file == SkillLockPath {
-		return Result{Tier: Structural, Reason: "skill lock; read new or changed entries for their upstream source"}
-	}
+	// A locked body collapses only while it still hashes to its lock entry, so the critical lock change that names its upstream source is what a human reads instead. A body that no longer matches has been edited in place, which is exactly what must not hide.
 	for _, lock := range cfg.Locked {
-		if strings.HasPrefix(file, lock.Dir+"/") {
-			return Result{Tier: Mechanical, Reason: "locked body " + lock.Name + " from " + lock.Source + "; check with harness skills verify", Group: lock.Dir + "/"}
+		if !strings.HasPrefix(file, lock.Dir+"/") {
+			continue
 		}
+		if lock.Verified {
+			return Result{Tier: Mechanical, Reason: "locked body " + lock.Name + " from " + lock.Source + ", matching its lock hash", Group: lock.Dir + "/"}
+		}
+		return Result{Tier: Structural, Reason: "locked body " + lock.Name + " does not match its lock hash; read the edit"}
 	}
 
 	base := path.Base(file)

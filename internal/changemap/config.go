@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/jvillegasd/harness/internal/skills"
 )
 
 // ConfigPath is the repository-relative file shared with the tools that own the tracker and label fields. This package reads only criticalPaths from it and ignores every other key.
@@ -27,12 +29,13 @@ type Config struct {
 // SkillLockPath is the lock `harness skills` writes; each entry pins one vendored skill body to its upstream source and folder hash.
 const SkillLockPath = "skills-lock.json"
 
-// Lock is one locked skill body: its folder, name, and upstream source.
+// Lock is one locked skill body: its folder, name, and upstream source, and whether the folder still hashes to the lock's computedHash.
 type Lock struct {
 	Dir, Name, Source string
+	Verified          bool
 }
 
-// LoadLocks reads the working tree's skill lock. The branch's own lock is the one that covers a body it adds, and it cannot hide code: the lock file itself stays structural, and a critical path is matched before any locked body. A missing lock means no locked bodies.
+// LoadLocks reads the working tree's skill lock. The branch's own lock is the one that covers a body it adds, and it cannot hide code: the lock file itself is a built-in critical path, an entry outside skills/ is ignored, a critical path is matched before any locked body, and a body collapses only when its folder hash matches the entry. A missing lock means no locked bodies.
 func LoadLocks(root string) ([]Lock, error) {
 	raw, err := os.ReadFile(filepath.Join(root, SkillLockPath))
 	if errors.Is(err, fs.ErrNotExist) {
@@ -43,8 +46,9 @@ func LoadLocks(root string) ([]Lock, error) {
 	}
 	var doc struct {
 		Skills map[string]struct {
-			Source    string `json:"source"`
-			SkillPath string `json:"skillPath"`
+			Source       string `json:"source"`
+			SkillPath    string `json:"skillPath"`
+			ComputedHash string `json:"computedHash"`
 		} `json:"skills"`
 	}
 	if err := json.Unmarshal(raw, &doc); err != nil {
@@ -56,7 +60,12 @@ func LoadLocks(root string) ([]Lock, error) {
 		if entry.SkillPath == "" || dir == "." || dir == "/" || strings.HasPrefix(dir, "..") {
 			return nil, fmt.Errorf("%s: skill %q has no usable skillPath %q", SkillLockPath, name, entry.SkillPath)
 		}
-		locks = append(locks, Lock{Dir: dir, Name: name, Source: entry.Source})
+		if !strings.HasPrefix(dir, "skills/") {
+			continue
+		}
+		got, err := skills.FolderHash(filepath.Join(root, filepath.FromSlash(dir)))
+		verified := err == nil && entry.ComputedHash != "" && got == entry.ComputedHash
+		locks = append(locks, Lock{Dir: dir, Name: name, Source: entry.Source, Verified: verified})
 	}
 	sort.Slice(locks, func(i, j int) bool { return locks[i].Dir < locks[j].Dir })
 	return locks, nil

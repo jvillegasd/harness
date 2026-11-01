@@ -75,7 +75,7 @@ func TestClassify(t *testing.T) {
 		{"skills/x/scripts/test/cli.test.ts", TestsDocs, "test"},
 		{"skills/x/scripts/run.go", Structural, "no deterministic signal"},
 		{"skills/x/assets/workflow.yml", Structural, "no deterministic signal"},
-		{"skills-lock.json", Structural, "skill lock"},
+		{"skills-lock.json", Critical, "skills-lock.json"},
 		{"roles/executor.md", Structural, "agent instruction"},
 		{"elsewhere/SKILL.md", Structural, "agent instruction"},
 		{"docs/agents/harness.json", Critical, "docs/agents/harness.json"},
@@ -100,7 +100,7 @@ func TestClassify(t *testing.T) {
 func TestClassifyPrecedence(t *testing.T) {
 	cfg := Config{
 		CriticalPaths: []string{"go.sum", "docs/**", "skills/land/**", "**/*_test.go"},
-		Locked:        []Lock{{"skills/vendored", "vendored", "o/r"}, {"skills/land", "land", "o/r"}},
+		Locked:        []Lock{{"skills/vendored", "vendored", "o/r", true}, {"skills/land", "land", "o/r", true}},
 	}
 	cases := []struct {
 		path string
@@ -131,17 +131,18 @@ func TestClassifyPrecedence(t *testing.T) {
 	}
 }
 
-// TestMechanicalOnlyFromRules guards the floor contract: no path the rules do not name is ever mechanical.
+// TestMechanicalOnlyFromRules guards the floor contract: no path the rules do not name is ever mechanical, including inside a locked folder whose body no longer matches its lock.
 func TestMechanicalOnlyFromRules(t *testing.T) {
-	for _, path := range []string{"a.go", "a.lock", "lock.json", "go.mod", "gen.go", "a.pb.gox", "x/generated/a.go", "README.md", "a.sum"} {
-		if got := Classify(path, Config{}).Tier; got == Mechanical {
+	cfg := Config{Locked: []Lock{{"skills/edited", "edited", "o/r", false}}}
+	for _, path := range []string{"a.go", "a.lock", "lock.json", "go.mod", "gen.go", "a.pb.gox", "x/generated/a.go", "README.md", "a.sum", "skills/edited/SKILL.md", "skills/edited/run.go"} {
+		if got := Classify(path, cfg).Tier; got == Mechanical {
 			t.Errorf("Classify(%q) = mechanical without a deterministic rule", path)
 		}
 	}
 }
 
 func TestBuiltinCriticalIsDocumented(t *testing.T) {
-	want := []string{ConfigPath, ".github/workflows/**", "**/migrations/**", "**/*.sql", "**/Dockerfile", "**/*.tf"}
+	want := []string{ConfigPath, SkillLockPath, ".github/workflows/**", "**/migrations/**", "**/*.sql", "**/Dockerfile", "**/*.tf"}
 	if len(BuiltinCritical) != len(want) {
 		t.Fatalf("BuiltinCritical = %v, want %v", BuiltinCritical, want)
 	}
@@ -159,9 +160,9 @@ func TestBuiltinCriticalIsDocumented(t *testing.T) {
 func TestLockedBodiesCollapse(t *testing.T) {
 	cfg := Config{
 		CriticalPaths: []string{"skills/vendored/hook.sh"},
-		Locked:        []Lock{{"skills/vendored", "vendored", "owner/repo"}},
+		Locked:        []Lock{{"skills/vendored", "vendored", "owner/repo", true}, {"skills/edited", "edited", "owner/repo", false}},
 	}
-	changes := Changes{Files: []string{"skills/vendored/SKILL.md", "skills/vendored/a/b.ts", "skills/vendored/hook.sh", "skills/vendored-other/x.md", "skills-lock.json", "main.go"}}
+	changes := Changes{Files: []string{"skills/vendored/SKILL.md", "skills/vendored/a/b.ts", "skills/vendored/hook.sh", "skills/vendored-other/x.md", "skills-lock.json", "main.go", "skills/edited/a_test.go"}}
 	report := Build(changes, cfg)
 	byPath := map[string]File{}
 	for _, f := range report.Files {
@@ -174,11 +175,14 @@ func TestLockedBodiesCollapse(t *testing.T) {
 	if byPath["skills/vendored/hook.sh"].Tier != Critical {
 		t.Errorf("configured critical file inside a locked body was not critical: %+v", report.Files)
 	}
-	if byPath["skills/vendored-other/x.md"].Tier != Structural || byPath["skills-lock.json"].Tier != Structural {
-		t.Errorf("a sibling prefix or the lock file was collapsed or lowered: %+v", report.Files)
+	if byPath["skills/vendored-other/x.md"].Tier != Structural || byPath["skills-lock.json"].Tier != Critical {
+		t.Errorf("a sibling prefix was collapsed or the lock file was not critical: %+v", report.Files)
 	}
-	if report.Totals[Mechanical] != 1 || len(report.Files) != 5 {
-		t.Errorf("totals %v over %d entries, want one mechanical entry among 5", report.Totals, len(report.Files))
+	if edited := byPath["skills/edited/a_test.go"]; edited.Tier != Structural || !contains(edited.Reason, "does not match its lock hash") {
+		t.Errorf("an edited locked body was not raised and named: %+v", edited)
+	}
+	if report.Totals[Mechanical] != 1 || len(report.Files) != 6 {
+		t.Errorf("totals %v over %d entries, want one mechanical entry among 6", report.Totals, len(report.Files))
 	}
 	if !contains(report.Text(), "2 files: locked body vendored") {
 		t.Errorf("text output does not name the file count:\n%s", report.Text())

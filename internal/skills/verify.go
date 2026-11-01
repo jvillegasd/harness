@@ -95,6 +95,9 @@ func isLocalHash(s string) bool {
 	return err == nil
 }
 
+// FolderHash is the folder hash a lock entry's computedHash records, for callers outside this package such as change-map.
+func FolderHash(dir string) (string, error) { return folderHash(dir) }
+
 // folderHash reimplements skills.sh's computeSkillFolderHash: sha256 over each regular file's forward-slash path then its bytes, files ordered by localeCompare, .git and node_modules skipped.
 func folderHash(dir string) (string, error) {
 	var rels []string
