@@ -74,7 +74,7 @@ type gitHubAPI struct {
 	repository string
 	binary     string
 	merged     map[string]bool
-	// issues memoizes issue reads within one run, seeded by the sweep's listing, so a swept issue is not fetched again per check; update drops the entry it changes.
+	// issues memoizes issue reads within one run, so the frontier and parent passes over one issue share a fetch; update drops the entry it changes. The sweep's listing never seeds it: a label set read minutes earlier would make the full-replacement PATCH wipe labels added since.
 	issues map[int]issue
 }
 
@@ -141,7 +141,6 @@ func (g *gitHubAPI) openIssues(label string) ([]issue, error) {
 	for _, page := range pages {
 		for _, value := range page {
 			if len(value.PullRequest) == 0 {
-				g.remember(value)
 				result = append(result, value)
 			}
 		}
@@ -582,7 +581,7 @@ func reconcile(api issueAPI, eventNumber int, labels map[string]string, eventAct
 	return nil
 }
 
-// sweep reconciles every open issue that carries a lifecycle label, in number order, and the parent of each, so an event the workflow's one-slot queue dropped heals on the next scheduled run: a merged blocker releases its dependents, a parent whose last child merged closes, and a closed parent whose child reopened reopens. A closed issue with no open enrolled child is not visited. Each swept issue costs about three REST calls (its blockers, its sub-issues, and its parent), since the listing supplies the issue itself. One issue's failure does not stop the others; the errors are returned together.
+// sweep reconciles every open issue that carries a lifecycle label, in number order, and the parent of each, so an event the workflow's one-slot queue dropped heals on the next scheduled run: a merged blocker releases its dependents, a parent whose last child merged closes, and a closed parent whose child reopened reopens. A closed issue with no open enrolled child is not visited. Each swept issue costs about four REST calls (a fresh read of the issue, its blockers, its sub-issues, and its parent), so a repository with a few hundred enrolled issues stays well inside the token's hourly budget. One issue's failure does not stop the others; the errors are returned together.
 func sweep(api issueAPI, labels map[string]string) error {
 	seen := map[int]bool{}
 	var numbers []int

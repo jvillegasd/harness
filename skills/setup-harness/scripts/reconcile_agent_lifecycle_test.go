@@ -800,3 +800,42 @@ esac
 		t.Fatalf("foreign issue was not looked up in its own repository:\n%s", log)
 	}
 }
+
+// TestIssueMemoRefetchesAfterUpdate pins the memo: a second read in one run is served from memory, a write drops it, and the next read fetches fresh labels, so a PATCH never starts from a label set this run did not read after its own last write.
+func TestIssueMemoRefetchesAfterUpdate(t *testing.T) {
+	dir := t.TempDir()
+	calls := filepath.Join(dir, "calls")
+	gh := filepath.Join(dir, "gh")
+	script := `#!/bin/sh
+echo "$*" >> "` + calls + `"
+case "$*" in
+  *"--method PATCH"*) cat >/dev/null ;;
+  *"issues/5 "*) echo '{"number":5,"state":"open","labels":[{"name":"blocked"}]}' ;;
+esac
+`
+	if err := os.WriteFile(gh, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	g := &gitHubAPI{repository: "o/repo", binary: gh}
+	count := func() int {
+		log, _ := os.ReadFile(calls)
+		return strings.Count(string(log), "--method GET repos/o/repo/issues/5 -H")
+	}
+	for i := 0; i < 2; i++ {
+		if _, err := g.issue(5); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := count(); got != 1 {
+		t.Fatalf("two reads fetched %d times, want 1", got)
+	}
+	if err := g.update(5, map[string]any{"labels": []string{"ready-for-agent"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := g.issue(5); err != nil {
+		t.Fatal(err)
+	}
+	if got := count(); got != 2 {
+		t.Fatalf("a read after an update fetched %d times in total, want 2", got)
+	}
+}
