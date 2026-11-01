@@ -1,6 +1,6 @@
 # Review evals
 
-Measure whether the reviewer finds real defects without noise, using cases from this repository's own history. Cases and runs live beside the ledger (see `ledger.md`) as `$dir/evals.jsonl` and `$dir/runs/<date>.jsonl`. They never go into the repository.
+Measure whether the reviewer finds real defects without noise, using cases from this repository's own history. Cases and runs live in the ledger's directory (the directory of `harness review path`) as `evals.jsonl` and `runs/<date>.jsonl`. They never go into the repository.
 
 Each case is one JSON line, and refers to commits rather than copying code:
 

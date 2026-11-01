@@ -59,7 +59,7 @@ Allow at most two rounds. A new confirmed finding in repaired code at the cap st
 
 ## Record
 
-Append each disposition to the ledger (`references/ledger.md`) the moment it is decided, so the Verify lookup in a later round sees it. A review with no findings, or with depth none, writes one line too. Whoever commits a fix appends `fixed` with the fixing commit.
+Record each disposition with `harness review record` (`references/ledger.md`) the moment it is decided, so the Verify lookup in a later round sees it. A review with no findings, or with depth none, writes one line too. Whoever commits a fix appends `fixed` with the fixing commit.
 
 The review posts nothing to the forge. `address-review` handles review threads from bots and other people on a pull request, using `references/triage-patterns.md`.
 
