@@ -34,6 +34,20 @@ Code inspection produces hypotheses, not proven bottlenecks or gains, so every o
 4. Rerun the same workload under comparable conditions after each change. Report the sample count, the same statistic before and after, absolute and relative differences, and variability. Keep local measurements separate from production observations. Check the relevant tradeoffs, such as latency versus memory, request count versus payload size, and startup versus first interaction.
 5. Run the relevant correctness checks and real flows. Revert only the optimization's own changes when it regresses behavior or repeated measurements show no benefit. Noisy results are inconclusive: investigate or revert instead of claiming success.
 
+## Benchmark checklist
+
+Run this before reporting any measured speedup or regression, and end with one verdict: faster, slower, no measurable difference, or inconclusive. A number that passes none of these questions is a hypothesis.
+
+1. What limits it? Name the limiter (CPU, memory bandwidth, I/O, a lock, the network, the runtime). If you cannot say why it is not twice as fast, the result is not understood yet.
+2. Was every side tuned as production runs it? Same build mode, flags, warm-up, caches, data, and configuration on both sides. A side that ran untuned compares the tuning, not the change.
+3. Does the number break a physical limit? A throughput above the disk, network, or memory bandwidth, or a time below the cost of the work, means the benchmark measured something else.
+4. Did any run error? Check exit codes, logs, and response statuses. A fast run that failed or returned early is not a fast run.
+5. Does it reproduce? Take at least 5 runs, alternating the two sides so drift and thermal or cache effects hit both, and report the median and the range. Ranges that overlap are no measurable difference.
+6. Does it matter end to end? State the share of the user-visible flow or the production workload the measured part takes. A large gain on a small share is small.
+7. Did the work happen inside the timed region? Confirm the timed code ran the intended path, did the intended amount of work, and did not skip it through a cache hit, dead-code elimination, or a lazy value never forced.
+
+The verdict is inconclusive when the limiter cannot be named, a side ran untuned, or errors and the timed region could not be checked. A quick ballpark may use one run and say so, but it still checks for errors and that the work ran inside the timed region.
+
 ## Output
 
-The tools discovered and used, the scenario and measurement method, each change's before and after results with evidence locations, the correctness checks, reverted experiments, and remaining gaps. Local measurements describe local conditions only; claim production impact only from production observations. Create report files only when asked or needed for recovery.
+The tools discovered and used, the scenario and measurement method, each change's before and after results with evidence locations and its checklist verdict, the correctness checks, reverted experiments, and remaining gaps. Local measurements describe local conditions only; claim production impact only from production observations. Create report files only when asked or needed for recovery.

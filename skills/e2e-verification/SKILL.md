@@ -1,6 +1,6 @@
 ---
 name: e2e-verification
-description: "Trigger: e2e test, manual QA, verify a release, test what ships with screenshots. Run a scripted browser E2E suite on an isolated install and report every test with real screenshots."
+description: "Trigger: e2e test, manual QA, verify a release, test what ships with screenshots, create or maintain a project verify skill. Run a scripted browser E2E suite on an isolated install with real screenshots, or build and keep current a project-local verify skill with a feature map."
 license: MIT
 metadata:
   author: jvillegasd
@@ -8,6 +8,8 @@ metadata:
 ---
 
 Check, through the real UI, that what will be released works end to end, and show it with screenshots. Ordinary local checks belong to `verification`; a focused code inspection belongs to `review`.
+
+Three modes share these principles. The release run (the default) is the Steps below. `create` turns what you learn about a repository into a project-local `verify-<app>` skill with a feature map, and `maintain` drives that map again to find drift. Pick the mode from the request; without a clear signal, run the release run.
 
 ## Why
 
@@ -21,6 +23,8 @@ A suite that runs against the wrong target, a shared system, or mocked evidence 
 - Keep secrets and `.env` contents out of logs, screenshots, and the report.
 
 ## Steps
+
+These steps are the release run.
 
 1. **Scope.** From the request, the diff or release notes, and the install guide, list the user-visible behaviors that ship. Group them into areas, such as release and install, the main flows, error handling, permissions, and isolation. Give each test a stable ID (`R1`, `P3`, `E12`) and a one-line expected outcome.
 2. **Environment.**
@@ -43,6 +47,38 @@ A suite that runs against the wrong target, a shared system, or mocked evidence 
    - When an artifact or page-publishing tool is available, publish the report privately, with the screenshots as supporting files. Otherwise give the absolute local path.
 8. **Clean up.** Offer to stop and remove the isolated environment (for example `docker compose down -v`), and leave it running until asked, because the user may want to rerun tests. When a fix is authorized, rerun the failing test (RED, then GREEN) and the full suite before delivering it.
 
+## Mode: create
+
+Study the repository and write a project-local skill that any later session can use to launch, drive, and observe the app. The skill lives in the target repository, not here, because launch commands, selectors, and gotchas belong to one product.
+
+1. **Study.** Find how the app runs (start commands, ports, data directory, required services), how to drive it (the UI, CLI, or API a user touches, with real selectors and commands from the code and docs), how to observe it (the UI, logs, files, database rows inside the isolated environment), and how to isolate it from shared state.
+2. **Write `verify-<app>/SKILL.md`** in the target repository, with these sections:
+   - Launch: start the app from an empty data directory, so no earlier state or real data is involved.
+   - Doctor: one read-only health check that says whether the app is up and usable.
+   - Drive: the real selectors and commands for the main actions.
+   - Evidence: exercise the real user path, capture the action and the resulting state, and keep the evidence through cleanup.
+   - Cleanup: stop and remove only what Launch started, by recorded identity such as a compose project, a PID file, or a port the skill opened, never by process name. Cleanup never deletes the evidence.
+3. **Write the feature map.** Create `verify-<app>/features/README.md`, an index of the app's features with one line each, and one file per feature, starting with 3 to 5 of the most important. Each feature file has an H1, one paragraph saying what the feature is for, and exactly four sections:
+   - Sub-features: the distinct behaviors inside it.
+   - How to get to it: the route to it from a user's point of view.
+   - Driving it: the preconditions, then the action, the exact command or clicks, and the observable result.
+   - Gotchas: what trips a run, including every missing precondition found while driving.
+4. **Prove it once.** Drive one feature end to end by following only the generated skill, and keep the screenshots or captured output. Fix the skill where it was wrong. A missing precondition fails the journey and goes under Gotchas; the journey is never weakened to pass. A generated skill that never ran is a draft, and the report says so.
+
+## Mode: maintain
+
+Keep an existing `verify-<app>` skill true to the app. It may run on a schedule, so it needs no human in the loop and edits only the verify skill's own files.
+
+1. **Drive every mapped feature live**, even when the source looks unchanged, because docs that look right can still fail against the running app.
+2. **Read each feature's source** for drift: renamed routes, changed selectors, flags, defaults, and preconditions.
+3. **Sort each problem** into one of three kinds:
+   - Doc drift: the map or skill is wrong. Fix the map.
+   - Harness gap: the app is right but the driver cannot reach it. Fix the driver.
+   - Product gap: the app does not do what its feature file says it should. Record it with the reproduction and leave product code alone.
+4. **Report the outcome** as `clean` (everything drove as documented, nothing edited), `changed` (the verify skill's files were fixed, listed with the reason), or `blocked` (something could not be driven or decided; say what is needed). Product gaps are listed under any outcome.
+
+The feature map also feeds the change workflow: when it exists, `change-map` names the affected feature for each behavioral or critical item, and `verification` drives those features (ladder step 5).
+
 ## Output
 
 Report:
@@ -52,5 +88,6 @@ Report:
 - The report link or path and the screenshot folder.
 - What was not covered, and why.
 - What is still running.
+- For `create`: the files written and which feature was driven as proof, or that the skill is still a draft. For `maintain`: the outcome (`clean`, `changed`, or `blocked`), the problems found by kind, and the files edited.
 
 Report a skipped or unrunnable test as exactly that.

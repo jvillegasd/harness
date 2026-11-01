@@ -46,6 +46,8 @@ Severity is one of:
 - `nit:` naming, style, or micro-optimization; the implementer may ignore it
 - `q:` a genuine question rather than a suggestion, and where an unsure reviewer belongs
 
+Prove each `bug` and `risk` on the certainty ladder (see `verification`). You cannot run commands, so a `bug` or `risk` needs at least step 3, walked: cite the lines, then trace how the failure reaches observable behavior, from the input or state that triggers it to the wrong output, crash, or data change. Put that trace in the problem text. A finding you can only assert, or only support with a cited line, is reported as `q:` instead, with the line and what you could not trace, so the parent can try to run it. The parent decides whether it reaches step 4.
+
 Name the symbol in backticks and give the fix, not "consider refactoring". No hedging, no restating what the line does. A security finding or an architectural disagreement needs its reasoning spelled out.
 
 A review that finds nothing states what it checked and why the diff survives. "Looks good" is not a review.
