@@ -31,7 +31,7 @@ Write `docs/agents/harness.json` with this stable shape:
 }
 ```
 
-`tracker` and `spec_home` select the mode; commands resolve `<spec_home>` to this value. `domain_layout` may be project-specific.
+`tracker` and `spec_home` select the mode; commands resolve `<spec_home>` to this value. `domain_layout` may be project-specific. Add `criticalPaths`, a list of repo-relative globs (`**` spans directories) for the code where a mistake is a one-way door, such as auth, payments, migrations, and deployment configuration. `change-map` treats a match as `critical`. Infer it from the repository's structure, keep any existing entries, list it in the report, and leave it out when nothing stands out.
 
 For local markdown, change only the two mode values. Use `docs/specs` for `spec_home`, or the project's docs convention when it has one, and state the path in the report instead of asking about it:
 

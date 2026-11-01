@@ -23,6 +23,18 @@ A pass is only worth what it covers. Binding each result to a revision, and nami
 
 A fixture, a static read-back, or a self-review is not live acceptance or independent inspection, so report it as what it is.
 
+## Certainty ladder
+
+When a claim carries the safety of a change, say how far it is proven. Take each fact as far down this ladder as is cheap, and report where it stopped:
+
+1. Said: someone asserted it. Worth nothing on its own.
+2. Cited: a real `path:line`, or the library's own source, shows it.
+3. Walked: the failure path was traced step by step and does not reach.
+4. Ran: a script or test calls the real code and fails loudly if the fact is wrong.
+5. Reproduced: it was observed in the running application.
+
+Only steps 4 and 5 count as verified. A small script that imports the shipped library and calls the exact function in question usually reaches step 4 cheaply.
+
 ## Output
 
 What passed, its scope and revision, and the remaining failures or unverified behavior. Keep the evidence in an existing task document only when `continuity` needs it.

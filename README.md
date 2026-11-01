@@ -26,7 +26,8 @@ Skills compose around the task. Use investigation for unknowns, specifications f
 | --- | --- |
 | `verification` | Appropriate local checks and honest revision-bound evidence |
 | `e2e-verification` | Scripted browser E2E QA of what ships, on an isolated install, with real screenshots per test and a published report |
-| `review` | Focused independent inspection when requested or a concrete security, data-loss, compatibility, or concurrency risk exceeds ordinary checks |
+| `change-map` | Sort a change into review tiers (critical, behavioral, structural, tests-docs, mechanical) on a deterministic floor from `harness change-map`, and tell the human what to read and what each risky item is safe because of |
+| `review` | Focused independent inspection when requested, when `change-map` finds critical items, or when a concrete security, data-loss, compatibility, or concurrency risk exceeds ordinary checks |
 | `continuity` | One local task/spec document and full project-scoped Engram mirror when the request and Git diff cannot preserve enough context |
 | `open-pr` | Explicitly requested commits, publication, and required-check repairs |
 | `address-review` | Apply feedback, review comments, or check repairs on the existing branch using its scoped authorization |
@@ -202,7 +203,7 @@ Binaries are the deliberate exception. Every prose body has its hash in `skills-
 
 ## Roster
 
-Investigation capabilities are `ask`, `research`, `triage`, and `harness-audit`. Optional planning capabilities are `spec`, `proto`, and `create-ticket`. Verification, inspection, recovery, and delivery are `verification`, `e2e-verification` (release E2E QA with screenshots), `review`, `continuity`, and `open-pr`. Maintenance uses `address-review`; explicit terminal actions use `land` and `abandon`.
+Investigation capabilities are `ask`, `research`, `triage`, and `harness-audit`. Optional planning capabilities are `spec`, `proto`, and `create-ticket`. Verification, inspection, recovery, and delivery are `verification`, `e2e-verification` (release E2E QA with screenshots), `change-map` (review tiers and what a human must read), `review`, `continuity`, and `open-pr`. Maintenance uses `address-review`; explicit terminal actions use `land` and `abandon`.
 
 `be-ambitious` rewrites a task with stronger sources, methods, and external checks while preserving its scope. It stops after the rewrite. This is an editable local copy from [DannyMac180/skills](https://github.com/DannyMac180/skills/tree/7dc63b7a748b8bd14bf213c15ecddd4536409407/be-ambitious), with its MIT notice retained in `skills/be-ambitious/SKILL.md`; it is not managed by `skills-lock.json`.
 

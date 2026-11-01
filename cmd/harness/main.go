@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/jvillegasd/harness/internal/bench"
+	"github.com/jvillegasd/harness/internal/changemap"
 	"github.com/jvillegasd/harness/internal/install"
 	"github.com/jvillegasd/harness/internal/models"
 	"github.com/jvillegasd/harness/internal/skills"
@@ -25,6 +26,7 @@ Commands:
   skills     Manage the reviewed third-party skill locks
   statusline Print the Claude Code status line for the payload on stdin
   models     Choose each delegated role's client, model, and effort
+  change-map Classify this branch's changed files into review tiers
 `
 
 func run(args []string, stdout, stderr io.Writer) int {
@@ -43,6 +45,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return statusline.Command(args[1:], os.Stdin, stdout, stderr)
 	case "models":
 		return models.Command(args[1:], stdout, stderr)
+	case "change-map":
+		return changemap.Command(args[1:], stdout, stderr)
 	case "-h", "--help", "help":
 		fmt.Fprint(stdout, usage)
 		return 0
