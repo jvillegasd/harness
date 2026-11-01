@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -62,7 +63,7 @@ func pickAndSave(path string, stdout io.Writer) error {
 	if _, err := Load(path); err != nil {
 		return err
 	}
-	final, err := tea.NewProgram(newPicker(OpenCodeModels()), tea.WithOutput(stdout), tea.WithInput(os.Stdin)).Run()
+	final, err := tea.NewProgram(newPicker(new(Catalog)), tea.WithOutput(stdout), tea.WithInput(os.Stdin)).Run()
 	if err != nil {
 		return err
 	}
@@ -90,21 +91,14 @@ func run(path string, args []string, stdout io.Writer) error {
 	switch sub {
 	case "show":
 		resolved := choice.Resolve()
-		var listed []string
-		var listErr error
+		catalog := new(Catalog)
 		for _, role := range Roles {
 			r := resolved[role]
 			note := ""
-			if r.Client == "opencode" {
-				if listed == nil && listErr == nil {
-					listed, listErr = OpenCodeModels()
-				}
-				switch {
-				case listErr != nil:
-					note = " [unverified: " + listErr.Error() + "]"
-				case !slices.Contains(listed, r.Model):
-					note = " [not listed by `opencode models`; install renders the client default]"
-				}
+			if err := catalog.Runnable(r.Assignment); errors.Is(err, ErrNotListed) {
+				note = " [not listed by " + r.Client + " here; install renders the client default]"
+			} else if err != nil {
+				note = " [unverified: " + err.Error() + "]"
 			}
 			fmt.Fprintf(stdout, "%s client=%s model=%s effort=%s (%s)%s\n", role, r.Client, r.Model, effortOrInherit(r.Effort), r.Source, note)
 		}
@@ -150,7 +144,7 @@ func apply(choice Choice, args []string) (Choice, error) {
 		if _, ok := Presets[*preset]; !ok {
 			return choice, fmt.Errorf("unknown preset %q; choose %s", *preset, strings.Join(presetNames(), ", "))
 		}
-		// A built-in preset is well formed by construction; whether this machine can run its OpenCode models is the install's fallback to judge.
+		// A built-in preset is well formed by construction; whether this machine can run its Codex or OpenCode models is the install's fallback to judge.
 		choice.Preset = *preset
 		return choice, nil
 	}

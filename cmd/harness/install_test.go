@@ -111,6 +111,14 @@ func shimScripts(shims string) map[string]string {
 "plugin list --json") echo '[{"id": "engram@engram"}]' ;;
 "mcp get agent-browser"|"mcp get engram") echo 'Scope: User config' ;;
 esac`,
+		// The catalog lists the preset models; agent-browser's registration lives in a marker file so get answers what add and remove left. Each call logs the CODEX_HOME it ran under.
+		"codex": `printf 'CODEX_HOME=%s\n' "$CODEX_HOME" >> '` + filepath.Join(filepath.Dir(shims), "shims.log") + `'
+case "$*" in
+"debug models") echo '{"models":[{"slug":"gpt-6-luna","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"high"}]},{"slug":"gpt-5.6-luna","visibility":"list","supported_reasoning_levels":[{"effort":"low"}]},{"slug":"gpt-6.1-sol","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"high"}]}]}' ;;
+"mcp add agent-browser"*) touch '` + filepath.Join(shims, ".codex-agent-browser") + `' ;;
+"mcp remove agent-browser") rm -f '` + filepath.Join(shims, ".codex-agent-browser") + `' ;;
+"mcp get agent-browser") [ -e '` + filepath.Join(shims, ".codex-agent-browser") + `' ] || exit 1 ;;
+esac`,
 		"opencode": `if [ "$*" = "debug config" ]; then
 echo '{"plugin": ["engram"], "mcp": {"engram": {}, "agent-browser": {"type": "local", "enabled": true, "command": ["` + filepath.Join(shims, "agent-browser") + `", "mcp"]}}}'
 fi`,

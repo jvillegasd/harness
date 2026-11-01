@@ -15,6 +15,8 @@ import (
 	"slices"
 	"strings"
 	"unicode/utf16"
+
+	"github.com/jvillegasd/harness/internal/models"
 )
 
 // object is a JSON object that keeps its key order, so rewriting a client config moves only what changed.
@@ -289,7 +291,7 @@ func (in *installer) reconcileAliases(remove bool) {
 	dropped := false
 	for i, line := range lines {
 		alias := aliasLine.FindStringSubmatch(line)
-		managed := alias != nil && (alias[1] == "ccyolo" || alias[1] == "oyolo" || alias[1] == "ocyolo")
+		managed := alias != nil && (alias[1] == "ccyolo" || alias[1] == "cxyolo" || alias[1] == "oyolo" || alias[1] == "ocyolo")
 		// The line after the marker is the managed source line whatever path an earlier install wrote into it.
 		afterMarker := i > 0 && strings.Contains(lines[i-1], aliasMarker)
 		if managed || afterMarker || strings.Contains(line, aliasMarker) || strings.Contains(line, source) {
@@ -320,13 +322,19 @@ func (in *installer) reconcileAliases(remove bool) {
 	}
 }
 
-// installEngram runs one `engram setup <agent>` per client, exactly as engram's docs/AGENT-SETUP.md documents. The claude-code setup is answered yes to allowlist engram's tools, because declining prompts on every memory call; the opencode setup gets a closed stdin, since a blind yes to a future question is not the same answer. Setup registers and pins OpenCode's MCP server; Claude Code's is registerEngramClaudeMCP's job.
+// installEngram runs one `engram setup <agent>` per client, exactly as engram's docs/AGENT-SETUP.md documents. The claude-code setup is answered yes to allowlist engram's tools, because declining prompts on every memory call; the codex and opencode setups get a closed stdin, since a blind yes to a future question is not the same answer. Setup registers and pins OpenCode's MCP server and Codex's plugin; Claude Code's MCP is registerEngramClaudeMCP's job.
 func (in *installer) installEngram() {
 	in.log("Reconciling Engram")
 	if _, err := exec.LookPath("engram"); err != nil {
 		die("Engram is missing; run without --skip-packages to install it.")
 	}
 	in.run(strings.NewReader("y\n"), "engram", "setup", "claude-code")
+	codex := exec.Command("engram", "setup", "codex")
+	codex.Env = models.CodexEnv(in.home)
+	codex.Stdout, codex.Stderr = in.stdout, in.stderr
+	if err := codex.Run(); err != nil {
+		die("engram setup codex failed: %v", err)
+	}
 	in.run(nil, "engram", "setup", "opencode")
 }
 
@@ -348,7 +356,7 @@ func (in *installer) registerEngramClaudeMCP() {
 	}
 }
 
-// installAgentBrowser registers agent-browser in both clients, since it ships no registrar of its own. Remove then add, so a re-run rewrites the pinned path; OpenCode takes a JSON edit because `opencode mcp add` is interactive.
+// installAgentBrowser registers agent-browser in every client, since it ships no registrar of its own. Remove then add, so a re-run rewrites the pinned path; OpenCode takes a JSON edit because `opencode mcp add` is interactive.
 func (in *installer) installAgentBrowser() {
 	in.log("Reconciling agent-browser")
 	binary, err := exec.LookPath("agent-browser")
@@ -358,7 +366,10 @@ func (in *installer) installAgentBrowser() {
 	if _, err := exec.LookPath("claude"); err != nil {
 		die("Claude Code is missing; run without --skip-packages to install it.")
 	}
-	// OpenCode's config is read and validated before either client is touched, so a config this run refuses leaves both registrations as they were.
+	if _, err := exec.LookPath("codex"); err != nil {
+		die("Codex is missing; run without --skip-packages to install it.")
+	}
+	// OpenCode's config is read and validated before any client is touched, so a config this run refuses leaves every registration as it was.
 	path := filepath.Join(in.config, "opencode", "opencode.json")
 	doc := newObject()
 	if data, err := os.ReadFile(path); err == nil {
@@ -376,8 +387,13 @@ func (in *installer) installAgentBrowser() {
 		}
 		servers = parsed
 	}
+	_ = in.codex("mcp", "remove", "agent-browser").Run()
+	add := in.codex("mcp", "add", "agent-browser", "--", binary, "mcp")
+	if err := add.Run(); err != nil {
+		die("codex mcp add agent-browser failed: %v", err)
+	}
 	_ = exec.Command("claude", "mcp", "remove", "--scope", "user", "agent-browser").Run()
-	add := exec.Command("claude", "mcp", "add", "--scope", "user", "agent-browser", "--", binary, "mcp")
+	add = exec.Command("claude", "mcp", "add", "--scope", "user", "agent-browser", "--", binary, "mcp")
 	add.Stderr = in.stderr
 	if err := add.Run(); err != nil {
 		die("claude mcp add agent-browser failed: %v", err)

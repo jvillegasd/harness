@@ -35,6 +35,9 @@ func preparedArgs(choice Choice, role, orca string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	if a.Client == "codex" {
+		return codexArgs(home, role, a)
+	}
 	if err := renderedMatches(home, role, a); err != nil {
 		return nil, err
 	}
@@ -116,4 +119,61 @@ func launchArgs(role string, a Assignment) []string {
 		argv = append(append(argv, "--permission-mode", "acceptEdits", "--allowedTools", "Bash", "--disallowedTools"), executorDenies...)
 	}
 	return argv
+}
+
+// codexArgs launches a Codex role from its installed agent file, since Codex starts no session as a named agent: the file's instructions, model, and effort go in argv, which also keeps the launch independent of the CODEX_HOME Orca sets. Every role gets the workspace-write sandbox with network on, the narrowest one the Orca CLI can reach from; .git stays read-only there, so commits fail.
+func codexArgs(home, role string, a Assignment) ([]string, error) {
+	path := filepath.Join(home, ".codex", "agents", role+".toml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, errors.New("no rendered codex agent for " + role + "; a human must run harness install")
+	}
+	text := string(data)
+	level := "read-search"
+	if role == "executor" {
+		level = "implement"
+	}
+	if !agents.RestrictionsMatch("codex/"+role+".toml", text, level) {
+		return nil, errors.New("the installed role has missing or changed permission controls; a human must run harness install")
+	}
+	if role != "executor" && !strings.Contains(text, "Orca lifecycle") {
+		return nil, errors.New("the installed role lacks scoped Orca lifecycle access; a human must run harness install")
+	}
+	model, effort := "", ""
+	for _, line := range strings.Split(text, "\n") {
+		if value, ok := strings.CutPrefix(line, "model = "); ok {
+			model = strings.Trim(value, `"`)
+		}
+		if value, ok := strings.CutPrefix(line, "model_reasoning_effort = "); ok {
+			effort = strings.Trim(value, `"`)
+		}
+		if strings.HasPrefix(line, "developer_instructions = ") {
+			break
+		}
+	}
+	if model == "" {
+		model = "inherit"
+	}
+	if model != a.Model || effort != a.Effort {
+		return nil, errors.New("the installed codex " + role + " agent was not rendered for " + a.Model + " at effort " + effortOrInherit(a.Effort) + "; a human must run harness install")
+	}
+	instructions, _ := agents.CodexInstructions(text)
+	return codexLaunch(a, instructions), nil
+}
+
+// codexLaunch is the argv for a Codex role whose installed file was proven current. The instructions travel as a TOML basic string, which JSON's escapes are a subset of.
+func codexLaunch(a Assignment, instructions string) []string {
+	argv := []string{"codex"}
+	if a.Model != "inherit" {
+		argv = append(argv, "-m", a.Model)
+	}
+	if a.Effort != "" {
+		argv = append(argv, "-c", `model_reasoning_effort="`+a.Effort+`"`)
+	}
+	var quoted strings.Builder
+	enc := json.NewEncoder(&quoted)
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(instructions)
+	return append(argv, "-c", "developer_instructions="+strings.TrimSuffix(quoted.String(), "\n"),
+		"--ask-for-approval", "never", "--sandbox", "workspace-write", "-c", "sandbox_workspace_write.network_access=true")
 }

@@ -56,9 +56,8 @@ func RestrictionsMatch(relative, text, level string) bool {
 				return false
 			}
 		}
-		rest := text[start+1+len(codexInstructions):]
-		end := strings.Index(rest, codexClose)
-		return end >= 0 && rest[end+len(codexClose):] == codexTail(level)
+		body, ok := CodexInstructions(text)
+		return ok && text[start+1+len(codexInstructions)+len(body)+len(codexClose):] == codexTail(level)
 	}
 	head := ""
 	if strings.HasPrefix(text, "---\n") {
@@ -75,6 +74,20 @@ func RestrictionsMatch(relative, text, level string) bool {
 		kept += line + "\n"
 	}
 	return kept == "mode: all\n"+opencodeControls[level]
+}
+
+// CodexInstructions returns a rendered Codex agent's developer_instructions body.
+func CodexInstructions(text string) (string, bool) {
+	start := strings.Index(text, "\n"+codexInstructions)
+	if start < 0 {
+		return "", false
+	}
+	rest := text[start+1+len(codexInstructions):]
+	end := strings.Index(rest, codexClose)
+	if end < 0 {
+		return "", false
+	}
+	return rest[:end], true
 }
 
 func existing(output string) map[string]string {

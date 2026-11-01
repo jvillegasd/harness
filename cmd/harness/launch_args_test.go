@@ -25,6 +25,16 @@ func renderAgent(t *testing.T, base, client, role, model, effort string) {
 	if code := agents.Generate(filepath.Join("..", "..", "clients", "assignments.json"), generated, nil, io.Discard, io.Discard); code != 0 {
 		t.Fatal("generate role fixture")
 	}
+	if client == "codex" {
+		raw := readFile(t, filepath.Join(generated, client, role+".toml"))
+		settings := "model = \"" + model + "\"\n"
+		if effort != "" {
+			settings += "model_reasoning_effort = \"" + effort + "\"\n"
+		}
+		raw = strings.Replace(raw, "developer_instructions = ", settings+"developer_instructions = ", 1)
+		writeMode(t, filepath.Join(base, "home", ".codex", "agents", role+".toml"), raw, 0o644)
+		return
+	}
 	raw := readFile(t, filepath.Join(generated, client, role+".md"))
 	if client == "claude" {
 		raw = strings.Replace(raw, "model: inherit\n", "model: "+model+"\n", 1)
@@ -44,18 +54,33 @@ func TestLaunchArgsPreparesWithoutLaunching(t *testing.T) {
 	}{
 		{"reviewer", "claude", "inherit", []string{"claude", "--agent", "reviewer"}},
 		{"code-search", "claude", "inherit", []string{"claude", "--agent", "code-search"}},
+		{"executor", "codex", "gpt-6-luna", []string{"codex", "-m", "gpt-6-luna", "-c"}},
 		{"executor", "opencode", "opencode-go/glm-5.3", []string{"opencode", "-m", "opencode-go/glm-5.3", "--agent", "executor"}},
 	} {
-		t.Run(tc.role, func(t *testing.T) {
+		t.Run(tc.role+"-"+tc.client, func(t *testing.T) {
 			base := modelsBase(t)
 			for _, executable := range []string{"orca", "orca-dev", "orca-ide"} {
 				writeShim(t, base, executable, "exit 1")
 			}
+			if tc.client == "opencode" {
+				ok(t, runModels(t, base, "set", tc.role, "--client", tc.client, "--model", tc.model), "assign the role")
+				if err := os.Remove(filepath.Join(base, "shims.log")); err != nil && !os.IsNotExist(err) {
+					t.Fatal(err)
+				}
+			}
+			before, _ := os.ReadFile(stateFile(base))
 			renderAgent(t, base, tc.client, tc.role, tc.model, "")
 			r := ok(t, runModels(t, base, "launch-args", tc.role, "--orca-command", "orca"), "prepare launch")
 			var got []string
 			if err := json.Unmarshal([]byte(r.stdout), &got); err != nil {
 				t.Fatal(err)
+			}
+			if tc.client == "codex" {
+				// The body, the approval policy, and the sandbox follow; internal/models pins their spelling.
+				if !strings.HasPrefix(got[4], "developer_instructions=\"# ") || !slices.Contains(got, "workspace-write") || !slices.Contains(got, "sandbox_workspace_write.network_access=true") {
+					t.Fatalf("codex launch lacks its instructions or sandbox: %v", got)
+				}
+				got = got[:4]
 			}
 			if tc.client == "claude" {
 				if got[0] != "env" || !slices.Contains(got, "HARNESS_ORCA_COMMAND=orca") || !slices.Contains(got, "--permission-mode") || !slices.Contains(got, "dontAsk") {
@@ -72,12 +97,12 @@ func TestLaunchArgsPreparesWithoutLaunching(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
-				if line != "" && !strings.HasPrefix(line, "opencode models ") {
+				if line != "" && !strings.HasPrefix(line, "opencode models ") && !strings.HasPrefix(line, "codex debug models ") && !strings.HasPrefix(line, "CODEX_HOME=") {
 					t.Errorf("preparation ran a runtime command: %s", line)
 				}
 			}
-			if _, err := os.Stat(stateFile(base)); !os.IsNotExist(err) {
-				t.Errorf("preparation wrote machine state: %v", err)
+			if after, _ := os.ReadFile(stateFile(base)); string(after) != string(before) {
+				t.Errorf("preparation wrote machine state:\n%s", after)
 			}
 		})
 	}
@@ -89,11 +114,22 @@ func TestLaunchArgsRefusesMissingOrStaleAgent(t *testing.T) {
 		{"model", "claude", "reviewer", "opus", ""},
 		{"effort", "claude", "reviewer", "inherit", "high"},
 		{"mode", "opencode", "executor", "opencode-go/glm-5.3", ""},
+		{"codex missing", "codex", "executor", "", ""},
+		{"codex model", "codex", "executor", "gpt-6.1-sol", ""},
+		{"codex effort", "codex", "executor", "gpt-6-luna", "high"},
+		{"codex widened", "codex", "executor", "gpt-6-luna", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			base := modelsBase(t)
+			if tc.client == "opencode" {
+				ok(t, runModels(t, base, "set", tc.role, "--client", tc.client, "--model", tc.model), "assign the role")
+			}
 			if tc.model != "" {
 				renderAgent(t, base, tc.client, tc.role, tc.model, tc.effort)
+			}
+			if tc.name == "codex widened" {
+				path := filepath.Join(base, "home", ".codex", "agents", tc.role+".toml")
+				writeMode(t, path, readFile(t, path)+"\n[features]\nmulti_agent = true\n", 0o644)
 			}
 			if tc.name == "mode" {
 				path := filepath.Join(base, "home", ".config", "opencode", "agents", tc.role+".md")

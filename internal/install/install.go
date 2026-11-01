@@ -46,7 +46,8 @@ const usage = `Usage: harness install [--skip-packages] [--no-backup]
                  written stays. Binaries, packages, ~/.engram, ~/.agent-browser,
                  and ~/.dotfiles-backups are not touched. It asks before
                  removing anything.
-  --client       With --uninstall, limit it to claude or opencode; repeatable.
+  --client       With --uninstall, limit it to claude, codex, or opencode;
+                 repeatable.
   --component    With --uninstall, limit it to agents, aliases, mcp,
                  policy, settings, or skills; repeatable. A copy another
                  installed client still uses stays.
@@ -62,25 +63,28 @@ const usage = `Usage: harness install [--skip-packages] [--no-backup]
 Install and uninstall run from any directory. An install copies this binary
 to ~/.local/bin/harness, where the Claude Code status line runs it, copies the
 assets it was built with into each client, and records every copy in
-~/.harness/state.json. Set HARNESS_ASSETS to a directory to install that tree
+~/.harness/state.json. Codex is always configured in ~/.codex, whatever
+CODEX_HOME is set to. Set HARNESS_ASSETS to a directory to install that tree
 instead; it must carry skills-lock.json, which tells an install which skills
 are locally authored and so checked for invocation guards.
 `
 
 const summaryText = `Next steps (interactive; not run by this installer):
   1. Authenticate: claude auth login
-  2. Authenticate OpenCode natively: /connect inside OpenCode, then OpenAI, then
+  2. Authenticate Codex: codex login
+  3. Authenticate OpenCode natively: /connect inside OpenCode, then OpenAI, then
      ChatGPT Plus/Pro. "Manually enter API Key" bills the API instead.
-  3. Authenticate: gh auth login
-  4. Restart Claude Code and OpenCode.
-  5. Invoke setup-harness in each project that should use the public lifecycle.
+  4. Authenticate: gh auth login
+  5. Restart Claude Code, Codex, and OpenCode.
+  6. Invoke setup-harness in each project that should use the public lifecycle.
 
 Status line: harness statusline, which Claude Code runs on every draw.
-OpenCode exposes no status line surface, so it gets none.
+Codex and OpenCode get none from the harness.
 
-Workflow skills also answer to /name in Claude Code and OpenCode.
-Yolo aliases (ccyolo, ocyolo) are sourced from ~/.harness/aliases.sh; open a
-new shell or run: source ~/.zshrc
+Workflow skills also answer to /name in Claude Code and OpenCode, and to
+$name in Codex.
+Yolo aliases (ccyolo, cxyolo, ocyolo) are sourced from ~/.harness/aliases.sh;
+open a new shell or run: source ~/.zshrc
 
 Standalone third-party skills were not downloaded or updated. Their committed
 bodies and skills-lock.json are the reviewed source of truth.
@@ -284,6 +288,11 @@ func (in *installer) installPackages() {
 		in.log("Installing Claude Code from Anthropic's latest native channel")
 		in.run(nil, "bash", "-c", "set -o pipefail; curl -fsSL https://claude.ai/install.sh | bash")
 	}
+	// Only when absent too: Codex may come from the cask, npm, or an Orca-managed copy, and any of them is the one the user runs.
+	if _, err := exec.LookPath("codex"); err != nil {
+		in.log("Installing Codex")
+		in.run(nil, "brew", "install", "--cask", "codex")
+	}
 }
 
 // installedFormulae inventories Homebrew once, so a full install decides what to add without probing per formula. It returns the short names `brew list` reports, which is what a tap formula is known by there.
@@ -361,7 +370,7 @@ func (in *installer) checkStatusline() {
 
 // checkTools verifies what only a full run installs, since each assertion needs a client or a package on PATH.
 func (in *installer) checkTools() {
-	for _, name := range []string{"claude", "opencode", "gh", "engram", "agent-browser"} {
+	for _, name := range []string{"claude", "codex", "opencode", "gh", "engram", "agent-browser"} {
 		if _, err := exec.LookPath(name); err != nil {
 			die("Missing required command: %s", name)
 		}
@@ -374,6 +383,9 @@ func (in *installer) checkTools() {
 		if scope, err := get.Output(); err != nil || !strings.Contains(string(scope), "Scope: User config") {
 			die("%s is not registered in the Claude Code user scope.", server)
 		}
+	}
+	if in.codex("mcp", "get", "agent-browser").Run() != nil {
+		die("agent-browser is not registered in Codex's %s.", in.codexHome())
 	}
 	// Through a file: `opencode debug config` stops at the 64 KiB pipe capacity whenever stdout is not a regular file, and this config is past it.
 	resolved, err := os.CreateTemp("", "harness-opencode-*")

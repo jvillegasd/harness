@@ -7,13 +7,24 @@ import (
 	"testing"
 )
 
-// listingPath puts an `opencode models` shim on PATH, so validation sees a fixed model list rather than this machine's.
+// codexListing is what the codex shim prints for `codex debug models`: two listed models and a hidden one.
+const codexListing = `{"models":[{"slug":"gpt-6-luna","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"}]},{"slug":"gpt-6.1-sol","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"high"},{"effort":"ultra"}]},{"slug":"gpt-reserve","visibility":"hide","supported_reasoning_levels":[{"effort":"low"}]}]}`
+
+// listingPath puts `opencode models` and `codex debug models` shims on PATH, so validation sees fixed model lists rather than this machine's. The codex shim answers only with CODEX_HOME at ~/.codex, which is where the harness keeps Codex.
 func listingPath(t *testing.T) {
 	t.Helper()
 	dir := t.TempDir()
-	script := "#!/bin/sh\ncase \"$1\" in models) printf 'opencode-go/glm-5.3\\nopencode-go/deepseek-v4-flash\\nopenai/gpt-5.6-sol\\n' ;; esac\n"
-	if err := os.WriteFile(filepath.Join(dir, "opencode"), []byte(script), 0o755); err != nil {
-		t.Fatal(err)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("CODEX_HOME", "/elsewhere")
+	scripts := map[string]string{
+		"opencode": "#!/bin/sh\ncase \"$1\" in models) printf 'opencode-go/glm-5.3\\nopencode-go/deepseek-v4-flash\\nopenai/gpt-5.6-sol\\n' ;; esac\n",
+		"codex":    "#!/bin/sh\n[ \"$CODEX_HOME\" = \"" + home + "/.codex\" ] || exit 9\n[ \"$1 $2\" = \"debug models\" ] && printf '%s' '" + codexListing + "'\n",
+	}
+	for name, script := range scripts {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(script), 0o755); err != nil {
+			t.Fatal(err)
+		}
 	}
 	t.Setenv("PATH", dir)
 }
@@ -24,6 +35,10 @@ func TestSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
 	const seed = `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}` + "\n"
 	for name, args := range map[string][]string{
 		"unknown opencode id":      {"reviewer", "--client", "opencode", "--model", "openai/nope"},
+		"unknown codex model":      {"reviewer", "--client", "codex", "--model", "gpt-nope"},
+		"hidden codex model":       {"reviewer", "--client", "codex", "--model", "gpt-reserve"},
+		"unsupported codex effort": {"reviewer", "--client", "codex", "--model", "gpt-6-luna", "--effort", "ultra"},
+		"codex provider id":        {"reviewer", "--client", "codex", "--model", "openai/gpt-6-luna"},
 		"unknown claude alias":     {"reviewer", "--client", "claude", "--model", "claudius"},
 		"unsupported haiku effort": {"reviewer", "--client", "claude", "--model", "haiku", "--effort", "high"},
 		"unknown role":             {"planner", "--client", "claude", "--model", "opus"},
@@ -43,6 +58,20 @@ func TestSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
 		}
 		if string(got) != seed {
 			t.Errorf("%s: a rejected set rewrote the state file:\n%s", name, got)
+		}
+	}
+}
+
+// TestSetAcceptsListedCodexModels covers the catalog path: a listed model at a supported effort, and inherit, which needs no listing.
+func TestSetAcceptsListedCodexModels(t *testing.T) {
+	listingPath(t)
+	path := filepath.Join(t.TempDir(), "state.json")
+	for _, args := range [][]string{
+		{"reviewer", "--client", "codex", "--model", "gpt-6.1-sol", "--effort", "ultra"},
+		{"executor", "--client", "codex", "--model", "inherit", "--effort", "high"},
+	} {
+		if err := run(path, append([]string{"set"}, args...), &strings.Builder{}); err != nil {
+			t.Errorf("set %v: %v", args, err)
 		}
 	}
 }
