@@ -62,6 +62,7 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 	writeSkill(t, c, "metadata-only", "---\nmetadata:\n  opencode/autoinvoke: \"false\"\n---\nbody\n")
 	writeSkill(t, c, "workflow", "---\ndescription: auto-invoked\n---\nbody\n")
 	writeSkill(t, c, "land", "---\ndescription: merges\n---\nbody\n")
+	writeSkill(t, c, "build", "---\ndescription: runs unattended\n---\nbody\n")
 	writeSkill(t, c, "review", "---\ndescription: model-invoked when a change map flags a critical hunk\n---\nbody\n")
 	if err := os.MkdirAll(filepath.Join(c.Skills(), "empty"), 0o755); err != nil {
 		t.Fatal(err)
@@ -80,6 +81,8 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 		"metadata-only: missing disable-model-invocation",
 		"land: missing disable-model-invocation",
 		"land: missing opencode/autoinvoke",
+		"build: missing disable-model-invocation",
+		"build: missing opencode/autoinvoke",
 	}
 	got := strings.Join(problems, "\n")
 	for _, w := range want {

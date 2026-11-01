@@ -7,6 +7,8 @@ description: "Map authorized tracker operations to committed markdown files with
 
 Read when `docs/agents/harness.json` selects `local-markdown`. This capability maps tracker operations; it grants no commits, publication, or automatic transition. Ordinary implementation and local spec drafts need no tracker writes.
 
+In this harness `ready-for-human` means the pull request is ready for a human to review, unlike mattpocock/skills, where it means a human must implement the ticket.
+
 ## Layout and identity
 
 Use `<spec_home>/<feature-slug>/spec.md` and `<spec_home>/<feature-slug>/issues/<NN>-<slug>.md`. Derive the feature slug from the title, lowercase with non-alphanumeric runs replaced by one hyphen. Preserve existing identifiers. Ticket id `<feature-slug>-<NN>` resolves to exactly one issue file; a promoted single-slice spec uses `<feature-slug>` and resolves to `spec.md`. Numbers alone are ambiguous across features.

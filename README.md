@@ -29,9 +29,10 @@ Skills compose around the task. Use investigation for unknowns, specifications f
 | `e2e-verification` | Scripted browser E2E QA of what ships, on an isolated install, with real screenshots per test and a published report; `create` and `maintain` modes write and keep current a project-local `verify-<app>` skill with a feature map |
 | `change-map` | Sort a change into review tiers (critical, behavioral, structural, tests-docs, mechanical) on a deterministic floor from `harness change-map`, and tell the human what to read and what each risky item is safe because of |
 | `review` | Focused independent inspection when requested, when `change-map` finds critical items, or when a concrete security, data-loss, compatibility, or concurrency risk exceeds ordinary checks; findings must be walked, the parent tries to reproduce them, and an opt-in adversary mode runs two reviewers on different clients |
-| `continuity` | One local task/spec document and full project-scoped Engram mirror when the request and Git diff cannot preserve enough context |
+| `continuity` | One local task/spec document with a `## Decisions` table, a project-scoped Engram mirror for multi-session work, and the choice of how to cross a phase boundary (continue, clear, hand off, delegate, or compact) |
 | `open-pr` | Explicitly requested commits, publication, and required-check repairs |
 | `address-review` | Apply feedback, review comments, or check repairs on the existing branch using its scoped authorization |
+| `build` | Human-started: build a spec's slices or a set of tickets unattended on one integration branch with executors in worktrees, then verify, map, and review it, and open a PR only when delivery was requested |
 | `land`, `abandon` | Explicit merge/cleanup or scoped discard authority |
 
 Routine work creates no task artifact and requires no independent reviewer. Longer work reuses a document or creates `docs/agents/tasks/<feature>.md`; unavailable memory leaves its mirror explicitly pending. Recovery reads both copies, reconciles against Git, preserves unfinished requirements and conflicts, and invalidates stale checks. Legacy checkpoints remain intact as recoverable context, without granting authority.
@@ -40,7 +41,7 @@ Routine work creates no task artifact and requires no independent reviewer. Long
 
 Capabilities live under `skills/` and `/name` invokes one explicitly. Descriptions support useful selection without mandatory lifecycle routing. External text remains task data and never grants authority.
 
-The guarded capabilities are `land`, `abandon`, `setup-harness`, and `grill-with-docs`: they merge, discard, provision, or start a human-led interview, so only a human starts them. Each carries `disable-model-invocation: true` and `metadata."opencode/autoinvoke": "false"`. The installer rejects missing or half-present required guards. Every other local skill loads when its description fits the task. Locked bodies retain upstream bytes and no added guards; policy controls their use.
+The guarded capabilities are `land`, `abandon`, `setup-harness`, `grill-with-docs`, and `build`: they merge, discard, provision, start a human-led interview, or run unattended, so only a human starts them. Each carries `disable-model-invocation: true` and `metadata."opencode/autoinvoke": "false"`. The installer rejects missing or half-present required guards. Every other local skill loads when its description fits the task. Locked bodies retain upstream bytes and no added guards; policy controls their use.
 
 ### Command contract
 
@@ -204,7 +205,7 @@ Binaries are the deliberate exception. Every prose body has its hash in `skills-
 
 ## Roster
 
-Investigation capabilities are `explain` (how code works, why it is that way, and what states it moves through), `research`, `triage`, and `harness-audit`. Optional planning capabilities are `spec`, `proto`, and `create-ticket`. Verification, inspection, recovery, and delivery are `verification`, `e2e-verification` (release E2E QA with screenshots), `change-map` (review tiers and what a human must read), `review`, `continuity`, and `open-pr`. Maintenance uses `address-review`; explicit terminal actions use `land` and `abandon`.
+Investigation capabilities are `explain` (how code works, why it is that way, and what states it moves through), `research`, `triage`, and `harness-audit`. Optional planning capabilities are `spec` (the specification, its test seams, and tickets when requested) and `proto` (logic and UI prototypes); `build` runs the resulting slices unattended. Verification, inspection, recovery, and delivery are `verification`, `e2e-verification` (release E2E QA with screenshots), `change-map` (review tiers and what a human must read), `review`, `continuity`, and `open-pr`. Maintenance uses `address-review`; explicit terminal actions use `land` and `abandon`.
 
 `be-ambitious` rewrites a task with stronger sources, methods, and external checks while preserving its scope. It stops after the rewrite. This is an editable local copy from [DannyMac180/skills](https://github.com/DannyMac180/skills/tree/7dc63b7a748b8bd14bf213c15ecddd4536409407/be-ambitious), with its MIT notice retained in `skills/be-ambitious/SKILL.md`; it is not managed by `skills-lock.json`.
 
@@ -246,7 +247,7 @@ Tracker integration is optional. Explicit ticket publication uses native issue r
 
 Orca owns cross-vendor delegated execution, placement, messages, and retained worker results; a same-client role runs as a native subagent. Use Orca for worker and worktree visibility; `harness skills verify` and `harness bench` remain directly available. The dashboard command and Worktrunk provisioning are retired. Existing worktrees, Worktrunk's installed configuration file and shell integration, and installed packages are left alone.
 
-The `continuity` capability keeps longer work in one task/spec document, mirrored in full to one project-scoped Engram observation with its locator. It reconciles conflicts and stale evidence against Git, preserves legacy checkpoint records, and reports unavailable mirroring as pending. It creates no artifact for bounded work that the request and diff can reconstruct. Worker output stays retrievable through Orca or a retained artifact; task completion supplies no delivery or merge authority.
+The `continuity` capability keeps longer work in one task/spec document, mirrored in full to one project-scoped Engram observation with its locator when the work spans sessions (the mirror is optional for work that fits one session). It keeps a `## Decisions` table that `change-map` reads and names how to cross a boundary between phases. It reconciles conflicts and stale evidence against Git, preserves legacy checkpoint records, and reports unavailable mirroring as pending. It creates no artifact for bounded work that the request and diff can reconstruct. Worker output stays retrievable through Orca or a retained artifact; task completion supplies no delivery or merge authority.
 
 ## Validation
 
