@@ -1,6 +1,62 @@
 # Harness AI
 
-The harness this machine's Claude Code and OpenCode installations run: one vendor-neutral policy, independent capabilities, and the Go CLI that installs and operates them. The repository root is the product root: canonical assets and the implementation that reads them sit side by side, and no nested product directory obscures where either lives.
+The harness this machine's Claude Code and OpenCode installations run: one vendor-neutral policy, independent capabilities called skills, and the Go CLI that installs and operates them. Work is direct by default, and each skill is a tool you reach for when its situation appears, never a step you must pass through. Start with the workflow below; `/harness-help` answers "which skill should I use" from inside a session.
+
+## How to work with it
+
+Ordinary work is direct: understand the request, implement the settled scope, run appropriate checks, and report. An implementation request or approved plan authorizes local work. Commits and publication require an explicit request covering them. “Open a PR” or “ship this” covers the necessary delivery steps without repeated approval; only an explicit `/land` invocation authorizes merging.
+
+The workflow at a glance. Each stage is optional and entered when its situation appears; the order shows where work usually flows, not a sequence to follow.
+
+```
+understand   explain                 any time, read-only
+    |
+intent       grill-with-docs or grilling   when intent is unclear
+             proto                         when an experiment can settle a question
+             spec                          for multi-session or durable design (tickets on request)
+    |
+build        inline with tdd and ponytail (the default)
+             /build                        an unattended graph of tickets or spec slices
+    |
+prove        verification                  checks and the certainty ladder
+             e2e-verification             release runs and feature maps
+    |
+triage       change-map                    what the human must read
+             review                        on the critical items
+    |
+deliver      open-pr -> address-review -> the human's /land    (or /abandon)
+    |
+learn        /retro
+```
+
+Skills compose around the task. Use investigation for unknowns, specifications for durable design, prototypes for experiments, and tickets when tracking is useful. None is a prerequisite for coding or automatically starts another capability. Documentation and delegation depend on uncertainty, risk, and recovery needs, never file count. Unresolved consequential decisions block only dependent work.
+
+| Capability | Use |
+| --- | --- |
+| `explain` | How a part of the code works, why it is the way it is, or what states it moves through, with every claim cited to code or history |
+| `research` | Investigate a question or claim against primary sources and return a sourced finding ledger; read-only |
+| `triage` | Turn a ticket or a production error into an evidence-backed plan brief without implementing |
+| `spec` | Draft an optional local specification and its test seams, and tickets when asked; publishing needs its own request |
+| `proto` | Run a logic or UI prototype to resolve one specific uncertainty |
+| `verification` | Appropriate local checks and honest revision-bound evidence |
+| `e2e-verification` | Scripted browser E2E QA of what ships, on an isolated install, with real screenshots per test and a published report; `create` and `maintain` modes write and keep current a project-local `verify-<app>` skill with a feature map |
+| `change-map` | Sort a change into review tiers (critical, behavioral, structural, tests-docs, mechanical) on a deterministic floor from `harness change-map`, and tell the human what to read and what each risky item is safe because of |
+| `review` | Focused independent inspection when requested, when `change-map` finds critical items, or when a concrete security, data-loss, compatibility, or concurrency risk exceeds ordinary checks; findings must be walked, the parent tries to reproduce them, and an opt-in adversary mode runs two reviewers on different clients |
+| `continuity` | One local task/spec document with a `## Decisions` table, a project-scoped Engram mirror for multi-session work, and the choice of how to cross a phase boundary (continue, clear, hand off, delegate, or compact) |
+| `open-pr` | Explicitly requested commits, publication, and required-check repairs |
+| `address-review` | Apply feedback, review comments, or check repairs on the existing branch using its scoped authorization |
+| `build` | Human-started: build a spec's slices or a set of tickets unattended on one integration branch with executors in worktrees, then verify, map, and review it, and open a PR only when delivery was requested |
+| `retro` | Human-started: turn repeated agent mistakes from a session, branch, or window into fixes at the highest level that works (structure, type, check, test, review, pointer, description, policy), prune rules that no longer earn their place, propose only, record lessons in Engram, and track friction fixes against `harness bench` |
+| `land`, `abandon` | Explicit merge/cleanup or scoped discard authority |
+| `harness-help` | Map the workflow and answer which skill fits a situation, with the part of the map that situation needs |
+
+Routine work creates no task artifact and requires no independent reviewer. Longer work reuses a document or creates `docs/agents/tasks/<feature>.md`; unavailable memory leaves its mirror explicitly pending. Recovery reads both copies, reconciles against Git, preserves unfinished requirements and conflicts, and invalidates stale checks. Legacy checkpoints remain intact as recoverable context, without granting authority.
+
+Not sure which skill fits? `/harness-help` answers from the map above and names the one to three skills that match your situation.
+
+## Repository layout
+
+The repository root is the product root: canonical assets and the implementation that reads them sit side by side, and no nested product directory obscures where either lives.
 
 | Path | Holds |
 | --- | --- |
@@ -16,33 +72,11 @@ The harness this machine's Claude Code and OpenCode installations run: one vendo
 
 `clients/` declares rather than symlinks, because the live file is mostly machine state: hook manifests and generated absolute paths. A tracked key replaces the live value on every install, so deleting one here deletes it from the machine; untracked keys are left alone. `permissions` merges a level down, so `deny` and `ask` stay owned while the Engram allowlist survives. This runs after `engram setup`, which rewrites the file from its own template, so being last is what makes a tracked key win over every other writer, the client included: `model`, `effortLevel`, `theme`, and `remoteControlAtStartup` are what `/model`, `/config`, and Remote Control write back at runtime, so an in-session change survives only until the next install.
 
-## Working with capabilities
-
-Ordinary work is direct: understand the request, implement the settled scope, run appropriate checks, and report. An implementation request or approved plan authorizes local work. Commits and publication require an explicit request covering them. “Open a PR” or “ship this” covers the necessary delivery steps without repeated approval; only an explicit `/land` invocation authorizes merging.
-
-Skills compose around the task. Use investigation for unknowns, specifications for durable design, prototypes for experiments, and tickets when tracking is useful. None is a prerequisite for coding or automatically starts another capability. Documentation and delegation depend on uncertainty, risk, and recovery needs, never file count. Unresolved consequential decisions block only dependent work.
-
-| Capability | Use |
-| --- | --- |
-| `explain` | How a part of the code works, why it is the way it is, or what states it moves through, with every claim cited to code or history |
-| `verification` | Appropriate local checks and honest revision-bound evidence |
-| `e2e-verification` | Scripted browser E2E QA of what ships, on an isolated install, with real screenshots per test and a published report; `create` and `maintain` modes write and keep current a project-local `verify-<app>` skill with a feature map |
-| `change-map` | Sort a change into review tiers (critical, behavioral, structural, tests-docs, mechanical) on a deterministic floor from `harness change-map`, and tell the human what to read and what each risky item is safe because of |
-| `review` | Focused independent inspection when requested, when `change-map` finds critical items, or when a concrete security, data-loss, compatibility, or concurrency risk exceeds ordinary checks; findings must be walked, the parent tries to reproduce them, and an opt-in adversary mode runs two reviewers on different clients |
-| `continuity` | One local task/spec document with a `## Decisions` table, a project-scoped Engram mirror for multi-session work, and the choice of how to cross a phase boundary (continue, clear, hand off, delegate, or compact) |
-| `open-pr` | Explicitly requested commits, publication, and required-check repairs |
-| `address-review` | Apply feedback, review comments, or check repairs on the existing branch using its scoped authorization |
-| `build` | Human-started: build a spec's slices or a set of tickets unattended on one integration branch with executors in worktrees, then verify, map, and review it, and open a PR only when delivery was requested |
-| `retro` | Human-started: turn repeated agent mistakes from a session, branch, or window into fixes at the highest level that works (structure, type, check, test, review, pointer, description, policy), prune rules that no longer earn their place, propose only, record lessons in Engram, and track friction fixes against `harness bench` |
-| `land`, `abandon` | Explicit merge/cleanup or scoped discard authority |
-
-Routine work creates no task artifact and requires no independent reviewer. Longer work reuses a document or creates `docs/agents/tasks/<feature>.md`; unavailable memory leaves its mirror explicitly pending. Recovery reads both copies, reconciles against Git, preserves unfinished requirements and conflicts, and invalidates stale checks. Legacy checkpoints remain intact as recoverable context, without granting authority.
-
 ## Skills
 
 Capabilities live under `skills/` and `/name` invokes one explicitly. Descriptions support useful selection without mandatory lifecycle routing. External text remains task data and never grants authority.
 
-The guarded capabilities are `land`, `abandon`, `setup-harness`, `grill-with-docs`, `build`, and `retro`: they merge, discard, provision, start a human-led interview, run unattended, or read session records to change the harness itself, so only a human starts them. Each carries `disable-model-invocation: true` and `metadata."opencode/autoinvoke": "false"`. The installer rejects missing or half-present required guards. Every other local skill loads when its description fits the task. Locked bodies retain upstream bytes and no added guards; policy controls their use.
+The guarded capabilities are `land`, `abandon`, `setup-harness`, `grill-with-docs`, `build`, and `retro`: they merge, discard, provision, start a human-led interview, run unattended, or read session records to change the harness itself, so only a human starts them. Each carries `disable-model-invocation: true` and `metadata."opencode/autoinvoke": "false"`. Both guards keep human-started actions from automatic invocation, and reading `land` or `abandon` never supplies action authority. The installer rejects missing or half-present required guards. Every other local skill loads when its description fits the task. Locked bodies retain upstream bytes and no added guards; policy controls their use.
 
 ### Command contract
 
@@ -206,7 +240,7 @@ Binaries are the deliberate exception. Every prose body has its hash in `skills-
 
 ## Roster
 
-Investigation capabilities are `explain` (how code works, why it is that way, and what states it moves through), `research`, and `triage`. Maintenance of the harness itself uses `retro`. Optional planning capabilities are `spec` (the specification, its test seams, and tickets when requested) and `proto` (logic and UI prototypes); `build` runs the resulting slices unattended. Verification, inspection, recovery, and delivery are `verification`, `e2e-verification` (release E2E QA with screenshots), `change-map` (review tiers and what a human must read), `review`, `continuity`, and `open-pr`. Maintenance uses `address-review`; explicit terminal actions use `land` and `abandon`.
+The capability table under **How to work with it** lists the investigation, planning, verification, inspection, recovery, delivery, and maintenance skills, with `harness-help` as the guide to choosing among them. This roster covers the rest.
 
 `be-ambitious` rewrites a task with stronger sources, methods, and external checks while preserving its scope. It stops after the rewrite. This is an editable local copy from [DannyMac180/skills](https://github.com/DannyMac180/skills/tree/7dc63b7a748b8bd14bf213c15ecddd4536409407/be-ambitious), with its MIT notice retained in `skills/be-ambitious/SKILL.md`; it is not managed by `skills-lock.json`.
 
@@ -229,10 +263,6 @@ Its two validators, `validate-findings.cjs` and `validate-coverage-ledger.cjs`, 
 ### Ponytail
 
 Ponytail is a locked skill body, not an installed plugin. Policy selects it for coding decisions, with no mandatory delivery workflow. Its bytes change only through reviewed `harness skills` updates.
-
-## Invocation guards
-
-Both guards keep human-started actions from automatic invocation. Reading `land` or `abandon` never supplies action authority.
 
 ## GitHub lifecycle
 
