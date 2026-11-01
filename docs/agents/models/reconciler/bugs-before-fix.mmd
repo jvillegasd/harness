@@ -1,0 +1,56 @@
+---
+title: "Agent lifecycle reconciler"
+---
+stateDiagram-v2
+  direction LR
+  state "Legend" as legend {
+    lg0: Breaks BlockedExactlyWhileBlockerUnmerged or ParentNeverReadyForAgent in some cases
+    lg1: Path to the BlockedExactlyWhileBlockerUnmerged or ParentNeverReadyForAgent bug
+  }
+  class lg0 mayBreak
+  class lg1 bugPath
+  state "At the same time" as all {
+    state "Ticket A" as r0 {
+      s0: ready
+      s1: merged
+      [*] --> s0
+      s0 --> s1: a PR merges and closes it [when Parent is closed and Workflow is one run]
+    }
+    --
+    state "Ticket B" as r1 {
+      s2: blocked
+      [*] --> s2
+    }
+    --
+    state "Parent" as r2 {
+      s3: open
+      s4: closed
+      s5: open, ready for agent
+      [*] --> s3
+      s3 --> s4: someone closes it by hand [when Ticket A is ready and Workflow is idle]
+      s4 --> s3: someone reopens it
+      s3 --> s5: the workflow runs [when Workflow is one run]
+    }
+    --
+    state "Workflow" as r3 {
+      s6: idle
+      s7: one run
+      s8: run plus one pending
+      [*] --> s6
+      s6 --> s7: someone closes it by hand [when Ticket A is ready and Parent is open]
+      s7 --> s8: a PR merges and closes it or someone reopens it [when Ticket A is ready and Parent is closed]
+      s8 --> s7: the workflow runs [when Parent is open]
+      s7 --> s6: the workflow runs [when Parent is open]
+    }
+  }
+  classDef mayBreak fill:#fff3e6,stroke:#e8730c,stroke-width:2.5px,color:#b85a06
+  class s0 bugPath
+  class s1 bugPath
+  class s2 bugPath
+  class s3 bugPath
+  class s4 bugPath
+  class s5 mayBreak
+  class s5 bugPath
+  class s6 bugPath
+  class s7 bugPath
+  class s8 bugPath

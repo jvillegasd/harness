@@ -341,8 +341,25 @@ func reconcileFrontier(api issueAPI, number int, labels map[string]string, reset
 		desired = desired.minus(active)
 		desired[labels["blocked"]] = true
 	case resetActive || !current.intersects(active) || current.intersects(released):
-		desired = desired.minus(active)
-		desired[labels["ready_for_agent"]] = true
+		ticket := desired.minus(active)
+		ticket[labels["ready_for_agent"]] = true
+		if ticket.equals(current) {
+			break
+		}
+		// A parent is a container, not work an agent picks up: a reopen does not reset it, and a release returns it to in-progress. Any sub-issue makes it a parent, as in reconcileParent. The lookup runs only when the labels would change, so a steady frontier costs no extra call.
+		children, err := api.related(number, "sub_issues")
+		if err != nil {
+			return err
+		}
+		switch {
+		case len(children) == 0:
+			desired = ticket
+		case resetActive && current.intersects(active) && !current.intersects(released):
+			// A reopened parent keeps its active label.
+		default:
+			desired = desired.minus(active)
+			desired[labels["in_progress"]] = true
+		}
 	}
 	if !desired.equals(current) {
 		return api.update(number, map[string]any{"labels": desired.sorted()})
@@ -452,6 +469,9 @@ func reconcile(api issueAPI, eventNumber int, labels map[string]string, eventAct
 		if err != nil {
 			return err
 		}
+		if err := reconcileChildren(api, current.number, labels); err != nil {
+			return err
+		}
 		if changed {
 			if err := reconcileFrontier(api, current.number, labels, false); err != nil {
 				return err
@@ -466,9 +486,30 @@ func reconcile(api issueAPI, eventNumber int, labels map[string]string, eventAct
 			if err != nil {
 				return err
 			}
+			if err := reconcileChildren(api, parents[0].Number, labels); err != nil {
+				return err
+			}
 			if changed {
 				queue = append(queue, item{parents[0].Number, false})
 			}
+		}
+	}
+	return nil
+}
+
+// reconcileChildren recomputes the frontier of a parent's open, enrolled children. The workflow's concurrency group keeps at most one pending run, so a newer event can replace a blocker's close event; reconciling the event issue's children and siblings on each run heals a dropped event within that family, though not in deeper or unrelated trees. Closed and planning-only children are skipped from the listed payload so a large tree costs no extra calls for them.
+func reconcileChildren(api issueAPI, parent int, labels map[string]string) error {
+	children, err := api.related(parent, "sub_issues")
+	if err != nil {
+		return err
+	}
+	lifecycle := lifecycleSet(labels)
+	for _, child := range children {
+		if child.State != "open" || !labelNames(child).intersects(lifecycle) {
+			continue
+		}
+		if err := reconcileFrontier(api, child.Number, labels, false); err != nil {
+			return err
 		}
 	}
 	return nil
