@@ -174,9 +174,7 @@ func codexLaunch(a Assignment, level, instructions string) []string {
 	enc := json.NewEncoder(&quoted)
 	enc.SetEscapeHTML(false)
 	_ = enc.Encode(instructions)
-	if level == "read-search" {
-		argv = append(argv, "-c", "features.apps=false", "-c", "features.plugins=false")
-	}
+	argv = append(argv, agents.CodexFeatures(level)...)
 	return append(argv, "-c", "developer_instructions="+strings.ReplaceAll(strings.TrimSuffix(quoted.String(), "\n"), "\x7f", `\u007f`),
 		"--ask-for-approval", "never", "--sandbox", "workspace-write", "-c", "sandbox_workspace_write.network_access=true")
 }

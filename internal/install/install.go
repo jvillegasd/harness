@@ -225,6 +225,7 @@ func (in *installer) install() {
 	if len(unguarded) > 0 {
 		die("Local skill missing an invocation guard: %s", strings.Join(unguarded, "; "))
 	}
+	in.openCodeConfig()
 	in.warnUnlessZsh()
 	in.installBinary()
 	if !in.skipPackages {
@@ -237,7 +238,7 @@ func (in *installer) install() {
 	if in.skipPackages {
 		in.installEngram()
 	}
-	// All three after Engram, whose setup rewrites settings.json and opencode.json from its own template: the harness is the last writer, which is what makes the tracked values the ones a client reads. Engram's own Claude Code MCP entry comes after installAgentBrowser, because that is what validates OpenCode's config, and a config this run refuses must leave both clients as they were.
+	// All three after Engram, whose setup rewrites settings.json and opencode.json from its own template: the harness is the last writer, which is what makes the tracked values the ones a client reads. OpenCode's config was validated before any of this, and installAgentBrowser reads it again after Engram rewrote it.
 	in.installAgentBrowser()
 	in.registerEngramClaudeMCP()
 	in.reconcileClaudeSettings()

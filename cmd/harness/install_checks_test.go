@@ -378,8 +378,31 @@ func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
 	if got := readFile(t, config); got != text {
 		t.Errorf("the refused config changed: %q", got)
 	}
-	if strings.Contains(readFile(t, filepath.Join(base, "shims.log")), "claude mcp add") {
-		t.Error("Claude Code was registered before the refusal")
+	log := readFileOr(filepath.Join(base, "shims.log"))
+	for _, early := range []string{"claude mcp add", "codex mcp add", "engram setup"} {
+		if strings.Contains(log, early) {
+			t.Errorf("%q ran before the refusal:\n%s", early, log)
+		}
+	}
+}
+
+// With Codex gone, its uninstall still removes Engram's files beside config.toml and succeeds, leaving the config entries with a warning.
+func TestCodexUninstallWithoutCodex(t *testing.T) {
+	base := sandbox(t)
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	codexHome := filepath.Join(base, "home", ".codex")
+	for _, name := range []string{"engram-instructions.md", "engram-compact-prompt.md"} {
+		writeMode(t, filepath.Join(codexHome, name), "engram\n", 0o644)
+	}
+	if err := os.Remove(filepath.Join(base, "shims", "codex")); err != nil {
+		t.Fatal(err)
+	}
+	r := ok(t, runInstaller(t, base, "--uninstall", "--client", "codex", "--yes"), "Codex uninstall without Codex")
+	if !strings.Contains(r.stderr, "Codex is not installed") {
+		t.Errorf("no warning about the entries left behind:\n%s", r.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(codexHome, "engram-instructions.md")); err == nil {
+		t.Error("Engram's instructions file survived")
 	}
 }
 

@@ -356,20 +356,8 @@ func (in *installer) registerEngramClaudeMCP() {
 	}
 }
 
-// installAgentBrowser registers agent-browser in every client, since it ships no registrar of its own. Remove then add, so a re-run rewrites the pinned path; OpenCode takes a JSON edit because `opencode mcp add` is interactive.
-func (in *installer) installAgentBrowser() {
-	in.log("Reconciling agent-browser")
-	binary, err := exec.LookPath("agent-browser")
-	if err != nil {
-		die("agent-browser is missing; run without --skip-packages to install it.")
-	}
-	if _, err := exec.LookPath("claude"); err != nil {
-		die("Claude Code is missing; run without --skip-packages to install it.")
-	}
-	if _, err := exec.LookPath("codex"); err != nil {
-		die("Codex is missing; run without --skip-packages to install it.")
-	}
-	// OpenCode's config is read and validated before any client is touched, so a config this run refuses leaves every registration as it was.
+// openCodeConfig reads opencode.json and its mcp object, refusing a file this run could not rewrite. install calls it before any client is touched, so a config this run refuses leaves every registration, Engram's included, as it was.
+func (in *installer) openCodeConfig() (string, *object, *object) {
 	path := filepath.Join(in.config, "opencode", "opencode.json")
 	doc := newObject()
 	if data, err := os.ReadFile(path); err == nil {
@@ -387,6 +375,23 @@ func (in *installer) installAgentBrowser() {
 		}
 		servers = parsed
 	}
+	return path, doc, servers
+}
+
+// installAgentBrowser registers agent-browser in every client, since it ships no registrar of its own. Remove then add, so a re-run rewrites the pinned path; OpenCode takes a JSON edit because `opencode mcp add` is interactive.
+func (in *installer) installAgentBrowser() {
+	in.log("Reconciling agent-browser")
+	binary, err := exec.LookPath("agent-browser")
+	if err != nil {
+		die("agent-browser is missing; run without --skip-packages to install it.")
+	}
+	if _, err := exec.LookPath("claude"); err != nil {
+		die("Claude Code is missing; run without --skip-packages to install it.")
+	}
+	if _, err := exec.LookPath("codex"); err != nil {
+		die("Codex is missing; run without --skip-packages to install it.")
+	}
+	path, doc, servers := in.openCodeConfig()
 	_ = in.codex("mcp", "remove", "agent-browser").Run()
 	add := in.codex("mcp", "add", "agent-browser", "--", binary, "mcp")
 	if err := add.Run(); err != nil {

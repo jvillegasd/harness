@@ -76,6 +76,17 @@ func RestrictionsMatch(relative, text, level string) bool {
 	return kept == "mode: all\n"+opencodeControls[level]
 }
 
+// CodexFeatures returns a level's Codex controls as `-c` overrides, for a session that never reads the agent file.
+func CodexFeatures(level string) []string {
+	var args []string
+	for _, line := range splitLines(codexControls[level]) {
+		if key, value, ok := strings.Cut(line, " = "); ok {
+			args = append(args, "-c", "features."+key+"="+value)
+		}
+	}
+	return args
+}
+
 // CodexInstructions returns a rendered Codex agent's developer_instructions body.
 func CodexInstructions(text string) (string, bool) {
 	start := strings.Index(text, "\n"+codexInstructions)

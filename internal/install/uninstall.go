@@ -170,9 +170,12 @@ func (in *installer) removeClaudeMCP() {
 	removeFile(filepath.Join(in.home, ".claude", "mcp", "engram.json"))
 }
 
-// removeCodexMCP removes what Engram's codex setup and the agent-browser registration wrote into ~/.codex, through Codex's own CLI and best effort, since one already gone is the state being asked for. A Codex already gone keeps its entries rather than having its config hand-edited.
+// removeCodexMCP removes what Engram's codex setup and the agent-browser registration wrote into ~/.codex, through Codex's own CLI and best effort, since one already gone is the state being asked for. Engram's files go whether or not Codex is installed; a Codex already gone keeps its config entries rather than having its config hand-edited.
 func (in *installer) removeCodexMCP() {
 	in.log("Removing Engram and agent-browser from Codex")
+	for _, name := range codexEngramFiles {
+		removeFile(filepath.Join(in.codexHome(), name))
+	}
 	if _, err := exec.LookPath("codex"); err != nil {
 		in.warn("Codex is not installed, so its engram and agent-browser entries stay in %s.", filepath.Join(in.codexHome(), "config.toml"))
 		return
@@ -181,9 +184,6 @@ func (in *installer) removeCodexMCP() {
 	_ = in.codex("mcp", "remove", "engram").Run()
 	_ = in.codex("plugin", "remove", "engram@engram").Run()
 	_ = in.codex("plugin", "marketplace", "remove", "engram").Run()
-	for _, name := range codexEngramFiles {
-		removeFile(filepath.Join(in.codexHome(), name))
-	}
 }
 
 // codexEngramFiles are what `engram setup codex` writes beside config.toml.
