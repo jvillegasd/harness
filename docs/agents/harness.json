@@ -15,6 +15,7 @@
     "internal/install/**",
     "internal/models/**",
     "skills/land/**",
+    "skills/review/**",
     "skills/abandon/**",
     "skills/setup-harness/scripts/**",
     ".github/**",
