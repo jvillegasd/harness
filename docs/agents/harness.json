@@ -16,6 +16,7 @@
     "internal/models/**",
     "skills/land/**",
     "skills/abandon/**",
+    "skills/setup-harness/scripts/**",
     ".github/**",
     "docs/agents/harness.json"
   ]

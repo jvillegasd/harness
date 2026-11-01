@@ -4,7 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/jvillegasd/harness/internal/skills"
 )
 
 func writeConfig(t *testing.T, root, body string) {
@@ -89,5 +92,56 @@ func TestLoadConfigRejectsMalformedJSON(t *testing.T) {
 	writeConfig(t, root, `{"criticalPaths": [`)
 	if _, err := LoadConfig(root); err == nil {
 		t.Fatal("LoadConfig accepted malformed JSON")
+	}
+}
+
+// TestLoadLocksReadsSkillFolders maps each lock entry to its skill folder and refuses an entry whose path could match outside skills.
+func TestLoadLocksReadsSkillFolders(t *testing.T) {
+	root := t.TempDir()
+	write := func(body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(root, SkillLockPath), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if locks, err := LoadLocks(root); err != nil || locks != nil {
+		t.Fatalf("missing lock = %v, %v; want none", locks, err)
+	}
+	body := filepath.Join(root, "skills", "a")
+	if err := os.MkdirAll(body, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(body, "SKILL.md"), []byte("upstream\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hash, _, err := skills.FolderHash(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(`{"version": 1, "skills": {"b": {"source": "o/b", "skillPath": "skills/b/SKILL.md", "computedHash": "` + hash + `"}, "a": {"source": "o/a", "skillPath": "skills/a/SKILL.md", "computedHash": "` + hash + `"}, "c": {"source": "o/c", "skillPath": "internal/c/SKILL.md", "computedHash": "` + hash + `"}}}`)
+	locks, err := LoadLocks(root)
+	if err != nil || len(locks) != 2 || locks[0].Dir != "skills/a" || !locks[0].Verified || !locks[0].Hashed["SKILL.md"] || locks[1].Dir != "skills/b" || locks[1].Verified {
+		t.Fatalf("LoadLocks = %+v, %v; want a verified, b unverified (no body), c outside skills/ ignored", locks, err)
+	}
+	if err := os.MkdirAll(filepath.Join(body, "node_modules"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(body, "node_modules", "x.js"), []byte("added\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if locks, _ := LoadLocks(root); !locks[0].Verified || locks[0].Hashed["node_modules/x.js"] {
+		t.Fatalf("a file the hash skips changed verification or was listed as covered: %+v", locks[0])
+	}
+	if err := os.WriteFile(filepath.Join(body, "SKILL.md"), []byte("edited\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if locks, _ := LoadLocks(root); locks[0].Verified {
+		t.Fatalf("an edited body still verified: %+v", locks)
+	}
+	for _, bad := range []string{"", "SKILL.md", "../x/SKILL.md"} {
+		write(`{"skills": {"x": {"source": "o/x", "skillPath": "` + bad + `"}}}`)
+		if _, err := LoadLocks(root); err == nil || !strings.Contains(err.Error(), `"x"`) {
+			t.Errorf("skillPath %q: err = %v, want a refusal naming the skill", bad, err)
+		}
 	}
 }

@@ -95,8 +95,16 @@ func isLocalHash(s string) bool {
 	return err == nil
 }
 
+// FolderHash is the folder hash a lock entry's computedHash records, with the forward-slash paths of the files it covered, for callers outside this package such as change-map. A path the hash skipped (under .git or node_modules, or not a regular file) is not in the list, so no caller can treat it as verified.
+func FolderHash(dir string) (string, []string, error) { return hashFolder(dir) }
+
 // folderHash reimplements skills.sh's computeSkillFolderHash: sha256 over each regular file's forward-slash path then its bytes, files ordered by localeCompare, .git and node_modules skipped.
 func folderHash(dir string) (string, error) {
+	hash, _, err := hashFolder(dir)
+	return hash, err
+}
+
+func hashFolder(dir string) (string, []string, error) {
 	var rels []string
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -119,7 +127,7 @@ func folderHash(dir string) (string, error) {
 		return nil
 	})
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	c := collate.New(language.Und)
 	sort.SliceStable(rels, func(i, j int) bool { return c.CompareString(rels[i], rels[j]) < 0 })
@@ -127,10 +135,10 @@ func folderHash(dir string) (string, error) {
 	for _, rel := range rels {
 		data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rel)))
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 		h.Write([]byte(rel))
 		h.Write(data)
 	}
-	return hex.EncodeToString(h.Sum(nil)), nil
+	return hex.EncodeToString(h.Sum(nil)), rels, nil
 }

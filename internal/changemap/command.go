@@ -34,6 +34,8 @@ type File struct {
 	Path   string `json:"path"`
 	Tier   Tier   `json:"tier"`
 	Reason string `json:"reason"`
+	// Files counts the changed files a grouped entry stands for, such as a locked skill body; it is omitted for a single file.
+	Files int `json:"files,omitempty"`
 }
 
 // Report is the JSON shape of the command's output.
@@ -100,6 +102,10 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness change-map: %v\n", err)
 		return 2
 	}
+	if cfg.Locked, err = LoadLocks(root); err != nil {
+		fmt.Fprintf(stderr, "harness change-map: %v\n", err)
+		return 2
+	}
 	report := Build(changes, cfg)
 	if asJSON {
 		encoder := json.NewEncoder(stdout)
@@ -120,9 +126,20 @@ func Build(changes Changes, cfg Config) Report {
 	for _, tier := range Tiers {
 		report.Totals[tier] = 0
 	}
+	groups := map[string]int{}
 	for _, path := range changes.Files {
 		result := Classify(path, cfg)
-		report.Files = append(report.Files, File{path, result.Tier, result.Reason})
+		if result.Group != "" {
+			if i, ok := groups[result.Group]; ok {
+				report.Files[i].Files++
+				continue
+			}
+			groups[result.Group] = len(report.Files)
+			report.Files = append(report.Files, File{result.Group, result.Tier, result.Reason, 1})
+			report.Totals[result.Tier]++
+			continue
+		}
+		report.Files = append(report.Files, File{Path: path, Tier: result.Tier, Reason: result.Reason})
 		report.Totals[result.Tier]++
 	}
 	sort.SliceStable(report.Files, func(i, j int) bool {
@@ -139,7 +156,11 @@ func Build(changes Changes, cfg Config) Report {
 func (r Report) Text() string {
 	var out strings.Builder
 	for _, f := range r.Files {
-		fmt.Fprintf(&out, "%s\t%s\t%s\n", f.Tier, f.Path, f.Reason)
+		reason := f.Reason
+		if f.Files > 0 {
+			reason = fmt.Sprintf("%d files: %s", f.Files, reason)
+		}
+		fmt.Fprintf(&out, "%s\t%s\t%s\n", f.Tier, f.Path, reason)
 	}
 	for i := len(Tiers) - 1; i >= 0; i-- {
 		fmt.Fprintf(&out, "total\t%s\t%d\n", Tiers[i], r.Totals[Tiers[i]])

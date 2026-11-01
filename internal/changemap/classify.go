@@ -29,15 +29,17 @@ func (t Tier) Rank() int {
 	return -1
 }
 
-// Result is a floor tier with the short reason a reader can check.
+// Result is a floor tier with the short reason a reader can check. Results sharing a Group are reported as one entry, so a vendored body does not bury the files a human reads.
 type Result struct {
 	Tier   Tier
 	Reason string
+	Group  string
 }
 
 // BuiltinCritical are the paths critical in any repository: automation that runs with repository credentials, and schema or infrastructure definitions. A repository adds its own through criticalPaths.
 var BuiltinCritical = []string{
-	ConfigPath, // it decides every other file's floor
+	ConfigPath,    // it decides every other file's floor
+	SkillLockPath, // it decides which vendored bodies collapse, and names their upstream source
 	".github/workflows/**",
 	"**/migrations/**",
 	"**/*.sql",
@@ -61,53 +63,69 @@ var (
 	docFilePatterns  = []string{"*.md", "*.mdx", "*.rst", "*.txt"}
 )
 
-// Classify assigns the floor tier for one repo-relative, slash-separated path. The first rule that matches wins, in this order: critical, mechanical, the agent-instruction exception, tests and docs, then the structural default. Mechanical comes only from the lockfile and generated rules, so a path no rule names is never skipped as noise.
+// Classify assigns the floor tier for one repo-relative, slash-separated path. The first rule that matches wins, in this order: critical, the skill lock and locked bodies, mechanical, the agent-instruction exception, tests and docs, then the structural default. Mechanical comes only from locked skill bodies and the lockfile and generated rules, so a path no rule names is never skipped as noise.
 func Classify(file string, cfg Config) Result {
 	for _, glob := range cfg.CriticalPaths {
 		if Match(glob, file) {
-			return Result{Critical, "configured critical path " + glob}
+			return Result{Tier: Critical, Reason: "configured critical path " + glob}
 		}
 	}
 	for _, glob := range BuiltinCritical {
 		if Match(glob, file) {
-			return Result{Critical, "built-in critical path " + glob}
+			return Result{Tier: Critical, Reason: "built-in critical path " + glob}
 		}
+	}
+
+	// A locked body collapses only while it still hashes to its lock entry, so the critical lock change that names its upstream source is what a human reads instead. A body that no longer matches has been edited in place, which is exactly what must not hide.
+	for _, lock := range cfg.Locked {
+		if !strings.HasPrefix(file, lock.Dir+"/") {
+			continue
+		}
+		if !lock.Verified {
+			return Result{Tier: Structural, Reason: "locked body " + lock.Name + " does not match its lock hash; read the edit"}
+		}
+		if lock.Hashed[strings.TrimPrefix(file, lock.Dir+"/")] {
+			return Result{Tier: Mechanical, Reason: "locked body " + lock.Name + " from " + lock.Source + ", matching its lock hash", Group: lock.Dir + "/"}
+		}
+		// A path the hash never covered, such as a file under node_modules or a symlink, takes the ordinary rules.
+		break
 	}
 
 	base := path.Base(file)
 	for _, name := range lockfiles {
 		if base == name {
-			return Result{Mechanical, "lockfile"}
+			return Result{Tier: Mechanical, Reason: "lockfile"}
 		}
 	}
 	if matchesAny(generatedPatterns, base) {
-		return Result{Mechanical, "generated file"}
+		return Result{Tier: Mechanical, Reason: "generated file"}
 	}
 
-	// Skills, roles, and the instruction files clients load (AGENTS.md, CLAUDE.md) are executable agent instructions even when they look like docs or tests, so they never drop to tests-docs. The prefix is top-level only: internal/skills is Go code about skills, not a skill.
-	if base == "SKILL.md" || base == "AGENTS.md" || base == "CLAUDE.md" || strings.HasPrefix(file, "skills/") || strings.HasPrefix(file, "roles/") {
-		return Result{Structural, "agent instruction; read as executable"}
+	// The instruction files clients load (SKILL.md, AGENTS.md, CLAUDE.md) and the prose under skills/ and roles/ are executable agent instructions even when they look like docs or tests, so they never drop to tests-docs. Code under those prefixes, such as a skill's scripts and their tests, falls through to the ordinary rules. The prefix is top-level only: internal/skills is Go code about skills, not a skill.
+	if base == "SKILL.md" || base == "AGENTS.md" || base == "CLAUDE.md" ||
+		((strings.HasPrefix(file, "skills/") || strings.HasPrefix(file, "roles/")) && matchesAny(docFilePatterns, base)) {
+		return Result{Tier: Structural, Reason: "agent instruction; read as executable"}
 	}
 
 	segments := strings.Split(file, "/")
 	for _, segment := range segments[:len(segments)-1] {
 		for _, dir := range testDirs {
 			if segment == dir {
-				return Result{TestsDocs, "test directory " + dir}
+				return Result{Tier: TestsDocs, Reason: "test directory " + dir}
 			}
 		}
 	}
 	if matchesAny(testFilePatterns, base) {
-		return Result{TestsDocs, "test file"}
+		return Result{Tier: TestsDocs, Reason: "test file"}
 	}
 	if segments[0] == "docs" && len(segments) > 1 {
-		return Result{TestsDocs, "documentation under docs/"}
+		return Result{Tier: TestsDocs, Reason: "documentation under docs/"}
 	}
 	if matchesAny(docFilePatterns, base) {
-		return Result{TestsDocs, "documentation"}
+		return Result{Tier: TestsDocs, Reason: "documentation"}
 	}
 
-	return Result{Structural, "no deterministic signal; judge whether behavior changes"}
+	return Result{Tier: Structural, Reason: "no deterministic signal; judge whether behavior changes"}
 }
 
 func matchesAny(patterns []string, name string) bool {

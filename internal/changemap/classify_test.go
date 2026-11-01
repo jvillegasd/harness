@@ -68,10 +68,14 @@ func TestClassify(t *testing.T) {
 		{"notes/a.rst", TestsDocs, "doc"},
 		{"notes/a.txt", TestsDocs, "doc"},
 		{"docs/agents/tasks/x.json", TestsDocs, "doc"},
-		// Skills and roles are executable agent instructions.
+		// Skill and role prose is executable agent instruction; skill code takes the ordinary rules.
 		{"skills/x/SKILL.md", Structural, "agent instruction"},
 		{"skills/x/references/notes.md", Structural, "agent instruction"},
-		{"skills/x/scripts/run_test.go", Structural, "agent instruction"},
+		{"skills/x/scripts/run_test.go", TestsDocs, "test"},
+		{"skills/x/scripts/test/cli.test.ts", TestsDocs, "test"},
+		{"skills/x/scripts/run.go", Structural, "no deterministic signal"},
+		{"skills/x/assets/workflow.yml", Structural, "no deterministic signal"},
+		{"skills-lock.json", Critical, "skills-lock.json"},
 		{"roles/executor.md", Structural, "agent instruction"},
 		{"elsewhere/SKILL.md", Structural, "agent instruction"},
 		{"docs/agents/harness.json", Critical, "docs/agents/harness.json"},
@@ -92,27 +96,37 @@ func TestClassify(t *testing.T) {
 	}
 }
 
-// TestClassifyPrecedence pins first-match-wins: critical beats mechanical beats tests-docs beats the structural exception.
+// TestClassifyPrecedence pins first-match-wins: critical beats a locked body beats mechanical beats tests-docs beats the structural exception.
 func TestClassifyPrecedence(t *testing.T) {
-	cfg := Config{CriticalPaths: []string{"go.sum", "docs/**", "skills/land/**", "**/*_test.go"}}
+	cfg := Config{
+		CriticalPaths: []string{"go.sum", "docs/**", "skills/land/**", "**/*_test.go"},
+		Locked: []Lock{
+			{Dir: "skills/vendored", Name: "vendored", Source: "o/r", Verified: true, Hashed: map[string]bool{"SKILL.md": true, "scripts/run.go": true}},
+			{Dir: "skills/land", Name: "land", Source: "o/r", Verified: true, Hashed: map[string]bool{"scripts/a.go": true}},
+		},
+	}
 	cases := []struct {
 		path string
 		want Tier
 	}{
-		{"go.sum", Critical},                   // configured beats lockfile
-		{"docs/readme.md", Critical},           // configured beats docs
-		{"skills/land/SKILL.md", Critical},     // configured beats the skills exception
-		{"internal/a/a_test.go", Critical},     // configured beats test file
-		{"db/migrations/a_test.go", Critical},  // built-in beats test file
-		{"db/migrations/go.sum", Critical},     // built-in beats lockfile
-		{"queries/schema_gen.sql", Critical},   // built-in beats generated
-		{"test/api.pb.go", Mechanical},         // generated beats a test directory
-		{"docs/package-lock.json", Critical},   // configured docs/** is checked first
-		{"tests/yarn.lock", Mechanical},        // lockfile beats a test directory
-		{"skills/x/yarn.lock", Mechanical},     // lockfile beats the skills exception
-		{"skills/x/api.pb.go", Mechanical},     // generated beats the skills exception
-		{"skills/x/notes.md", Structural},      // exception beats docs
-		{"roles/a/tests/case.txt", Structural}, // exception beats tests
+		{"go.sum", Critical},                              // configured beats lockfile
+		{"docs/readme.md", Critical},                      // configured beats docs
+		{"skills/land/SKILL.md", Critical},                // configured beats the skills exception
+		{"internal/a/a_test.go", Critical},                // configured beats test file
+		{"db/migrations/a_test.go", Critical},             // built-in beats test file
+		{"db/migrations/go.sum", Critical},                // built-in beats lockfile
+		{"queries/schema_gen.sql", Critical},              // built-in beats generated
+		{"test/api.pb.go", Mechanical},                    // generated beats a test directory
+		{"docs/package-lock.json", Critical},              // configured docs/** is checked first
+		{"tests/yarn.lock", Mechanical},                   // lockfile beats a test directory
+		{"skills/x/yarn.lock", Mechanical},                // lockfile beats the skills exception
+		{"skills/x/api.pb.go", Mechanical},                // generated beats the skills exception
+		{"skills/x/notes.md", Structural},                 // exception beats docs
+		{"roles/a/tests/case.txt", Structural},            // exception beats tests
+		{"skills/vendored/SKILL.md", Mechanical},          // a locked body beats the skills exception
+		{"skills/vendored/scripts/run.go", Mechanical},    // and beats the structural default
+		{"skills/vendored/node_modules/x.js", Structural}, // a file the hash skipped takes the ordinary rules
+		{"skills/land/scripts/a.go", Critical},            // configured beats a locked body
 	}
 	for _, c := range cases {
 		if got := Classify(c.path, cfg).Tier; got != c.want {
@@ -121,17 +135,21 @@ func TestClassifyPrecedence(t *testing.T) {
 	}
 }
 
-// TestMechanicalOnlyFromRules guards the floor contract: no path the rules do not name is ever mechanical.
+// TestMechanicalOnlyFromRules guards the floor contract: no path the rules do not name is ever mechanical, including inside a locked folder whose body no longer matches its lock.
 func TestMechanicalOnlyFromRules(t *testing.T) {
-	for _, path := range []string{"a.go", "a.lock", "lock.json", "go.mod", "gen.go", "a.pb.gox", "x/generated/a.go", "README.md", "a.sum"} {
-		if got := Classify(path, Config{}).Tier; got == Mechanical {
+	cfg := Config{Locked: []Lock{
+		{Dir: "skills/edited", Name: "edited", Source: "o/r"},
+		{Dir: "skills/verified", Name: "verified", Source: "o/r", Verified: true, Hashed: map[string]bool{"SKILL.md": true}},
+	}}
+	for _, path := range []string{"a.go", "a.lock", "lock.json", "go.mod", "gen.go", "a.pb.gox", "x/generated/a.go", "README.md", "a.sum", "skills/edited/SKILL.md", "skills/edited/run.go", "skills/verified/node_modules/x.js", "skills/verified/.git/config", "skills/verified/extra.md"} {
+		if got := Classify(path, cfg).Tier; got == Mechanical {
 			t.Errorf("Classify(%q) = mechanical without a deterministic rule", path)
 		}
 	}
 }
 
 func TestBuiltinCriticalIsDocumented(t *testing.T) {
-	want := []string{ConfigPath, ".github/workflows/**", "**/migrations/**", "**/*.sql", "**/Dockerfile", "**/*.tf"}
+	want := []string{ConfigPath, SkillLockPath, ".github/workflows/**", "**/migrations/**", "**/*.sql", "**/Dockerfile", "**/*.tf"}
 	if len(BuiltinCritical) != len(want) {
 		t.Fatalf("BuiltinCritical = %v, want %v", BuiltinCritical, want)
 	}
@@ -142,5 +160,41 @@ func TestBuiltinCriticalIsDocumented(t *testing.T) {
 		if err := ValidateGlob(glob); err != nil {
 			t.Errorf("built-in %q is not a valid glob: %v", glob, err)
 		}
+	}
+}
+
+// TestLockedBodiesCollapse reports a locked body as one mechanical entry that names its source and file count, without hiding the lock file or a configured critical path inside it.
+func TestLockedBodiesCollapse(t *testing.T) {
+	cfg := Config{
+		CriticalPaths: []string{"skills/vendored/hook.sh"},
+		Locked: []Lock{
+			{Dir: "skills/vendored", Name: "vendored", Source: "owner/repo", Verified: true, Hashed: map[string]bool{"SKILL.md": true, "a/b.ts": true, "hook.sh": true}},
+			{Dir: "skills/edited", Name: "edited", Source: "owner/repo"},
+		},
+	}
+	changes := Changes{Files: []string{"skills/vendored/SKILL.md", "skills/vendored/a/b.ts", "skills/vendored/hook.sh", "skills/vendored-other/x.md", "skills-lock.json", "main.go", "skills/edited/a_test.go"}}
+	report := Build(changes, cfg)
+	byPath := map[string]File{}
+	for _, f := range report.Files {
+		byPath[f.Path] = f
+	}
+	group, ok := byPath["skills/vendored/"]
+	if !ok || group.Tier != Mechanical || group.Files != 2 || !contains(group.Reason, "owner/repo") {
+		t.Fatalf("locked group = %+v, want one mechanical entry for 2 files naming owner/repo; report %+v", group, report.Files)
+	}
+	if byPath["skills/vendored/hook.sh"].Tier != Critical {
+		t.Errorf("configured critical file inside a locked body was not critical: %+v", report.Files)
+	}
+	if byPath["skills/vendored-other/x.md"].Tier != Structural || byPath["skills-lock.json"].Tier != Critical {
+		t.Errorf("a sibling prefix was collapsed or the lock file was not critical: %+v", report.Files)
+	}
+	if edited := byPath["skills/edited/a_test.go"]; edited.Tier != Structural || !contains(edited.Reason, "does not match its lock hash") {
+		t.Errorf("an edited locked body was not raised and named: %+v", edited)
+	}
+	if report.Totals[Mechanical] != 1 || len(report.Files) != 6 {
+		t.Errorf("totals %v over %d entries, want one mechanical entry among 6", report.Totals, len(report.Files))
+	}
+	if !contains(report.Text(), "2 files: locked body vendored") {
+		t.Errorf("text output does not name the file count:\n%s", report.Text())
 	}
 }
