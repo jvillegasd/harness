@@ -105,7 +105,7 @@ func TestPickerCustomOverridesRole(t *testing.T) {
 	if !strings.Contains(out, "reviewer client=claude model=sonnet effort=high (override)") {
 		t.Errorf("override not stored:\n%s", out)
 	}
-	if !strings.Contains(out, "code-search client=claude model=inherit effort=inherit (preset:balanced)") {
+	if !strings.Contains(out, "code-search client=claude model=sonnet effort=inherit (preset:balanced)") {
 		t.Errorf("override leaked into another role:\n%s", out)
 	}
 }

@@ -30,8 +30,8 @@ func TestModelsShowDefaultsToBalanced(t *testing.T) {
 	r := ok(t, runModels(t, base, "show"), "models show")
 	for _, want := range []string{
 		"executor client=codex model=gpt-6-luna effort=inherit (preset:balanced)",
-		"code-search client=claude model=inherit effort=inherit (preset:balanced)",
-		"reviewer client=claude model=inherit effort=inherit (preset:balanced)",
+		"code-search client=claude model=sonnet effort=inherit (preset:balanced)",
+		"reviewer client=claude model=opus effort=high (preset:balanced)",
 	} {
 		if !strings.Contains(r.stdout, want) {
 			t.Errorf("show lacks %q:\n%s", want, r.stdout)
@@ -76,7 +76,7 @@ func TestModelsSetRoleOverridesOnlyThatRole(t *testing.T) {
 	if !strings.Contains(r.stdout, "reviewer client=opencode model=openai/gpt-5.6-sol effort=inherit (override)") {
 		t.Errorf("override not reported:\n%s", r.stdout)
 	}
-	if !strings.Contains(r.stdout, "code-search client=claude model=inherit effort=inherit (preset:balanced)") {
+	if !strings.Contains(r.stdout, "code-search client=claude model=sonnet effort=inherit (preset:balanced)") {
 		t.Errorf("the override leaked into another role:\n%s", r.stdout)
 	}
 }
@@ -133,7 +133,7 @@ func TestModelsResolveReportsTheAssignment(t *testing.T) {
 	if r := runModels(t, base, "resolve", "executor", "--session", "claude", "--json"); r.code == 0 {
 		t.Error("resolve still accepted --session")
 	}
-	if r := ok(t, runModels(t, base, "resolve", "reviewer"), "resolve, plain"); !strings.Contains(r.stdout, "reviewer client=claude model=inherit effort=inherit (preset:balanced)") || strings.Contains(r.stdout, "route=") {
+	if r := ok(t, runModels(t, base, "resolve", "reviewer"), "resolve, plain"); !strings.Contains(r.stdout, "reviewer client=claude model=opus effort=high (preset:balanced)") || strings.Contains(r.stdout, "route=") {
 		t.Errorf("plain resolve: %s", r.stdout)
 	}
 }

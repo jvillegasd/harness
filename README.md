@@ -1,33 +1,12 @@
 # Harness AI
 
-The harness this machine's Claude Code, Codex, and OpenCode installations run: one vendor-neutral policy, independent capabilities called skills, and the Go CLI that installs and operates them. Work is direct by default, and each skill is a tool you reach for when its situation appears, never a step you must pass through. Start with the workflow below; `/harness-help` answers "which skill should I use" from inside a session.
+The harness this machine's Claude Code, Codex, and OpenCode installations run: one vendor-neutral policy, independent capabilities called skills, and the Go CLI that installs and operates them. Work is direct by default, and each skill is a tool you reach for when its situation appears, never a step you must pass through. Start with **How to work with it** below; `/harness-help` answers "which skill should I use" from inside a session.
 
 ## How to work with it
 
 Ordinary work is direct: understand the request, implement the settled scope, run appropriate checks, and report. An implementation request or approved plan authorizes local work, including commits on a task branch the agent created. Commits elsewhere and publication require an explicit request covering them. “Open a PR” or “ship this” covers the necessary delivery steps without repeated approval; only an explicit `/land` invocation authorizes merging.
 
-The workflow at a glance. Each stage is optional and entered when its situation appears; the order shows where work usually flows, not a sequence to follow.
-
-```
-understand   explain                 any time, read-only
-    |
-intent       grill-with-docs or grilling   when intent is unclear
-             proto                         when an experiment can settle a question
-             spec                          for multi-session or durable design (tickets on request)
-    |
-build        inline with tdd and ponytail (the default)
-             /build                        an unattended graph of tickets or spec slices
-    |
-prove        verification                  checks and the certainty ladder
-             e2e-verification             release runs and feature maps
-    |
-triage       change-map                    what the human must read
-             review                        on the critical items
-    |
-deliver      open-pr -> address-review -> the human's /land    (or /abandon)
-    |
-learn        /retro
-```
+The workflow map, stage by stage, with the skill for each situation and the model each step deserves, lives in `skills/harness-help/SKILL.md`; `/harness-help` answers from it inside a session. Each stage is optional and entered when its situation appears.
 
 Skills compose around the task. Use investigation for unknowns, specifications for durable design, prototypes for experiments, and tickets when tracking is useful. None is a prerequisite for coding or automatically starts another capability. Documentation and delegation depend on uncertainty, risk, and recovery needs, never file count. Unresolved consequential decisions block only dependent work.
 
@@ -53,7 +32,7 @@ Skills compose around the task. Use investigation for unknowns, specifications f
 
 Routine work creates no task artifact and requires no independent reviewer. Longer work reuses a document or creates `docs/agents/tasks/<feature>.md`; unavailable memory leaves its mirror explicitly pending. Recovery reads both copies, reconciles against Git, preserves unfinished requirements and conflicts, and invalidates stale checks. Legacy checkpoints remain intact as recoverable context, without granting authority.
 
-Not sure which skill fits? `/harness-help` answers from the map above and names the one to three skills that match your situation.
+Not sure which skill fits? `/harness-help` answers from its map and names the one to three skills that match your situation.
 
 ## Repository layout
 
@@ -106,7 +85,7 @@ The reviewer receives the concern, requirements, revision/content identity, comp
 
 ### Assignments
 
-`harness models` chooses, per machine, which client, model, and effort each delegated role runs on, and stores the choice in `~/.harness/state.json`. A role resolves from its override, else the chosen preset, else `balanced`: `balanced` runs the executor on Codex's `gpt-6-luna` and leaves the reviewer on `inherit`, the session's model, `performance` puts every role on a top Claude model at high effort, `economy` uses the cheapest viable model per role (Codex `gpt-5.6-luna` for the executor), and `diversity` puts the reviewer on Codex's `gpt-6.1-sol` at high effort. OpenCode stays assignable per role. An override left for a retired role (`reviewer-a`, `reviewer-b`, `review-refuter`) is dropped on load. `harness models set` validates Claude aliases and their efforts against a built-in table, Codex models and efforts against the listed entries of `codex debug models`, and OpenCode ids against `opencode models`, and writes nothing on a rejection. `harness models` with no arguments opens a terminal picker over the same choice: a preset, or each role's client, model, and effort from the Claude aliases and the models Codex and OpenCode list, offering only the efforts that model supports. It saves through the same validation as `set`, writes nothing when cancelled, and without a terminal prints the usage and exits nonzero. `clients/assignments.json` keeps each role's definition and each client's default. The install renders every role's own client from the machine's choice and gives the other client its default, and prints each resolution with its source as `assignment: <client> <role> model=<value> (<source>) effort=<value> (<source>)`. `harness models resolve <role>` reports that role's client, model, effort, and source, and chooses nothing: every delegated role takes one route.
+`harness models` chooses, per machine, which client, model, and effort each delegated role runs on, and stores the choice in `~/.harness/state.json`. A role resolves from its override, else the chosen preset, else `balanced`: `balanced` runs the executor on Codex's `gpt-6-luna`, code search on `sonnet`, and the reviewer on `opus` at high effort, so review strength does not depend on the session's model, `performance` puts every role on a top Claude model at high effort, `economy` uses the cheapest viable model per role (Codex `gpt-5.6-luna` for the executor, `haiku` for code search), and `diversity` puts the reviewer on Codex's `gpt-6.1-sol` at high effort. OpenCode stays assignable per role. An override left for a retired role (`reviewer-a`, `reviewer-b`, `review-refuter`) is dropped on load. `harness models set` validates Claude aliases and their efforts against a built-in table, Codex models and efforts against the listed entries of `codex debug models`, and OpenCode ids against `opencode models`, and writes nothing on a rejection. `harness models` with no arguments opens a terminal picker over the same choice: a preset, or each role's client, model, and effort from the Claude aliases and the models Codex and OpenCode list, offering only the efforts that model supports. It saves through the same validation as `set`, writes nothing when cancelled, and without a terminal prints the usage and exits nonzero. `clients/assignments.json` keeps each role's definition and each client's default. The install renders every role's own client from the machine's choice and gives the other client its default, and prints each resolution with its source as `assignment: <client> <role> model=<value> (<source>) effort=<value> (<source>)`. `harness models resolve <role>` reports that role's client, model, effort, and source, and chooses nothing: every delegated role takes one route.
 
 A cross-vendor launch follows Orca's `orchestration` skill, which Orca installs and keeps current (the harness does not ship it); it resolves the Orca executable and loads its version-matched guide; Harness has no dispatcher or supervision loop. A same-client role never touches Orca.
 

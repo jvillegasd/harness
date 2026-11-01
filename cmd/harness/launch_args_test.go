@@ -49,13 +49,13 @@ func renderAgent(t *testing.T, base, client, role, model, effort string) {
 
 func TestLaunchArgsPreparesWithoutLaunching(t *testing.T) {
 	for _, tc := range []struct {
-		role, client, model string
-		want                []string
+		role, client, model, effort string
+		want                        []string
 	}{
-		{"reviewer", "claude", "inherit", []string{"claude", "--agent", "reviewer"}},
-		{"code-search", "claude", "inherit", []string{"claude", "--agent", "code-search"}},
-		{"executor", "codex", "gpt-6-luna", []string{"codex", "-m", "gpt-6-luna", "-c"}},
-		{"executor", "opencode", "opencode-go/glm-5.3", []string{"opencode", "-m", "opencode-go/glm-5.3", "--agent", "executor"}},
+		{"reviewer", "claude", "opus", "high", []string{"claude", "--agent", "reviewer"}},
+		{"code-search", "claude", "sonnet", "", []string{"claude", "--agent", "code-search"}},
+		{"executor", "codex", "gpt-6-luna", "", []string{"codex", "-m", "gpt-6-luna", "-c"}},
+		{"executor", "opencode", "opencode-go/glm-5.3", "", []string{"opencode", "-m", "opencode-go/glm-5.3", "--agent", "executor"}},
 	} {
 		t.Run(tc.role+"-"+tc.client, func(t *testing.T) {
 			base := modelsBase(t)
@@ -69,7 +69,7 @@ func TestLaunchArgsPreparesWithoutLaunching(t *testing.T) {
 				}
 			}
 			before, _ := os.ReadFile(stateFile(base))
-			renderAgent(t, base, tc.client, tc.role, tc.model, "")
+			renderAgent(t, base, tc.client, tc.role, tc.model, tc.effort)
 			r := ok(t, runModels(t, base, "launch-args", tc.role, "--orca-command", "orca"), "prepare launch")
 			var got []string
 			if err := json.Unmarshal([]byte(r.stdout), &got); err != nil {
