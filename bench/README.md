@@ -10,7 +10,7 @@ Deliberately not a synthetic task battery. Synthetic control tasks can swing bet
 harness bench --split <commit-date> --since <window-start>
 ```
 
-Run it from inside the checkout; the work patterns come from `bench/cohorts.json` there. That file is gitignored, so a fresh worktree carries only the committed empty `cohorts.example.json` until you copy it in, and the report splits nothing until a pattern matches.
+`retro` registers each friction fix with its expected metric and landing date, and this is the comparison it reads later. Run it from inside the checkout; the work patterns come from `bench/cohorts.json` there. That file is gitignored, so a fresh worktree carries only the committed empty `cohorts.example.json` until you copy it in, and the report splits nothing until a pattern matches.
 
 | Flag | Meaning |
 | --- | --- |
