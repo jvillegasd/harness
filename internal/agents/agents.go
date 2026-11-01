@@ -18,9 +18,10 @@ var required = map[string]string{
 	"reviewer":    "read-search",
 }
 
-// Documented agent frontmatter values: https://code.claude.com/docs/en/sub-agents (model, effort) and https://opencode.ai/docs/agents/ (model, plus provider options such as OpenAI's reasoningEffort). OpenCode passes effort to the provider, so it is accepted only beside an openai/ model.
+// Documented agent frontmatter values: https://code.claude.com/docs/en/sub-agents (model, effort), https://opencode.ai/docs/agents/ (model, plus provider options such as OpenAI's reasoningEffort), and Codex's custom agent files (model, model_reasoning_effort). OpenCode passes effort to the provider, so it is accepted only beside an openai/ model.
 var supported = map[string][]field{
 	"claude":   {{"model", `inherit|sonnet|opus|haiku|fable|claude-[a-z0-9.-]+`}, {"effort", `inherit|low|medium|high|xhigh|max`}},
+	"codex":    {{"model", `inherit|[a-z0-9][a-z0-9.-]*`}, {"effort", `inherit|low|medium|high|xhigh|max|ultra`}},
 	"opencode": {{"model", `inherit|[a-z0-9._-]+/[A-Za-z0-9._:/-]+`}, {"effort", `inherit|none|minimal|low|medium|high|xhigh`}},
 }
 
@@ -60,17 +61,40 @@ var opencodeControls = map[string]string{
 		"    \"gh *\": deny\n",
 }
 
+// A Codex agent file cannot set its sandbox or approval policy, which it inherits from the parent, so the only control it carries is turning features off: a read-search role loses connectors and plugins, and the executor keeps the defaults.
+var codexControls = map[string]string{
+	"read-search": "[features]\napps = false\nplugins = false\n",
+	"implement":   "",
+}
+
+// The developer_instructions literal string opens and closes on its own lines, so the body never touches a delimiter and a check can find where the controls start.
+const (
+	codexInstructions = "developer_instructions = '''\n"
+	codexClose        = "\n'''\n"
+)
+
+// codexTail is what follows the instructions: a blank line and the level's controls, or nothing.
+func codexTail(level string) string {
+	if codexControls[level] == "" {
+		return ""
+	}
+	return "\n" + codexControls[level]
+}
+
 // Known from each client's documentation. What no control covers is a gap; what a control should cover but only an installed client can prove is unverified.
 var gaps = []string{
 	"gap: claude: the executor keeps Bash, because a disallowedTools specifier removes the whole tool, so its commit, push, pull request, merge, and tracker limits are instructions only",
 	"gap: claude: a model parameter passed at launch overrides an agent's model frontmatter, and an availableModels allowlist substitutes a blocked model with a warning, so the policy forbids the parameter and neither is enforced",
+	"gap: codex: an agent file inherits the parent's sandbox and approval policy, so a native Codex subagent's read-search and executor limits are instructions only",
+	"gap: codex: an Orca launch runs in the workspace-write sandbox with network on, because the sandbox otherwise blocks the Orca CLI, so commit is enforced by the read-only .git while gh, push of existing commits, and a read-search role's writes are instructions only",
 	"gap: opencode: the executor's bash denies match command prefixes, so the same action spelled another way is not denied, including an Orca executable taken from ORCA_CLI_COMMAND, and the denied orca worktree rm spelling came from the installed Orca CLI's help rather than this tree, so a new Orca needs it re-verified",
 }
 
 var unverified = []string{
 	"unverified: every restriction above is static configuration until an installed client is probed at runtime",
 	"unverified: opencode applying the * deny to MCP tools",
-	"unverified: the ccyolo and ocyolo launchers leaving agent restrictions in force, since each bypasses or overrides the parent's permissions",
+	"unverified: codex applying a custom agent's features block to a spawned subagent",
+	"unverified: the ccyolo, cxyolo, and ocyolo launchers leaving agent restrictions in force, since each bypasses or overrides the parent's permissions",
 	"unverified: diff delivery's escalation when a launch prompt cannot carry the complete snapshot, which is protocol rather than exercised behavior",
 	"unverified: claude applying a main-thread --agent session's model and effort frontmatter, and the session's effort when effort is absent",
 	"unverified: opencode sending an agent's reasoningEffort with its model requests",

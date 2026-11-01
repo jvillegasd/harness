@@ -12,6 +12,7 @@ import (
 
 var outputNames = []string{
 	"claude/code-search.md", "claude/executor.md", "claude/reviewer.md",
+	"codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml",
 	"opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md",
 }
 
@@ -169,6 +170,10 @@ func TestEachClientGetsItsControls(t *testing.T) {
 	for _, role := range []string{"reviewer"} {
 		claude := readFile(t, filepath.Join(out, "claude", role+".md"))
 		opencode := readFile(t, filepath.Join(out, "opencode", role+".md"))
+		codex := readFile(t, filepath.Join(out, "codex", role+".toml"))
+		if !strings.HasPrefix(codex, "name = \""+role+"\"\n") || !strings.HasSuffix(codex, "\n'''\n\n[features]\napps = false\nplugins = false\n") {
+			t.Errorf("%s codex controls are wrong:\n%s", role, codex)
+		}
 		if !strings.Contains(claude, "\nname: "+role+"\n") || !strings.Contains(claude, "\ntools: Read, Grep, Glob, Bash\n") {
 			t.Errorf("%s claude frontmatter is wrong:\n%s", role, claude)
 		}
@@ -201,6 +206,9 @@ func TestExecutorKeepsImplementationAccess(t *testing.T) {
 	}
 	if strings.Contains(opencode, "\"*\": deny") {
 		t.Error("executor opencode denies everything")
+	}
+	if codex := readFile(t, filepath.Join(out, "codex", "executor.toml")); !strings.HasSuffix(codex, "\n'''\n") {
+		t.Errorf("executor codex carries controls:\n%s", codex)
 	}
 	if code, _, stderr := runCommand(t, "--check", configPath(), out); code != 0 {
 		t.Fatalf("check exited %d: %s", code, stderr)
@@ -256,6 +264,11 @@ func TestCheckDetectsWidening(t *testing.T) {
 		{"opencode/code-search.md", "  grep: allow\n", "  grep: allow\n  task: allow\n"},
 		{"claude/executor.md", "disallowedTools: Agent\n", ""},
 		{"opencode/executor.md", "  task: deny\n", "  task: allow\n"},
+		{"codex/reviewer.toml", "plugins = false\n", "plugins = true\n"},
+		{"codex/reviewer.toml", "[features]\napps = false\n", "[features]\n"},
+		{"codex/code-search.toml", "developer_instructions = '''\n", "sandbox_mode = \"danger-full-access\"\ndeveloper_instructions = '''\n"},
+		{"codex/executor.toml", "\n'''\n", "\n'''\n\n[features]\nmulti_agent = true\n"},
+		{"codex/executor.toml", "\n'''\n", "'''\nsandbox_mode = \"danger-full-access\"\nnote = '''\nx\n'''\n"},
 	}
 	for _, mutation := range mutations {
 		t.Run(mutation.path+mutation.new, func(t *testing.T) {
@@ -276,6 +289,20 @@ func TestCheckDetectsWidening(t *testing.T) {
 				t.Fatalf("check = %d, %q; want widened %s", code, stdout, mutation.path)
 			}
 		})
+	}
+}
+
+// A control character TOML refuses never reaches a rendered Codex file.
+func TestControlCharactersInADefinitionAreRefused(t *testing.T) {
+	dir := temp(t)
+	config := configCopy(t, dir, nil)
+	path := filepath.Join(dir, "roles", "reviewer.md")
+	if err := os.WriteFile(path, []byte(strings.Replace(readFile(t, path), "# ", "# \x1b[1m", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, _, stderr := runCommand(t, config, filepath.Join(dir, "out"))
+	if code != 1 || !strings.Contains(stderr, "control characters") {
+		t.Fatalf("exit %d, stderr %q", code, stderr)
 	}
 }
 
@@ -464,6 +491,9 @@ func TestAssignments(t *testing.T) {
 				t.Error("opencode reviewer writes a setting it inherits")
 			}
 		}
+		if got := codexSettings(t, filepath.Join(out, "codex", "reviewer.toml")); len(got) != 0 {
+			t.Errorf("codex reviewer writes settings it inherits: %v", got)
+		}
 		if !strings.Contains(stdout, "assignment: claude reviewer model=inherit (client default) effort=inherit (client default)") {
 			t.Errorf("report = %s", stdout)
 		}
@@ -474,10 +504,12 @@ func TestAssignments(t *testing.T) {
 		config := configCopy(t, dir, func(data map[string]any) {
 			data["clients"] = map[string]any{
 				"claude":   map[string]any{"model": "opus", "effort": "medium"},
+				"codex":    map[string]any{"model": "gpt-6-luna", "effort": "inherit"},
 				"opencode": map[string]any{"model": "openai/gpt-5.5", "effort": "low"},
 			}
 			roles := data["roles"].(map[string]any)
 			roles["reviewer"].(map[string]any)["claude"] = map[string]any{"model": "sonnet"}
+			roles["reviewer"].(map[string]any)["codex"] = map[string]any{"model": "gpt-6.1-sol", "effort": "high"}
 			roles["executor"].(map[string]any)["opencode"] = map[string]any{"effort": "high"}
 			roles["code-search"].(map[string]any)["claude"] = map[string]any{"model": "haiku", "effort": "low"}
 		})
@@ -488,6 +520,12 @@ func TestAssignments(t *testing.T) {
 		assertHead(t, filepath.Join(out, "opencode", "executor.md"), []string{"model: openai/gpt-5.5", "reasoningEffort: high"})
 		assertHead(t, filepath.Join(out, "opencode", "reviewer.md"), []string{"model: openai/gpt-5.5", "reasoningEffort: low"})
 		assertHead(t, filepath.Join(out, "claude", "code-search.md"), []string{"model: haiku", "effort: low"})
+		if got := codexSettings(t, filepath.Join(out, "codex", "reviewer.toml")); strings.Join(got, "|") != `model = "gpt-6.1-sol"|model_reasoning_effort = "high"` {
+			t.Errorf("codex reviewer settings = %v", got)
+		}
+		if got := codexSettings(t, filepath.Join(out, "codex", "executor.toml")); strings.Join(got, "|") != `model = "gpt-6-luna"` {
+			t.Errorf("codex executor settings = %v", got)
+		}
 		if code, _, stderr := runCommand(t, "--check", config, out); code != 0 {
 			t.Fatalf("check exited %d: %s", code, stderr)
 		}
@@ -519,8 +557,14 @@ func TestAssignments(t *testing.T) {
 			"anthropic/claude-opus-5": func(data map[string]any) {
 				data["clients"].(map[string]any)["opencode"] = map[string]any{"model": "anthropic/claude-opus-5", "effort": "high"}
 			},
-			"codex": func(data map[string]any) {
-				data["roles"].(map[string]any)["reviewer"].(map[string]any)["codex"] = map[string]any{"model": "gpt-5"}
+			"gemini": func(data map[string]any) {
+				data["roles"].(map[string]any)["reviewer"].(map[string]any)["gemini"] = map[string]any{"model": "gpt-5"}
+			},
+			"codex effort 'none'": func(data map[string]any) {
+				data["clients"].(map[string]any)["codex"].(map[string]any)["effort"] = "none"
+			},
+			"codex model 'openai/gpt-5.5'": func(data map[string]any) {
+				data["roles"].(map[string]any)["reviewer"].(map[string]any)["codex"] = map[string]any{"model": "openai/gpt-5.5"}
 			},
 			"temperature": func(data map[string]any) {
 				data["roles"].(map[string]any)["reviewer"].(map[string]any)["claude"] = map[string]any{"temperature": 0}
@@ -650,6 +694,7 @@ func TestAssignments(t *testing.T) {
 		config := configCopy(t, dir, func(data map[string]any) {
 			data["clients"] = map[string]any{
 				"claude":   map[string]any{"model": "claude-opus-5", "effort": "high"},
+				"codex":    map[string]any{"model": "gpt-6-luna", "effort": "high"},
 				"opencode": map[string]any{"model": "openai/gpt-5.5", "effort": "high"},
 			}
 		})
@@ -663,6 +708,10 @@ func TestAssignments(t *testing.T) {
 		}
 		for relative := range treeOf(t, out) {
 			client := strings.Split(relative, "/")[0]
+			if client == "codex" {
+				// TOML, whose keys RestrictionsMatch already limits.
+				continue
+			}
 			for _, line := range head(t, filepath.Join(out, filepath.FromSlash(relative))) {
 				if line == "" || strings.HasPrefix(line, " ") {
 					continue
@@ -725,6 +774,18 @@ func assertHead(t *testing.T, path string, want []string) {
 	if strings.Join(got, "|") != strings.Join(want, "|") {
 		t.Fatalf("%s settings = %v, want %v", path, got, want)
 	}
+}
+
+// codexSettings lists a Codex agent's model and effort lines.
+func codexSettings(t *testing.T, path string) []string {
+	t.Helper()
+	var got []string
+	for _, line := range strings.Split(readFile(t, path), "\n") {
+		if strings.HasPrefix(line, "model = ") || strings.HasPrefix(line, "model_reasoning_effort = ") {
+			got = append(got, line)
+		}
+	}
+	return got
 }
 
 func deepEqualStrings(a, b map[string]string) bool {

@@ -22,7 +22,7 @@ var engramToolPrefixes = []string{"mcp__engram__", "mcp__plugin_engram_engram__"
 // subagentStatusline is the OpenCode built-in `engram setup opencode` enables, the one entry it writes that is not named after engram.
 const subagentStatusline = "opencode-subagent-statusline"
 
-var yoloAlias = regexp.MustCompile(`(?m)^[ \t]*alias (ccyolo|oyolo|ocyolo)=`)
+var yoloAlias = regexp.MustCompile(`(?m)^[ \t]*alias (ccyolo|cxyolo|oyolo|ocyolo)=`)
 
 const uninstallLeft = `
 Not touched: the harness binary, Engram, agent-browser, and every other
@@ -88,6 +88,9 @@ func (in *installer) uninstallSelected() {
 	}
 	if selected("claude", "mcp") {
 		in.removeClaudeMCP()
+	}
+	if selected("codex", "mcp") {
+		in.removeCodexMCP()
 	}
 	if selected("opencode", "mcp") {
 		in.removeOpenCodeMCP()
@@ -165,6 +168,44 @@ func (in *installer) removeClaudeMCP() {
 		return removed
 	})
 	removeFile(filepath.Join(in.home, ".claude", "mcp", "engram.json"))
+}
+
+// removeCodexMCP removes what Engram's codex setup and the agent-browser registration wrote into ~/.codex, through Codex's own CLI and best effort, since one already gone is the state being asked for. Engram's files go whether or not Codex is installed; a Codex already gone keeps its config entries rather than having its config hand-edited.
+func (in *installer) removeCodexMCP() {
+	in.log("Removing Engram and agent-browser from Codex")
+	for _, name := range codexEngramFiles {
+		removeFile(filepath.Join(in.codexHome(), name))
+	}
+	if _, err := exec.LookPath("codex"); err != nil {
+		in.warn("Codex is not installed, so its engram and agent-browser entries stay in %s.", filepath.Join(in.codexHome(), "config.toml"))
+		return
+	}
+	_ = in.codex("mcp", "remove", "agent-browser").Run()
+	_ = in.codex("mcp", "remove", "engram").Run()
+	_ = in.codex("plugin", "remove", "engram@engram").Run()
+	_ = in.codex("plugin", "marketplace", "remove", "engram").Run()
+}
+
+// codexEngramFiles are what `engram setup codex` writes beside config.toml.
+var codexEngramFiles = []string{"engram-instructions.md", "engram-compact-prompt.md"}
+
+// checkCodexMCPRemoved asks Codex, which reads its own config, rather than parsing the TOML; with Codex gone there is nothing to ask and the warning above stands.
+func (in *installer) checkCodexMCPRemoved() {
+	for _, name := range codexEngramFiles {
+		if path := filepath.Join(in.codexHome(), name); exists(path) {
+			die("Engram file survived the uninstall: %s", path)
+		}
+	}
+	if _, err := exec.LookPath("codex"); err != nil {
+		return
+	}
+	for _, server := range []string{"agent-browser", "engram"} {
+		get := in.codex("mcp", "get", server)
+		get.Stderr = nil
+		if get.Run() == nil {
+			die("The %s MCP survived the uninstall in %s.", server, filepath.Join(in.codexHome(), "config.toml"))
+		}
+	}
 }
 
 // removeOpenCodeMCP removes what Engram's opencode setup and the agent-browser registration wrote into OpenCode, which has no CLI to delegate to. An emptied container is dropped rather than left as {}.
@@ -339,6 +380,9 @@ func (in *installer) checkRemoved(removed []entry, selected func(client, compone
 	}
 	if selected("claude", "mcp") {
 		in.checkClaudeMCPRemoved()
+	}
+	if selected("codex", "mcp") {
+		in.checkCodexMCPRemoved()
 	}
 	if selected("opencode", "mcp") {
 		in.checkOpenCodeMCPRemoved()

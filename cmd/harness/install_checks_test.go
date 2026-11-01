@@ -10,7 +10,7 @@ import (
 )
 
 // agentOutputs are the role agents this checkout renders, per client.
-var agentOutputs = []string{"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md"}
+var agentOutputs = []string{"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml", "opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md"}
 
 func readFile(t *testing.T, path string) string {
 	t.Helper()
@@ -108,7 +108,7 @@ func TestInstallExplainsAMissingLock(t *testing.T) {
 func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
-	roots := map[string]string{"claude": filepath.Join(home, ".claude", "agents"), "opencode": filepath.Join(home, ".config", "opencode", "agents")}
+	roots := map[string]string{"claude": filepath.Join(home, ".claude", "agents"), "codex": filepath.Join(home, ".codex", "agents"), "opencode": filepath.Join(home, ".config", "opencode", "agents")}
 	private := filepath.Join(roots["claude"], "mine.md")
 	writeMode(t, private, "mine\n", 0o644)
 	foreign := filepath.Join(roots["claude"], "foreign.md")
@@ -237,6 +237,54 @@ func TestUninstallOpenCodeLeavesClaudeCopies(t *testing.T) {
 	}
 }
 
+// Codex is configured in ~/.codex even when the terminal points CODEX_HOME elsewhere, as Orca's do, and its uninstall leaves the copies the other clients still use.
+func TestCodexInstallsIntoHomeCodexAndUninstallsAlone(t *testing.T) {
+	base := sandbox(t)
+	elsewhere := filepath.Join(base, "orca-codex-home")
+	extra := []string{"TMPDIR=" + filepath.Join(base, "tmp"), "HARNESS_ASSETS=" + filepath.Join(base, "checkout"), "CODEX_HOME=" + elsewhere}
+	ok(t, runHarness(t, base, extra, "install", "--skip-packages"), "install under another CODEX_HOME")
+	codexHome := filepath.Join(base, "home", ".codex")
+	if readFile(t, filepath.Join(codexHome, "AGENTS.md")) != readFile(t, filepath.Join(base, "checkout", "POLICY.md")) {
+		t.Error("~/.codex/AGENTS.md is not the policy")
+	}
+	if !strings.Contains(readFile(t, filepath.Join(codexHome, "agents", "executor.toml")), "\nmodel = \"gpt-6-luna\"\n") {
+		t.Error("the Codex executor lacks the balanced model")
+	}
+	if _, err := os.Stat(elsewhere); err == nil {
+		t.Error("the install wrote into CODEX_HOME")
+	}
+	log := readFile(t, filepath.Join(base, "shims.log"))
+	for _, want := range []string{"codex mcp add agent-browser -- " + filepath.Join(base, "shims", "agent-browser") + " mcp", "engram setup codex"} {
+		if !strings.Contains(log, want) {
+			t.Errorf("install skipped %q:\n%s", want, log)
+		}
+	}
+	if strings.Contains(log, "CODEX_HOME="+elsewhere) || !strings.Contains(log, "CODEX_HOME="+codexHome) {
+		t.Errorf("codex ran outside ~/.codex:\n%s", log)
+	}
+
+	for _, name := range []string{"engram-instructions.md", "engram-compact-prompt.md"} {
+		writeMode(t, filepath.Join(codexHome, name), "engram\n", 0o644)
+	}
+	ok(t, runHarness(t, base, extra, "install", "--uninstall", "--client", "codex", "--yes"), "Codex uninstall")
+	for _, gone := range []string{filepath.Join(codexHome, "AGENTS.md"), filepath.Join(codexHome, "agents", "executor.toml"), filepath.Join(codexHome, "engram-instructions.md")} {
+		if _, err := os.Stat(gone); err == nil {
+			t.Errorf("Codex uninstall kept %s", gone)
+		}
+	}
+	for _, kept := range []string{filepath.Join(base, "home", ".agents", "skills", "land", "agents", "openai.yaml"), filepath.Join(base, "home", ".claude", "agents", "reviewer.md"), filepath.Join(base, "home", ".config", "opencode", "AGENTS.md")} {
+		if readFileOr(kept) == "" {
+			t.Errorf("Codex uninstall removed %s", kept)
+		}
+	}
+	log = readFile(t, filepath.Join(base, "shims.log"))
+	for _, want := range []string{"codex mcp remove agent-browser", "codex mcp remove engram", "codex plugin remove engram@engram", "codex plugin marketplace remove engram"} {
+		if !strings.Contains(log, want) {
+			t.Errorf("uninstall skipped %q:\n%s", want, log)
+		}
+	}
+}
+
 func TestNoBackupReplacesCollisionWithoutArchiving(t *testing.T) {
 	base := sandbox(t)
 	path := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
@@ -330,8 +378,31 @@ func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
 	if got := readFile(t, config); got != text {
 		t.Errorf("the refused config changed: %q", got)
 	}
-	if strings.Contains(readFile(t, filepath.Join(base, "shims.log")), "claude mcp add") {
-		t.Error("Claude Code was registered before the refusal")
+	log := readFileOr(filepath.Join(base, "shims.log"))
+	for _, early := range []string{"claude mcp add", "codex mcp add", "engram setup"} {
+		if strings.Contains(log, early) {
+			t.Errorf("%q ran before the refusal:\n%s", early, log)
+		}
+	}
+}
+
+// With Codex gone, its uninstall still removes Engram's files beside config.toml and succeeds, leaving the config entries with a warning.
+func TestCodexUninstallWithoutCodex(t *testing.T) {
+	base := sandbox(t)
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	codexHome := filepath.Join(base, "home", ".codex")
+	for _, name := range []string{"engram-instructions.md", "engram-compact-prompt.md"} {
+		writeMode(t, filepath.Join(codexHome, name), "engram\n", 0o644)
+	}
+	if err := os.Remove(filepath.Join(base, "shims", "codex")); err != nil {
+		t.Fatal(err)
+	}
+	r := ok(t, runInstaller(t, base, "--uninstall", "--client", "codex", "--yes"), "Codex uninstall without Codex")
+	if !strings.Contains(r.stderr, "Codex is not installed") {
+		t.Errorf("no warning about the entries left behind:\n%s", r.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(codexHome, "engram-instructions.md")); err == nil {
+		t.Error("Engram's instructions file survived")
 	}
 }
 
@@ -384,7 +455,10 @@ func TestFullInstallProvisionsMissingOnly(t *testing.T) {
 			t.Errorf("full install skipped the missing %q:\n%s", want, log)
 		}
 	}
-	for _, want := range []string{"engram setup claude-code", "engram setup opencode", "claude mcp add --scope user agent-browser", "claude mcp add --scope user engram"} {
+	if strings.Contains(log, "brew install --cask codex") {
+		t.Errorf("full install reinstalled Codex, which is on PATH:\n%s", log)
+	}
+	for _, want := range []string{"engram setup claude-code", "engram setup codex", "engram setup opencode", "claude mcp add --scope user agent-browser", "claude mcp add --scope user engram", "codex mcp add agent-browser"} {
 		if !strings.Contains(log, want) {
 			t.Errorf("full install skipped reconciliation though the tools exist, missing %q", want)
 		}

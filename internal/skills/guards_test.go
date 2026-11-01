@@ -35,15 +35,42 @@ func TestGuardedCountsAGuardOnlyWhereItsClientReadsIt(t *testing.T) {
 	}
 }
 
-// writeSkill writes one skill body under the checkout's skills directory.
+func TestCodexGuardCountsOnlyUnderPolicy(t *testing.T) {
+	for name, c := range map[string]struct {
+		text string
+		want bool
+	}{
+		"guard":                        {"policy:\n  allow_implicit_invocation: false\n", true},
+		"beside interface":             {"interface:\n  display_name: x\n# note\npolicy:\n  allow_implicit_invocation: false\n", true},
+		"allowed":                      {"policy:\n  allow_implicit_invocation: true\n", false},
+		"top level":                    {"allow_implicit_invocation: false\n", false},
+		"nested deeper":                {"policy:\n  other:\n    allow_implicit_invocation: false\n", false},
+		"under another block":          {"interface:\n  allow_implicit_invocation: false\n", false},
+		"second policy block drops it": {"policy:\n  allow_implicit_invocation: false\npolicy:\n  other: 1\n", false},
+		"missing file":                 {"", false},
+		"tab indent":                   {"policy:\n\tallow_implicit_invocation: false\n", false},
+		"tab elsewhere":                {"interface:\n\tdisplay_name: x\npolicy:\n  allow_implicit_invocation: false\n", false},
+	} {
+		if got := codexGuarded(c.text); got != c.want {
+			t.Errorf("%s: codexGuarded = %v, want %v", name, got, c.want)
+		}
+	}
+}
+
+// writeSkill writes one skill body under the checkout's skills directory, with the Codex guard beside it when the body carries both other guards.
 func writeSkill(t *testing.T, c checkout.Checkout, name, body string) {
 	t.Helper()
 	dir := filepath.Join(c.Skills(), name)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "agents"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
+	}
+	if claude, opencode := guarded(body); claude && opencode {
+		if err := os.WriteFile(filepath.Join(dir, "agents", "openai.yaml"), []byte("policy:\n  allow_implicit_invocation: false\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -65,6 +92,10 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 	writeSkill(t, c, "build", "---\ndescription: runs unattended\n---\nbody\n")
 	writeSkill(t, c, "retro", "---\ndescription: reads session records and proposes harness changes\n---\nbody\n")
 	writeSkill(t, c, "review", "---\ndescription: model-invoked when a change map flags a critical hunk\n---\nbody\n")
+	writeSkill(t, c, "codex-only", "---\ndescription: guarded for Codex alone\n---\nbody\n")
+	if err := os.WriteFile(filepath.Join(c.Skills(), "codex-only", "agents", "openai.yaml"), []byte("policy:\n  allow_implicit_invocation: false\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(c.Skills(), "empty"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -79,13 +110,20 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 		"dangling: unreadable",
 		"empty: missing SKILL.md",
 		"half-guarded: missing opencode/autoinvoke",
+		"half-guarded: missing agents/openai.yaml allow_implicit_invocation",
 		"metadata-only: missing disable-model-invocation",
+		"metadata-only: missing agents/openai.yaml allow_implicit_invocation",
 		"land: missing disable-model-invocation",
 		"land: missing opencode/autoinvoke",
+		"land: missing agents/openai.yaml allow_implicit_invocation",
 		"build: missing disable-model-invocation",
 		"build: missing opencode/autoinvoke",
+		"build: missing agents/openai.yaml allow_implicit_invocation",
 		"retro: missing disable-model-invocation",
 		"retro: missing opencode/autoinvoke",
+		"retro: missing agents/openai.yaml allow_implicit_invocation",
+		"codex-only: missing disable-model-invocation",
+		"codex-only: missing opencode/autoinvoke",
 	}
 	got := strings.Join(problems, "\n")
 	for _, w := range want {
@@ -103,8 +141,8 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 	}
 }
 
-// TestShippedLocalSkillsCarryBothGuards runs the shipped parser over the shipped skills, so a local skill added without both guards fails here rather than in a client.
-func TestShippedLocalSkillsCarryBothGuards(t *testing.T) {
+// TestShippedLocalSkillsCarryAllGuards runs the shipped parser over the shipped skills, so a local skill added without every guard fails here rather than in a client.
+func TestShippedLocalSkillsCarryAllGuards(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)

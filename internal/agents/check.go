@@ -44,6 +44,21 @@ func RestrictionsMatch(relative, text, level string) bool {
 		}
 		return true
 	}
+	if strings.HasPrefix(relative, "codex/") {
+		// Identity and model keys before the instructions, and exactly the level's controls after them.
+		start := strings.Index(text, "\n"+codexInstructions)
+		if start < 0 {
+			return false
+		}
+		for _, line := range splitLines(text[:start]) {
+			key, _, _ := strings.Cut(line, " = ")
+			if key != "name" && key != "description" && key != "model" && key != "model_reasoning_effort" {
+				return false
+			}
+		}
+		body, ok := CodexInstructions(text)
+		return ok && text[start+1+len(codexInstructions)+len(body)+len(codexClose):] == codexTail(level)
+	}
 	head := ""
 	if strings.HasPrefix(text, "---\n") {
 		parts := strings.Split(text, "---\n")
@@ -59,6 +74,32 @@ func RestrictionsMatch(relative, text, level string) bool {
 		kept += line + "\n"
 	}
 	return kept == "mode: all\n"+opencodeControls[level]
+}
+
+// CodexFeatures returns a level's Codex controls as `-c` overrides, for a session that never reads the agent file.
+func CodexFeatures(level string) []string {
+	var args []string
+	for _, line := range splitLines(codexControls[level]) {
+		if key, value, ok := strings.Cut(line, " = "); ok {
+			args = append(args, "-c", "features."+key+"="+value)
+		}
+	}
+	return args
+}
+
+// CodexInstructions returns a rendered Codex agent's developer_instructions body.
+func CodexInstructions(text string) (string, bool) {
+	start := strings.Index(text, "\n"+codexInstructions)
+	if start < 0 {
+		return "", false
+	}
+	rest := text[start+1+len(codexInstructions):]
+	end := strings.Index(rest, codexClose)
+	// TOML ends the literal string at any triple quote, so a body holding one would hide keys inside what looks like instructions.
+	if end < 0 || strings.Contains(rest[:end], "'''") {
+		return "", false
+	}
+	return rest[:end], true
 }
 
 func existing(output string) map[string]string {

@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 // Assigned is one role's machine-level assignment: the client it runs on, and the model and effort there. An empty Effort inherits. Source names where it came from in the report.
@@ -35,7 +36,7 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 		// The machine's choice is the only per-role assignment, so a tracked one would silently compete with it.
 		for name, role := range roles {
 			if role, ok := role.(map[string]any); ok {
-				for _, client := range []string{"claude", "opencode"} {
+				for _, client := range []string{"claude", "codex", "opencode"} {
 					if _, ok := role[client]; ok {
 						return nil, nil, nil, fail(fmt.Sprintf("roles.%s.%s: per-role model and effort are chosen with `harness models`, not in the assignments file", name, client))
 					}
@@ -108,6 +109,7 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 		// JSON string quoting is valid YAML for this text.
 		quoted := `"` + strings.ReplaceAll(strings.ReplaceAll(description, `\`, `\\`), `"`, `\"`) + `"`
 		claude := resolved["claude/"+name]
+		codex := resolved["codex/"+name]
 		opencode := resolved["opencode/"+name]
 		// Claude Code documents model: inherit and inherits effort when the field is absent; OpenCode inherits both when absent.
 		claudeSettings := "model: " + claude["model"][0] + "\n"
@@ -128,7 +130,17 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 		outputs["claude/"+name+".md"] = "---\nname: " + name + "\ndescription: " + quoted + "\n" + controls + claudeSettings + "---\n\n" + body + "\n"
 		// mode: all, not subagent: `opencode run --agent` and `opencode --agent` silently fall back to the default agent for a subagent, which would drop every control below.
 		outputs["opencode/"+name+".md"] = "---\ndescription: " + quoted + "\nmode: all\n" + opencodeControls[accessLevel] + opencodeSettings + "---\n\n" + body + "\n"
+		// Codex inherits model and effort when absent, like OpenCode. The body is a multi-line literal string, which load keeps free of its ''' delimiter.
+		codexSettings := ""
+		if codex["model"][0] != "inherit" {
+			codexSettings += "model = \"" + codex["model"][0] + "\"\n"
+		}
+		if codex["effort"][0] != "inherit" {
+			codexSettings += "model_reasoning_effort = \"" + codex["effort"][0] + "\"\n"
+		}
+		outputs["codex/"+name+".toml"] = "name = \"" + name + "\"\ndescription = " + quoted + "\n" + codexSettings + codexInstructions + body + codexClose + codexTail(accessLevel)
 		accesses["claude/"+name+".md"] = accessLevel
+		accesses["codex/"+name+".toml"] = accessLevel
 		accesses["opencode/"+name+".md"] = accessLevel
 	}
 	return outputs, accesses, report, nil
@@ -165,7 +177,7 @@ func resolve(config map[string]any) (map[string]any, map[string]map[string][2]st
 		if !ok {
 			return nil, nil, fail(fmt.Sprintf("roles.%s must be an object", name))
 		}
-		allowed := []string{"definition", "claude", "opencode"}
+		allowed := []string{"definition", "claude", "codex", "opencode"}
 		if unknown := unknownKeys(roleObj, allowed); len(unknown) > 0 {
 			return nil, nil, fail(fmt.Sprintf("roles.%s: unknown keys %s; a role takes definition, %s", name, strings.Join(unknown, ", "), strings.Join(clientNames, ", ")))
 		}
@@ -316,7 +328,23 @@ func load(path, name string) (string, string, string, error) {
 	if body == "" || strings.Contains(body, "'''") {
 		return "", "", "", fail(path + ": body must be non-empty and free of '''")
 	}
+	// TOML strings refuse invalid UTF-8 and every control character but tab and, in the body, line feed.
+	if !tomlText(front["description"], false) || !tomlText(body, true) {
+		return "", "", "", fail(path + ": description and body must be UTF-8 without control characters other than tab and line feed")
+	}
 	return front["description"], level, body, nil
+}
+
+func tomlText(s string, multiline bool) bool {
+	if !utf8.ValidString(s) {
+		return false
+	}
+	for _, r := range s {
+		if (r < 0x20 && r != '\t' && (r != '\n' || !multiline)) || r == 0x7f {
+			return false
+		}
+	}
+	return true
 }
 
 // splitLines matches Python's str.splitlines: it drops the empty tail a trailing newline would otherwise leave.

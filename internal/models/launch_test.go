@@ -25,3 +25,20 @@ func TestReviewerArgvCarriesNoDenies(t *testing.T) {
 		t.Fatalf("argv = %v", got)
 	}
 }
+
+// A Codex role starts as no named agent, so its argv carries the instructions, model, and effort, and the sandbox that keeps commits out while Orca stays reachable.
+func TestCodexArgvCarriesInstructionsAndSandbox(t *testing.T) {
+	got := codexLaunch(Assignment{Client: "codex", Model: "gpt-6.1-sol", Effort: "high"}, "read-search", "Say \"hi\" & <stop>\x7f\nNext line.")
+	want := []string{
+		"codex", "-m", "gpt-6.1-sol", "-c", `model_reasoning_effort="high"`,
+		"-c", "features.apps=false", "-c", "features.plugins=false",
+		"-c", `developer_instructions="Say \"hi\" & <stop>\u007f\nNext line."`,
+		"--ask-for-approval", "never", "--sandbox", "workspace-write", "-c", "sandbox_workspace_write.network_access=true",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("argv = %q, want %q", got, want)
+	}
+	if got := codexLaunch(Assignment{Client: "codex", Model: "inherit"}, "implement", "x"); got[1] != "-c" || got[2] != `developer_instructions="x"` {
+		t.Fatalf("inherit argv = %q", got)
+	}
+}

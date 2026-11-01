@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 
@@ -23,7 +24,7 @@ const assetsEnv = "HARNESS_ASSETS"
 const stateVersion = 1
 
 var (
-	allClients    = []string{"claude", "opencode"}
+	allClients    = []string{"claude", "codex", "opencode"}
 	allComponents = []string{"agents", "aliases", "mcp", "policy", "settings", "skills"}
 )
 
@@ -48,6 +49,16 @@ type state struct {
 	Files     []entry             `json:"files"`
 	// Models is `harness models`' choice, carried through untouched so an install never drops it.
 	Models json.RawMessage `json:"models,omitempty"`
+}
+
+// codexHome is ~/.codex whatever CODEX_HOME says, because Orca points CODEX_HOME at a home of its own in the terminals it opens.
+func (in *installer) codexHome() string { return filepath.Join(in.home, ".codex") }
+
+// codex runs a codex subcommand against codexHome, on the installer's output.
+func (in *installer) codex(args ...string) *exec.Cmd {
+	cmd := models.CodexCommand(in.home, args...)
+	cmd.Stderr = in.stderr
+	return cmd
 }
 
 func (in *installer) stateDir() string { return filepath.Join(in.home, ".harness") }
@@ -175,7 +186,7 @@ func (in *installer) removeManaged(e entry) {
 	in.log("Removed %s", e.Path)
 }
 
-// desired lists every copy an install writes. ~/.agents/skills serves both clients: OpenCode loads skills from it, and Claude Code finds the same bodies there.
+// desired lists every copy an install writes. ~/.agents/skills serves every client: Codex and OpenCode load skills from it, and Claude Code finds the same bodies there.
 func (in *installer) desired() []entry {
 	var out []entry
 	add := func(source, dest, component string, clients ...string) {
@@ -183,10 +194,11 @@ func (in *installer) desired() []entry {
 	}
 	for _, skill := range in.skillNames() {
 		source := filepath.Join(in.dir.Skills(), skill)
-		add(source, filepath.Join(in.home, ".agents", "skills", skill), "skills", "claude", "opencode")
+		add(source, filepath.Join(in.home, ".agents", "skills", skill), "skills", "claude", "codex", "opencode")
 		add(source, filepath.Join(in.home, ".claude", "skills", skill), "skills", "claude")
 	}
 	add(in.dir.Policy(), filepath.Join(in.home, ".claude", "CLAUDE.md"), "policy", "claude")
+	add(in.dir.Policy(), filepath.Join(in.codexHome(), "AGENTS.md"), "policy", "codex")
 	add(in.dir.Policy(), filepath.Join(in.config, "opencode", "AGENTS.md"), "policy", "opencode")
 	for _, pair := range in.agentRoots() {
 		for _, definition := range entries(filepath.Join(in.agentOut(), pair[0])) {

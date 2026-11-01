@@ -6,6 +6,9 @@
 
 alias ccyolo='claude --dangerously-skip-permissions'
 
+# Codex's bypass drops both the approval prompts and its sandbox.
+alias cxyolo='codex --dangerously-bypass-approvals-and-sandbox'
+
 # OpenCode has no bypass flag. Permissions are configuration, and
 # OPENCODE_PERMISSION overrides them for one run.
 alias ocyolo='OPENCODE_PERMISSION='"'"'{"edit":"allow","bash":"allow","webfetch":"allow"}'"'"' opencode'

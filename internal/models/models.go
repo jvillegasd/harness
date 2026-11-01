@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -31,21 +32,21 @@ var retired = map[string]bool{"reviewer-a": true, "reviewer-b": true, "review-re
 const defaultPreset = "balanced"
 
 func claude(model, effort string) Assignment { return Assignment{"claude", model, effort} }
-func opencode(model string) Assignment       { return Assignment{"opencode", model, ""} }
+func codex(model, effort string) Assignment  { return Assignment{"codex", model, effort} }
 
-// Presets are the named assignment tables. balanced sends implementation to a cheaper OpenCode model and keeps review on the session's Claude model, because a reviewer too weak to find the bug is no saving.
+// Presets are the named assignment tables. balanced sends implementation to a cheaper Codex model and keeps review on the session's Claude model, because a reviewer too weak to find the bug is no saving. OpenCode stays available through `harness models set`.
 var Presets = map[string]map[string]Assignment{
 	"balanced": {
-		"executor": opencode("opencode-go/glm-5.3"), "code-search": claude("inherit", ""), "reviewer": claude("inherit", ""),
+		"executor": codex("gpt-6-luna", ""), "code-search": claude("inherit", ""), "reviewer": claude("inherit", ""),
 	},
 	"performance": {
 		"executor": claude("opus", "high"), "code-search": claude("fable", "high"), "reviewer": claude("fable", "high"),
 	},
 	"economy": {
-		"executor": opencode("opencode-go/deepseek-v4-flash"), "code-search": claude("sonnet", ""), "reviewer": claude("sonnet", ""),
+		"executor": codex("gpt-5.6-luna", ""), "code-search": claude("sonnet", ""), "reviewer": claude("sonnet", ""),
 	},
 	"diversity": {
-		"executor": claude("sonnet", ""), "code-search": claude("inherit", ""), "reviewer": opencode("openai/gpt-5.6-sol"),
+		"executor": claude("sonnet", ""), "code-search": claude("inherit", ""), "reviewer": codex("gpt-6.1-sol", "high"),
 	},
 }
 
@@ -61,30 +62,136 @@ var claudeEfforts = map[string][]string{
 // openaiEfforts are what OpenCode passes as OpenAI's reasoningEffort, the only effort it sends.
 var openaiEfforts = []string{"", "none", "minimal", "low", "medium", "high", "xhigh"}
 
-// Validate rejects an assignment the client cannot run: a malformed one, or an OpenCode id `opencode models` does not list on this machine.
+// codexModel is the slug shape the role-agent renderer accepts, inherit included.
+var codexModel = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]*$`)
+
+// codexEfforts are the model_reasoning_effort values Codex's catalog uses; which of them a model supports is the catalog's to say.
+var codexEfforts = []string{"", "low", "medium", "high", "xhigh", "max", "ultra"}
+
+// Validate rejects an assignment the client cannot run: a malformed one, or a model this machine's OpenCode or Codex does not list.
 func Validate(a Assignment) error {
 	if err := shape(a); err != nil {
 		return err
 	}
-	if a.Client == "opencode" {
-		listed, err := OpenCodeModels()
+	return new(Catalog).Runnable(a)
+}
+
+// ErrNotListed is a model the client's own listing leaves out, as opposed to a listing that failed.
+var ErrNotListed = errors.New("not listed")
+
+// Catalog is what the non-Claude clients can run on this machine, each client asked once and only when an assignment needs it.
+type Catalog struct {
+	opencode, codex         []string
+	codexEfforts            map[string][]string
+	opencodeErr, codexErr   error
+	opencodeDone, codexDone bool
+}
+
+// Runnable reports whether this machine can run a well-formed assignment: nil, an error wrapping ErrNotListed, or the listing's own failure. A Claude alias and Codex's inherit always run.
+func (c *Catalog) Runnable(a Assignment) error {
+	switch a.Client {
+	case "opencode":
+		listed, err := c.OpenCode()
 		if err != nil {
 			return err
 		}
 		if !slices.Contains(listed, a.Model) {
-			return fmt.Errorf("opencode has no model %q; run `opencode models`", a.Model)
+			return fmt.Errorf("opencode has no model %q; run `opencode models`: %w", a.Model, ErrNotListed)
+		}
+	case "codex":
+		if a.Model == "inherit" {
+			return nil
+		}
+		listed, err := c.Codex()
+		if err != nil {
+			return err
+		}
+		if !slices.Contains(listed, a.Model) {
+			return fmt.Errorf("codex has no model %q; run `codex debug models`: %w", a.Model, ErrNotListed)
+		}
+		if a.Effort != "" && !slices.Contains(c.codexEfforts[a.Model], a.Effort) {
+			return fmt.Errorf("codex %s does not support effort %q: %w", a.Model, a.Effort, ErrNotListed)
 		}
 	}
 	return nil
 }
 
-// OpenCodeModels lists the provider/model ids OpenCode can run on this machine.
-func OpenCodeModels() ([]string, error) {
-	out, err := exec.Command("opencode", "models").Output()
-	if err != nil {
-		return nil, fmt.Errorf("listing OpenCode models failed: %v", err)
+// OpenCode lists the provider/model ids OpenCode can run on this machine.
+func (c *Catalog) OpenCode() ([]string, error) {
+	if !c.opencodeDone {
+		c.opencodeDone = true
+		out, err := exec.Command("opencode", "models").Output()
+		if err != nil {
+			c.opencodeErr = fmt.Errorf("listing OpenCode models failed: %v", err)
+		} else {
+			c.opencode = strings.Fields(string(out))
+		}
 	}
-	return strings.Fields(string(out)), nil
+	return c.opencode, c.opencodeErr
+}
+
+// Codex lists the model slugs Codex offers on this machine, from `codex debug models`; a hidden model is not one to choose.
+func (c *Catalog) Codex() ([]string, error) {
+	if !c.codexDone {
+		c.codexDone = true
+		c.codex, c.codexEfforts, c.codexErr = codexCatalog()
+	}
+	return c.codex, c.codexErr
+}
+
+// CodexEfforts lists the efforts a listed Codex model supports, "" first for inherit.
+func (c *Catalog) CodexEfforts(model string) []string {
+	if _, err := c.Codex(); err != nil || model == "inherit" {
+		return []string{""}
+	}
+	return append([]string{""}, c.codexEfforts[model]...)
+}
+
+func codexCatalog() ([]string, map[string][]string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, nil, err
+	}
+	out, err := CodexCommand(home, "debug", "models").Output()
+	if err != nil {
+		return nil, nil, fmt.Errorf("listing Codex models failed: %v", err)
+	}
+	var catalog struct {
+		Models []struct {
+			Slug       string `json:"slug"`
+			Visibility string `json:"visibility"`
+			Levels     []struct {
+				Effort string `json:"effort"`
+			} `json:"supported_reasoning_levels"`
+		} `json:"models"`
+	}
+	if err := json.Unmarshal(out, &catalog); err != nil {
+		return nil, nil, fmt.Errorf("reading Codex's model catalog failed: %v", err)
+	}
+	var slugs []string
+	efforts := map[string][]string{}
+	for _, m := range catalog.Models {
+		if m.Visibility != "list" {
+			continue
+		}
+		slugs = append(slugs, m.Slug)
+		for _, level := range m.Levels {
+			efforts[m.Slug] = append(efforts[m.Slug], level.Effort)
+		}
+	}
+	return slugs, efforts, nil
+}
+
+// CodexCommand runs codex against ~/.codex under home, whatever CODEX_HOME the caller's terminal set, because the harness installs Codex's configuration there and Orca points CODEX_HOME at a home of its own.
+func CodexCommand(home string, args ...string) *exec.Cmd {
+	cmd := exec.Command("codex", args...)
+	cmd.Env = CodexEnv(home)
+	return cmd
+}
+
+// CodexEnv is this process's environment with CODEX_HOME at ~/.codex under home, for anything else that writes Codex's configuration.
+func CodexEnv(home string) []string {
+	return append(os.Environ(), "CODEX_HOME="+filepath.Join(home, ".codex"))
 }
 
 // shape rejects what no machine can run: an unknown client or Claude alias, or an effort the model does not support.
@@ -105,8 +212,19 @@ func shape(a Assignment) error {
 		if a.Effort != "" && (!strings.HasPrefix(a.Model, "openai/") || !slices.Contains(openaiEfforts, a.Effort)) {
 			return fmt.Errorf("opencode sends effort only as OpenAI's reasoningEffort, so %q is unsupported for %s", a.Effort, a.Model)
 		}
+	case "codex":
+		if !codexModel.MatchString(a.Model) {
+			return fmt.Errorf("codex model %q is not a model slug; run `codex debug models`", a.Model)
+		}
+		if !slices.Contains(codexEfforts, a.Effort) {
+			return fmt.Errorf("codex has no effort %q; choose %s", a.Effort, strings.Join(codexEfforts[1:], ", "))
+		}
+		// Which efforts apply depends on the model the session picks, which nothing here can check.
+		if a.Model == "inherit" && a.Effort != "" {
+			return fmt.Errorf("codex inherit takes no effort; name a model to set one")
+		}
 	default:
-		return fmt.Errorf("unknown client %q; choose claude or opencode", a.Client)
+		return fmt.Errorf("unknown client %q; choose claude, codex, or opencode", a.Client)
 	}
 	return nil
 }

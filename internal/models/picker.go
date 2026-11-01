@@ -10,16 +10,16 @@ import (
 
 // presetNotes are the one-line descriptions the picker shows beside each preset.
 var presetNotes = map[string]string{
-	"balanced":    "OpenCode GLM implements; reviews stay on the session's Claude model (default)",
+	"balanced":    "Codex GPT-6 Luna implements; reviews stay on the session's Claude model (default)",
 	"performance": "Opus implements; Fable reviews; all at high effort",
-	"economy":     "OpenCode DeepSeek Flash implements; Sonnet reviews",
-	"diversity":   "Sonnet implements; review spans Claude, OpenAI, and GLM",
+	"economy":     "Codex GPT-5.6 Luna implements; Sonnet reviews",
+	"diversity":   "Sonnet implements; Codex GPT-6.1 Sol reviews at high effort",
 }
 
 // claudeModels is the picker's order for the aliases claudeEfforts supports.
 var claudeModels = []string{"inherit", "fable", "opus", "sonnet", "haiku"}
 
-// visibleRows caps the rendered list, since `opencode models` can list more ids than a terminal is tall.
+// visibleRows caps the rendered list, since `opencode models` and Codex's catalog can list more ids than a terminal is tall.
 // ponytail: fixed height, so a terminal under about 21 rows still clips; size it from tea.WindowSizeMsg if that bites.
 const visibleRows = 15
 
@@ -35,21 +35,16 @@ const (
 type picker struct {
 	step         int
 	cursor       int
-	opencode     []string
-	opencodeErr  string
+	catalog      *Catalog
 	role, client string
 	model        string
 	sets         [][]string
 	done         bool
 }
 
-// newPicker takes `opencode models`' result, so tests supply the machine's list.
-func newPicker(opencode []string, err error) picker {
-	p := picker{opencode: opencode}
-	if err != nil {
-		p.opencodeErr = err.Error()
-	}
-	return p
+// newPicker takes the catalog the client and model steps list, so tests supply the machine's lists.
+func newPicker(catalog *Catalog) picker {
+	return picker{catalog: catalog}
 }
 
 // options lists what the current step offers. An effort of "" inherits the session's.
@@ -58,18 +53,30 @@ func (p picker) options() []string {
 	case stepRole:
 		return append(slices.Clone(Roles), "save")
 	case stepClient:
-		if len(p.opencode) == 0 {
-			return []string{"claude"}
+		clients := []string{"claude"}
+		if listed, _ := p.catalog.Codex(); len(listed) > 0 {
+			clients = append(clients, "codex")
 		}
-		return []string{"claude", "opencode"}
+		if listed, _ := p.catalog.OpenCode(); len(listed) > 0 {
+			clients = append(clients, "opencode")
+		}
+		return clients
 	case stepModel:
-		if p.client == "claude" {
+		switch p.client {
+		case "claude":
 			return claudeModels
+		case "codex":
+			listed, _ := p.catalog.Codex()
+			return slices.Concat([]string{"inherit"}, listed)
 		}
-		return p.opencode
+		listed, _ := p.catalog.OpenCode()
+		return listed
 	case stepEffort:
-		if p.client == "claude" {
+		switch p.client {
+		case "claude":
 			return claudeEfforts[p.model]
+		case "codex":
+			return p.catalog.CodexEfforts(p.model)
 		}
 		if strings.HasPrefix(p.model, "openai/") {
 			return openaiEfforts
@@ -148,8 +155,13 @@ func (p picker) View() tea.View {
 	if len(opts) > visibleRows {
 		fmt.Fprintf(&b, "  (%d of %d)\n", p.cursor+1, len(opts))
 	}
-	if p.step == stepClient && p.opencodeErr != "" {
-		b.WriteString("\nopencode unavailable: " + p.opencodeErr + "\n")
+	if p.step == stepClient {
+		if _, err := p.catalog.Codex(); err != nil {
+			b.WriteString("\ncodex unavailable: " + err.Error() + "\n")
+		}
+		if _, err := p.catalog.OpenCode(); err != nil {
+			b.WriteString("\nopencode unavailable: " + err.Error() + "\n")
+		}
 	}
 	if p.step == stepRole {
 		for _, s := range p.sets {

@@ -17,7 +17,7 @@ var mustGuard = map[string]bool{
 	"build": true, "retro": true,
 }
 
-// Unguarded reports every skill absent from the lock whose invocation guard is required or half present, as "<name>: missing <key>". A skill in mustGuard needs both guards, and any other local skill carrying one needs the other, because a guard only one client reads fires in the other. Claude Code reads `disable-model-invocation: true` at the top level and OpenCode reads `opencode/autoinvoke: "false"` under `metadata:`, so a guard anywhere else does not count. Locked bodies are exempt, because their frontmatter is upstream content.
+// Unguarded reports every skill absent from the lock whose invocation guard is required or partly present, as "<name>: missing <key>". A skill in mustGuard needs all three guards, and any other local skill carrying one needs the others, because a guard only one client reads fires in the rest. Claude Code reads `disable-model-invocation: true` at the top level, OpenCode reads `opencode/autoinvoke: "false"` under `metadata:`, and Codex reads `allow_implicit_invocation: false` under `policy:` in the skill's agents/openai.yaml, so a guard anywhere else does not count. Locked bodies are exempt, because their frontmatter is upstream content.
 func Unguarded(c checkout.Checkout) ([]string, error) {
 	lf, err := readLock(c.Lock())
 	if err != nil {
@@ -51,7 +51,13 @@ func Unguarded(c checkout.Checkout) ([]string, error) {
 			continue
 		}
 		claude, opencode := guarded(string(data))
-		if !mustGuard[e.Name()] && !claude && !opencode {
+		sidecar, err := os.ReadFile(filepath.Join(dir, "agents", "openai.yaml"))
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			problems = append(problems, fmt.Sprintf("%s: unreadable agents/openai.yaml (%v)", e.Name(), err))
+			continue
+		}
+		codex := codexGuarded(string(sidecar))
+		if !mustGuard[e.Name()] && !claude && !opencode && !codex {
 			continue
 		}
 		if !claude {
@@ -59,6 +65,9 @@ func Unguarded(c checkout.Checkout) ([]string, error) {
 		}
 		if !opencode {
 			problems = append(problems, e.Name()+": missing opencode/autoinvoke")
+		}
+		if !codex {
+			problems = append(problems, e.Name()+": missing agents/openai.yaml allow_implicit_invocation")
 		}
 	}
 	return problems, nil
@@ -100,4 +109,35 @@ func guarded(text string) (claude, opencode bool) {
 	}
 	// No closing delimiter: there is no frontmatter to trust.
 	return false, false
+}
+
+// codexGuarded reads agents/openai.yaml, where the guard must be a direct child of the top-level `policy:` block, at the indent of that block's first child. A tab indent or a repeated policy key is not YAML a strict parser takes, so either one counts as unguarded.
+func codexGuarded(text string) bool {
+	guard, inPolicy, childIndent, policies := false, false, "", 0
+	for _, line := range strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
+		if strings.TrimSpace(line) == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
+			continue
+		}
+		if line[0] != ' ' && line[0] != '\t' {
+			inPolicy = line == "policy:"
+			if inPolicy {
+				policies++
+			}
+			continue
+		}
+		indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+		if strings.Contains(indent, "\t") {
+			return false
+		}
+		if !inPolicy {
+			continue
+		}
+		if childIndent == "" {
+			childIndent = indent
+		}
+		if indent == childIndent && strings.HasPrefix(line[len(indent):], "allow_implicit_invocation:") {
+			guard = line[len(indent):] == "allow_implicit_invocation: false"
+		}
+	}
+	return guard && policies == 1
 }

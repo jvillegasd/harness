@@ -52,6 +52,11 @@ func show(t *testing.T, path string) string {
 	return out.String()
 }
 
+// catalogOf is a catalog listing the given OpenCode models and no Codex, so a picker test never asks this machine's clients.
+func catalogOf(opencode []string, err error) *Catalog {
+	return &Catalog{opencode: opencode, opencodeErr: err, opencodeDone: true, codexErr: errors.New("codex missing"), codexDone: true}
+}
+
 // statePath is a fresh state file, with PATH emptied so show and Validate never reach this machine's opencode.
 func statePath(t *testing.T) string {
 	t.Setenv("PATH", t.TempDir())
@@ -64,7 +69,7 @@ func TestPickerPresetStoresWhatSetStores(t *testing.T) {
 		if err := run(viaSet, []string{"set", "--preset", name}, &strings.Builder{}); err != nil {
 			t.Fatal(err)
 		}
-		p := choose(t, newPicker(nil, nil), name)
+		p := choose(t, newPicker(catalogOf(nil, nil)), name)
 		if !p.done {
 			t.Fatalf("%s: choosing a preset did not finish the picker", name)
 		}
@@ -83,7 +88,7 @@ func TestPickerPresetStoresWhatSetStores(t *testing.T) {
 }
 
 func TestPickerCustomOverridesRole(t *testing.T) {
-	p := choose(t, newPicker(nil, nil), "custom")
+	p := choose(t, newPicker(catalogOf(nil, nil)), "custom")
 	p = choose(t, p, "reviewer")
 	p = choose(t, p, "claude")
 	p = choose(t, p, "sonnet")
@@ -107,7 +112,7 @@ func TestPickerCustomOverridesRole(t *testing.T) {
 
 func TestPickerOffersOnlyListedModelsAndValidEfforts(t *testing.T) {
 	listed := []string{"opencode-go/glm-5.3", "openai/gpt-5.6-sol"}
-	base := choose(t, choose(t, choose(t, newPicker(listed, nil), "custom"), "executor"), "opencode")
+	base := choose(t, choose(t, choose(t, newPicker(catalogOf(listed, nil)), "custom"), "executor"), "opencode")
 	if got := base.options(); !slices.Equal(got, listed) {
 		t.Errorf("opencode models offered %v, want %v", got, listed)
 	}
@@ -117,14 +122,14 @@ func TestPickerOffersOnlyListedModelsAndValidEfforts(t *testing.T) {
 	if got := choose(t, base, "opencode-go/glm-5.3").options(); !slices.Equal(got, []string{""}) {
 		t.Errorf("non-OpenAI efforts offered %v, want inherit only", got)
 	}
-	haiku := choose(t, choose(t, choose(t, choose(t, newPicker(listed, nil), "custom"), "executor"), "claude"), "haiku")
+	haiku := choose(t, choose(t, choose(t, choose(t, newPicker(catalogOf(listed, nil)), "custom"), "executor"), "claude"), "haiku")
 	if got := haiku.options(); !slices.Equal(got, []string{""}) {
 		t.Errorf("haiku efforts offered %v", got)
 	}
 }
 
 func TestPickerHidesOpenCodeWhenItListsNothing(t *testing.T) {
-	p := choose(t, choose(t, newPicker(nil, errors.New("opencode missing")), "custom"), "executor")
+	p := choose(t, choose(t, newPicker(catalogOf(nil, errors.New("opencode missing"))), "custom"), "executor")
 	if got := p.options(); !slices.Equal(got, []string{"claude"}) {
 		t.Errorf("clients offered %v, want claude only", got)
 	}
@@ -133,10 +138,28 @@ func TestPickerHidesOpenCodeWhenItListsNothing(t *testing.T) {
 	}
 }
 
+func TestPickerOffersCodexModelsAndTheirEfforts(t *testing.T) {
+	catalog := &Catalog{codex: []string{"gpt-6-luna", "gpt-6.1-sol"}, codexEfforts: map[string][]string{"gpt-6-luna": {"low", "medium"}, "gpt-6.1-sol": {"low", "high", "ultra"}}, codexDone: true, opencodeErr: errors.New("opencode missing"), opencodeDone: true}
+	clients := choose(t, choose(t, newPicker(catalog), "custom"), "reviewer")
+	if got := clients.options(); !slices.Equal(got, []string{"claude", "codex"}) {
+		t.Errorf("clients offered %v", got)
+	}
+	base := choose(t, clients, "codex")
+	if got := base.options(); !slices.Equal(got, []string{"inherit", "gpt-6-luna", "gpt-6.1-sol"}) {
+		t.Errorf("codex models offered %v", got)
+	}
+	if got := choose(t, base, "gpt-6.1-sol").options(); !slices.Equal(got, []string{"", "low", "high", "ultra"}) {
+		t.Errorf("sol efforts offered %v", got)
+	}
+	if got := choose(t, base, "inherit").options(); !slices.Equal(got, []string{""}) {
+		t.Errorf("inherit efforts offered %v", got)
+	}
+}
+
 func TestPickerCancelWritesNothing(t *testing.T) {
-	custom := choose(t, choose(t, choose(t, newPicker(nil, nil), "custom"), "executor"), "claude")
+	custom := choose(t, choose(t, choose(t, newPicker(catalogOf(nil, nil)), "custom"), "executor"), "claude")
 	for name, p := range map[string]picker{
-		"menu":          newPicker(nil, nil),
+		"menu":          newPicker(catalogOf(nil, nil)),
 		"after an edit": choose(t, choose(t, custom, "opus"), "high"),
 	} {
 		p = drive(t, p, keyDown, keyUp)
@@ -163,7 +186,7 @@ func TestPickerViewKeepsCursorOnScreen(t *testing.T) {
 	for i := range 49 {
 		listed = append(listed, fmt.Sprintf("p/m%02d", i))
 	}
-	p := choose(t, choose(t, choose(t, newPicker(listed, nil), "custom"), "executor"), "opencode")
+	p := choose(t, choose(t, choose(t, newPicker(catalogOf(listed, nil)), "custom"), "executor"), "opencode")
 	for range 40 {
 		p = drive(t, p, keyDown)
 	}

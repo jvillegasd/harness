@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -72,7 +71,7 @@ func (in *installer) skillRoots() []string {
 	return []string{filepath.Join(in.home, ".agents", "skills"), filepath.Join(in.home, ".claude", "skills"), filepath.Join(in.config, "opencode", "skills")}
 }
 
-// assigned is this machine's `harness models` choice, which the role agents are rendered from. An OpenCode model this machine cannot run falls back to the client default with a warning, so a routine install never writes an agent that cannot start.
+// assigned is this machine's `harness models` choice, which the role agents are rendered from. A Codex or OpenCode model this machine cannot run falls back to the client default with a warning, so a routine install never writes an agent that cannot start.
 func (in *installer) assigned() map[string]agents.Assigned {
 	// Resolved once per run, so generation and the check render the same choice.
 	if in.assignments != nil {
@@ -83,24 +82,16 @@ func (in *installer) assigned() map[string]agents.Assigned {
 		die("Reading the model choice failed: %v", err)
 	}
 	assigned := choice.ForRender()
-	var listed []string
-	var listErr error
+	catalog := new(models.Catalog)
 	for _, role := range models.Roles {
 		a := assigned[role]
-		if a.Client != "opencode" {
-			continue
-		}
-		if listed == nil && listErr == nil {
-			if listed, listErr = models.OpenCodeModels(); listErr != nil {
-				in.warn("%v; every OpenCode-assigned role keeps the client default.", listErr)
-			}
-		}
-		if listErr != nil {
+		err := catalog.Runnable(models.Assignment{Client: a.Client, Model: a.Model, Effort: a.Effort})
+		switch {
+		case errors.Is(err, models.ErrNotListed):
+			in.warn("%s is assigned %s model %s, which this machine does not list (%v); its agent keeps the client default until `harness models` names one this machine can run.", role, a.Client, a.Model, err)
 			delete(assigned, role)
-			continue
-		}
-		if !slices.Contains(listed, a.Model) {
-			in.warn("%s is assigned OpenCode model %s, which `opencode models` does not list here; its agent keeps the client default until `harness models` names one this machine can run.", role, a.Model)
+		case err != nil:
+			in.warn("%v; %s keeps the %s client default.", err, role, a.Client)
 			delete(assigned, role)
 		}
 	}
@@ -115,7 +106,7 @@ func (in *installer) agentOut() string {
 
 // agentRoots pairs each client with the directory its role agents are linked into.
 func (in *installer) agentRoots() [][2]string {
-	return [][2]string{{"claude", filepath.Join(in.home, ".claude", "agents")}, {"opencode", filepath.Join(in.config, "opencode", "agents")}}
+	return [][2]string{{"claude", filepath.Join(in.home, ".claude", "agents")}, {"codex", filepath.Join(in.codexHome(), "agents")}, {"opencode", filepath.Join(in.config, "opencode", "agents")}}
 }
 
 // skillNames are the real directories under the checkout's skills namespace; a symlink there is not a skill this harness ships.

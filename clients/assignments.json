@@ -1,6 +1,7 @@
 {
   "clients": {
     "claude": {"model": "inherit", "effort": "inherit"},
+    "codex": {"model": "inherit", "effort": "inherit"},
     "opencode": {"model": "inherit", "effort": "inherit"}
   },
   "roles": {
