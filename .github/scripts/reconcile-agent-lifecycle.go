@@ -74,6 +74,8 @@ type gitHubAPI struct {
 	repository string
 	binary     string
 	merged     map[string]bool
+	// issues memoizes issue reads within one run, seeded by the sweep's listing, so a swept issue is not fetched again per check; update drops the entry it changes.
+	issues map[int]issue
 }
 
 func (g *gitHubAPI) gh(args ...string) ([]byte, error) {
@@ -139,6 +141,7 @@ func (g *gitHubAPI) openIssues(label string) ([]issue, error) {
 	for _, page := range pages {
 		for _, value := range page {
 			if len(value.PullRequest) == 0 {
+				g.remember(value)
 				result = append(result, value)
 			}
 		}
@@ -147,6 +150,9 @@ func (g *gitHubAPI) openIssues(label string) ([]issue, error) {
 }
 
 func (g *gitHubAPI) issue(number int) (issue, error) {
+	if value, ok := g.issues[number]; ok {
+		return value, nil
+	}
 	out, err := g.get(fmt.Sprintf("issues/%d", number), false)
 	if err != nil {
 		return issue{}, err
@@ -155,7 +161,15 @@ func (g *gitHubAPI) issue(number int) (issue, error) {
 	if err := json.Unmarshal(out, &value); err != nil {
 		return issue{}, err
 	}
+	g.remember(value)
 	return value, nil
+}
+
+func (g *gitHubAPI) remember(value issue) {
+	if g.issues == nil {
+		g.issues = map[int]issue{}
+	}
+	g.issues[value.Number] = value
 }
 
 func (g *gitHubAPI) related(number int, relation string) ([]issue, error) {
@@ -252,7 +266,8 @@ func (g *gitHubAPI) blockerSatisfied(value issue) (bool, error) {
 	if err := json.Unmarshal(out, &view); err != nil {
 		return false, err
 	}
-	g.merged[key] = false
+	// Cache only a complete answer: a failed lookup must not leave "unmerged" behind for the next issue in a sweep, which would block its dependents on evidence nobody read.
+	satisfied := false
 	for _, reference := range view.ClosedByPullRequestsReferences {
 		out, err := g.gh("pr", "view", reference.URL, "--json", "state,mergedAt")
 		if err != nil {
@@ -266,14 +281,16 @@ func (g *gitHubAPI) blockerSatisfied(value issue) (bool, error) {
 			return false, err
 		}
 		if state.State == "MERGED" || state.MergedAt != nil {
-			g.merged[key] = true
+			satisfied = true
 			break
 		}
 	}
-	return g.merged[key], nil
+	g.merged[key] = satisfied
+	return satisfied, nil
 }
 
 func (g *gitHubAPI) update(number int, changes map[string]any) error {
+	delete(g.issues, number)
 	body, err := json.Marshal(changes)
 	if err != nil {
 		return err
@@ -485,7 +502,8 @@ func reconcileParent(api issueAPI, number int, labels map[string]string) (bool, 
 		changes["state"] = target
 	}
 	if target == "open" {
-		if len(changes) == 0 && current.intersects(lifecycle) {
+		// An open parent keeps its lifecycle label, except ready-for-agent: a parent is a container, so one that gained a sub-issue while ready goes back to in-progress.
+		if len(changes) == 0 && current.intersects(lifecycle) && !current[labels["ready_for_agent"]] {
 			return false, nil
 		}
 		desired[labels["in_progress"]] = true
@@ -564,7 +582,7 @@ func reconcile(api issueAPI, eventNumber int, labels map[string]string, eventAct
 	return nil
 }
 
-// sweep reconciles every open issue that carries a lifecycle label, in number order, so an event the workflow's one-slot queue dropped heals on the next scheduled run wherever it sits. One issue's failure does not stop the others; the errors are returned together.
+// sweep reconciles every open issue that carries a lifecycle label, in number order, and the parent of each, so an event the workflow's one-slot queue dropped heals on the next scheduled run: a merged blocker releases its dependents, a parent whose last child merged closes, and a closed parent whose child reopened reopens. A closed issue with no open enrolled child is not visited. Each swept issue costs about three REST calls (its blockers, its sub-issues, and its parent), since the listing supplies the issue itself. One issue's failure does not stop the others; the errors are returned together.
 func sweep(api issueAPI, labels map[string]string) error {
 	seen := map[int]bool{}
 	var numbers []int
@@ -587,18 +605,32 @@ func sweep(api issueAPI, labels map[string]string) error {
 			failures = append(failures, fmt.Errorf("#%d: %w", number, err))
 			continue
 		}
-		changed, err := reconcileParent(api, number, labels)
+		if err := sweepParent(api, number, labels); err != nil {
+			failures = append(failures, fmt.Errorf("#%d: %w", number, err))
+			continue
+		}
+		parents, err := api.related(number, "parent")
 		if err != nil {
 			failures = append(failures, fmt.Errorf("#%d: %w", number, err))
 			continue
 		}
-		if changed {
-			if err := reconcileFrontier(api, number, labels, false); err != nil {
-				failures = append(failures, fmt.Errorf("#%d: %w", number, err))
+		if len(parents) > 0 && !parents[0].Foreign && !seen[parents[0].Number] {
+			seen[parents[0].Number] = true
+			if err := sweepParent(api, parents[0].Number, labels); err != nil {
+				failures = append(failures, fmt.Errorf("#%d: %w", parents[0].Number, err))
 			}
 		}
 	}
 	return errors.Join(failures...)
+}
+
+// sweepParent settles one issue as a parent, then its frontier when that changed it, as reconcile does.
+func sweepParent(api issueAPI, number int, labels map[string]string) error {
+	changed, err := reconcileParent(api, number, labels)
+	if err != nil || !changed {
+		return err
+	}
+	return reconcileFrontier(api, number, labels, false)
 }
 
 // reconcileChildren recomputes the frontier of a parent's open, enrolled children. The workflow's concurrency group keeps at most one pending run, so a newer event can replace a blocker's close event; reconciling the event issue's children and siblings on each run heals a dropped event within that family at once, and the scheduled sweep heals deeper and unrelated trees. Closed, planning-only, and foreign children are skipped from the listed payload so a large tree costs no extra calls for them.

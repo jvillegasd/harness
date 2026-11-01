@@ -726,3 +726,77 @@ func TestSteadyReadyTicketKeepsItsLabel(t *testing.T) {
 	}
 	assertLabels(t, f, 3, "ready-for-agent", "feature")
 }
+
+// TestReadyTicketThatGainsAChildGoesInProgress keeps "a parent is never ready-for-agent" when a ready ticket later gains a sub-issue: the frontier shortcut leaves its labels alone, so the parent pass must move it to in-progress.
+func TestReadyTicketThatGainsAChildGoesInProgress(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "open", "ready-for-agent"),
+			2: newIssue(2, "open", "ready-for-agent"),
+		},
+		nil, nil, nil, map[int][]int{2: {1}},
+	)
+	if err := sweep(f, defaultLabels()); err != nil {
+		t.Fatal(err)
+	}
+	assertLabels(t, f, 1, "in-progress")
+	assertLabels(t, f, 2, "ready-for-agent")
+}
+
+// TestSweepReopensAParentWhoseChildReopened heals a dropped reopen: the child is open again, its parent stayed closed, and the sweep reaches the parent through the child.
+func TestSweepReopensAParentWhoseChildReopened(t *testing.T) {
+	f := newFake(
+		map[int]*issue{
+			1: newIssue(1, "closed"),
+			2: newIssue(2, "open", "ready-for-agent"),
+		},
+		nil, nil, nil, map[int][]int{2: {1}},
+	)
+	f.history[1] = []event{{Event: "labeled", Label: label{Name: "in-progress"}}}
+	if err := sweep(f, defaultLabels()); err != nil {
+		t.Fatal(err)
+	}
+	if f.issues[1].State != "open" {
+		t.Fatalf("parent state = %s, want open; updates %v", f.issues[1].State, f.updates)
+	}
+	assertLabels(t, f, 1, "in-progress")
+}
+
+// TestBlockerSatisfiedReadsForeignEvidenceInItsRepository drives the gh-backed check with a stand-in gh: a foreign issue is looked up in its own repository, an unreadable one counts as unmerged without failing the run, and a failed lookup is not cached as unmerged.
+func TestBlockerSatisfiedReadsForeignEvidenceInItsRepository(t *testing.T) {
+	dir := t.TempDir()
+	calls := filepath.Join(dir, "calls")
+	gh := filepath.Join(dir, "gh")
+	script := `#!/bin/sh
+echo "$*" >> "` + calls + `"
+case "$*" in
+  *"--repo o/private"*) echo "no access" >&2; exit 1 ;;
+  *"issue view 7 --repo o/repo"*) echo '{"closedByPullRequestsReferences":[{"url":"u7"}]}' ;;
+  *"pr view u7"*) echo "timeout" >&2; exit 1 ;;
+  *"issue view"*) echo '{"closedByPullRequestsReferences":[{"url":"u"}]}' ;;
+  *"pr view"*) echo '{"state":"MERGED","mergedAt":"2026-01-01T00:00:00Z"}' ;;
+esac
+`
+	if err := os.WriteFile(gh, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	g := &gitHubAPI{repository: "o/repo", binary: gh}
+	foreign := issue{Number: 5, State: "closed", RepositoryURL: "https://api.github.com/repos/o/other", Foreign: true}
+	if ok, err := g.blockerSatisfied(foreign); err != nil || !ok {
+		t.Fatalf("foreign merged issue = %v, %v; want true, nil", ok, err)
+	}
+	private := issue{Number: 6, State: "closed", RepositoryURL: "https://api.github.com/repos/o/private", Foreign: true}
+	if ok, err := g.blockerSatisfied(private); err != nil || ok {
+		t.Fatalf("unreadable foreign issue = %v, %v; want false, nil", ok, err)
+	}
+	if _, err := g.blockerSatisfied(issue{Number: 7, State: "closed"}); err == nil {
+		t.Fatal("a failed pull request lookup did not fail the check")
+	}
+	if cached, ok := g.merged["o/repo#7"]; ok {
+		t.Fatalf("a failed lookup was cached as %v, which would mislead the next issue in a sweep", cached)
+	}
+	log, _ := os.ReadFile(calls)
+	if !strings.Contains(string(log), "issue view 5 --repo o/other") {
+		t.Fatalf("foreign issue was not looked up in its own repository:\n%s", log)
+	}
+}
