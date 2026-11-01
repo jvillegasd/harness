@@ -235,3 +235,27 @@ func TestEffectiveConfigUnionsBaseAndWorkingTree(t *testing.T) {
 		t.Errorf("EffectiveConfig = %v, want %v", cfg.CriticalPaths, want)
 	}
 }
+
+// TestChosenBaseCannotLowerTheFloor covers a branch that drops a criticalPaths entry in its own first commit and then names that commit as the base: the default branch's entries still count.
+func TestChosenBaseCannotLowerTheFloor(t *testing.T) {
+	dir := newRepo(t)
+	write(t, dir, ConfigPath, `{"criticalPaths": ["POLICY.md"]}`)
+	write(t, dir, "POLICY.md", "rules\n")
+	gitIn(t, dir, "add", "-A")
+	gitIn(t, dir, "commit", "-q", "-m", "protect policy")
+	gitIn(t, dir, "switch", "-q", "-c", "branch")
+	write(t, dir, ConfigPath, `{"tracker": "github"}`)
+	gitIn(t, dir, "commit", "-q", "-am", "drop protection")
+	write(t, dir, "POLICY.md", "weaker rules\n")
+	changes, err := Changed(dir, "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := EffectiveConfig(dir, changes.MergeBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := Classify("POLICY.md", cfg); got.Tier != Critical {
+		t.Errorf("Classify(POLICY.md) = %v with the branch's own commit as base, want critical", got)
+	}
+}

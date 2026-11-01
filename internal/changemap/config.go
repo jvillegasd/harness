@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // ConfigPath is the repository-relative file shared with the tools that own the tracker and label fields. This package reads only criticalPaths from it and ignores every other key.
@@ -31,11 +32,15 @@ func LoadConfig(root string) (Config, error) {
 	return parseConfig(raw, ConfigPath)
 }
 
-// EffectiveConfig is the floor a change is classified against: the union of the criticalPaths at the merge base and in the working tree. Reading only the working tree would let a branch lower its own floor by deleting an entry, so the base's entries always count; entries the branch adds count too.
+// EffectiveConfig is the floor a change is classified against: the union of the criticalPaths in the working tree, at the merge base, and at the merge base with the default branch. Reading only the working tree would let a branch lower its own floor by deleting an entry, and reading only the chosen base would let a caller pick a commit that already dropped it, so every one of those entries counts.
 func EffectiveConfig(root, mergeBase string) (Config, error) {
 	current, err := LoadConfig(root)
 	if err != nil {
 		return Config{}, err
+	}
+	revs := []string{mergeBase}
+	if def, err := git(root, "merge-base", "HEAD", DefaultBase(root)); err == nil {
+		revs = append(revs, strings.TrimSpace(def))
 	}
 	cfg := Config{}
 	seen := map[string]bool{}
@@ -47,21 +52,42 @@ func EffectiveConfig(root, mergeBase string) (Config, error) {
 			}
 		}
 	}
-	if mergeBase != "" {
-		if _, err := git(root, "cat-file", "-e", mergeBase+":"+ConfigPath); err == nil {
-			raw, err := git(root, "show", mergeBase+":"+ConfigPath)
-			if err != nil {
-				return Config{}, err
-			}
-			base, err := parseConfig([]byte(raw), ConfigPath+" at the merge base")
-			if err != nil {
-				return Config{}, err
-			}
-			add(base.CriticalPaths)
+	for _, rev := range revs {
+		if rev == "" || seen["rev:"+rev] {
+			continue
 		}
+		seen["rev:"+rev] = true
+		base, err := configAt(root, rev)
+		if err != nil {
+			return Config{}, err
+		}
+		add(base.CriticalPaths)
 	}
 	add(current.CriticalPaths)
 	return cfg, nil
+}
+
+// configAt reads criticalPaths from ConfigPath as committed at rev; a revision without the file adds nothing.
+func configAt(root, rev string) (Config, error) {
+	if _, err := git(root, "cat-file", "-e", rev+":"+ConfigPath); err != nil {
+		return Config{}, nil
+	}
+	raw, err := git(root, "show", rev+":"+ConfigPath)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg, err := parseConfig([]byte(raw), ConfigPath+" at "+shortRev(rev))
+	if err != nil {
+		return Config{}, fmt.Errorf("%v; fix it on the default branch, because the committed base config still sets the floor", err)
+	}
+	return cfg, nil
+}
+
+func shortRev(rev string) string {
+	if len(rev) > 12 {
+		return rev[:12]
+	}
+	return rev
 }
 
 // parseConfig reads criticalPaths from raw, naming source in every error.
