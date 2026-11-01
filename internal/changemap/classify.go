@@ -81,10 +81,14 @@ func Classify(file string, cfg Config) Result {
 		if !strings.HasPrefix(file, lock.Dir+"/") {
 			continue
 		}
-		if lock.Verified {
+		if !lock.Verified {
+			return Result{Tier: Structural, Reason: "locked body " + lock.Name + " does not match its lock hash; read the edit"}
+		}
+		if lock.Hashed[strings.TrimPrefix(file, lock.Dir+"/")] {
 			return Result{Tier: Mechanical, Reason: "locked body " + lock.Name + " from " + lock.Source + ", matching its lock hash", Group: lock.Dir + "/"}
 		}
-		return Result{Tier: Structural, Reason: "locked body " + lock.Name + " does not match its lock hash; read the edit"}
+		// A path the hash never covered, such as a file under node_modules or a symlink, takes the ordinary rules.
+		break
 	}
 
 	base := path.Base(file)

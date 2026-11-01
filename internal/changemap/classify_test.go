@@ -100,29 +100,33 @@ func TestClassify(t *testing.T) {
 func TestClassifyPrecedence(t *testing.T) {
 	cfg := Config{
 		CriticalPaths: []string{"go.sum", "docs/**", "skills/land/**", "**/*_test.go"},
-		Locked:        []Lock{{"skills/vendored", "vendored", "o/r", true}, {"skills/land", "land", "o/r", true}},
+		Locked: []Lock{
+			{Dir: "skills/vendored", Name: "vendored", Source: "o/r", Verified: true, Hashed: map[string]bool{"SKILL.md": true, "scripts/run.go": true}},
+			{Dir: "skills/land", Name: "land", Source: "o/r", Verified: true, Hashed: map[string]bool{"scripts/a.go": true}},
+		},
 	}
 	cases := []struct {
 		path string
 		want Tier
 	}{
-		{"go.sum", Critical},                           // configured beats lockfile
-		{"docs/readme.md", Critical},                   // configured beats docs
-		{"skills/land/SKILL.md", Critical},             // configured beats the skills exception
-		{"internal/a/a_test.go", Critical},             // configured beats test file
-		{"db/migrations/a_test.go", Critical},          // built-in beats test file
-		{"db/migrations/go.sum", Critical},             // built-in beats lockfile
-		{"queries/schema_gen.sql", Critical},           // built-in beats generated
-		{"test/api.pb.go", Mechanical},                 // generated beats a test directory
-		{"docs/package-lock.json", Critical},           // configured docs/** is checked first
-		{"tests/yarn.lock", Mechanical},                // lockfile beats a test directory
-		{"skills/x/yarn.lock", Mechanical},             // lockfile beats the skills exception
-		{"skills/x/api.pb.go", Mechanical},             // generated beats the skills exception
-		{"skills/x/notes.md", Structural},              // exception beats docs
-		{"roles/a/tests/case.txt", Structural},         // exception beats tests
-		{"skills/vendored/SKILL.md", Mechanical},       // a locked body beats the skills exception
-		{"skills/vendored/scripts/run.go", Mechanical}, // and beats the structural default
-		{"skills/land/scripts/a.go", Critical},         // configured beats a locked body
+		{"go.sum", Critical},                              // configured beats lockfile
+		{"docs/readme.md", Critical},                      // configured beats docs
+		{"skills/land/SKILL.md", Critical},                // configured beats the skills exception
+		{"internal/a/a_test.go", Critical},                // configured beats test file
+		{"db/migrations/a_test.go", Critical},             // built-in beats test file
+		{"db/migrations/go.sum", Critical},                // built-in beats lockfile
+		{"queries/schema_gen.sql", Critical},              // built-in beats generated
+		{"test/api.pb.go", Mechanical},                    // generated beats a test directory
+		{"docs/package-lock.json", Critical},              // configured docs/** is checked first
+		{"tests/yarn.lock", Mechanical},                   // lockfile beats a test directory
+		{"skills/x/yarn.lock", Mechanical},                // lockfile beats the skills exception
+		{"skills/x/api.pb.go", Mechanical},                // generated beats the skills exception
+		{"skills/x/notes.md", Structural},                 // exception beats docs
+		{"roles/a/tests/case.txt", Structural},            // exception beats tests
+		{"skills/vendored/SKILL.md", Mechanical},          // a locked body beats the skills exception
+		{"skills/vendored/scripts/run.go", Mechanical},    // and beats the structural default
+		{"skills/vendored/node_modules/x.js", Structural}, // a file the hash skipped takes the ordinary rules
+		{"skills/land/scripts/a.go", Critical},            // configured beats a locked body
 	}
 	for _, c := range cases {
 		if got := Classify(c.path, cfg).Tier; got != c.want {
@@ -133,8 +137,11 @@ func TestClassifyPrecedence(t *testing.T) {
 
 // TestMechanicalOnlyFromRules guards the floor contract: no path the rules do not name is ever mechanical, including inside a locked folder whose body no longer matches its lock.
 func TestMechanicalOnlyFromRules(t *testing.T) {
-	cfg := Config{Locked: []Lock{{"skills/edited", "edited", "o/r", false}}}
-	for _, path := range []string{"a.go", "a.lock", "lock.json", "go.mod", "gen.go", "a.pb.gox", "x/generated/a.go", "README.md", "a.sum", "skills/edited/SKILL.md", "skills/edited/run.go"} {
+	cfg := Config{Locked: []Lock{
+		{Dir: "skills/edited", Name: "edited", Source: "o/r"},
+		{Dir: "skills/verified", Name: "verified", Source: "o/r", Verified: true, Hashed: map[string]bool{"SKILL.md": true}},
+	}}
+	for _, path := range []string{"a.go", "a.lock", "lock.json", "go.mod", "gen.go", "a.pb.gox", "x/generated/a.go", "README.md", "a.sum", "skills/edited/SKILL.md", "skills/edited/run.go", "skills/verified/node_modules/x.js", "skills/verified/.git/config", "skills/verified/extra.md"} {
 		if got := Classify(path, cfg).Tier; got == Mechanical {
 			t.Errorf("Classify(%q) = mechanical without a deterministic rule", path)
 		}
@@ -160,7 +167,10 @@ func TestBuiltinCriticalIsDocumented(t *testing.T) {
 func TestLockedBodiesCollapse(t *testing.T) {
 	cfg := Config{
 		CriticalPaths: []string{"skills/vendored/hook.sh"},
-		Locked:        []Lock{{"skills/vendored", "vendored", "owner/repo", true}, {"skills/edited", "edited", "owner/repo", false}},
+		Locked: []Lock{
+			{Dir: "skills/vendored", Name: "vendored", Source: "owner/repo", Verified: true, Hashed: map[string]bool{"SKILL.md": true, "a/b.ts": true, "hook.sh": true}},
+			{Dir: "skills/edited", Name: "edited", Source: "owner/repo"},
+		},
 	}
 	changes := Changes{Files: []string{"skills/vendored/SKILL.md", "skills/vendored/a/b.ts", "skills/vendored/hook.sh", "skills/vendored-other/x.md", "skills-lock.json", "main.go", "skills/edited/a_test.go"}}
 	report := Build(changes, cfg)

@@ -33,6 +33,8 @@ const SkillLockPath = "skills-lock.json"
 type Lock struct {
 	Dir, Name, Source string
 	Verified          bool
+	// Hashed holds the folder-relative paths the hash covered; only these may collapse, because a skipped file (under node_modules or .git, or a symlink) would otherwise ride along unverified.
+	Hashed map[string]bool
 }
 
 // LoadLocks reads the working tree's skill lock. The branch's own lock is the one that covers a body it adds, and it cannot hide code: the lock file itself is a built-in critical path, an entry outside skills/ is ignored, a critical path is matched before any locked body, and a body collapses only when its folder hash matches the entry. A missing lock means no locked bodies.
@@ -63,9 +65,13 @@ func LoadLocks(root string) ([]Lock, error) {
 		if !strings.HasPrefix(dir, "skills/") {
 			continue
 		}
-		got, err := skills.FolderHash(filepath.Join(root, filepath.FromSlash(dir)))
+		got, files, err := skills.FolderHash(filepath.Join(root, filepath.FromSlash(dir)))
 		verified := err == nil && entry.ComputedHash != "" && got == entry.ComputedHash
-		locks = append(locks, Lock{Dir: dir, Name: name, Source: entry.Source, Verified: verified})
+		hashed := map[string]bool{}
+		for _, file := range files {
+			hashed[file] = true
+		}
+		locks = append(locks, Lock{Dir: dir, Name: name, Source: entry.Source, Verified: verified, Hashed: hashed})
 	}
 	sort.Slice(locks, func(i, j int) bool { return locks[i].Dir < locks[j].Dir })
 	return locks, nil
