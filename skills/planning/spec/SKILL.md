@@ -55,7 +55,7 @@ Propose where behavior will be tested. Prefer an existing seam, then the highest
 
 Tickets are optional, so skip this part unless the human asked for them. Drafting is local; publishing to a tracker is a separate request, and an explicit request to create tickets in a named tracker covers the scoped writes without another approval.
 
-1. Read the tracker conventions and any referenced tickets with their full thread, and search for duplicates. Preserve identifiers when updating existing work.
+1. Read the tracker mode in `docs/agents/harness.json` and any referenced tickets with their full thread, and search for duplicates. Preserve identifiers when updating existing work.
 2. Cut tracer-bullet vertical slices: each is a narrow but complete path through every layer, demoable or verifiable on its own, so ask of each "what can I demo?". Size a slice to one fresh context. Cut by dependency and risk, not by layer or file count.
 3. Put prefactoring first, following "make the change easy, then make the easy change". Break a wide refactor into expand, migrate in batches, and contract, so every slice leaves the system working.
 4. Show the breakdown as a numbered list with each slice's title, what blocks it, and what it delivers. Ask about granularity and blocking edges before publishing, because rewriting a published graph is costly.
