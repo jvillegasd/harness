@@ -1,6 +1,6 @@
 # Verify findings
 
-Three briefs, each given once per review with every finding it covers. The parent pastes the matching brief together with the numbered findings and the revision. Neither brief says who raised a finding or why the code was written this way.
+Three briefs, each given once per review with every finding it covers. The parent pastes the matching brief together with the numbered findings and the revision. No brief says who raised a finding or why the code was written this way.
 
 ## Executor: make each one fail
 
@@ -38,7 +38,7 @@ Only `unreachable` with a cited cut counts as a refutation.
 
 Given the confirmed findings, the check that proved each one, the repair delta, and the requirements, decide for each finding whether the repair removes the failure at its root, not at one symptom or one call site, and whether the repair breaks anything the findings did not name. Read the repaired code and its callers; you cannot run anything.
 
-Open your report with `revision:` echoing the repaired revision. Then report, for each finding by its number, one of:
+Open your report with the reviewer role's header lines, with `revision:` echoing the repaired revision and `axis: validate`. Then report, for each finding by its number, one of:
 - `holds`, with the `path:line` where the failure path is now cut;
 - `fails`, with the trace that still reaches the failure;
 - `unknown`, with what you could not read or trace.
@@ -49,4 +49,4 @@ Then list:
 - `regressions:` each new defect the repair introduced, in the reviewer role's finding format, or `none`;
 - `follow_ups:` each observation that blocks nothing, such as a missing test for a fixed path or a related cleanup, one line each, or `none`.
 
-Report nothing about code the repair did not touch.
+Report nothing the repair did not cause.

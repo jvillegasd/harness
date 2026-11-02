@@ -89,9 +89,9 @@ A review hunts once. Repairs get one check, not another hunt, so the cost of a r
 At `high`, or when the human asked, once every confirmed finding is fixed with its check turned green, launch one fresh `reviewer` with the validator brief from `references/verify.md`. Give it the confirmed findings, their red checks, the repair delta (`git diff <reviewed sha> <repaired sha>` over owned paths), the requirements, and the repaired revision, and nothing from the earlier rationale, the other findings, or which hunter raised a finding. A nit or a fix with no behavior change needs no validator.
 
 - `holds`: keep the finding `fixed`.
-- `fails`: record the finding `confirmed` again with the validator's trace, and take it to the human. Never start a second repair loop on your own.
+- `fails`: record the finding `unverified` with the validator's trace, since a read-only trace proves nothing ran, and take it to the human. Never start a second repair loop on your own.
 - A new defect the validator reports in the repaired code: record it as a round 2 finding with disposition `unverified`, and take it to the human.
-- `unknown`, or a report that does not echo the repaired revision: it is not a failure, so the finding stays `fixed` in the ledger. Retry once with the input repaired, then report the fix unverified.
+- `unknown`, or a report that does not echo the repaired revision: it is not a failure, so do not reopen the finding yet. Retry once with the input repaired; when the retry also gives no verdict, record the finding `unverified` with what the validator could not read, so `land` holds it for the human.
 - `follow_ups`: report them to the human beside the review outcome. They are not findings: record none of them and start no repair for them.
 
 At `medium` no validator runs, so a substantive repair stays unverified until the human decides. A further repair after validation is also unverified until the human decides.

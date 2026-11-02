@@ -22,4 +22,4 @@ Hunt for defects that change behavior. Read the diff against the whole repositor
   - a focused or skipped test (`.only`, `skip`, `t.Skip`) left in, so CI passes without running the suite.
 - **Pre-existing.** A defect in code the diff did not introduce (check the base) is `pre-existing`.
 
-Style, naming, and structure belong to the standards hunter, and trust boundaries and dependency failures to the risk hunter.
+Style, naming, and structure belong to the standards hunter, and trust boundaries and dependency failures to the risk hunter when one runs; when none runs, they are yours.

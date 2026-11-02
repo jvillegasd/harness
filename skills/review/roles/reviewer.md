@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Blind reviewer that hunts one review axis, or tries to refute a batch of findings, without the implementation rationale. Read and search only.
+description: Blind reviewer that hunts one review axis, tries to refute a batch of findings, or validates fixes, without the implementation rationale. Read and search only.
 access: read-search
 ---
 

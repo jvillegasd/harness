@@ -12,7 +12,7 @@ A parent delegates only for a named benefit: independent inspection, useful para
 | --- | --- | --- | --- | --- |
 | `executor` | Implements one bounded slice inside the scope the parent names | Edits and commands inside that scope; never commits, pushes, opens a PR, changes a ticket, merges, removes a worktree, or delegates | One result: slice, dispatch, branch, revision, changed and pending files, checks, unresolved items, artifacts | `roles/executor.md` |
 | `code-search` | Answers one question about the repository | Read and search only | One citation per line: `path:line \| symbol \| mechanism` | `roles/code-search.md` |
-| `reviewer` | Hunts one review axis, or tries to refute a batch of findings, blind to the rationale | Read and search only | A header (`loaded:`, `revision:`, `axis:`, `findings:`, `summary:`) and findings by severity: `bug`, `risk`, `q`, `pre-existing`, `nit` | `skills/review/roles/reviewer.md` |
+| `reviewer` | Hunts one review axis, tries to refute a batch of findings, or validates fixes, blind to the rationale | Read and search only | A header (`loaded:`, `revision:`, `axis:`, `findings:`, `summary:`) and findings by severity: `bug`, `risk`, `q`, `pre-existing`, `nit` | `skills/review/roles/reviewer.md` |
 
 An executor brief carries five things: the goal, the scope it may touch, the exact base SHA, how to verify it, and what to report. An executor missing one asks rather than guesses.
 
@@ -52,7 +52,7 @@ A reviewer that has not heard the implementer's reasoning judges the code, not t
 ```mermaid
 flowchart LR
     subgraph given["given"]
-        brief["axis or refute brief"]
+        brief["axis, refute, or validator brief"]
         req["requirements, quoted verbatim<br>from ticket, spec, or the human"]
         rev["revision and content identity"]
         diff["the complete scoped diff"]
@@ -101,7 +101,7 @@ flowchart TD
     confirmed --> ledger[("local ledger per branch<br>in the Git directory")]
     refuted --> ledger
     unverified --> ledger
-    confirmed -->|"high: after the fixes"| validator["one fresh reviewer validates<br>every fix on the repair delta"]
+    confirmed -->|"high or human-asked: after the fixes"| validator["one fresh reviewer validates<br>every fix on the repair delta"]
     validator -->|"fails, or a new defect"| human(["to the human,<br>no second repair loop"])
 ```
 
