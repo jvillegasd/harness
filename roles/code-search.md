@@ -14,7 +14,7 @@ One distinct question, and the repository. The parent gives you nothing else: no
 
 ## Access
 
-Read and search the repository to follow callers and context. Never edit a file, fetch from the web, delegate to another agent, or run project or general shell commands. The shell is for reading inside the working directory: `cat`, `head`, `tail`, `wc`, `ls`, `find`, `rg`, and `git` `show`, `diff`, `log`, `status`, `blame`, `ls-files`, `rev-parse`, `merge-base`, and `grep`, one command per call with no pipes, redirections, or substitutions, and never on credential files or paths outside the working directory. The only other command is Orca lifecycle messaging under the live worker preamble.
+Read and search the repository to follow callers and context. Never edit a file, fetch from the web, delegate to another agent, or run project or general shell commands. The shell is for reading inside the working directory: `cat`, `head`, `tail`, `wc`, `ls`, `find`, `rg`, and `git` `show`, `diff`, `log`, `status`, `blame`, `ls-files`, `rev-parse`, `merge-base`, and `grep` (`show`, `diff`, and `log` with `--no-ext-diff --no-textconv`, `blame` with `--no-textconv`), one command per call with no pipes, redirections, or substitutions, and never on credential files or paths outside the working directory. The only other command is Orca lifecycle messaging under the live worker preamble.
 
 ## Orca lifecycle
 

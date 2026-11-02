@@ -19,8 +19,11 @@ var readFlags = map[string][]string{
 	"git":  {"--output", "--ext-diff", "--textconv", "--no-index", "--open-files-in-pager", "-O"},
 }
 
-// gitReads are the git subcommands that only read the repository.
-var gitReads = []string{"show", "diff", "log", "status", "blame", "ls-files", "rev-parse", "merge-base", "grep"}
+// gitReads are the git subcommands that only read the repository, each with the flags it must carry. Git runs a configured external diff driver or textconv filter that .gitattributes selects, so a subcommand that prints diffs or blame must turn both off.
+var gitReads = map[string][]string{
+	"show": {"--no-ext-diff", "--no-textconv"}, "diff": {"--no-ext-diff", "--no-textconv"}, "log": {"--no-ext-diff", "--no-textconv"},
+	"blame": {"--no-textconv"}, "status": nil, "ls-files": nil, "rev-parse": nil, "merge-base": nil, "grep": nil,
+}
 
 // readCommand allows a read-only command whose every argument stays inside dir: no refused flag, no credential-shaped name, and no existing path that resolves outside dir. It runs nothing; a path that does not exist is left to the command to reject.
 func readCommand(words []string, dir string) bool {
@@ -30,39 +33,65 @@ func readCommand(words []string, dir string) bool {
 	}
 	args := words[1:]
 	if words[0] == "git" {
-		if len(args) == 0 || !slices.Contains(gitReads, args[0]) {
+		if len(args) == 0 {
+			return false
+		}
+		required, ok := gitReads[args[0]]
+		if !ok {
 			return false
 		}
 		args = args[1:]
+		for _, flag := range required {
+			if !slices.Contains(args, flag) {
+				return false
+			}
+		}
 	}
 	root, err := filepath.EvalSymlinks(dir)
 	if err != nil {
 		return false
 	}
 	for _, arg := range args {
-		if refusedFlag(arg, refused) || credentialShaped(arg) {
+		if refusedFlag(arg, refused) {
 			return false
 		}
-		path := arg
-		if strings.HasPrefix(arg, "-") {
-			_, value, ok := strings.Cut(arg, "=")
-			if !ok || value == "" {
-				continue
+		for _, operand := range operands(arg) {
+			if credentialShaped(operand) || !staysInside(operand, dir, root) {
+				return false
 			}
-			path = value
-		}
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(dir, path)
-		}
-		if _, err := os.Lstat(path); err != nil {
-			continue
-		}
-		resolved, err := filepath.EvalSymlinks(path)
-		if err != nil || (resolved != root && !strings.HasPrefix(resolved, root+string(filepath.Separator))) || credentialShaped(resolved) {
-			return false
 		}
 	}
 	return true
+}
+
+// operands lists every piece of an argument a command could read as a path: the argument itself, a long flag's value after "=", and every tail of a short-flag cluster, since a short flag may take its value attached (rg -f/etc/hosts).
+func operands(arg string) []string {
+	if !strings.HasPrefix(arg, "-") {
+		return []string{arg}
+	}
+	if strings.HasPrefix(arg, "--") {
+		if _, value, ok := strings.Cut(arg, "="); ok && value != "" {
+			return []string{value}
+		}
+		return nil
+	}
+	var tails []string
+	for i := 2; i < len(arg); i++ {
+		tails = append(tails, arg[i:])
+	}
+	return tails
+}
+
+// staysInside reports whether an existing path resolves inside root; a path that does not exist is left to the command to reject.
+func staysInside(path, dir, root string) bool {
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(dir, path)
+	}
+	if _, err := os.Lstat(path); err != nil {
+		return true
+	}
+	resolved, err := filepath.EvalSymlinks(path)
+	return err == nil && (resolved == root || strings.HasPrefix(resolved, root+string(filepath.Separator))) && !credentialShaped(resolved)
 }
 
 func refusedFlag(arg string, refused []string) bool {
