@@ -100,6 +100,9 @@ func resolveExecutable(name string) string {
 	if err != nil {
 		return ""
 	}
+	if path, err = filepath.Abs(path); err != nil {
+		return ""
+	}
 	if path, err = filepath.EvalSymlinks(path); err != nil {
 		return ""
 	}

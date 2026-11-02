@@ -89,6 +89,14 @@ func TestLifecycleGuardMatchesResolvedExecutable(t *testing.T) {
 	if !lifecycleCommand(orca+" orchestration check", "orca") {
 		t.Error("absolute spelling of the configured PATH name refused")
 	}
+	t.Chdir(filepath.Dir(dir))
+	relative := "./" + filepath.Join(filepath.Base(dir), "orca")
+	if !lifecycleCommand(relative+" orchestration check", orca) {
+		t.Error("relative spelling of the configured absolute path refused")
+	}
+	if !lifecycleCommand(orca+" orchestration check", relative) {
+		t.Error("absolute spelling of the configured relative path refused")
+	}
 	if lifecycleCommand("other orchestration check", orca) {
 		t.Error("a different executable accepted")
 	}
