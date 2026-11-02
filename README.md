@@ -32,6 +32,20 @@ Skills compose around the task. Use investigation for unknowns, specifications f
 
 Routine work creates no task artifact. Agent-started review follows the review level: `off` starts none, `medium` (the default) gives every pull request above `tests-docs`, and a local handoff only when `critical` or naming a concrete risk, a lean review with at most two subagents, and `high` reviews by `change-map` tier with at most seven subagents per round. Only the human sets the level (`! harness review level high` in Claude Code, which denies the agent the setting forms; elsewhere this rests on the policy); an explicit request for review runs at any level. As in pstack's shipping playbook, `/land` at `medium` or `high` holds a pull request above `tests-docs` until a review covers its current patch; at `off` it reports the gap without holding. Longer work reuses a document or creates `docs/agents/tasks/<feature>.md`; unavailable memory leaves its mirror explicitly pending. Recovery reads both copies, reconciles against Git, preserves unfinished requirements and conflicts, and invalidates stale checks. Legacy checkpoints remain intact as recoverable context, without granting authority.
 
+```mermaid
+flowchart LR
+    understand["understand<br>/explain"] --> intent["intent<br>grilling, /triage,<br>proto, /spec"]
+    intent --> build["build<br>inline with tdd and ponytail,<br>or /build"]
+    build --> prove["prove<br>verification,<br>/e2e-verification"]
+    prove --> map["triage<br>change-map, review"]
+    map --> deliver["deliver<br>open-pr, address-review"]
+    deliver --> land(["/land<br>human only"])
+    deliver -.-> abandon(["/abandon<br>human only"])
+    land --> learn["learn<br>/retro"]
+```
+
+Every stage is optional and entered only when its situation appears. `docs/workflow.md` walks through the stages, the authority gates, delivery, and `/build`; `docs/subagents.md` covers the delegated roles.
+
 Not sure which skill fits? `/harness-help` answers from its map and names the one to three skills that match your situation.
 
 ## Repository layout
@@ -64,7 +78,7 @@ Every command and leaf command answers `--help` and `-h` with its usage on stdou
 
 ## Role agents
 
-Three named roles remain: `executor` implements a bounded slice, `code-search` answers a repository question, and `reviewer` hunts one review axis or tries to refute a batch of findings, blind to the implementer's rationale. Delegate only for useful parallel work, context isolation, or independent inspection. `review` owns diff delivery and bounded triage; its role lives in `skills/review/roles/reviewer.md`. The other definitions remain under `roles/`. Client/model resolution is unchanged.
+Three named roles remain: `executor` implements a bounded slice, `code-search` answers a repository question, and `reviewer` hunts one review axis or tries to refute a batch of findings, blind to the implementer's rationale. Delegate only for useful parallel work, context isolation, or independent inspection. `review` owns diff delivery and bounded triage; its role lives in `skills/review/roles/reviewer.md`. The other definitions remain under `roles/`. Client/model resolution is unchanged. `docs/subagents.md` explains each role, the routing, and the review pipeline with diagrams.
 
 A role assigned to the session's own client launches as a native subagent (the Agent tool in Claude Code, a subagent spawned by the agent's name in Codex, `task` in OpenCode), which loads only the rendered agent. A role assigned to another client launches through Orca, per the policy's **Delegation** section.
 
@@ -107,6 +121,8 @@ OpenCode is the preferred main client, for OpenAI model access, subject to the s
 
 ```mermaid
 flowchart TD
+    override_in["per-role override<br>harness models set"] --> choice
+    preset_in["preset: balanced, performance,<br>economy, or diversity"] --> choice
     choice["harness models choice in ~/.harness/state.json<br>role override, else preset, else balanced"] --> role{"is this the role's<br>assigned client?"}
     config["clients/assignments.json<br>client defaults only; a per-role<br>model or effort there is refused"] --> default
     role -->|yes| override["the machine's choice"]
@@ -116,8 +132,12 @@ flowchart TD
     supported -->|no| refused(["exit 1: nothing written,<br>nothing substituted"])
     supported -->|yes| defined{"does the role have a definition?"}
     defined -->|no| pending["pending: assignment validated,<br>no agent generated"]
-    defined -->|yes, inherit| session["session inheritance<br>Claude Code: model: inherit, no effort line<br>OpenCode: neither line"]
+    defined -->|yes, inherit| session["session inheritance<br>Claude Code: model: inherit, no effort line<br>Codex: neither key<br>OpenCode: neither line"]
     defined -->|yes, a model or effort| written["written to the agent frontmatter<br>account availability reported unverified"]
+    session --> launch{"harness models resolve role:<br>assigned to the session's client?"}
+    written --> launch
+    launch -->|yes| native["native subagent<br>Agent tool, Codex subagent, or OpenCode task"]
+    launch -->|no| orca["Orca worker<br>harness models launch-args, then<br>Orca's orchestration skill"]
 ```
 
 ## Checks
@@ -254,6 +274,44 @@ Ponytail is a locked skill body, not an installed plugin. Policy selects it for 
 ## GitHub lifecycle
 
 In GitHub mode, `setup-harness` writes `docs/agents/harness.json`, creates the four labels, writes the tracker compatibility file, and copies the bundled workflow and reconciler. The workflow becomes active when that reviewed change reaches the default branch. GitHub native sub-issue and dependency relationships remain the source of truth. A blocker satisfies the frontier only when a merged pull request closed it, which is why `blockerSatisfied` walks `closedByPullRequestsReferences` rather than trusting the closed state; closing an issue by hand does not open the frontier behind it. The parent closes only after every child has that same evidence. A sub-issue or blocker from another repository is never relabeled; its merge evidence is read from its own repository and counts as unmerged when that repository cannot be read. The workflow also runs hourly, and on demand, to sweep every open enrolled issue, because its concurrency group keeps one pending run and a newer event can replace an older one.
+
+```mermaid
+flowchart TD
+    setup["setup-harness<br>invoked by hand, per repository"] --> config["docs/agents/harness.json<br>tracker, spec home, label mapping"]
+    setup --> labels["four labels<br>blocked · ready-for-agent<br>in-progress · ready-for-human"]
+    setup --> trackerdoc["docs/agents/issue-tracker.md<br>compatibility file for locked skills"]
+    setup --> files[".github/workflows/agent-lifecycle.yml<br>.github/scripts/reconcile-agent-lifecycle.go"]
+    files --> active(["active once that reviewed change<br>reaches the default branch"])
+
+    subgraph GRAPH["issue graph, GitHub native"]
+        parent["parent issue"] --- children["sub-issues"]
+        children --- deps["blocked-by / blocking"]
+    end
+
+    subgraph RUN["reconciler"]
+        event["issue closed or reopened"] --> frontier["reconcile the event issue's frontier:<br>its open enrolled children and siblings"]
+        sweep["hourly or on-demand sweep"] --> all["reconcile every open enrolled issue"]
+        frontier --> blocker{"every blocker closed<br>by a merged pull request?"}
+        all --> blocker
+        blocker -->|no, or closed by hand,<br>or its repository unreadable| blocked["label: blocked"]
+        blocker -->|yes, nothing active| ready["label: ready-for-agent"]
+        frontier --> parentstate{"every required child<br>merged?"}
+        parentstate -->|yes| closeparent["parent closed"]
+        parentstate -->|no| openparent["parent stays open,<br>never ready-for-agent"]
+        foreign["issue from another repository"] -.->|never relabeled| blocker
+    end
+
+    active --> event
+    active --> sweep
+    GRAPH --> frontier
+
+    subgraph AGENT["with an explicit request"]
+        ready --> claim["authorized claim<br>label: in-progress"]
+        claim --> handoff["open-pr hands off<br>label: ready-for-human"]
+        handoff --> landit(["human /land:<br>merge evidence closes the ticket"])
+    end
+    landit --> event
+```
 
 The other mode is local markdown, where `setup-harness` writes the config and compatibility file and nothing else: no labels, no workflow, no reconciler. Lifecycle state is a `Status:` line and a `Blocked by:` line committed beside the code, and the `local-tracker` skill holds what each operation means there.
 
