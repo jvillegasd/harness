@@ -41,6 +41,12 @@ Given the confirmed findings, the check that proved each one, the repair delta, 
 Open your report with `revision:` echoing the repaired revision. Then report, for each finding by its number, one of:
 - `holds`, with the `path:line` where the failure path is now cut;
 - `fails`, with the trace that still reaches the failure;
-- `unknown`, with what you could not trace.
+- `unknown`, with what you could not read or trace.
 
-After the findings, list any new defect the repair introduced, in the reviewer role's finding format. Report nothing about code the repair did not touch.
+Use `unknown` when you could not read the code a verdict turns on. Never report `fails` for something you did not observe: a `fails` reopens the finding and sends it to the human.
+
+Then list:
+- `regressions:` each new defect the repair introduced, in the reviewer role's finding format, or `none`;
+- `follow_ups:` each observation that blocks nothing, such as a missing test for a fixed path or a related cleanup, one line each, or `none`.
+
+Report nothing about code the repair did not touch.

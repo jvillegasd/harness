@@ -91,7 +91,8 @@ At `high`, or when the human asked, once every confirmed finding is fixed with i
 - `holds`: keep the finding `fixed`.
 - `fails`: record the finding `confirmed` again with the validator's trace, and take it to the human. Never start a second repair loop on your own.
 - A new defect the validator reports in the repaired code: record it as a round 2 finding with disposition `unverified`, and take it to the human.
-- `unknown`, or a report that does not echo the repaired revision: retry once with the input repaired, then leave the fix unverified and say so.
+- `unknown`, or a report that does not echo the repaired revision: it is not a failure, so the finding stays `fixed` in the ledger. Retry once with the input repaired, then report the fix unverified.
+- `follow_ups`: report them to the human beside the review outcome. They are not findings: record none of them and start no repair for them.
 
 At `medium` no validator runs, so a substantive repair stays unverified until the human decides. A further repair after validation is also unverified until the human decides.
 
