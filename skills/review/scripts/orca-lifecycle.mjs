@@ -22,7 +22,7 @@ export const OrcaLifecycle = async () => ({
       timeout: 5000,
     }));
     if (result.hookSpecificOutput?.permissionDecision !== 'allow') {
-      throw new Error('Only literal Orca lifecycle commands from the live worker preamble are permitted');
+      throw new Error('Only Orca lifecycle commands from the live worker preamble and read-only commands inside the working directory are permitted');
     }
   },
 });

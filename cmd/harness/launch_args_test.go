@@ -160,7 +160,8 @@ func TestOpenCodeLifecyclePluginBlocksGeneralShell(t *testing.T) {
  if (config.agent['reviewer'].permission.bash !== 'allow' || config.agent['reviewer'].permission['*'] !== 'deny') throw Error('bad scope');
  const before = hooks['tool.execute.before'];
  await before({tool:'bash'}, {args:{command:'orca orchestration check --terminal t --json'}});
- for (const command of ['git status', 'orca orchestration check > file', 'orca orchestration check; touch file']) {
+ await before({tool:'bash'}, {args:{command:'git status'}});
+ for (const command of ['git commit -m x', 'cat /etc/hosts', 'orca orchestration check > file', 'orca orchestration check; touch file']) {
    let denied = false;
    try { await before({tool:'bash'}, {args:{command}}); } catch { denied = true; }
    if (!denied) throw Error('allowed: '+command);
@@ -196,7 +197,8 @@ func TestClaudeLifecycleHookFailsClosed(t *testing.T) {
 	}{
 		{"orca orchestration check --json", binary, "allow", false},
 		{"orca orchestration check > tracked.md", binary, "deny", false},
-		{"git status", binary, "deny", false},
+		{"git status", binary, "allow", false},
+		{"git commit -m x", binary, "deny", false},
 		{"orca orchestration check", "/missing/guard", "", true},
 		{"orca orchestration check", "", "", true},
 	} {
