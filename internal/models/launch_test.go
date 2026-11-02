@@ -26,6 +26,13 @@ func TestReviewerArgvCarriesNoDenies(t *testing.T) {
 	}
 }
 
+// A main-thread --agent session runs at the settings' effortLevel, so a Claude role's effort travels in argv too.
+func TestClaudeArgvCarriesEffort(t *testing.T) {
+	if got := launchArgs("reviewer", Assignment{Client: "claude", Model: "opus", Effort: "high"}); !reflect.DeepEqual(got, []string{"claude", "--agent", "reviewer", "--effort", "high"}) {
+		t.Fatalf("argv = %v", got)
+	}
+}
+
 // A Codex role starts as no named agent, so its argv carries the instructions, model, and effort, and the sandbox that keeps commits out while Orca stays reachable.
 func TestCodexArgvCarriesInstructionsAndSandbox(t *testing.T) {
 	got := codexLaunch(Assignment{Client: "codex", Model: "gpt-6.1-sol", Effort: "high"}, "read-search", "Say \"hi\" & <stop>\x7f\nNext line.")

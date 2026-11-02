@@ -113,8 +113,11 @@ func launchArgs(role string, a Assignment) []string {
 	if a.Client == "opencode" {
 		return []string{"opencode", "-m", a.Model, "--agent", role}
 	}
-	// No --model or --effort: they would override the agent's frontmatter, which renderedMatches proved current. Whether a main-thread --agent session applies the frontmatter's effort, not only its model, is unverified.
+	// No --model: the agent's frontmatter, which renderedMatches proved current, sets it. --effort repeats the proven frontmatter value, because a main-thread --agent session was observed running at the settings' effortLevel instead of the agent's.
 	argv := []string{"claude", "--agent", role}
+	if a.Effort != "" {
+		argv = append(argv, "--effort", a.Effort)
+	}
 	if role == "executor" {
 		argv = append(append(argv, "--permission-mode", "acceptEdits", "--allowedTools", "Bash", "--disallowedTools"), executorDenies...)
 	}
