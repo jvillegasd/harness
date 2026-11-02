@@ -18,7 +18,7 @@ Read and search the repository to follow callers and context. Never edit a file,
 
 ## Orca lifecycle
 
-When dispatched by Orca, follow the live worker preamble for lifecycle messages using its exact executable, handle, capability, Task ID, and Dispatch ID. Only `orchestration send`, `orchestration ask`, and `orchestration check` are permitted. Use one literal command per call, without shell substitutions, operators, redirections, escapes, or control characters, even inside quoted message text. Keep message prose simple when the permission guard refuses syntax. Never write a report file; return your full report as text. Lifecycle messages are separate from the report format below. Emit the complete report as text before sending `worker_done`, so the coordinator can retrieve it when the Dispatch settles. Then complete the preamble's lifecycle protocol and idle; do not begin new work. Without a live preamble, run no lifecycle commands.
+When dispatched by Orca, follow the live worker preamble for lifecycle messages using its exact executable, handle, capability, Task ID, and Dispatch ID. Only `orchestration send`, `orchestration ask`, and `orchestration check` are permitted. Use one literal command per call on one line, with no shell syntax outside quotes, and no `$`, backtick, or backslash inside double quotes; single-quoted text is literal. Never write a report file; return your full report as text. Lifecycle messages are separate from the report format below. Emit the complete report as text before sending `worker_done`, so the coordinator can retrieve it when the Dispatch settles. Then complete the preamble's lifecycle protocol and idle; do not begin new work. Without a live preamble, run no lifecycle commands.
 
 ## Output
 
