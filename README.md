@@ -45,6 +45,37 @@ Uninstall asks first, preserves edited copies, and leaves installed packages and
 
 Local work stays local until you request publication. Only your explicit `/land` merges a PR. Discarding unmerged work requires `/abandon` and an approved inventory.
 
+```mermaid
+stateDiagram-v2
+    direction TB
+    state "Local changes" as Local
+    state "Ready locally" as LocalReady
+    state "Preparing PR" as Preparing
+    state "PR open" as PR
+    state "Ready to merge" as MergeReady
+    state "Needs your input" as Waiting
+
+    [*] --> Local: You request work
+    Local --> Local: Agent fixes failed checks
+    Local --> LocalReady: Agent completes work and local checks
+    LocalReady --> Preparing: You request publication
+    Preparing --> PR: Agent satisfies local checks and applicable review, then publishes
+    PR --> PR: Agent fixes failed checks or addresses feedback
+    PR --> MergeReady: Required checks and review satisfied
+    MergeReady --> PR: New changes require checks or review
+    MergeReady --> Merged: You invoke /land; agent verifies and merges
+    Merged --> [*]
+
+    Local --> Waiting: Agent needs a decision or required check is unavailable
+    Preparing --> Waiting: Agent needs a decision or required check or review is unavailable
+    PR --> Waiting: Agent needs a decision or required check or review is unavailable
+    Waiting --> Local: You resolve blocker; agent resumes local work
+    Waiting --> Preparing: You resolve blocker; agent resumes PR preparation
+    Waiting --> PR: You resolve blocker; agent resumes PR work
+```
+
+**Ready locally is a complete outcome.** Stop there if you do not want a PR. A publication request can come with the original task or later. From **Needs your input**, work resumes at the stage that was blocked. See [the workflow guide](docs/workflow.md#local-work-and-delivery) for details.
+
 Review defaults to `medium`. Set it yourself with `harness review level off|medium|high`. Medium reviews PRs above documentation/test-only changes and local changes with concrete risks. High adds deeper review. An explicit review request works at any level.
 
 Read [the workflow guide](docs/workflow.md) for optional planning, builds, and tracker setup, or [the delegation guide](docs/subagents.md) for worker roles.

@@ -28,6 +28,16 @@ An implementation request authorizes local edits and commits on a task branch th
 
 Before handoff, the agent runs the repository checks and explains what changed, what to review, and any gaps. Review depth follows your `harness review level` setting. At `medium` and `high`, landing a PR above `tests-docs` requires review of its current patch.
 
+The [README state diagram](../README.md#everyday-use) shows the delivery path:
+
+- **Ready locally:** the requested local work and applicable checks are complete. No publication is required.
+- **Preparing PR:** publication is authorized. The agent completes local checks and applicable review before publishing.
+- **PR open:** remote checks and feedback may require more changes on the same branch. Changed code needs fresh checks and any applicable review.
+- **Ready to merge:** required checks and review are satisfied. The agent waits for your `/land`, then rechecks the gates before merging.
+- **Needs your input:** a consequential decision or unavailable required check or reviewer blocks progress. Once resolved, work returns to the blocked stage. A failed check the agent can repair stays in the normal work loop.
+
+These describe the intended workflow, not a centrally enforced task status. Live agent compliance is separate from the written policy.
+
 For longer work, the agent keeps requirements, decisions, evidence, and the next action in `docs/agents/tasks/<feature>.md`. Small tasks need no extra document.
 
 ## Larger builds
