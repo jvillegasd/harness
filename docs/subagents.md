@@ -40,10 +40,10 @@ The presets in `harness models`:
 
 | Preset | Executor | Code search | Reviewer |
 | --- | --- | --- | --- |
-| `balanced` (default) | Codex `gpt-6-luna` | `sonnet` | `opus` at high effort |
-| `performance` | a top Claude model at high effort | the same | the same |
+| `balanced` (default) | Codex `gpt-6-luna` | `sonnet` | `opus` at low effort |
+| `performance` | a top Claude model at high effort | the same | `fable` at low effort |
 | `economy` | Codex `gpt-5.6-luna` | `haiku` | the cheapest viable model |
-| `diversity` | as `balanced` | as `balanced` | Codex `gpt-6.1-sol` at high effort |
+| `diversity` | as `balanced` | as `balanced` | Codex `gpt-6.1-sol` at low effort |
 
 ## Blind inputs
 

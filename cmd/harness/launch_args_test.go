@@ -52,7 +52,7 @@ func TestLaunchArgsPreparesWithoutLaunching(t *testing.T) {
 		role, client, model, effort string
 		want                        []string
 	}{
-		{"reviewer", "claude", "opus", "high", []string{"claude", "--agent", "reviewer"}},
+		{"reviewer", "claude", "opus", "low", []string{"claude", "--agent", "reviewer"}},
 		{"code-search", "claude", "sonnet", "", []string{"claude", "--agent", "code-search"}},
 		{"executor", "codex", "gpt-6-luna", "", []string{"codex", "-m", "gpt-6-luna", "-c"}},
 		{"executor", "opencode", "opencode-go/glm-5.3", "", []string{"opencode", "-m", "opencode-go/glm-5.3", "--agent", "executor"}},
