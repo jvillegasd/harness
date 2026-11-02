@@ -21,9 +21,9 @@ Read the level with `harness review level --json`; when the command is unavailab
 | --- | --- | --- | --- | --- | --- |
 | `off` | never | none | none | 0 | 0 |
 | `medium` (default) | a pull request is about to open with any tier above `tests-docs`, or a local handoff's highest tier is `critical` or names a concrete security, data-loss, compatibility, or concurrency risk | Quick | lean | 1 | 2 (3 in `build`, which adds `spec`) |
-| `high` | the highest tier is `structural` or above, for a pull request or a local handoff | the Depth table | batched | 2 | 7 per round |
+| `high` | the highest tier is `structural` or above, for a pull request or a local handoff | the Depth table | batched | 2 | 6 per round |
 
-The ceiling counts hunters, the verifier, and the refuter for one slice; a diff split into slices multiplies it, and a delegated fix executor comes on top.
+The ceiling counts hunters, the verifier, and the refuter for one slice, and never more than four hunters; a diff split into slices multiplies it, and a delegated fix executor comes on top.
 
 A review the human asked for verifies batched. Never launch a verifier or refuter per finding: the batch is what keeps the cost flat as findings grow. When no review runs because of the level, record `no-review` with the level in `--summary`.
 
@@ -35,8 +35,10 @@ At `high`, or when the human asks for Deep, take the highest tier from `change-m
 | --- | --- | --- |
 | only `mechanical` or `tests-docs` | none | None; record `no-review` in the ledger |
 | `structural` or `behavioral` | Quick | `bugs` |
-| `critical`, or the human asks | Standard | `bugs`; `spec` when a requirements source exists; `standards`; `security` when a critical item falls in a category listed in `references/security.md` |
-| a critical one-way door (`change-map`'s merge danger), or the human asks for Deep | Deep | Standard plus a second `bugs` hunter from another vendor |
+| `critical`, or the human asks | Standard | `bugs`; `spec` when a requirements source exists; `standards`; `risk` when a critical item falls in a category listed in `references/risk.md` |
+| a critical one-way door (`change-map`'s merge danger), or the human asks for Deep | Deep | Standard plus a second `bugs` hunter from another vendor, within the four-hunter cap |
+
+Four axes cover the review: `bugs` (behavior and whether the tests would catch it breaking), `spec` (the requirements), `standards` (the documented rules and smells), and `risk` (trust boundaries and dependency failures). A review never runs more than four hunters per slice. When Deep would need a fifth, drop `standards`, whose findings are mostly judgement calls, before any other axis.
 
 Deep needs the reviewer assigned to a client other than the session's: check with `harness models resolve reviewer --json`. The `diversity` preset, or `harness models set reviewer --client <c> --model <m>` followed by `harness install`, does this. Both change machine state, so name them for the human rather than running them. The assigned hunters then launch through `orchestration`, as POLICY's Delegation section describes, and the extra `bugs` hunter launches natively on the session's client, so two vendors hunt bugs. When the reviewer resolves to the session's client, run Standard and say so.
 
@@ -55,7 +57,7 @@ Deep needs the reviewer assigned to a client other than the session's: check wit
 
 ## Hunt
 
-Launch one fresh `reviewer` per hunter, all in parallel. Give each one its axis brief from `references/<axis>.md`, the requirements, the snapshot patch, the revision identity, and the standards. Give the brief and patch by absolute path when they sit inside the project, and inline otherwise. The `security` hunter also gets the categories that triggered it and, pasted inline, the `security-audit` excerpts its brief lists. Withhold conversation history, implementation rationale, plans that carry rationale, continuity documents, worker results, and prior findings.
+Launch one fresh `reviewer` per hunter, all in parallel. Give each one its axis brief from `references/<axis>.md`, the requirements, the snapshot patch, the revision identity, and the standards. Give the brief and patch by absolute path when they sit inside the project, and inline otherwise. The `risk` hunter also gets the categories that triggered it and, for a security category, the `security-audit` excerpts its brief lists, pasted inline. Withhold conversation history, implementation rationale, plans that carry rationale, continuity documents, worker results, and prior findings.
 
 Each report must open with `loaded:` naming the standards and `revision:` matching the snapshot. Retry once with the input repaired, then report that hunter unverified. Keep each complete report locally when recovery needs it.
 
@@ -104,5 +106,5 @@ A change to the snapshot invalidates the verdict until the affected evidence is 
 ## References
 
 - [Reviewer role](roles/reviewer.md)
-- Axis briefs: [bugs](references/bugs.md), [spec](references/spec.md), [standards](references/standards.md), [security](references/security.md)
+- Axis briefs: [bugs](references/bugs.md), [spec](references/spec.md), [standards](references/standards.md), [risk](references/risk.md)
 - [Verify briefs](references/verify.md), [ledger](references/ledger.md), [evals](references/evals.md), [triage patterns](references/triage-patterns.md)
