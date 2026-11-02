@@ -125,6 +125,14 @@ func update(c checkout.Checkout, stdout, stderr io.Writer) error {
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
+	// Every body is resolved and staged beside its group before any is swapped in, so a body no group holds or a failed copy leaves the checkout and the lock as they were.
+	type swap struct{ body, staged string }
+	var swaps []swap
+	defer func() {
+		for _, sw := range swaps {
+			os.RemoveAll(sw.staged)
+		}
+	}()
 	for _, e := range updated {
 		if !e.IsDir() {
 			continue
@@ -136,10 +144,20 @@ func update(c checkout.Checkout, stdout, stderr io.Writer) error {
 		if body == "" {
 			return fmt.Errorf("skills.sh updated %s, which no skill group holds", e.Name())
 		}
-		if err := os.RemoveAll(body); err != nil {
+		staged := body + ".harness-update"
+		if err := os.RemoveAll(staged); err != nil {
 			return err
 		}
-		if err := copyTree(filepath.Join(scratch, ".agents", "skills", e.Name()), body); err != nil {
+		swaps = append(swaps, swap{body, staged})
+		if err := copyTree(filepath.Join(scratch, ".agents", "skills", e.Name()), staged); err != nil {
+			return err
+		}
+	}
+	for _, sw := range swaps {
+		if err := os.RemoveAll(sw.body); err != nil {
+			return err
+		}
+		if err := os.Rename(sw.staged, sw.body); err != nil {
 			return err
 		}
 	}

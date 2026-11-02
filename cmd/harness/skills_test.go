@@ -538,3 +538,25 @@ func copyTree(t *testing.T, src, dst string) error {
 		return os.WriteFile(target, data, 0o644)
 	})
 }
+
+// TestSkillsUpdateChangesNothingWhenABodyHasNoGroup has skills.sh rewrite two bodies, one of which no group holds, and expects the refusal to leave every grouped body and the lock as they were, so verify never sees a body newer than its lock.
+func TestSkillsUpdateChangesNothingWhenABodyHasNoGroup(t *testing.T) {
+	lr := newLockRun(t)
+	seedLockedSkill(t, lr, "aaa")
+	lock := readFile(t, filepath.Join(lr.root, "skills-lock.json"))
+	writeMode(t, filepath.Join(lr.shims, "npx"), `#!/bin/sh
+mkdir -p .agents/skills/aaa .agents/skills/zzz
+echo "# new" > .agents/skills/aaa/SKILL.md
+echo "# new" > .agents/skills/zzz/SKILL.md
+echo '{"version": 1, "skills": {}}' > skills-lock.json
+`, 0o755)
+	if r := lr.harness(t, "skills", "update"); r.code == 0 || !strings.Contains(r.stderr, "zzz") {
+		t.Fatalf("update exited %d with stderr %q; want a refusal naming zzz", r.code, r.stderr)
+	}
+	if got := readFile(t, filepath.Join(lr.root, "skills/g/aaa/SKILL.md")); got != "# aaa\n" {
+		t.Fatalf("the refused update rewrote aaa: %q", got)
+	}
+	if got := readFile(t, filepath.Join(lr.root, "skills-lock.json")); got != lock {
+		t.Fatalf("the refused update rewrote the lock:\n%s", got)
+	}
+}

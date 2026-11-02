@@ -72,7 +72,7 @@ flowchart TD
 
 `continuity` sits beside every stage: it keeps one recoverable task document for work that spans sessions and chooses how to cross a boundary between phases (continue, clear, hand off, delegate, or compact).
 
-The skills you invoke in a normal session are the ones in `skills/workflow/`: `/grill-with-docs`, `tdd`, `diagnosing-bugs`, `review`, `open-pr`, `address-review`, and `/land`. The skills they call (`grilling`, `ponytail`, `verification`, `change-map`, `caveman-commit`, `continuity`, `handoff`) live in `skills/support/`; the README lists every group.
+The skills you invoke in a normal session are the ones in `skills/workflow/`: `/grill-with-docs`, `tdd`, `diagnosing-bugs`, `review`, `open-pr`, `address-review`, and `/land`. The shared helpers they call (`grilling`, `ponytail`, `verification`, `change-map`, `caveman-commit`, `continuity`, `handoff`) live in `skills/support/`, and the ones with a type of their own stay in that group, such as `domain-modeling` in `design/`; the README lists every group.
 
 ## Which skill when
 

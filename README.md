@@ -10,7 +10,7 @@ Skills compose around the task. Use investigation for unknowns, specifications f
 
 ### A normal session
 
-`skills/workflow/` holds the skills you invoke in an ordinary session, and nothing else. When one of them calls another skill, the caller stays here and the skill it calls lives in `skills/support/`, so this folder is the short list to remember.
+`skills/workflow/` holds the skills you invoke in an ordinary session, and nothing else. When one of them calls another skill, the caller stays here and the skill it calls lives outside it: the shared helpers in `skills/support/`, and a skill with a type of its own in that group (`domain-modeling` in `design/`, `local-tracker` in `ops/`, `security-audit` in `assurance/`). So this folder is the short list to remember.
 
 | Skill | Use |
 | --- | --- |
