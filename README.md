@@ -63,15 +63,15 @@ stateDiagram-v2
     PR --> PR: Agent fixes failed checks or addresses feedback
     PR --> MergeReady: Required checks and review satisfied
     MergeReady --> PR: New changes require checks or review
-    MergeReady --> Merged: You invoke /land; agent verifies and merges
+    MergeReady --> Merged: You invoke /land and agent verifies and merges
     Merged --> [*]
 
     Local --> Waiting: Agent needs a decision or required check is unavailable
     Preparing --> Waiting: Agent needs a decision or required check or review is unavailable
     PR --> Waiting: Agent needs a decision or required check or review is unavailable
-    Waiting --> Local: You resolve blocker; agent resumes local work
-    Waiting --> Preparing: You resolve blocker; agent resumes PR preparation
-    Waiting --> PR: You resolve blocker; agent resumes PR work
+    Waiting --> Local: You resolve blocker and agent resumes local work
+    Waiting --> Preparing: You resolve blocker and agent resumes PR preparation
+    Waiting --> PR: You resolve blocker and agent resumes PR work
 ```
 
 **Ready locally is a complete outcome.** Stop there if you do not want a PR. A publication request can come with the original task or later. From **Needs your input**, work resumes at the stage that was blocked. See [the workflow guide](docs/workflow.md#local-work-and-delivery) for details.
