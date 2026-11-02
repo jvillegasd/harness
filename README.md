@@ -290,13 +290,12 @@ Ponytail is a locked skill body, not an installed plugin. Policy selects it for 
 
 ## GitHub lifecycle
 
-In GitHub mode, `setup-harness` writes `docs/agents/harness.json`, creates the four labels, writes the tracker compatibility file, and copies the bundled workflow and reconciler. The workflow becomes active when that reviewed change reaches the default branch. GitHub native sub-issue and dependency relationships remain the source of truth. A blocker satisfies the frontier only when a merged pull request closed it, which is why `blockerSatisfied` walks `closedByPullRequestsReferences` rather than trusting the closed state; closing an issue by hand does not open the frontier behind it. The parent closes only after every child has that same evidence. A sub-issue or blocker from another repository is never relabeled; its merge evidence is read from its own repository and counts as unmerged when that repository cannot be read. The workflow also runs hourly, and on demand, to sweep every open enrolled issue, because its concurrency group keeps one pending run and a newer event can replace an older one.
+In GitHub mode, `setup-harness` writes `docs/agents/harness.json`, creates the four labels, and copies the bundled workflow and reconciler. The workflow becomes active when that reviewed change reaches the default branch. GitHub native sub-issue and dependency relationships remain the source of truth. A blocker satisfies the frontier only when a merged pull request closed it, which is why `blockerSatisfied` walks `closedByPullRequestsReferences` rather than trusting the closed state; closing an issue by hand does not open the frontier behind it. The parent closes only after every child has that same evidence. A sub-issue or blocker from another repository is never relabeled; its merge evidence is read from its own repository and counts as unmerged when that repository cannot be read. The workflow also runs hourly, and on demand, to sweep every open enrolled issue, because its concurrency group keeps one pending run and a newer event can replace an older one.
 
 ```mermaid
 flowchart TD
     setup["setup-harness<br>invoked by hand, per repository"] --> config["docs/agents/harness.json<br>tracker, spec home, label mapping"]
     setup --> labels["four labels<br>blocked · ready-for-agent<br>in-progress · ready-for-human"]
-    setup --> trackerdoc["docs/agents/issue-tracker.md<br>compatibility file for locked skills"]
     setup --> files[".github/workflows/agent-lifecycle.yml<br>.github/scripts/reconcile-agent-lifecycle.go"]
     files --> active(["active once that reviewed change<br>reaches the default branch"])
 
@@ -330,7 +329,7 @@ flowchart TD
     landit --> event
 ```
 
-The other mode is local markdown, where `setup-harness` writes the config and compatibility file and nothing else: no labels, no workflow, no reconciler. Lifecycle state is a `Status:` line and a `Blocked by:` line committed beside the code, and the `local-tracker` skill holds what each operation means there.
+The other mode is local markdown, where `setup-harness` writes the config and nothing else: no labels, no workflow, no reconciler. Lifecycle state is a `Status:` line and a `Blocked by:` line committed beside the code, and the `local-tracker` skill holds what each operation means there.
 
 Tracker integration is optional. Explicit ticket publication uses native issue relationships and the configured label mapping. Authorized claims mark work in progress; authorized PR handoff marks it ready for human review once required evidence settles. Ordinary local implementation needs neither transition. `open-pr` does not create tickets automatically.
 
