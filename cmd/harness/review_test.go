@@ -126,8 +126,10 @@ func TestReviewLevelCommand(t *testing.T) {
 	}
 	ok(t, level("high"), "set high")
 	before := readFile(t, stateFile(base))
-	if r := level("max"); r.code != 2 || r.stderr == "" {
-		t.Errorf("level max exited %d with %q, want 2 and a diagnostic", r.code, r.stderr)
+	for _, bad := range [][]string{{"max"}, {"--json", "off"}, {"off", "--json"}} {
+		if r := level(bad...); r.code != 2 || r.stderr == "" {
+			t.Errorf("level %v exited %d with %q, want 2 and a diagnostic", bad, r.code, r.stderr)
+		}
 	}
 	if readFile(t, stateFile(base)) != before {
 		t.Error("a rejected level rewrote state.json")

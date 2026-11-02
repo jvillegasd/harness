@@ -17,7 +17,8 @@ var Levels = []string{"off", "medium", "high"}
 // DefaultLevel applies when no level is stored.
 const DefaultLevel = "medium"
 
-const levelUsage = `Usage: harness review level [off|medium|high] [--json]
+const levelUsage = `Usage: harness review level [--json]
+       harness review level off|medium|high
 
 Print the review level, or set it. The level caps the reviews an agent starts
 on its own; an explicit request for a review always runs.
@@ -83,7 +84,8 @@ func level(args []string, stdout, stderr io.Writer) int {
 			value = append(value, a)
 		}
 	}
-	if len(value) > 1 || (len(value) == 1 && !slices.Contains(Levels, value[0])) {
+	// Setting takes the bare value alone, so the setting forms are exactly the prefixes a client can deny.
+	if len(value) > 1 || (len(value) == 1 && (asJSON || len(args) != 1 || !slices.Contains(Levels, value[0]))) {
 		fmt.Fprintf(stderr, "harness review level: expected one of %s\n%s", strings.Join(Levels, ", "), levelUsage)
 		return 2
 	}

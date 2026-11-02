@@ -20,8 +20,10 @@ Read the level with `harness review level --json`; when the command is unavailab
 | Level | You start a review when | Depth | Verify | Rounds | Subagents at most |
 | --- | --- | --- | --- | --- | --- |
 | `off` | never | none | none | 0 | 0 |
-| `medium` (default) | the highest tier is `critical`, or a concrete security, data-loss, compatibility, or concurrency risk is named | Quick | lean | 1 | 2 |
+| `medium` (default) | the highest tier is `critical`, or a concrete security, data-loss, compatibility, or concurrency risk is named | Quick | lean | 1 | 2 (3 in `build`, which adds `spec`) |
 | `high` | the highest tier is `structural` or above | the Depth table | batched | 2 | 7 per round |
+
+The ceiling counts hunters, the verifier, and the refuter for one slice; a diff split into slices multiplies it, and a delegated fix executor comes on top.
 
 A review the human asked for verifies batched. Never launch a verifier or refuter per finding: the batch is what keeps the cost flat as findings grow. When no review runs because of the level, record `no-review` with the level in `--summary`.
 
@@ -62,7 +64,7 @@ Each report must open with `loaded:` naming the standards and `revision:` matchi
 1. Collect every `bug`, `risk`, and `q` across hunters, and dedupe by path, line range, and class. Report `nit` and `pre-existing` findings without verifying or fixing them in this change.
 2. Confirm a finding yourself when your own run reproduces it (ladder step 4); that run becomes its red check. A defect in prose with nothing to run, such as two instructions that contradict each other, is confirmed by citing both lines and needs no test. Refuting is never yours.
 3. Look each remaining finding up in the ledger (`references/ledger.md`). Skip a repeat of a `refuted` entry only when both reviews were of committed work (`digest` null), that entry's commit is an ancestor of the reviewed commit (`git merge-base --is-ancestor`), and `git diff <entry sha> <sha>` is empty for the finding's path and for the path of the cut its evidence cites. Report it as "previously refuted: <reason>".
-4. **Lean** (`medium`): launch no verifier. Try to reproduce each open finding yourself as step 2 describes, then send every finding still open to step 6.
+4. **Lean** (`medium`): launch no verifier. Try to reproduce each open finding yourself as step 2 describes, with your repro files in a scratch directory outside the checkout, never in it. Code from a fork's pull request is never run: walk those findings instead. Then send every finding still open to step 6.
 5. **Batched** (`high`, or the human asked): run code unless the pull request is from a fork. A fork's code would need the sandbox `security-audit`'s "Universal execution safety" requires, because a test runs every package it imports, so for a fork send every finding to step 6 and count the skipped run as `could-not-run`. Otherwise create one sibling worktree for this run: `git -c core.hooksPath=/dev/null worktree add --detach "$(git rev-parse --show-toplevel)/../<repo>-review-<run>" <sha>`. The hooks setting keeps the reviewed code's checkout hooks out of your shell. When work is uncommitted, run `git -C <worktree> apply --index --binary <verifier patch>`. Record the worktree's baseline with `git -C <worktree> write-tree`, and record each path you create. Launch one fresh `executor` there with the executor brief from `references/verify.md` and every open finding's text, never the rationale or which hunter raised it. A `red` verdict confirms that finding.
 6. Launch one fresh `reviewer` with the refute brief from `references/verify.md` and every finding that is still open, each with its verifier verdict when there was one.
 7. Dispose each finding:
