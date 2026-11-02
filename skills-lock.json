@@ -55,6 +55,12 @@
       "skillPath": "skills/ponytail/SKILL.md",
       "computedHash": "210fa0831f649ce9f8a305f7b7c8cf2a0dd09ac4dd53067109941b96e7811d4e"
     },
+    "retro": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/retro/SKILL.md",
+      "computedHash": "b8d55851a2909e26c2dbb2e8563719c87b3b700559f604e4df344f8c27e21047"
+    },
     "security-audit": {
       "source": "cloudflare/security-audit-skill",
       "sourceType": "github",

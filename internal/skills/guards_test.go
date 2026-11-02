@@ -90,7 +90,6 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 	writeSkill(t, c, "workflow", "---\ndescription: auto-invoked\n---\nbody\n")
 	writeSkill(t, c, "land", "---\ndescription: merges\n---\nbody\n")
 	writeSkill(t, c, "build", "---\ndescription: runs unattended\n---\nbody\n")
-	writeSkill(t, c, "retro", "---\ndescription: reads session records and proposes harness changes\n---\nbody\n")
 	writeSkill(t, c, "review", "---\ndescription: model-invoked when a change map flags a critical hunk\n---\nbody\n")
 	writeSkill(t, c, "codex-only", "---\ndescription: guarded for Codex alone\n---\nbody\n")
 	if err := os.WriteFile(filepath.Join(c.Skills(), "codex-only", "agents", "openai.yaml"), []byte("policy:\n  allow_implicit_invocation: false\n"), 0o644); err != nil {
@@ -119,9 +118,6 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 		"build: missing disable-model-invocation",
 		"build: missing opencode/autoinvoke",
 		"build: missing agents/openai.yaml allow_implicit_invocation",
-		"retro: missing disable-model-invocation",
-		"retro: missing opencode/autoinvoke",
-		"retro: missing agents/openai.yaml allow_implicit_invocation",
 		"codex-only: missing disable-model-invocation",
 		"codex-only: missing opencode/autoinvoke",
 	}

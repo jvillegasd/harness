@@ -345,8 +345,8 @@ func seedLockedSkill(t *testing.T, lr lockRun, name string) {
 func TestSkillsVerifyMatchesThePinnedLock(t *testing.T) {
 	lr := locksVerifySandbox(t)
 	r := ok(t, lr.harness(t, "skills", "verify"), "skills verify")
-	if got := strings.Count(r.stdout, ": match"); got != 14 {
-		t.Fatalf("verify matched %d skills, want 14:\n%s", got, r.stdout)
+	if got := strings.Count(r.stdout, ": match"); got != 15 {
+		t.Fatalf("verify matched %d skills, want 15:\n%s", got, r.stdout)
 	}
 }
 
