@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/jvillegasd/harness/internal/agents"
+	"github.com/jvillegasd/harness/internal/statefile"
 )
 
 // Assignment is one role's client, model, and effort. An empty Effort inherits the session's.
@@ -268,11 +268,11 @@ func (c Choice) ForRender() map[string]agents.Assigned {
 }
 
 // StatePath is ~/.harness/state.json under home, which the installer shares.
-func StatePath(home string) string { return filepath.Join(home, ".harness", "state.json") }
+func StatePath(home string) string { return statefile.Path(home) }
 
 // Load reads the models block, treating a missing file or block as no choice.
 func Load(path string) (Choice, error) {
-	doc, err := readDoc(path)
+	doc, err := statefile.Read(path)
 	if err != nil {
 		return Choice{}, err
 	}
@@ -304,7 +304,7 @@ func Load(path string) (Choice, error) {
 
 // Save writes the models block and keeps every other key, removing the block when the choice is empty.
 func Save(path string, c Choice) error {
-	doc, err := readDoc(path)
+	doc, err := statefile.Read(path)
 	if err != nil {
 		return err
 	}
@@ -317,50 +317,5 @@ func Save(path string, c Choice) error {
 		}
 		doc["models"] = raw
 	}
-	data, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	return replace(path, append(data, '\n'))
-}
-
-// replace writes data to a fresh temporary file beside path and renames it over path, so a reader never sees half a file.
-func replace(path string, data []byte) error {
-	f, err := os.CreateTemp(filepath.Dir(path), "state-*.json")
-	if err != nil {
-		return err
-	}
-	_, werr := f.Write(data)
-	if cerr := f.Close(); werr == nil {
-		werr = cerr
-	}
-	if werr == nil {
-		werr = os.Chmod(f.Name(), 0o644)
-	}
-	if werr != nil {
-		_ = os.Remove(f.Name())
-		return werr
-	}
-	return os.Rename(f.Name(), path)
-}
-
-// Replace writes path through a temporary file and a rename; the installer uses it for the same state file.
-func Replace(path string, data []byte) error { return replace(path, data) }
-
-func readDoc(path string) (map[string]json.RawMessage, error) {
-	doc := map[string]json.RawMessage{}
-	data, err := os.ReadFile(path)
-	if errors.Is(err, fs.ErrNotExist) {
-		return doc, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal(data, &doc); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
-	}
-	return doc, nil
+	return statefile.Write(path, doc)
 }

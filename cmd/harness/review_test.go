@@ -114,3 +114,29 @@ func TestReviewLedgerCommand(t *testing.T) {
 		t.Errorf("a sibling worktree uses %q, want %q", s.stdout, file)
 	}
 }
+
+// TestReviewLevelCommand proves the CLI is wired to the level rules, and that an install keeps the stored level. Which values are accepted is settled in internal/reviewledger.
+func TestReviewLevelCommand(t *testing.T) {
+	base := modelsBase(t)
+	level := func(args ...string) result {
+		return runHarness(t, base, nil, append([]string{"review", "level"}, args...)...)
+	}
+	if r := ok(t, level("--json"), "level --json"); strings.TrimSpace(r.stdout) != `{"level":"medium","source":"default"}` {
+		t.Errorf("default level printed %q", r.stdout)
+	}
+	ok(t, level("high"), "set high")
+	before := readFile(t, stateFile(base))
+	if r := level("max"); r.code != 2 || r.stderr == "" {
+		t.Errorf("level max exited %d with %q, want 2 and a diagnostic", r.code, r.stderr)
+	}
+	if readFile(t, stateFile(base)) != before {
+		t.Error("a rejected level rewrote state.json")
+	}
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	if r := ok(t, level(), "level"); strings.TrimSpace(r.stdout) != "high (global)" {
+		t.Errorf("after install the level is %q, want high (global)", r.stdout)
+	}
+	if r := ok(t, level("--help"), "level --help"); r.stdout == "" {
+		t.Error("level --help printed nothing")
+	}
+}

@@ -23,6 +23,7 @@ Commands:
   record  Append a new finding, or a new disposition for an existing one
   list    Print the latest line of each finding on a branch as JSON
   path    Print the ledger file's path
+  level   Print or set the review level: off, medium (default), or high
 `
 
 const recordUsage = `Usage: harness review record [flags]
@@ -87,6 +88,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return list(args[1:], stdout, stderr)
 	case "path":
 		return printPath(args[1:], stdout, stderr)
+	case "level":
+		return level(args[1:], stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "harness review: unknown command %q; run harness review --help\n", args[0])
 	return 2

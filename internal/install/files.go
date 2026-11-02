@@ -244,8 +244,7 @@ func (in *installer) installFiles() {
 			}
 		}
 	}
-	// Re-read, so a `harness models` change made while this install ran is kept.
-	in.saveState(state{Version: stateVersion, Installed: installed, Files: want, Models: in.loadState().Models})
+	in.saveState(in.keepChoices(state{Version: stateVersion, Installed: installed, Files: want}))
 	in.installed = want
 }
 

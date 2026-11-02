@@ -42,8 +42,8 @@ func (in *installer) uninstallSelected() {
 	if components == nil {
 		components = allComponents
 	}
-	if len(clients) == len(allClients) && len(components) == len(allComponents) && len(in.loadState().Models) > 0 {
-		fmt.Fprintln(in.stdout, "This also removes ~/.harness, which discards the `harness models` choice.")
+	if len(clients) == len(allClients) && len(components) == len(allComponents) && (len(in.loadState().Models) > 0 || len(in.loadState().Review) > 0) {
+		fmt.Fprintln(in.stdout, "This also removes ~/.harness, which discards the `harness models` and `harness review level` choices.")
 	}
 	fmt.Fprintf(in.stdout, "Remove the harness %s from %s? [y/N] ", strings.Join(components, ", "), strings.Join(clients, ", "))
 	if in.yes {
@@ -104,9 +104,7 @@ func (in *installer) uninstallSelected() {
 	if len(s.Installed) == 0 {
 		must(os.RemoveAll(in.stateDir()))
 	} else {
-		// Re-read, so a `harness models` change made while this ran is kept.
-		s.Models = in.loadState().Models
-		in.saveState(s)
+		in.saveState(in.keepChoices(s))
 	}
 	in.checkRemoved(removed, selected, aliasesRemoved)
 
