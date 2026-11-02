@@ -57,10 +57,10 @@ func TestCodexGuardCountsOnlyUnderPolicy(t *testing.T) {
 	}
 }
 
-// writeSkill writes one skill body under the checkout's skills directory, with the Codex guard beside it when the body carries both other guards.
+// writeSkill writes one skill body under the checkout's "g" skill group, with the Codex guard beside it when the body carries both other guards.
 func writeSkill(t *testing.T, c checkout.Checkout, name, body string) {
 	t.Helper()
-	dir := filepath.Join(c.Skills(), name)
+	dir := filepath.Join(c.Skills(), "g", name)
 	if err := os.MkdirAll(filepath.Join(dir, "agents"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func writeSkill(t *testing.T, c checkout.Checkout, name, body string) {
 	}
 }
 
-// TestUnguardedNamesEachLocalSkillAndKey reports the skill and the missing key, exempts locked bodies and an unguarded skill outside mustGuard, and separates an unreadable entry from a missing one.
+// TestUnguardedNamesEachLocalSkillAndKey reports the skill and the missing key, exempts locked bodies and an unguarded skill outside mustGuard, and reports a skill folder without its SKILL.md.
 func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 	c := checkout.Checkout{Root: t.TempDir()}
 	if err := os.MkdirAll(c.Skills(), 0o755); err != nil {
@@ -92,13 +92,10 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 	writeSkill(t, c, "build", "---\ndescription: runs unattended\n---\nbody\n")
 	writeSkill(t, c, "review", "---\ndescription: model-invoked when a change map flags a critical hunk\n---\nbody\n")
 	writeSkill(t, c, "codex-only", "---\ndescription: guarded for Codex alone\n---\nbody\n")
-	if err := os.WriteFile(filepath.Join(c.Skills(), "codex-only", "agents", "openai.yaml"), []byte("policy:\n  allow_implicit_invocation: false\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(c.Skills(), "g", "codex-only", "agents", "openai.yaml"), []byte("policy:\n  allow_implicit_invocation: false\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(c.Skills(), "empty"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(filepath.Join(c.Root, "nowhere"), filepath.Join(c.Skills(), "dangling")); err != nil {
+	if err := os.MkdirAll(filepath.Join(c.Skills(), "g", "empty"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	problems, err := Unguarded(c)
@@ -106,7 +103,6 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{
-		"dangling: unreadable",
 		"empty: missing SKILL.md",
 		"half-guarded: missing opencode/autoinvoke",
 		"half-guarded: missing agents/openai.yaml allow_implicit_invocation",
@@ -149,5 +145,43 @@ func TestShippedLocalSkillsCarryAllGuards(t *testing.T) {
 	}
 	if len(problems) != 0 {
 		t.Fatalf("shipped skills are unguarded: %v", problems)
+	}
+}
+
+// TestShippedSkillLinksResolve keeps the checkout's bookkeeping links in step with the groups: every skill has .agents/skills/<name> pointing at its grouped body and .claude/skills/<name> pointing through that link, and neither directory holds a link for a skill that no longer exists.
+func TestShippedSkillLinksResolve(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := checkout.Checkout{Root: root}
+	skills, err := c.SkillDirs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]bool{}
+	for _, sk := range skills {
+		names[sk.Name] = true
+		rel, err := filepath.Rel(c.AgentSkills(), sk.Dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, err := os.Readlink(filepath.Join(c.AgentSkills(), sk.Name)); err != nil || got != rel {
+			t.Errorf(".agents/skills/%s = %q, %v; want %q", sk.Name, got, err, rel)
+		}
+		if got, err := os.Readlink(filepath.Join(c.ClaudeSkills(), sk.Name)); err != nil || got != "../../.agents/skills/"+sk.Name {
+			t.Errorf(".claude/skills/%s = %q, %v; want ../../.agents/skills/%s", sk.Name, got, err, sk.Name)
+		}
+	}
+	for _, dir := range []string{c.AgentSkills(), c.ClaudeSkills()} {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range entries {
+			if !names[e.Name()] {
+				t.Errorf("%s holds a link for %s, which no skill group has", dir, e.Name())
+			}
+		}
 	}
 }

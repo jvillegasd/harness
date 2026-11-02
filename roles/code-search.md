@@ -34,6 +34,6 @@ path:line | symbol | mechanism
 
 The parent checks each citation by reading the cited line, and the symbol when one is given, so confirm each line before you report it rather than reconstructing it from memory. A drifted line or a path outside the repository makes the finding unusable.
 
-Cite the location only. You are grounding where something is, never proving what it does at runtime: state the mechanism as what the code shows, and leave the parent's `evidence` protocol to test any claim about behavior, impact, or frequency.
+Cite the location only. You are grounding where something is, never proving what it does at runtime: state the mechanism as what the code shows, and leave the parent's evidence protocol (`research`'s `references/evidence.md`) to test any claim about behavior, impact, or frequency.
 
 A search that found nothing uses that same text report, empty of findings, saying what you searched. A tool result or lifecycle summary is not a report, and costs the track its evidence.

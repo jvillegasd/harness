@@ -31,7 +31,7 @@ func TestModelsShowDefaultsToBalanced(t *testing.T) {
 	for _, want := range []string{
 		"executor client=codex model=gpt-6-luna effort=inherit (preset:balanced)",
 		"code-search client=claude model=sonnet effort=inherit (preset:balanced)",
-		"reviewer client=claude model=opus effort=high (preset:balanced)",
+		"reviewer client=claude model=opus effort=low (preset:balanced)",
 	} {
 		if !strings.Contains(r.stdout, want) {
 			t.Errorf("show lacks %q:\n%s", want, r.stdout)
@@ -57,7 +57,7 @@ func TestModelsSetPresetKeepsOtherStateKeys(t *testing.T) {
 	writeMode(t, stateFile(base), `{"version": 1, "installed": {"claude": ["policy"]}, "files": []}`+"\n", 0o644)
 	ok(t, runModels(t, base, "set", "--preset", "diversity"), "set preset")
 	r := ok(t, runModels(t, base, "show"), "models show")
-	if !strings.Contains(r.stdout, "reviewer client=codex model=gpt-6.1-sol effort=high (preset:diversity)") {
+	if !strings.Contains(r.stdout, "reviewer client=codex model=gpt-6.1-sol effort=low (preset:diversity)") {
 		t.Errorf("show does not report diversity:\n%s", r.stdout)
 	}
 	var s map[string]any
@@ -133,7 +133,7 @@ func TestModelsResolveReportsTheAssignment(t *testing.T) {
 	if r := runModels(t, base, "resolve", "executor", "--session", "claude", "--json"); r.code == 0 {
 		t.Error("resolve still accepted --session")
 	}
-	if r := ok(t, runModels(t, base, "resolve", "reviewer"), "resolve, plain"); !strings.Contains(r.stdout, "reviewer client=claude model=opus effort=high (preset:balanced)") || strings.Contains(r.stdout, "route=") {
+	if r := ok(t, runModels(t, base, "resolve", "reviewer"), "resolve, plain"); !strings.Contains(r.stdout, "reviewer client=claude model=opus effort=low (preset:balanced)") || strings.Contains(r.stdout, "route=") {
 		t.Errorf("plain resolve: %s", r.stdout)
 	}
 }
@@ -167,8 +167,8 @@ func TestInstallRendersTheResolvedAssignments(t *testing.T) {
 	if r := ok(t, runModels(t, base, "show"), "show after install"); !strings.Contains(r.stdout, "(preset:performance)") {
 		t.Errorf("install dropped the model choice:\n%s", r.stdout)
 	}
-	if a := agent("claude", "reviewer"); !strings.Contains(a, "model: fable\n") || !strings.Contains(a, "effort: high\n") {
-		t.Errorf("claude reviewer lacks fable at high effort:\n%s", a)
+	if a := agent("claude", "reviewer"); !strings.Contains(a, "model: fable\n") || !strings.Contains(a, "effort: low\n") {
+		t.Errorf("claude reviewer lacks fable at low effort:\n%s", a)
 	}
 	if strings.Contains(agent("opencode", "reviewer"), "model:") {
 		t.Error("opencode reviewer, assigned to Claude, carries a model instead of the client default")

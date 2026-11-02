@@ -11,11 +11,10 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-// mustGuard are the local skills only a human may start. Some act with authority or at budget scale: merging, discarding work, provisioning a repository, and unattended building. The rest are workflow entry points whose Matt Pocock or pstack equivalent is explicit-only (specifying, triage, explaining, optimizing, release E2E runs, and the workflow map), and local-tracker, which every caller reads by path. Helpers that other skills or the policy call stay model-invoked, because nothing can invoke a guarded skill.
+// mustGuard are the local skills only a human may start. Some act with authority or at budget scale: merging, discarding work, provisioning a repository, and unattended building. The rest are workflow entry points whose Matt Pocock or pstack equivalent is explicit-only (specifying, triage, and release E2E runs), and local-tracker, which every caller reads by path. Helpers that other skills or the policy call stay model-invoked, because nothing can invoke a guarded skill.
 var mustGuard = map[string]bool{
 	"land": true, "abandon": true, "setup-harness": true, "build": true,
-	"spec": true, "triage": true, "explain": true, "optimization": true,
-	"e2e-verification": true, "harness-help": true, "local-tracker": true,
+	"spec": true, "triage": true, "e2e-verification": true, "local-tracker": true,
 }
 
 // Unguarded reports every skill absent from the lock whose invocation guard is required or partly present, as "<name>: missing <key>". A skill in mustGuard needs all three guards, and any other local skill carrying one needs the others, because a guard only one client reads fires in the rest. Claude Code reads `disable-model-invocation: true` at the top level, OpenCode reads `opencode/autoinvoke: "false"` under `metadata:`, and Codex reads `allow_implicit_invocation: false` under `policy:` in the skill's agents/openai.yaml, so a guard anywhere else does not count. Locked bodies are exempt, because their frontmatter is upstream content.
@@ -24,51 +23,43 @@ func Unguarded(c checkout.Checkout) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading the lock that separates local skills from locked ones: %w", err)
 	}
-	entries, err := os.ReadDir(c.Skills())
+	skills, err := c.SkillDirs()
 	if err != nil {
 		return nil, err
 	}
 	var problems []string
-	for _, e := range entries {
-		dir := filepath.Join(c.Skills(), e.Name())
-		if lf.skills.has(e.Name()) {
-			continue
-		}
-		info, err := os.Stat(dir)
-		if err != nil {
-			problems = append(problems, fmt.Sprintf("%s: unreadable (%v)", e.Name(), err))
-			continue
-		}
-		if !info.IsDir() {
+	for _, sk := range skills {
+		dir := sk.Dir
+		if lf.skills.has(sk.Name) {
 			continue
 		}
 		data, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		if errors.Is(err, fs.ErrNotExist) {
-			problems = append(problems, e.Name()+": missing SKILL.md")
+			problems = append(problems, sk.Name+": missing SKILL.md")
 			continue
 		}
 		if err != nil {
-			problems = append(problems, fmt.Sprintf("%s: unreadable SKILL.md (%v)", e.Name(), err))
+			problems = append(problems, fmt.Sprintf("%s: unreadable SKILL.md (%v)", sk.Name, err))
 			continue
 		}
 		claude, opencode := guarded(string(data))
 		sidecar, err := os.ReadFile(filepath.Join(dir, "agents", "openai.yaml"))
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			problems = append(problems, fmt.Sprintf("%s: unreadable agents/openai.yaml (%v)", e.Name(), err))
+			problems = append(problems, fmt.Sprintf("%s: unreadable agents/openai.yaml (%v)", sk.Name, err))
 			continue
 		}
 		codex := codexGuarded(string(sidecar))
-		if !mustGuard[e.Name()] && !claude && !opencode && !codex {
+		if !mustGuard[sk.Name] && !claude && !opencode && !codex {
 			continue
 		}
 		if !claude {
-			problems = append(problems, e.Name()+": missing disable-model-invocation")
+			problems = append(problems, sk.Name+": missing disable-model-invocation")
 		}
 		if !opencode {
-			problems = append(problems, e.Name()+": missing opencode/autoinvoke")
+			problems = append(problems, sk.Name+": missing opencode/autoinvoke")
 		}
 		if !codex {
-			problems = append(problems, e.Name()+": missing agents/openai.yaml allow_implicit_invocation")
+			problems = append(problems, sk.Name+": missing agents/openai.yaml allow_implicit_invocation")
 		}
 	}
 	return problems, nil

@@ -52,7 +52,7 @@ func TestLaunchArgsPreparesWithoutLaunching(t *testing.T) {
 		role, client, model, effort string
 		want                        []string
 	}{
-		{"reviewer", "claude", "opus", "high", []string{"claude", "--agent", "reviewer"}},
+		{"reviewer", "claude", "opus", "low", []string{"claude", "--agent", "reviewer"}},
 		{"code-search", "claude", "sonnet", "", []string{"claude", "--agent", "code-search"}},
 		{"executor", "codex", "gpt-6-luna", "", []string{"codex", "-m", "gpt-6-luna", "-c"}},
 		{"executor", "opencode", "opencode-go/glm-5.3", "", []string{"opencode", "-m", "opencode-go/glm-5.3", "--agent", "executor"}},
@@ -148,7 +148,7 @@ func TestOpenCodeLifecyclePluginBlocksGeneralShell(t *testing.T) {
 	if err != nil {
 		t.Skip("node is needed to exercise the OpenCode plugin")
 	}
-	plugin, err := filepath.Abs("../../skills/review/scripts/orca-lifecycle.mjs")
+	plugin, err := filepath.Abs("../../skills/workflow/review/scripts/orca-lifecycle.mjs")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +227,7 @@ func TestOpenCodeLaunchPreparesBlockingPlugin(t *testing.T) {
 		t.Fatal("missing plugin accepted")
 	}
 	plugin := filepath.Join(base, "home", ".agents", "skills", "review", "scripts", "orca-lifecycle.mjs")
-	writeMode(t, plugin, readFile(t, "../../skills/review/scripts/orca-lifecycle.mjs"), 0o644)
+	writeMode(t, plugin, readFile(t, "../../skills/workflow/review/scripts/orca-lifecycle.mjs"), 0o644)
 	r := ok(t, runModels(t, base, "launch-args", "reviewer", "--orca-command", "orca"), "prepare")
 	var argv []string
 	if err := json.Unmarshal([]byte(r.stdout), &argv); err != nil {

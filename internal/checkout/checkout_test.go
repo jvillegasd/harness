@@ -172,3 +172,59 @@ func TestModuleOf(t *testing.T) {
 		}
 	}
 }
+
+// TestSkillDirsFlattensGroups lists every grouped skill by its bare name, sorted, skipping hidden entries, files, and symlinks, and keeps a folder without its SKILL.md so a caller can report it.
+func TestSkillDirsFlattensGroups(t *testing.T) {
+	c := Checkout{Root: t.TempDir()}
+	write(t, filepath.Join(c.Skills(), "workflow", "tdd", "SKILL.md"), "x\n")
+	write(t, filepath.Join(c.Skills(), "support", "ponytail", "SKILL.md"), "x\n")
+	write(t, filepath.Join(c.Skills(), "support", "notes.md"), "x\n")
+	write(t, filepath.Join(c.Skills(), ".hidden", "skip", "SKILL.md"), "x\n")
+	if err := os.MkdirAll(filepath.Join(c.Skills(), "ops", "empty"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(c.Skills(), "workflow", "tdd"), filepath.Join(c.Skills(), "ops", "linked")); err != nil {
+		t.Fatal(err)
+	}
+	got, err := c.SkillDirs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Skill{
+		{"empty", filepath.Join(c.Skills(), "ops", "empty")},
+		{"ponytail", filepath.Join(c.Skills(), "support", "ponytail")},
+		{"tdd", filepath.Join(c.Skills(), "workflow", "tdd")},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("SkillDirs = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("SkillDirs[%d] = %v, want %v", i, got[i], want[i])
+		}
+	}
+}
+
+// TestSkillDirsRefusesAmbiguousLayouts rejects a name two groups share and a skill outside any group, because clients see only the bare name.
+func TestSkillDirsRefusesAmbiguousLayouts(t *testing.T) {
+	for name, seed := range map[string]func(c Checkout){
+		"same name in two groups": func(c Checkout) {
+			write(t, filepath.Join(c.Skills(), "a", "dup", "SKILL.md"), "x\n")
+			write(t, filepath.Join(c.Skills(), "b", "dup", "SKILL.md"), "x\n")
+		},
+		"skill directly under skills": func(c Checkout) {
+			write(t, filepath.Join(c.Skills(), "bare", "SKILL.md"), "x\n")
+		},
+		"SKILL.md at the skills root": func(c Checkout) {
+			write(t, filepath.Join(c.Skills(), "SKILL.md"), "x\n")
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := Checkout{Root: t.TempDir()}
+			seed(c)
+			if got, err := c.SkillDirs(); err == nil {
+				t.Fatalf("SkillDirs = %v, want an error", got)
+			}
+		})
+	}
+}

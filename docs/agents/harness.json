@@ -1,8 +1,6 @@
 {
-  "version": 1,
   "tracker": "github",
   "spec_home": "github-issues",
-  "domain_layout": "single-context",
   "labels": {
     "blocked": "blocked",
     "ready_for_agent": "ready-for-agent",
@@ -14,10 +12,10 @@
     "clients/**",
     "internal/install/**",
     "internal/models/**",
-    "skills/land/**",
-    "skills/review/**",
-    "skills/abandon/**",
-    "skills/setup-harness/scripts/**",
+    "skills/workflow/land/**",
+    "skills/workflow/review/**",
+    "skills/ops/abandon/**",
+    "skills/ops/setup-harness/scripts/**",
     ".github/**",
     "docs/agents/harness.json"
   ]

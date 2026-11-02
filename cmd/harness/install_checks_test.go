@@ -56,7 +56,7 @@ func readDir(dir string) []string {
 func TestGuardedSkillsAreInstalled(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base, "--skip-packages"), "skip-packages install")
-	bodies, err := filepath.Glob(filepath.Join(base, "checkout", "skills", "*", "SKILL.md"))
+	bodies, err := filepath.Glob(filepath.Join(base, "checkout", "skills", "*", "*", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestGuardedSkillsAreInstalled(t *testing.T) {
 // TestInstallRefusesAnUnguardedLocalSkill stops the install before it writes anything when a skill absent from the lock lacks an invocation guard. Which frontmatter shapes count as guarded is settled at the parser, in internal/skills.
 func TestInstallRefusesAnUnguardedLocalSkill(t *testing.T) {
 	base := sandbox(t)
-	writeMode(t, filepath.Join(base, "checkout", "skills", "zz-bare", "SKILL.md"), "---\nname: zz-bare\ndisable-model-invocation: true\n---\nbody\n", 0o644)
+	writeMode(t, filepath.Join(base, "checkout", "skills", "workflow", "zz-bare", "SKILL.md"), "---\nname: zz-bare\ndisable-model-invocation: true\n---\nbody\n", 0o644)
 	var before strings.Builder
 	tree(t, &before, filepath.Join(base, "home"), true)
 	r := runInstaller(t, base, "--skip-packages")
@@ -571,9 +571,9 @@ func TestInstallWithSymlinkedTmpdir(t *testing.T) {
 func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
-	source := filepath.Join(base, "checkout", "skills", "retired")
+	source := filepath.Join(base, "checkout", "skills", "ops", "retired")
 	writeMode(t, filepath.Join(source, "SKILL.md"), "---\ndescription: retired\n---\n", 0o644)
-	linkedSource := filepath.Join(base, "checkout", "skills", "retired-linked")
+	linkedSource := filepath.Join(base, "checkout", "skills", "ops", "retired-linked")
 	writeMode(t, filepath.Join(linkedSource, "SKILL.md"), "---\ndescription: retired too\n---\n", 0o644)
 	ok(t, runInstaller(t, base, "--skip-packages"), "install asset")
 	edited := filepath.Join(home, ".claude", "skills", "retired", "SKILL.md")
