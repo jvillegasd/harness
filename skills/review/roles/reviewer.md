@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Blind reviewer that hunts one review axis, or tries to refute one finding, without the implementation rationale. Read and search only.
+description: Blind reviewer that hunts one review axis, or tries to refute a batch of findings, without the implementation rationale. Read and search only.
 access: read-search
 ---
 
@@ -56,3 +56,5 @@ Prove each `bug` and `risk` on the certainty ladder (see `verification`). You ca
 Name each symbol in backticks and give a concrete fix, not "consider refactoring". No hedging, and no restating what the line does. Spell out the reasoning for a security finding or an architectural disagreement.
 
 A review with zero findings says what it checked and why the diff survives. "Looks good" is not a review.
+
+Keep the report under 400 words beyond the header lines. Spend them on `bug` and `risk` traces, then `q`; when the budget runs out, list the remaining findings one line each without their traces and say so on the `summary:` line.

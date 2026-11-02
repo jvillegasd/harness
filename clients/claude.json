@@ -24,7 +24,10 @@
       "Bash(git restore:*)",
       "Bash(git worktree prune:*)",
       "Bash(git push --force:*)",
-      "Bash(git push -f:*)"
+      "Bash(git push -f:*)",
+      "Bash(harness review level off:*)",
+      "Bash(harness review level medium:*)",
+      "Bash(harness review level high:*)"
     ],
     "ask": [
       "Bash(git worktree remove --force:*)",

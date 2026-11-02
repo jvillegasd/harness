@@ -13,6 +13,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/term"
+
+	"github.com/jvillegasd/harness/internal/statefile"
 )
 
 const usage = `usage: harness models [show|set|reset|resolve|launch-args]
@@ -174,7 +176,7 @@ func reset(path string, args []string) error {
 	if err := knownRole(args[0]); err != nil {
 		return err
 	}
-	doc, err := readDoc(path)
+	doc, err := statefile.Read(path)
 	if err != nil {
 		return err
 	}

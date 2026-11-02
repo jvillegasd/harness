@@ -17,7 +17,7 @@ Agents produce more code than a human can read carefully, and an undifferentiate
 
 | Tier | Meaning | The human |
 | --- | --- | --- |
-| `critical` | A one-way door or a concrete security, data-loss, compatibility, or concurrency risk: auth and permissions, secrets, migrations and deletion, public interface removal, money, CI and infrastructure, concurrency. | Reads it line by line. `review` runs at the depth its Depth table sets. |
+| `critical` | A one-way door or a concrete security, data-loss, compatibility, or concurrency risk: auth and permissions, secrets, migrations and deletion, public interface removal, money, CI and infrastructure, concurrency. | Reads it line by line. |
 | `behavioral` | Observable behavior changes: outputs, UI, CLI flags, defaults, error handling, new interface surface, agent instructions. | Reads the intent and the tests, and spot-checks the code. |
 | `structural` | Claims to preserve behavior: refactors, moves, renames with logic, performance work. | Skims it; trusts it only when existing tests are unchanged and pass. |
 | `tests-docs` | Supporting material: new or changed tests, documentation. | Skims tests for assertions that cannot fail. |
@@ -31,7 +31,7 @@ Agents produce more code than a human can read carefully, and an undifferentiate
 4. For each `critical` and `behavioral` item, name the one fact the change is safe because of, and how far it is proven on the certainty ladder in `verification` (said, cited, walked, ran, reproduced). A fact at "said" or "cited" is unproven; say so instead of implying safety. When the project has a feature map (`verify-<app>/features/README.md`, see `e2e-verification`), name the affected feature for each `behavioral` and `critical` item so `verification` can drive it live (ladder step 5).
 5. Call the merge danger: a one-way door (hard to reverse: data migration, deletion, published interface, external message) or a two-way door, plus the blast radius in a few words.
 6. List the decisions the agent made that the human did not ask for (a default, a naming choice, a dependency, a skipped case), each with its reason. Take them from the task document's `## Decisions` table (see `continuity`) when there is one, from the commits, and from the session. In since mode, also list the open decisions only the human can make, each with a recommendation.
-7. Run `review` at the depth its Depth table sets from the highest tier and the merge danger. When a critical change involves concurrency, retries, leases, or a lifecycle state machine, suggest `/statechart`, which model-checks the rules with TLA+ and draws the states in the reader's words (its toolchain installs through `mise` on first use).
+7. When a critical change involves concurrency, retries, leases, or a lifecycle state machine, suggest `/statechart`, which model-checks the rules with TLA+ and draws the states in the reader's words (its toolchain installs through `mise` on first use).
 
 ## Output
 

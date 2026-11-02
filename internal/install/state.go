@@ -16,6 +16,7 @@ import (
 	"github.com/jvillegasd/harness"
 	"github.com/jvillegasd/harness/internal/checkout"
 	"github.com/jvillegasd/harness/internal/models"
+	"github.com/jvillegasd/harness/internal/statefile"
 )
 
 // assetsEnv names a directory to install instead of the embedded assets, so a test or a local edit installs a tree the binary was not built from.
@@ -47,8 +48,16 @@ type state struct {
 	Version   int                 `json:"version"`
 	Installed map[string][]string `json:"installed"`
 	Files     []entry             `json:"files"`
-	// Models is `harness models`' choice, carried through untouched so an install never drops it.
+	// Models is `harness models`' choice and Review is `harness review level`'s, both carried through untouched so an install never drops them.
 	Models json.RawMessage `json:"models,omitempty"`
+	Review json.RawMessage `json:"review,omitempty"`
+}
+
+// keepChoices copies the human's stored choices from the state on disk into s, so a choice made while this run worked is kept.
+func (in *installer) keepChoices(s state) state {
+	now := in.loadState()
+	s.Models, s.Review = now.Models, now.Review
+	return s
 }
 
 // codexHome is ~/.codex whatever CODEX_HOME says, because Orca points CODEX_HOME at a home of its own in the terminals it opens.
@@ -88,7 +97,7 @@ func (in *installer) saveState(s state) {
 	must(os.MkdirAll(in.stateDir(), 0o755))
 	data, err := json.MarshalIndent(s, "", "  ")
 	must(err)
-	must(models.Replace(in.statePath(), append(data, '\n')))
+	must(statefile.Replace(in.statePath(), append(data, '\n')))
 }
 
 // extractAssets writes the assets this binary carries, or the HARNESS_ASSETS tree, into a temporary directory for this run to install from, and returns its removal.

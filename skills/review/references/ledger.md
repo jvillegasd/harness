@@ -25,7 +25,7 @@ The command checks the disposition, depth, round, severity, and line range, requ
 - `confirmed`: proven, but the fix has not landed yet. Open.
 - `unverified`: neither confirmed nor refuted. Open.
 - `fixed`: confirmed and repaired. Open again until the fixing commit is in the head.
-- `refuted`: the verifier reported `green` or `could-not-run`, and the refute brief cited where the failure path is cut.
+- `refuted`: not reproduced (the verifier reported `green` or `could-not-run`, or, in a lean review, the parent's own run stayed green), and the refute brief cited where the failure path is cut.
 - `intentional`: the human says the behavior is wanted. `evidence` quotes their words.
 - `wont-matter`: the human decides not to fix it. `evidence` quotes their words.
 - `pre-existing`: the defect predates the diff.

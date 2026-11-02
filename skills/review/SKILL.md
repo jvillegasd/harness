@@ -1,21 +1,35 @@
 ---
 name: review
-description: "Trigger: a change is handed off (pull request, `build`, multi-file handoff), the human asks for review, or a concrete risk exceeds ordinary checks."
+description: "Trigger: the human asks for review, or `open-pr`, `build`, or POLICY calls for one at the level `harness review level` sets."
 license: MIT
 metadata:
   author: jvillegasd
   version: "2.0"
 ---
 
-Get independent eyes on a change at the depth its risk earns. Blind hunters find defects, blind verifiers prove or refute each one, and the author never dismisses a finding alone.
+Get independent eyes on a change at the depth its risk earns and the human's review level allows. Blind hunters find defects, a blind batch proves or refutes them, and the author never dismisses a finding alone.
 
 ## Why
 
 A reviewer that has not heard the implementer's reasoning judges the code, not the story. That independence must hold at both ends: an author who triages findings with the full story undoes it at the last step. So findings are proven or refuted by agents that also never heard it. A review that cannot run independently is reported as unverified, never replaced by self-review.
 
+## Level
+
+Read the level with `harness review level --json`; when the command is unavailable, use `medium` and say so. Only the human sets the level, so never run its setting form. It caps the reviews you start on your own. When the human asks for a review, it runs at any level, at Standard unless they name a depth.
+
+| Level | You start a review when | Depth | Verify | Rounds | Subagents at most |
+| --- | --- | --- | --- | --- | --- |
+| `off` | never | none | none | 0 | 0 |
+| `medium` (default) | a pull request is about to open with any tier above `tests-docs`, or a local handoff's highest tier is `critical` or names a concrete security, data-loss, compatibility, or concurrency risk | Quick | lean | 1 | 2 (3 in `build`, which adds `spec`) |
+| `high` | the highest tier is `structural` or above, for a pull request or a local handoff | the Depth table | batched | 2 | 7 per round |
+
+The ceiling counts hunters, the verifier, and the refuter for one slice; a diff split into slices multiplies it, and a delegated fix executor comes on top.
+
+A review the human asked for verifies batched. Never launch a verifier or refuter per finding: the batch is what keeps the cost flat as findings grow. When no review runs because of the level, record `no-review` with the level in `--summary`.
+
 ## Depth
 
-Take the highest tier from `change-map`:
+At `high`, or when the human asks for Deep, take the highest tier from `change-map`:
 
 | Highest tier | Depth | Hunters |
 | --- | --- | --- |
@@ -32,7 +46,7 @@ Deep needs the reviewer assigned to a client other than the session's: check wit
 2. Save the complete diff of owned changes as the snapshot patch, with unrelated staged and unstaged work left out:
    1. Mark owned untracked files with `git add -N <paths>`, so the diffs include them.
    2. Run `git diff --binary <base> -- <owned paths>`. This is the snapshot patch. Hunters receive it whole, and its hash is the content digest when work stays uncommitted.
-   3. When work stays uncommitted, also save the verifier patch, `git diff --binary <sha> -- <owned paths>`, because verifier worktrees start at the reviewed commit.
+   3. When work stays uncommitted and Verify runs batched, also save the verifier patch, `git diff --binary <sha> -- <owned paths>`, because the verifier worktree starts at the reviewed commit.
    4. Restore the index with `git reset -q -- <those untracked paths>`.
 
    Save both patches outside the checkout, in the ledger's directory, as `<run>-snapshot.patch` and `<run>-verifier.patch`, where `<run>` is the short reviewed SHA plus a UTC timestamp. Create the directory first with `mkdir -p "$(dirname "$(harness review path)")"`, since it exists only after the first record. Every worktree of a repository shares it. When it is too large for one hunter, split it into coherent slices (by module or call path) and give each slice its own hunters. An unreviewed slice stays unverified.
@@ -50,21 +64,25 @@ Each report must open with `loaded:` naming the standards and `revision:` matchi
 1. Collect every `bug`, `risk`, and `q` across hunters, and dedupe by path, line range, and class. Report `nit` and `pre-existing` findings without verifying or fixing them in this change.
 2. Confirm a finding yourself when your own run reproduces it (ladder step 4); that run becomes its red check. A defect in prose with nothing to run, such as two instructions that contradict each other, is confirmed by citing both lines and needs no test. Refuting is never yours.
 3. Look each remaining finding up in the ledger (`references/ledger.md`). Skip a repeat of a `refuted` entry only when both reviews were of committed work (`digest` null), that entry's commit is an ancestor of the reviewed commit (`git merge-base --is-ancestor`), and `git diff <entry sha> <sha>` is empty for the finding's path and for the path of the cut its evidence cites. Report it as "previously refuted: <reason>".
-4. Run code unless the pull request is from a fork. A fork's code would need the sandbox `security-audit`'s "Universal execution safety" requires, because a test runs every package it imports, so for a fork send each finding straight to the refute brief and count the skipped run as `could-not-run`. Otherwise give each finding still open its own sibling worktree, named for this run: `git -c core.hooksPath=/dev/null worktree add --detach "$(git rev-parse --show-toplevel)/../<repo>-review-<run>-<n>" <sha>`. The hooks setting keeps the reviewed code's checkout hooks out of your shell. When work is uncommitted, run `git -C <worktree> apply --index --binary <verifier patch>`. Then record the worktree's baseline with `git -C <worktree> write-tree`, and record each path you create. In each worktree, launch a fresh `executor` with the executor brief from `references/verify.md` and the finding text, never the rationale or which hunter raised it. Launch them all in parallel.
-5. Dispose each finding:
-   - **confirmed**: the verifier ran red. The fix lands with that check turned green.
-   - **refuted**: the verifier reported `green` or `could-not-run`, **and** a fresh `reviewer` given the refute brief from `references/verify.md` cites where the failure path is cut.
+4. **Lean** (`medium`): launch no verifier. Try to reproduce each open finding yourself as step 2 describes, with your repro files in a scratch directory outside the checkout, never in it. Code from a fork's pull request is never run: walk those findings instead. Then send every finding still open to step 6.
+5. **Batched** (`high`, or the human asked): run code unless the pull request is from a fork. A fork's code would need the sandbox `security-audit`'s "Universal execution safety" requires, because a test runs every package it imports, so for a fork send every finding to step 6 and count the skipped run as `could-not-run`. Otherwise create one sibling worktree for this run: `git -c core.hooksPath=/dev/null worktree add --detach "$(git rev-parse --show-toplevel)/../<repo>-review-<run>" <sha>`. The hooks setting keeps the reviewed code's checkout hooks out of your shell. When work is uncommitted, run `git -C <worktree> apply --index --binary <verifier patch>`. Record the worktree's baseline with `git -C <worktree> write-tree`, and record each path you create. Launch one fresh `executor` there with the executor brief from `references/verify.md` and every open finding's text, never the rationale or which hunter raised it. A `red` verdict confirms that finding.
+6. Launch one fresh `reviewer` with the refute brief from `references/verify.md` and every finding that is still open, each with its verifier verdict when there was one.
+7. Dispose each finding:
+   - **confirmed**: your run or the verifier ran red. The fix lands with that check turned green.
+   - **refuted**: not reproduced (the verifier reported `green` or `could-not-run`, or, when lean, your own run stayed green), **and** the refute brief cites where the failure path is cut.
    - **unverified**: anything else. Take each one to the human with both verdicts.
-6. Clean up each recorded worktree:
+8. Clean up the recorded worktree:
    1. Check its ignored files first: every `!!` line of `git -C <worktree> status --porcelain --ignored` must be regenerable build output.
    2. Save the verifier's own work, staged and untracked files included, into the ledger's directory: `git -C <worktree> add -A . && git -C <worktree> diff --cached --binary <baseline> > "$(dirname "$(harness review path)")/<worktree name>.patch"`.
    3. Only when step 2 exited 0 and its patch file exists, remove the worktree with `git worktree remove --force <recorded path>`.
 
    Leave a worktree whose ignored files are not all build output or whose patch was not saved, and any path you did not record, and report it.
 
+Fix confirmed findings inline. When you delegate the fix, give every confirmed finding to one fresh `executor` in one brief, never one executor per finding.
+
 ## Rounds
 
-Run a second round only after substantive repairs to confirmed findings. It covers the repair delta at the same depth, with the context it needs, the requirements, and the new revision, and nothing from the earlier rationale or findings. The ledger lookup in Verify keeps it from relitigating. A nit alone starts no round.
+At `high`, or when the human asked, run a second round only after substantive repairs to confirmed findings. It covers the repair delta at the same depth, with the context it needs, the requirements, and the new revision, and nothing from the earlier rationale or findings. The ledger lookup in Verify keeps it from relitigating. A nit alone starts no round. At `medium` there is one round, so a substantive repair stays unverified until the human decides.
 
 Allow at most two rounds. A new confirmed finding in repaired code at the cap stops the loop: tell the human the approach may need rethinking instead of starting a third round. A substantive repair after the cap stays unverified until the human decides.
 
@@ -76,7 +94,7 @@ The review posts nothing to the forge. `address-review` handles review threads f
 
 ## Output
 
-- The depth and the tier that set it.
+- The level, the depth, and the tier that set it.
 - The inspected revision and content identity, and the standards loaded.
 - Each axis's findings side by side, sorted by severity within the axis and never reranked across axes. Each finding carries its disposition and the ladder step it reached.
 - The hunters, slices, and findings left unverified, any verifier worktree left in place, and the remaining uncertainty.
