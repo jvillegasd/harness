@@ -47,7 +47,7 @@
       "source": "pbakaus/impeccable",
       "sourceType": "github",
       "skillPath": ".agents/skills/impeccable/SKILL.md",
-      "computedHash": "bb529f103869c4e9b19ebaa1486d551affe0500f0af7d5dea0ef172bfba8196d"
+      "computedHash": "40bf10c28a9ecdf516538ed8904d433ddf4db829b5d50d22d1ee0ba474f3df92"
     },
     "improve-codebase-architecture": {
       "source": "mattpocock/skills",
@@ -59,7 +59,7 @@
       "source": "DietrichGebert/ponytail",
       "sourceType": "github",
       "skillPath": "skills/ponytail/SKILL.md",
-      "computedHash": "210fa0831f649ce9f8a305f7b7c8cf2a0dd09ac4dd53067109941b96e7811d4e"
+      "computedHash": "061f887d9e3e735f85db3be3655a8936a00f24d5fb65ac4ab74a968a770fe342"
     },
     "retro": {
       "source": "mattpocock/skills",

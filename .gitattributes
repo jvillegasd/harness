@@ -1,0 +1,2 @@
+# Upstream Windows launchers in locked skill bodies keep their CRLF line endings, which the lock hashes.
+skills/*/*/scripts/*.cmd -whitespace
