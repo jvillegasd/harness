@@ -10,12 +10,12 @@ import (
 	"testing"
 )
 
-// reviewRun runs the built binary in dir with an isolated data home, so the ledger lands under data.
+// reviewRun runs the built binary in dir; the ledger lands in the repository's Git directory.
 func reviewRun(t *testing.T, dir, data string, args ...string) result {
 	t.Helper()
 	cmd := exec.Command(binary, append([]string{"review"}, args...)...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), append(env(dir), "XDG_DATA_HOME="+data)...)
+	cmd.Env = append(os.Environ(), env(dir)...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err := cmd.Run()
@@ -58,8 +58,13 @@ func TestReviewLedgerCommand(t *testing.T) {
 
 	p := reviewRun(t, dir, data, "path")
 	file := strings.TrimSpace(p.stdout)
-	if p.code != 0 || !strings.HasPrefix(file, filepath.Join(data, "harness", "reviews")) || !strings.HasSuffix(file, "ledger.jsonl") {
+	common := git(t, dir, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if p.code != 0 || file != filepath.Join(common, "harness-review", "branches", "work", "ledger.jsonl") {
 		t.Fatalf("path exited %d with %q", p.code, p.stdout)
+	}
+	// A slash in a branch name stays inside one directory name.
+	if o := reviewRun(t, dir, data, "path", "--branch", "feat/x"); strings.TrimSpace(o.stdout) != filepath.Join(common, "harness-review", "branches", "feat%2Fx", "ledger.jsonl") {
+		t.Errorf("path --branch feat/x printed %q", o.stdout)
 	}
 
 	add := func(disposition string) string {
@@ -107,11 +112,22 @@ func TestReviewLedgerCommand(t *testing.T) {
 		t.Fatalf("after a rewrite the open finding must stay, marked rewritten, and a fix the head lost must reopen: %+v", got)
 	}
 
-	// Every worktree of a repository without a remote shares one ledger.
+	// Another worktree of the branch reads the same file, and another branch has its own.
 	sibling := filepath.Join(t.TempDir(), "sibling")
 	git(t, dir, "worktree", "add", "-q", "--detach", sibling)
-	if s := reviewRun(t, sibling, data, "path"); strings.TrimSpace(s.stdout) != file {
+	if s := reviewRun(t, sibling, data, "path", "--branch", "work"); strings.TrimSpace(s.stdout) != file {
 		t.Errorf("a sibling worktree uses %q, want %q", s.stdout, file)
+	}
+	if s := reviewRun(t, sibling, data, "list", "--branch", "work"); !strings.Contains(s.stdout, fixed) {
+		t.Errorf("a sibling worktree does not see the branch's findings: %s", s.stdout)
+	}
+	git(t, dir, "switch", "-q", "-c", "other")
+	if got := listReview(t, dir, data); len(got) != 0 {
+		t.Errorf("another branch sees %d findings, want its own empty ledger", len(got))
+	}
+	// A detached head has no branch to key a ledger by.
+	if s := reviewRun(t, sibling, data, "path"); s.code != 2 || s.stderr == "" {
+		t.Errorf("path on a detached head exited %d with %q, want 2 and a diagnostic", s.code, s.stderr)
 	}
 }
 

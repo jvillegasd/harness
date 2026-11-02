@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -15,9 +14,9 @@ import (
 
 const usage = `Usage: harness review <command> [arguments]
 
-Record and read this repository's local review ledger, kept at
-$XDG_DATA_HOME/harness/reviews/<host>_<owner>_<repo>/ledger.jsonl (default
-~/.local/share). It stays outside the repository and outside ~/.harness.
+Record and read a branch's local review ledger, kept at
+<git-common-dir>/harness-review/branches/<branch>/ledger.jsonl. Git never
+tracks it, and /land or /abandon deletes the branch directory with the branch.
 
 Commands:
   record  Append a new finding, or a new disposition for an existing one
@@ -67,9 +66,9 @@ fixing commit is in --head (default: HEAD). "rewritten" marks a reviewed commit
 no longer in --head's history, as after a rebase; the finding still counts.
 `
 
-const pathUsage = `Usage: harness review path
+const pathUsage = `Usage: harness review path [--branch <name>]
 
-Print this repository's ledger file path.
+Print the ledger file path for the branch (default: the current branch).
 `
 
 // Command runs `harness review` and returns the process exit code.
@@ -113,22 +112,29 @@ func parse(flags *flag.FlagSet, args []string, text string, stdout, stderr io.Wr
 	return -1
 }
 
-// ledger resolves the repository root and its ledger file.
-func ledger(name string, stderr io.Writer) (root, file string, code int) {
+// ledger resolves the repository root, the branch (default: the current one), and the branch's ledger file.
+func ledger(name, branch string, stderr io.Writer) (root, resolved, file string, code int) {
 	cwd, err := os.Getwd()
 	if err == nil {
 		root, err = git(cwd, "rev-parse", "--show-toplevel")
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness review %s: not inside a git repository\n", name)
-		return "", "", 2
+		return "", "", "", 2
 	}
-	dir, err := Dir(root)
+	if branch == "" {
+		branch, _ = git(root, "branch", "--show-current")
+	}
+	file, err = File(root, branch)
+	if errors.Is(err, ErrInvalid) {
+		fmt.Fprintf(stderr, "harness review %s: %v\n", name, err)
+		return "", "", "", 2
+	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness review %s: %v\n", name, err)
-		return "", "", 1
+		return "", "", "", 1
 	}
-	return root, filepath.Join(dir, "ledger.jsonl"), -1
+	return root, branch, file, -1
 }
 
 func record(args []string, stdout, stderr io.Writer) int {
@@ -159,16 +165,16 @@ func record(args []string, stdout, stderr io.Writer) int {
 		// An update changes a finding's state, never what the finding says, so its severity cannot be relabelled to close it.
 		var other []string
 		flags.Visit(func(f *flag.Flag) {
-			if f.Name != "id" && f.Name != "disposition" && f.Name != "evidence" && f.Name != "commit" {
+			if f.Name != "id" && f.Name != "branch" && f.Name != "disposition" && f.Name != "evidence" && f.Name != "commit" {
 				other = append(other, "--"+f.Name)
 			}
 		})
 		if len(other) > 0 {
-			fmt.Fprintf(stderr, "harness review record: an update with --id takes only --disposition, --evidence, and --commit, not %s\n", strings.Join(other, ", "))
+			fmt.Fprintf(stderr, "harness review record: an update with --id takes only --branch, --disposition, --evidence, and --commit, not %s\n", strings.Join(other, ", "))
 			return 2
 		}
 	}
-	root, file, code := ledger("record", stderr)
+	root, branch, file, code := ledger("record", e.Branch, stderr)
 	if code >= 0 {
 		return code
 	}
@@ -187,9 +193,7 @@ func record(args []string, stdout, stderr io.Writer) int {
 		e = prior
 	} else {
 		e.Digest, e.Path = optional(digest), optional(path)
-		if e.Branch == "" {
-			e.Branch, _ = git(root, "branch", "--show-current")
-		}
+		e.Branch = branch
 		if e.SHA == "" {
 			e.SHA, _ = git(root, "rev-parse", "HEAD")
 		}
@@ -239,12 +243,9 @@ func list(args []string, stdout, stderr io.Writer) int {
 	if code := parse(flags, args, listUsage, stdout, stderr); code >= 0 {
 		return code
 	}
-	root, file, code := ledger("list", stderr)
+	root, branch, file, code := ledger("list", branch, stderr)
 	if code >= 0 {
 		return code
-	}
-	if branch == "" {
-		branch, _ = git(root, "branch", "--show-current")
 	}
 	entries, err := Read(file)
 	if err != nil {
@@ -265,10 +266,12 @@ func list(args []string, stdout, stderr io.Writer) int {
 
 func printPath(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("path", flag.ContinueOnError)
+	var branch string
+	flags.StringVar(&branch, "branch", "", "")
 	if code := parse(flags, args, pathUsage, stdout, stderr); code >= 0 {
 		return code
 	}
-	_, file, code := ledger("path", stderr)
+	_, _, file, code := ledger("path", branch, stderr)
 	if code >= 0 {
 		return code
 	}

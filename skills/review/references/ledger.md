@@ -1,6 +1,6 @@
 # Review ledger
 
-The ledger is the local record of every finding and its disposition. `land` reads it for open findings, and `retro` and the evals read it to measure the reviewer. It lives only on this machine, at the path `harness review path` prints: `$XDG_DATA_HOME/harness/reviews/<host>_<owner>_<repo>/ledger.jsonl`. It sits outside `~/.harness` because `harness install --uninstall` deletes that directory. A pull request carries nothing from it beyond `open-pr`'s `Reviewed:` line.
+The ledger is the local record of every finding and its disposition on one branch. `land` reads it for open findings. It lives only on this machine, one file per branch, at the path `harness review path [--branch <name>]` prints: `<git-common-dir>/harness-review/branches/<branch>/ledger.jsonl`, with a `/` in the branch name escaped as `%2F`. The branch directory also holds the review's patches. Git never tracks it, and every worktree of the repository shares it. Its lifetime is the branch's: `land` deletes the branch directory once the merge is confirmed, and `abandon` deletes it with the discarded branch. A pull request carries nothing from it beyond `open-pr`'s `Reviewed:` line.
 
 ## Record
 

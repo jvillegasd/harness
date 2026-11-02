@@ -7,34 +7,6 @@ import (
 	"testing"
 )
 
-func TestKeyKeepsHostOwnerAndPath(t *testing.T) {
-	for source, want := range map[string]string{
-		"git@github.com:jvillegasd/harness.git":    "github.com_jvillegasd_harness",
-		"https://github.com/jvillegasd/harness/":   "github.com_jvillegasd_harness",
-		"https://user:token@github.com/o/r.git":    "github.com_o_r",
-		"ssh://git@host:22/x/y.git":                "host_22_x_y",
-		"https://gitlab.com/group/sub/project.git": "gitlab.com_group_sub_project",
-		"/Users/me/work/app/.git":                  "Users_me_work_app",
-		"/Users/me/b@c/app":                        "Users_me_b@c_app",
-	} {
-		if got := Key(source); got != want {
-			t.Errorf("Key(%q) = %q, want %q", source, got, want)
-		}
-	}
-	// Distinct sources that differ only in where a separator or underscore falls never share a ledger.
-	for _, pair := range [][2]string{
-		{"git@github.com:a-b/c.git", "git@github.com:a/b-c.git"},
-		{"gitlab.com/a_b/c", "gitlab.com/a/b_c"},
-		{"/x/a_b/c", "/x/a/b_c"},
-		{"/x/a_/b", "/x/a/_b"},
-		{"/x/a%5Fb", "/x/a_b"},
-	} {
-		if Key(pair[0]) == Key(pair[1]) {
-			t.Errorf("%s and %s share the key %q", pair[0], pair[1], Key(pair[0]))
-		}
-	}
-}
-
 func str(s string) *string { return &s }
 
 func finding() Entry {

@@ -1,4 +1,4 @@
-// Package reviewledger keeps the local record of review findings and their dispositions. The ledger lives outside the repository and outside ~/.harness, so it never reaches a commit or pull request and survives `harness install --uninstall`.
+// Package reviewledger keeps the local record of review findings and their dispositions, one file per branch inside the repository's Git directory, so it never reaches a commit or pull request and goes away with the branch.
 package reviewledger
 
 import (
@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -54,7 +55,6 @@ var (
 	// needEvidence are the dispositions that close a finding on someone's word, so the word must be recorded.
 	needEvidence = []string{"fixed", "refuted", "intentional", "wont-matter"}
 	linesRe      = regexp.MustCompile(`^[0-9]+(-[0-9]+)?$`)
-	separators   = regexp.MustCompile(`[:/]+`)
 	// ErrInvalid marks a rejected entry; tests use it to tell a rejection from an I/O failure.
 	ErrInvalid = errors.New("invalid entry")
 )
@@ -109,38 +109,16 @@ func Validate(e Entry) error {
 	return nil
 }
 
-// Key turns a remote URL or a repository path into a directory name that keeps the host, owner, and full repository path. Each run of ':' and '/' becomes one underscore, so the scp and URL forms of one remote share a key; a literal '_' or '%' is percent-escaped first, so an underscore in the key always marks a separator. A URL port is read as a path segment.
-func Key(source string) string {
-	s := strings.TrimSpace(source)
-	if i := strings.Index(s, "://"); i >= 0 {
-		s = s[i+3:]
+// File is the ledger for branch in the repository at root: <git-common-dir>/harness-review/branches/<branch>/ledger.jsonl. The branch directory also holds the branch's review patches, so `land` and `abandon` remove that one directory and nothing beside it. Git never tracks the common directory, every worktree of the repository shares it, and the branch name is path-escaped so a "/" stays inside one directory name.
+func File(root, branch string) (string, error) {
+	if branch == "" {
+		return "", fmt.Errorf("%w: no branch is checked out; pass --branch", ErrInvalid)
 	}
-	if at := strings.Index(s, "@"); at >= 0 && !strings.Contains(s[:at], "/") {
-		s = s[at+1:]
-	}
-	s = strings.TrimRight(strings.TrimSuffix(strings.TrimRight(s, "/"), ".git"), "/")
-	s = strings.NewReplacer("%", "%25", "_", "%5F").Replace(s)
-	s = separators.ReplaceAllString(s, "_")
-	return strings.TrimPrefix(s, "_")
-}
-
-// Dir is the ledger directory for the repository at root: $XDG_DATA_HOME/harness/reviews/<key>, defaulting to ~/.local/share when XDG_DATA_HOME is unset or relative. Without an origin remote, the key is the repository's common Git directory, so every worktree of one repository shares a ledger.
-func Dir(root string) (string, error) {
-	source, err := git(root, "remote", "get-url", "origin")
+	common, err := git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
-		if source, err = git(root, "rev-parse", "--path-format=absolute", "--git-common-dir"); err != nil {
-			return "", err
-		}
+		return "", err
 	}
-	data := os.Getenv("XDG_DATA_HOME")
-	if !filepath.IsAbs(data) {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		data = filepath.Join(home, ".local", "share")
-	}
-	return filepath.Join(data, "harness", "reviews", Key(source)), nil
+	return filepath.Join(common, "harness-review", "branches", url.PathEscape(branch), "ledger.jsonl"), nil
 }
 
 // Append writes one line to the ledger file, creating its directory. A single O_APPEND write keeps concurrent records from interleaving.
