@@ -16,22 +16,34 @@ import (
 func LifecycleGuard(input io.Reader, output io.Writer) int {
 	var request struct {
 		Tool  string `json:"tool_name"`
+		Cwd   string `json:"cwd"`
 		Input struct {
 			Command string `json:"command"`
 		} `json:"tool_input"`
 	}
 	decision := "deny"
-	if err := json.NewDecoder(io.LimitReader(input, 1<<20)).Decode(&request); err == nil && request.Tool == "Bash" && lifecycleCommand(request.Input.Command, os.Getenv("HARNESS_ORCA_COMMAND")) {
-		decision = "allow"
+	if err := json.NewDecoder(io.LimitReader(input, 1<<20)).Decode(&request); err == nil && request.Tool == "Bash" {
+		dir := request.Cwd
+		if dir == "" {
+			dir, _ = os.Getwd()
+		}
+		if lifecycleCommand(request.Input.Command, os.Getenv("HARNESS_ORCA_COMMAND")) || readOnlyCommand(request.Input.Command, dir) {
+			decision = "allow"
+		}
 	}
 	err := json.NewEncoder(output).Encode(map[string]any{"hookSpecificOutput": map[string]string{
 		"hookEventName": "PreToolUse", "permissionDecision": decision,
-		"permissionDecisionReason": "Read-only roles may run only Orca send, ask, and check commands from their live worker preamble, on one line, with shell syntax only inside quotes and no $, backtick, or backslash inside double quotes.",
+		"permissionDecisionReason": "Read-only roles may run only Orca send, ask, and check from their live worker preamble, and cat, head, tail, wc, ls, find, rg, and read-only git subcommands on paths inside the working directory; one command per call, on one line, with shell syntax only inside quotes and no $, backtick, or backslash inside double quotes.",
 	}})
 	if err != nil {
 		return 2
 	}
 	return 0
+}
+
+func readOnlyCommand(command, dir string) bool {
+	words, ok := literalWords(command)
+	return ok && len(words) > 0 && readCommand(words, dir)
 }
 
 func lifecycleCommand(command, executable string) bool {

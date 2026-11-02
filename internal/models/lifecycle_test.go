@@ -29,7 +29,7 @@ func TestLifecycleGuard(t *testing.T) {
 				{prefix + `send --body "a \" ; touch tracked.md"`, false},
 				{prefix + `send --body "unterminated`, false},
 				{prefix + `send --body x"; touch tracked.md"; check`, false},
-				{`git status`, false},
+				{`git commit -m x`, false},
 				{prefix + `worker-start --spec x`, false},
 				{prefix + `send --body x > tracked.md`, false},
 				{prefix + `check; touch tracked.md`, false},

@@ -27,7 +27,7 @@ var supported = map[string][]field{
 
 type field struct{ name, pattern string }
 
-const access = "Read and search the repository to follow callers and context. Never edit a file, fetch from the web, delegate to another agent, or run project or general shell commands. The only command exception is Orca lifecycle messaging under the live worker preamble."
+const access = "Read and search the repository to follow callers and context. Never edit a file, fetch from the web, delegate to another agent, or run project or general shell commands. The shell is for reading inside the working directory: `cat`, `head`, `tail`, `wc`, `ls`, `find`, `rg`, and `git` `show`, `diff`, `log`, `status`, `blame`, `ls-files`, `rev-parse`, `merge-base`, and `grep` (`show`, `diff`, and `log` with `--no-ext-diff --no-textconv`, `blame` with `--no-textconv`), one command per call with no pipes, redirections, or substitutions, and never on credential files or paths outside the working directory. The only other command is Orca lifecycle messaging under the live worker preamble."
 
 var claudeControls = map[string][]string{
 	"read-search": {"tools: Read, Grep, Glob, Bash", "permissionMode: dontAsk", "hooks:", "  PreToolUse:", "    - matcher: Bash", "      hooks:", "        - type: command", `          command: 'test -n "$HARNESS_LIFECYCLE_GUARD" || exit 2; "$HARNESS_LIFECYCLE_GUARD" models lifecycle-guard || exit 2'`},
