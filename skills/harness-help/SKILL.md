@@ -71,7 +71,7 @@ learn        /retro
 
 ## Skills only a human starts
 
-`land`, `abandon`, `setup-harness`, `build`, and `retro` run only when a human types them, because they merge, discard, provision, run unattended at model-budget scale, or read session records to change the harness itself. The workflow entry points `/spec`, `/triage`, `/explain`, `/optimization`, `/e2e-verification`, and `/harness-help` are human-started too, matching their Matt Pocock and pstack equivalents. The locked `/grill-with-docs`, `/sharpen`, `/statechart`, `/handoff`, and `/improve-codebase-architecture` carry an upstream guard of their own. Starting any of them is the human's decision, so name it for them and let them invoke it.
+`land`, `abandon`, `setup-harness`, and `build` run only when a human types them, because they merge, discard, provision, or run unattended at model-budget scale. The workflow entry points `/spec`, `/triage`, `/explain`, `/optimization`, `/e2e-verification`, and `/harness-help` are human-started too, matching their Matt Pocock and pstack equivalents. The locked `/retro`, `/grill-with-docs`, `/sharpen`, `/statechart`, `/handoff`, and `/improve-codebase-architecture` carry an upstream guard of their own. Starting any of them is the human's decision, so name it for them and let them invoke it.
 
 ## Model by step
 
