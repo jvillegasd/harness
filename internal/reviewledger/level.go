@@ -89,7 +89,7 @@ func level(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	// Setting takes the bare value alone, so the setting forms are exactly the prefixes a client can deny.
-	if len(value) > 1 || (len(value) == 1 && (asJSON || len(args) != 1 || !slices.Contains(Levels, value[0]))) {
+	if len(value) > 1 || (len(value) == 1 && (asJSON || !slices.Contains(Levels, value[0]))) {
 		fmt.Fprintf(stderr, "harness review level: expected one of %s\n%s", strings.Join(Levels, ", "), levelUsage)
 		return 2
 	}
