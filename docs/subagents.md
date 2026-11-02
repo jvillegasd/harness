@@ -104,13 +104,21 @@ flowchart TD
     confirmed -->|"high: substantive repair"| round2["second round on the repair delta,<br>at most two rounds"]
 ```
 
-| Level | Hunters | Verify | Rounds | Subagents at most |
-| --- | --- | --- | --- | --- |
-| `off` | none | none | 0 | 0 |
-| `medium` | Quick: `bugs` (plus `spec` in `/build`) | lean, no verifier | 1 | 2, or 3 in `/build` |
-| `high` | by tier: Quick, Standard, or Deep | batched | 2 | 7 per round |
+Each level, and at `high` each depth, launches these subagents per round. Hunters and the refuter are `reviewer` agents; the verifier is an `executor`.
 
-Deep adds a second `bugs` hunter from another vendor, which needs the reviewer assigned to a client other than the session's (the `diversity` preset does this). There is never one verifier or refuter per finding: the batch keeps cost flat as findings grow. Fixes for confirmed findings go to one fresh executor in one brief, or are made inline.
+| Level | Depth (set by) | Hunters (`reviewer`) | Verifier (`executor`) | Refuter (`reviewer`) | Total at most | Rounds |
+| --- | --- | --- | --- | --- | --- | --- |
+| `off` | none | 0 | 0 | 0 | 0 | 0 |
+| `medium` | Quick | 1: `bugs` | 0 (the parent reproduces findings itself) | 1 | 2 | 1 |
+| `medium` in `/build` | Quick plus `spec` | 2: `bugs`, `spec` | 0 | 1 | 3 | 1 |
+| `high` | none (only `mechanical` or `tests-docs`) | 0 | 0 | 0 | 0 | 0 |
+| `high` | Quick (`structural` or `behavioral`) | 1: `bugs` | 1 | 1 | 3 | 2 |
+| `high` | Standard (`critical`, or the human asks) | up to 4: `bugs`, `spec` when requirements exist, `standards`, `security` when a critical item is in a security category | 1 | 1 | 6 | 2 |
+| `high` | Deep (a critical one-way door, or the human asks for Deep) | up to 5: Standard plus a second `bugs` from another vendor | 1 | 1 | 7 | 2 |
+
+The verifier and refuter launch only when findings are still open after the parent's own reproduction, so a clean hunt stops at the hunters. A review the human asks for always verifies batched, with one verifier. A diff too large for one hunter is split into slices, and each slice gets its own set, which multiplies these counts. Fixes for confirmed findings go to one fresh `executor` in one brief, or are made inline; that executor is on top of the totals.
+
+Deep needs the reviewer assigned to a client other than the session's (the `diversity` preset does this). Its assigned hunters then launch through Orca and the extra `bugs` hunter launches natively, so two vendors hunt bugs; when the reviewer resolves to the session's client, review runs at Standard instead. There is never one verifier or refuter per finding: the batch keeps cost flat as findings grow.
 
 Code from a fork's pull request is never run; its findings are only walked.
 
