@@ -1,6 +1,6 @@
 # Workflow
 
-How work moves through the harness, from a request to a merged pull request. This page is an overview for humans: each skill holds its own procedure, so follow the links rather than treating this page as the rules. The rules live in `POLICY.md`, and `/harness-help` answers "which skill fits" from inside a session.
+How work moves through the harness, from a request to a merged pull request. This page is an overview for humans: each skill holds its own procedure, so follow the links rather than treating this page as the rules. The rules live in `POLICY.md`; this page also answers "which skill fits".
 
 ## The default is direct work
 
@@ -19,23 +19,21 @@ flowchart TD
     direct -->|no| understand
 
     subgraph understand["understand"]
-        explain["/explain<br>how, why, or what states"]
-        research["research<br>outside sources, read-only"]
+        research["research<br>code, history, outside sources;<br>read-only"]
         statechart["/statechart<br>model-check a state machine"]
     end
 
     subgraph intent["intent"]
-        grilling["grilling or /grill-with-docs<br>settle the decision tree"]
+        grilling["/grill-with-docs<br>settle the decision tree"]
         triage["/triage<br>ticket or error into a plan brief"]
         proto["proto<br>an experiment answers one question"]
         spec["/spec<br>durable design, tickets on request"]
-        sharpen["/sharpen<br>take the task deeper"]
     end
 
     subgraph build["build"]
         inline["inline with tdd and ponytail<br>the default"]
         buildskill["/build<br>unattended slices on one<br>integration branch"]
-        diagnosing["diagnosing-bugs, /optimization"]
+        diagnosing["diagnosing-bugs"]
     end
 
     subgraph prove["prove"]
@@ -64,15 +62,47 @@ flowchart TD
 
 | Stage | Skills | Use when |
 | --- | --- | --- |
-| Understand | `/explain`, `research`, `/statechart` | You need to know how code works, an outside fact, or whether a state machine keeps its rules |
-| Intent | `grilling`, `/grill-with-docs`, `/triage`, `proto`, `/spec`, `/sharpen` | The intent is fuzzy, a ticket must become a plan, an experiment can settle a question, or a design must survive sessions |
-| Build | `tdd`, `ponytail`, `diagnosing-bugs`, `/optimization`, `impeccable`, `/build` | Writing or fixing code; `/build` for a graph of tickets or spec slices run unattended |
-| Prove | `verification`, `/e2e-verification`, `evidence` | Showing a change works, or challenging a load-bearing claim with data |
+| Understand | `research`, `/statechart` | You need to know how code works or why, an outside fact, or whether a state machine keeps its rules |
+| Intent | `/grill-with-docs`, `/triage`, `proto`, `/spec` | The intent is fuzzy, a ticket must become a plan, an experiment can settle a question, or a design must survive sessions |
+| Build | `tdd`, `ponytail`, `diagnosing-bugs`, `impeccable`, `/build` | Writing or fixing code; `/build` for a graph of tickets or spec slices run unattended |
+| Prove | `verification`, `/e2e-verification`, `research` | Showing a change works, or challenging a load-bearing claim with data (`research`'s evidence protocol) |
 | Triage | `change-map`, `review` | Telling the human what to read, and getting an independent look |
 | Deliver | `open-pr`, `address-review`, `/land`, `/abandon` | Publishing, repairing, merging, or discarding |
 | Learn | `/retro` | Turning a session's friction into environment fixes |
 
 `continuity` sits beside every stage: it keeps one recoverable task document for work that spans sessions and chooses how to cross a boundary between phases (continue, clear, hand off, delegate, or compact).
+
+The skills you invoke in a normal session are the ones in `skills/workflow/`: `/grill-with-docs`, `tdd`, `diagnosing-bugs`, `review`, `open-pr`, `address-review`, and `/land`. The skills they call (`grilling`, `ponytail`, `verification`, `change-map`, `caveman-commit`, `continuity`, `handoff`) live in `skills/support/`; the README lists every group.
+
+## Which skill when
+
+| Situation | Skill | Note |
+| --- | --- | --- |
+| You need to understand code, or why it is the way it is | `research` | Traces code, history, and outside sources and returns a cited finding ledger; for a quick look, the `code-search` role answers one repository question. |
+| A state machine, retry, lease, or concurrent flow must always keep a rule | `/statechart` | Model-checks the rules with TLA+ and draws the states. |
+| The intent or plan is still fuzzy | `/grill-with-docs` | An interview that settles the decision tree (`grilling`), and records settled terms in `GLOSSARY.md` and ADRs (`domain-modeling`) for a later session that cannot rebuild them from code. |
+| A question an experiment can answer | `proto` | A throwaway logic model or UI variants, to answer one stated question. |
+| A design worth keeping across sessions | `/spec` | A local spec with agreed test seams; tickets only when asked. |
+| Writing or changing code | `tdd`, `ponytail` | Test-first loop, and the simplest thing that works. |
+| Something is broken, throwing, or slow | `diagnosing-bugs` | A diagnosis loop that reproduces before it fixes, performance regressions included. |
+| A ticket or production error must become a plan | `/triage` | Checks the premise first with the kill query, then returns a plan brief without implementing. |
+| A claim carries the whole decision | `research` | Its `references/evidence.md` starts with the query that could cancel the work. |
+| UI work | `impeccable` | Frontend design and critique; the project's styling layer still wins. |
+| Prove a change works | `verification`, `/e2e-verification` | Revision-bound local checks; a scripted browser run with screenshots for a release. |
+| Tell the human what to read, or get an independent look | `change-map`, `review` | A tiered map of the change; blind review gated by `harness review level` and the tier. |
+| The architecture feels shallow or hard to navigate | `/improve-codebase-architecture` | Finds deepening opportunities and walks through the one you pick. |
+| Security questions or an audit | `security-audit` | Guidance by default; the full audit runs only when an audit or pen test is requested. |
+| Work spans sessions, or you are handing it over | `continuity`, `/handoff` | One recoverable task document; a handoff document for a fresh agent. |
+
+## Model by step
+
+`harness models` assigns the delegated roles; the session's own model is the human's `/model` and `/effort` choice. Judgment steps get the strongest model and routine steps a cheaper one, because grilling and review depend on the model's own sense of how systems break while implementation mostly follows its context:
+
+| Step | Session model and effort |
+| --- | --- |
+| `/grill-with-docs`, `/spec`, `/triage`, `diagnosing-bugs`, disposing `review` findings | the strongest available, high effort |
+| inline building with `tdd` and `ponytail` | the session default |
+| `open-pr`, `address-review`, `/land` | a mid model at medium effort |
 
 ## Who may do what
 
@@ -83,7 +113,7 @@ flowchart LR
     subgraph agent["the agent on its own"]
         local["local edits and checks"]
         commit["commits on a task branch<br>it created"]
-        helpers["model-invoked skills:<br>grilling, proto, research, review,<br>verification, change-map, continuity,<br>evidence, open-pr, address-review"]
+        helpers["model-invoked skills:<br>grilling, proto, research, review,<br>verification, change-map, continuity,<br>open-pr, address-review"]
     end
 
     subgraph request["needs an explicit request"]
@@ -98,7 +128,7 @@ flowchart LR
         abandong["/abandon: discard unmerged work"]
         buildg["/build: run unattended"]
         setupg["setup-harness: provision"]
-        entry["entry points: /spec, /triage, /explain,<br>/optimization, /e2e-verification, /harness-help"]
+        entry["entry points: /spec, /triage,<br>/e2e-verification, and the locked<br>/grill-with-docs, /statechart, /handoff,<br>/improve-codebase-architecture, /retro"]
     end
 
     agent -->|open a PR or ship this| request

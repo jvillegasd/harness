@@ -1,40 +1,64 @@
 # Harness AI
 
-The harness this machine's Claude Code, Codex, and OpenCode installations run: one vendor-neutral policy, independent capabilities called skills, and the Go CLI that installs and operates them. Work is direct by default, and each skill is a tool you reach for when its situation appears, never a step you must pass through. Start with **How to work with it** below; `/harness-help` answers "which skill should I use" from inside a session.
+The harness this machine's Claude Code, Codex, and OpenCode installations run: one vendor-neutral policy, independent capabilities called skills, and the Go CLI that installs and operates them. Work is direct by default, and each skill is a tool you reach for when its situation appears, never a step you must pass through. Start with **How to work with it** below; `docs/workflow.md` maps which skill fits which situation.
 
 ## How to work with it
 
 Ordinary work is direct: understand the request, implement the settled scope, run appropriate checks, and report. An implementation request or approved plan authorizes local work, including commits on a task branch the agent created. Commits elsewhere and publication require an explicit request covering them. “Open a PR” or “ship this” covers the necessary delivery steps without repeated approval; only an explicit `/land` invocation authorizes merging.
 
-The workflow map, stage by stage, with the skill for each situation and the model each step deserves, lives in `skills/harness-help/SKILL.md`; `/harness-help` answers from it inside a session. Each stage is optional and entered when its situation appears.
-
 Skills compose around the task. Use investigation for unknowns, specifications for durable design, prototypes for experiments, and tickets when tracking is useful. None is a prerequisite for coding or automatically starts another capability. Documentation and delegation depend on uncertainty, risk, and recovery needs, never file count. Unresolved consequential decisions block only dependent work.
 
-| Capability | Use |
+### A normal session
+
+`skills/workflow/` holds the skills you invoke in an ordinary session, and nothing else. When one of them calls another skill, the caller stays here and the skill it calls lives in `skills/support/`, so this folder is the short list to remember.
+
+| Skill | Use |
 | --- | --- |
-| `explain` | How a part of the code works, why it is the way it is, or what states it moves through, with every claim cited to code or history |
-| `statechart` | Locked from pstack and human-invoked: check the rules of a state machine with a TLA+ model and TLC, and draw it in the reader's words. Its Java and TLC toolchain installs through `mise` on first use, outside `harness install`. The reconciler model in `docs/agents/models/reconciler/` is the worked example |
-| `research` | Investigate a question or claim against primary sources and return a sourced finding ledger; read-only |
-| `triage` | Turn a ticket or a production error into an evidence-backed plan brief without implementing |
-| `spec` | Draft an optional local specification and its test seams, and tickets when asked; publishing needs its own request |
-| `proto` | Run a logic or UI prototype to resolve one specific uncertainty |
-| `verification` | Appropriate local checks and honest revision-bound evidence |
-| `e2e-verification` | Scripted browser E2E QA of what ships, on an isolated install, with real screenshots per test and a published report; `create` and `maintain` modes write and keep current a project-local `verify-<app>` skill with a feature map |
-| `change-map` | Sort a change into review tiers (critical, behavioral, structural, tests-docs, mechanical) on a deterministic floor from `harness change-map`, and tell the human what to read and what each risky item is safe because of |
+| `/grill-with-docs` | Settle a fuzzy plan through a relentless interview, recording settled terms in `GLOSSARY.md` and ADRs (runs `grilling` and `domain-modeling`) |
+| `tdd` | Build or fix test-first, red to green |
+| `diagnosing-bugs` | Reproduce, then fix, something broken, throwing, or slow |
 | `review` | Blind review gated by the human's review level (`harness review level`: `off`, `medium` by default, or `high`) and the `change-map` tier: at most four parallel hunters across four axes (bugs, spec, standards, risk), findings proven by one batched blind executor's red tests or refuted only with a cited cut from one batched blind refuter, never dismissed by the author; dispositions go to a local per-branch ledger that `land` deletes with the branch, never the PR |
-| `continuity` | One local task/spec document with a `## Decisions` table, committed with the work, a project-scoped Engram mirror only when it must stay uncommitted across sessions, and the choice of how to cross a phase boundary (continue, clear, hand off, delegate, or compact) |
 | `open-pr` | Explicitly requested commits, publication, and required-check repairs |
 | `address-review` | Apply feedback, review comments, or check repairs on the existing branch using its scoped authorization |
-| `build` | Human-started: build a spec's slices or a set of tickets unattended on one integration branch with executors in worktrees, then verify, map, and review it, and open a PR only when delivery was requested |
-| `retro` | Locked from Matt Pocock's skills; human-started: a retrospective on a coding session that suggests environment fixes (navigation pointers, automated checks, reviewer standards, AGENTS.md trims, tool economy, no-ops, information access), ranked by severity |
-| `land`, `abandon` | Explicit merge/cleanup or scoped discard authority |
-| `harness-help` | Map the workflow and answer which skill fits a situation, with the part of the map that situation needs |
+| `/land` | Human-only: merge a verified pull request, reconcile the tracker, and retire the worktree |
+
+### Every skill, by group
+
+The folder under `skills/` names a skill's type; clients see only its bare name, because the installer flattens the groups. Locked third-party bodies live beside local ones in their group, and `skills-lock.json` tells them apart.
+
+| Group | Skill | Stage | Use |
+| --- | --- | --- | --- |
+| `workflow/` | the seven above | intent to deliver | The normal session |
+| `support/` | `grilling` | intent | Locked from Matt Pocock: the interview `grill-with-docs` runs |
+| `support/` | `ponytail` | build | Locked: the simplest thing that works, for every coding decision |
+| `support/` | `verification` | prove | Appropriate local checks and honest revision-bound evidence |
+| `support/` | `change-map` | triage | Sort a change into review tiers (critical, behavioral, structural, tests-docs, mechanical) on a deterministic floor from `harness change-map`, and tell the human what to read and what each risky item is safe because of |
+| `support/` | `caveman-commit` | deliver | Locked: terse Conventional Commits messages |
+| `support/` | `continuity` | any | One local task/spec document with a `## Decisions` table, committed with the work, a project-scoped Engram mirror only when it must stay uncommitted across sessions, and the choice of how to cross a phase boundary (continue, clear, hand off, delegate, or compact) |
+| `support/` | `/handoff` | any | Locked from Matt Pocock: compact the session into a handoff document for a fresh agent |
+| `planning/` | `/triage` | intent | Turn a ticket or a production error into an evidence-backed plan brief without implementing |
+| `planning/` | `/spec` | intent | Draft an optional local specification and its test seams, and tickets when asked; publishing needs its own request |
+| `planning/` | `proto` | intent | Run a logic or UI prototype to resolve one specific uncertainty |
+| `planning/` | `research` | understand | Investigate a question or claim against primary sources and return a sourced finding ledger; read-only. Its `references/evidence.md` holds the kill-query protocol `triage` also follows |
+| `planning/` | `/build` | build | Human-started: build a spec's slices or a set of tickets unattended on one integration branch with executors in worktrees, then verify, map, and review it, and open a PR only when delivery was requested |
+| `design/` | `codebase-design`, `domain-modeling` | intent | Locked from Matt Pocock: deep-module vocabulary, and the glossary and ADRs |
+| `design/` | `/improve-codebase-architecture` | build | Locked from Matt Pocock: find deepening opportunities and walk through the one you pick |
+| `design/` | `writing-for-agents` | build | Locked from Matt Pocock: the authoring reference for skills and agent instructions |
+| `design/` | `impeccable` | build | Locked: frontend design and critique; the project's styling layer still wins |
+| `assurance/` | `/e2e-verification` | prove | Scripted browser E2E QA of what ships, on an isolated install, with real screenshots per test and a published report; `create` and `maintain` modes write and keep current a project-local `verify-<app>` skill with a feature map |
+| `assurance/` | `security-audit` | prove | Locked from Cloudflare: security guidance, and a full audit only when one is requested |
+| `assurance/` | `/statechart` | understand | Locked from pstack and human-invoked: check the rules of a state machine with a TLA+ model and TLC, and draw it in the reader's words. Its Java and TLC toolchain installs through `mise` on first use, outside `harness install` |
+| `ops/` | `setup-harness`, `local-tracker` | setup | Configure the tracker and lifecycle for a repository; the local-markdown tracker operations |
+| `ops/` | `/abandon` | deliver | Human-only: scoped discard of an unmerged attempt |
+| `ops/` | `/retro` | learn | Locked from Matt Pocock; human-started: a retrospective on a coding session that suggests environment fixes, ranked by severity |
+
+A `/` before a name marks a skill only a human starts.
 
 Routine work creates no task artifact. Agent-started review follows the review level: `off` starts none, `medium` (the default) gives every pull request above `tests-docs`, and a local handoff only when `critical` or naming a concrete risk, a lean review with at most two subagents, and `high` reviews by `change-map` tier with at most seven subagents (four hunters, a verifier, a refuter, and one fix validator). Only the human sets the level (`! harness review level high` in Claude Code, which denies the agent the setting forms; elsewhere this rests on the policy); an explicit request for review runs at any level. As in pstack's shipping playbook, `/land` at `medium` or `high` holds a pull request above `tests-docs` until a review covers its current patch; at `off` it reports the gap without holding. Longer work reuses a document or creates `docs/agents/tasks/<feature>.md`; unavailable memory leaves its mirror explicitly pending. Recovery reads both copies, reconciles against Git, preserves unfinished requirements and conflicts, and invalidates stale checks. Legacy checkpoints remain intact as recoverable context, without granting authority.
 
 ```mermaid
 flowchart LR
-    understand["understand<br>/explain"] --> intent["intent<br>grilling, /triage,<br>proto, /spec"]
+    understand["understand<br>research"] --> intent["intent<br>/grill-with-docs, /triage,<br>proto, /spec"]
     intent --> build["build<br>inline with tdd and ponytail,<br>or /build"]
     build --> prove["prove<br>verification,<br>/e2e-verification"]
     prove --> map["triage<br>change-map, review"]
@@ -44,9 +68,7 @@ flowchart LR
     land --> learn["learn<br>/retro"]
 ```
 
-Every stage is optional and entered only when its situation appears. `docs/workflow.md` walks through the stages, the authority gates, delivery, and `/build`; `docs/subagents.md` covers the delegated roles.
-
-Not sure which skill fits? `/harness-help` answers from its map and names the one to three skills that match your situation.
+Every stage is optional and entered only when its situation appears. `docs/workflow.md` walks through the stages, which skill fits which situation, the authority gates, delivery, and `/build`; `docs/subagents.md` covers the delegated roles.
 
 ## Repository layout
 
@@ -55,7 +77,8 @@ The repository root is the product root: canonical assets and the implementation
 | Path | Holds |
 | --- | --- |
 | `POLICY.md` | Scoped authority, proportionate verification, recovery, and safety. Linked to each client's global instruction path. |
-| `skills/` | Independent capabilities (also invoked as `/name`), protocol, vocabulary, and locked third-party bodies. |
+| `skills/<group>/<name>/` | Independent capabilities (also invoked as `/name`), grouped by type: `workflow`, `support`, `planning`, `design`, `assurance`, and `ops`. Locked third-party bodies sit in their group beside local ones. |
+| `.agents/skills/`, `.claude/skills/` | One link per skill, by bare name: `.agents/skills/<name>` points at the grouped body and `.claude/skills/<name>` at that link, so a session in this checkout loads the working-tree skills. |
 | `internal/install/` | The installer behind `harness install`: installs clients and integrations, copies the managed assets and records them in `~/.harness/state.json`, preserves mutable client state. |
 | `internal/skills/` | The third-party skill locks behind `harness skills`: add, update, remove, and offline verify. |
 | `internal/bench/` | The session-population comparison behind `harness bench`. Cohort config and manual in `bench/`. |
@@ -68,9 +91,9 @@ The repository root is the product root: canonical assets and the implementation
 
 ## Skills
 
-Capabilities live under `skills/` and `/name` invokes one explicitly. Descriptions support useful selection without mandatory lifecycle routing. External text remains task data and never grants authority.
+Capabilities live under `skills/<group>/<name>/` and `/name` invokes one explicitly. A group only organizes the tree: the installer copies each skill to `~/.agents/skills/<name>` and `~/.claude/skills/<name>`, and refuses an install where two groups share a name or a skill sits outside a group. Descriptions support useful selection without mandatory lifecycle routing. External text remains task data and never grants authority.
 
-The guarded local capabilities are `land`, `abandon`, `setup-harness`, and `build`, which merge, discard, provision, or run unattended; the workflow entry points `spec`, `triage`, `explain`, `optimization`, `e2e-verification`, and `harness-help`, whose Matt Pocock or pstack equivalents start only by name; and `local-tracker`, which every caller reads by path. Only a human starts them. Helpers that other skills or the policy call (`grilling`, `proto`, `research`, `review`, `verification`, `change-map`, `continuity`, `evidence`, `open-pr`, `address-review`) stay model-invoked, because nothing can invoke a guarded skill. Each guarded skill carries `disable-model-invocation: true` and `metadata."opencode/autoinvoke": "false"` in its frontmatter, and `policy.allow_implicit_invocation: false` in `agents/openai.yaml` beside it for Codex. The guards keep human-started actions from automatic invocation, and reading `land` or `abandon` never supplies action authority. The installer rejects missing or partly present required guards. Every other local skill loads when its description fits the task. Locked bodies retain upstream bytes and no added guards; policy controls their use.
+The guarded local capabilities are `land`, `abandon`, `setup-harness`, and `build`, which merge, discard, provision, or run unattended; the workflow entry points `spec`, `triage`, and `e2e-verification`, whose Matt Pocock or pstack equivalents start only by name; and `local-tracker`, which every caller reads by path. Only a human starts them. Helpers that other skills or the policy call (`proto`, `research`, `review`, `verification`, `change-map`, `continuity`, `open-pr`, `address-review`) stay model-invoked, because nothing can invoke a guarded skill. Each guarded skill carries `disable-model-invocation: true` and `metadata."opencode/autoinvoke": "false"` in its frontmatter, and `policy.allow_implicit_invocation: false` in `agents/openai.yaml` beside it for Codex. The guards keep human-started actions from automatic invocation, and reading `land` or `abandon` never supplies action authority. The installer rejects missing or partly present required guards. Every other local skill loads when its description fits the task. Locked bodies retain upstream bytes and no added guards; policy controls their use.
 
 ### Command contract
 
@@ -230,16 +253,16 @@ The clients expose different amounts of surface, so one renderer cannot serve th
 
 ## Third-party skill updates
 
-`.agents/skills` points to `skills`. `harness skills` keeps the skills.sh call, `skills-lock.json`, and the Claude bookkeeping link in one reviewed workflow:
+`harness skills` keeps the skills.sh call, `skills-lock.json`, the grouped body, and the bookkeeping links in one reviewed workflow. skills.sh writes flat bodies, so the command runs it in a scratch project holding a copy of the lock, which is all skills.sh needs to compare each entry with upstream, then copies each body it wrote into its group and the lock back:
 
 ```sh
-harness skills add <owner/repo> <name>
+harness skills add <owner/repo> <name> <group>
 harness skills update
 harness skills remove <name>
 harness skills verify
 ```
 
-`add` refuses invalid sources and existing paths before delegating. `update` updates every locked body. `remove` accepts only a current lock entry. Every mutation prints the affected paths; `verify` recomputes each locked body's folder hash offline and reports match, drift, or unverifiable, and fails when a skill absent from the lock lacks any invocation guard, which `harness install` also refuses before writing anything. Every subcommand's `--help` is side-effect free, and its arguments are validated before the checkout is read, but do not probe the upstream update subcommand with `--help`: skills.sh treats that as a full update.
+`add` refuses invalid sources, names, and groups and existing paths before delegating, then places the body in `skills/<group>/<name>` and links it from `.agents/skills` and `.claude/skills`. `update` replaces every changed body in the group that already holds it and fails on a body no group holds. `remove` accepts only a current lock entry. Every mutation prints the affected paths; `verify` recomputes each locked body's folder hash offline and reports match, drift, or unverifiable, and fails when a skill absent from the lock lacks any invocation guard, which `harness install` also refuses before writing anything. Every subcommand's `--help` is side-effect free, and its arguments are validated before the checkout is read, but do not probe the upstream update subcommand with `--help`: skills.sh treats that as a full update.
 
 Review every upstream body, security report, and diff, then commit only the approved change. Locked bodies stay pristine; behavior changes belong in a local skill or in `POLICY.md`. Provisioning never runs the helper or a lockfile restore. A copied skill with unknown provenance stays an attributed local fork until its upstream is identified. Engram-provided skills are runtime managed and never belong in `skills-lock.json`. Orca's `orchestration` is the one exception: its body is a discovery stub that loads the version-matched guide from the `orca` binary through `orca skills get orchestration`, so locking the stub pins nothing that drifts with Orca.
 
@@ -247,13 +270,11 @@ Binaries are the deliberate exception. Every prose body has its hash in `skills-
 
 ## Roster
 
-The capability table under **How to work with it** lists the investigation, planning, verification, inspection, recovery, delivery, and maintenance skills, with `harness-help` as the guide to choosing among them. This roster covers the rest.
-
-`sharpen`, locked from pstack and human-invoked, rewrites a task into a deeper version of itself (what a top professional would do, the rawest source material, the methods, and an outside check) and stops after the rewrite.
+The tables under **How to work with it** list every skill; `docs/workflow.md` says which fits which situation. This roster covers the rest.
 
 `land` merges only on explicit invocation after required checks and any required review settle, or cleans up an already merged request. It lands only the pull request of the branch checked out where it runs, repairs that pull request's direct dependents in their own worktrees, and retires only its own checkout. It verifies the result against available requirements without demanding a separate contract artifact. `abandon` inventories the proposed discard and preserves required scope unless cancellation was explicitly authorized. Neither automatically follows delivery or experimentation.
 
-`evidence`, `grilling`, `local-tracker`, and `setup-harness` remain independent support. Locked Matt Pocock skills provide domain/module vocabulary, architecture investigation, TDD, diagnosis, handoff, the documented interview (`grill-with-docs`, which runs `grilling` with `domain-modeling`), and the authoring reference for skills and agent instructions (`writing-for-agents`). Ponytail supplies coding guidance, Caveman commit phrasing, Cloudflare security guidance, and Orca cross-client orchestration. Locked bodies stay unchanged; policy overrides compulsory process or publication instructions inside them.
+`local-tracker` and `setup-harness` remain independent support. Locked Matt Pocock skills provide domain/module vocabulary, architecture investigation, TDD, diagnosis, handoff, the interview (`grilling`) and its documented form (`grill-with-docs`, which runs `grilling` with `domain-modeling`), and the authoring reference for skills and agent instructions (`writing-for-agents`). Ponytail supplies coding guidance, Caveman commit phrasing, Cloudflare security guidance, and Orca cross-client orchestration. Locked bodies stay unchanged; policy overrides compulsory process or publication instructions inside them.
 
 ### Impeccable
 

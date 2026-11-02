@@ -15,7 +15,7 @@ The Harness AI installation that serves Claude Code, Codex, and OpenCode. `READM
 | Path | Holds |
 | --- | --- |
 | `go.mod`, `cmd/harness/` | The Go module and the `harness` command, the single entry point for operating the harness |
-| `internal/checkout/` | Checkout discovery and canonical asset locations, shared by the commands that resolve a checkout |
+| `internal/checkout/` | Checkout discovery and canonical asset locations, shared by the commands that resolve a checkout; `SkillDirs` is the one reader of the grouped skill tree |
 | `internal/install/` | The installer behind `harness install` |
 | `internal/skills/` | The third-party skill locks behind `harness skills`, and the invocation-guard check on local skills |
 | `internal/bench/` | The session-population comparison behind `harness bench` |
@@ -25,7 +25,7 @@ The Harness AI installation that serves Claude Code, Codex, and OpenCode. `READM
 | `internal/statefile/` | Shared read and atomic write of `~/.harness/state.json`, whose top-level keys the installer, `harness models`, and `harness review level` each own |
 | `internal/reviewledger/` | The per-branch local review ledger behind `harness review`, which records findings and their dispositions inside the Git directory, and the review level behind `harness review level` |
 | `POLICY.md` | The vendor-neutral global policy linked into each client |
-| `skills/` | Independent capabilities (also invoked as `/name`), protocol, vocabulary, and locked third-party bodies |
+| `skills/<group>/<name>/` | Independent capabilities (also invoked as `/name`), grouped by type: `workflow` (what a normal session invokes), `support` (what those skills and the policy call), `planning`, `design`, `assurance`, and `ops`. Locked bodies sit in their group beside local ones; clients see only the bare name |
 | `skills/assurance/e2e-verification/SKILL.md`, `skills/assurance/e2e-verification/scripts/` | Release E2E QA: an isolated install, a Playwright suite with real screenshots per test, and the run kit and report builder it copies |
 | `clients/` | Client settings and the role assignments the installer reconciles |
 | `roles/` | Canonical roles no skill owns, the executor and code-search |
@@ -34,7 +34,7 @@ The Harness AI installation that serves Claude Code, Codex, and OpenCode. `READM
 | `docs/agents/` | This repository's tracker and lifecycle configuration |
 | `.github/workflows/`, `.github/scripts/` | The agent-lifecycle workflow and reconciler |
 | `skills-lock.json` | Reviewed third-party skill locks |
-| `.agents/skills`, `.claude/skills` | Harness skills and the Claude bookkeeping links |
+| `.agents/skills`, `.claude/skills` | One link per skill by bare name: `.agents/skills/<name>` points at the grouped body, `.claude/skills/<name>` at that link. Add a skill with `harness skills add` or link it by hand; `TestShippedSkillLinksResolve` fails on a missing or stale link |
 
 ## Prerequisites
 
@@ -69,13 +69,13 @@ The suite protects one behavior set per retained boundary, at the lowest seam th
 | Role and model configuration | `internal/models`, `internal/agents`, `cmd/harness/models_test.go` | Presets and per-role overrides resolve to a client, model, and effort; a rejected value writes nothing; install renders the resolved assignment into each client and widens no role's access. |
 | Orca adapter | `cmd/harness/launch_args_test.go` | Preparation validates the installed role and returns its client argv without launching, refuses a missing or stale agent, and the generated permission hooks fail closed. A Codex role's argv carries its installed instructions and the network-on workspace-write sandbox. |
 | GitHub lifecycle | `skills/ops/setup-harness/scripts/reconcile_agent_lifecycle_test.go` | Label transitions follow blockers and merge evidence, a parent closes only when every required child merged, a parent is never released to ready for an agent, a run reconciles the frontier of the event issue's open enrolled children and siblings, a scheduled sweep reconciles every open enrolled issue, re-reconciling a ready ticket leaves it unchanged, an issue from another repository is never relabeled and counts as merged only on its own repository's evidence, and the deployed reconciler copy is byte identical to the harness copy. |
-| Skill integrity | `internal/skills`, `cmd/harness/skills_test.go` | The guard parser counts a guard only where its client reads it, a local skill carries all three guards (Claude Code's and OpenCode's frontmatter keys and Codex's `agents/openai.yaml` policy) or none, the must-guard skills (`land`, `abandon`, `setup-harness`, `build`, `spec`, `triage`, `e2e-verification`, `local-tracker`) carry all three, a retired role override is dropped on load, lock verification separates drift from unverifiable, and an unsafe removal is refused. |
+| Skill integrity | `internal/skills`, `cmd/harness/skills_test.go` | The guard parser counts a guard only where its client reads it, a local skill carries all three guards (Claude Code's and OpenCode's frontmatter keys and Codex's `agents/openai.yaml` policy) or none, the must-guard skills (`land`, `abandon`, `setup-harness`, `build`, `spec`, `triage`, `e2e-verification`, `local-tracker`) carry all three, a retired role override is dropped on load, lock verification separates drift from unverifiable, an unsafe removal is refused, skills.sh runs only in a scratch project whose bodies land in their group, and every shipped skill has both bookkeeping links. |
 | Review ledger | `internal/reviewledger`, `cmd/harness/review_test.go` | Each branch has its own directory in the Git directory, a `/` in its name stays inside one directory name, every worktree of the repository reads the same branch's file, and a detached head is refused; a bad field is rejected without a write; an update changes only a finding's disposition, evidence, and commit, so a bug cannot be relabelled to close it; the latest line per finding wins; a fix names a commit after the reviewed one and stays open until that commit is in the head; a finding whose reviewed commit was rewritten stays listed and open; the review level defaults to `medium`, a rejected level writes nothing, setting it keeps every other state key, and an install keeps it. |
 | CLI behavior | `cmd/harness/cli_test.go` | Help and invalid invocations exit 0 and 2, spawn no subprocess, write nothing, and read no stdin; retired commands are unlisted and unknown. |
 | Status line | `cmd/harness/statusline_test.go`, `internal/statusline` | Recorded payloads render byte for byte against the goldens captured from the shell renderer, and an empty payload reaches neither the keychain nor the usage cache. |
-| Checkout discovery | `internal/checkout` | The nearest enclosing checkout is resolved by the policy marker beside the Harness module, a different module is refused rather than substituted, and managed ownership is the explicit asset namespaces alone. |
+| Checkout discovery | `internal/checkout` | The nearest enclosing checkout is resolved by the policy marker beside the Harness module, a different module is refused rather than substituted, managed ownership is the explicit asset namespaces alone, and the skill tree flattens groups to bare names while refusing a name two groups share or a skill outside a group. |
 | Bench accounting | `internal/bench`, `cmd/harness/bench_test.go` | Collection deduplicates clients, windows by date, folds Codex subagent rollouts into their top-level session, and survives damaged or oversized records; the reports match the baselines recorded on the fixture population. |
-| Change classification | `internal/changemap`, `cmd/harness/change_map_test.go` | Floor tiers are deterministic and first match wins, configured critical globs beat every other rule, mechanical is assigned only by the lockfile and generated rules and to a locked skill body under `skills/` that still matches its lock hash, collapsed to one entry while `skills-lock.json` itself is critical and an edited body is raised and named, code under `skills/` takes the ordinary rules, `criticalPaths` validation names the bad entry, and the changed-file listing covers committed, staged, unstaged, untracked, and deleted files. |
+| Change classification | `internal/changemap`, `cmd/harness/change_map_test.go` | Floor tiers are deterministic and first match wins, configured critical globs beat every other rule, mechanical is assigned only by the lockfile and generated rules and to a locked skill body under `skills/` (flat or grouped) that still matches its lock hash, collapsed to one entry while `skills-lock.json` itself is critical and an edited body is raised and named, code under `skills/` takes the ordinary rules, `criticalPaths` validation names the bad entry, and the changed-file listing covers committed, staged, unstaged, untracked, and deleted files. |
 
 The suite does not snapshot role, skill, or policy prose. It checks executable boundaries such as frontmatter guards, permission hooks, installation ownership, and configuration validation; instruction quality belongs in behavioral evaluation.
 
@@ -99,4 +99,4 @@ Session-population measurement for a harness change is `harness bench --split <c
 
 Markdown prose is never hard-wrapped. `.editorconfig` owns indentation: two spaces for Markdown, JSON, and YAML.
 
-Locked skill bodies under `skills/` are not edited in place; use `harness skills` and commit only the reviewed change. This repository's tracker is GitHub, and its lifecycle configuration lives in `docs/agents/harness.json`.
+Locked skill bodies under `skills/` are not edited in place; use `harness skills` (`add` takes the group) and commit only the reviewed change. Moving a skill to another group is a `git mv` plus repointing its `.agents/skills` link. This repository's tracker is GitHub, and its lifecycle configuration lives in `docs/agents/harness.json`.
