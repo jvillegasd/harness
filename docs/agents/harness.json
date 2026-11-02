@@ -1,8 +1,6 @@
 {
-  "version": 1,
   "tracker": "github",
   "spec_home": "github-issues",
-  "domain_layout": "single-context",
   "labels": {
     "blocked": "blocked",
     "ready_for_agent": "ready-for-agent",
