@@ -17,13 +17,13 @@ A reviewer that has not heard the implementer's reasoning judges the code, not t
 
 Read the level with `harness review level --json`; when the command is unavailable, use `medium` and say so. Only the human sets the level, so never run its setting form. It caps the reviews you start on your own. When the human asks for a review, it runs at any level, at Standard unless they name a depth.
 
-| Level | You start a review when | Depth | Verify | Rounds | Subagents at most |
+| Level | You start a review when | Depth | Verify | After repairs | Subagents at most |
 | --- | --- | --- | --- | --- | --- |
-| `off` | never | none | none | 0 | 0 |
-| `medium` (default) | a pull request is about to open with any tier above `tests-docs`, or a local handoff's highest tier is `critical` or names a concrete security, data-loss, compatibility, or concurrency risk | Quick | lean | 1 | 2 (3 in `build`, which adds `spec`) |
-| `high` | the highest tier is `structural` or above, for a pull request or a local handoff | the Depth table | batched | 2 | 6 per round |
+| `off` | never | none | none | none | 0 |
+| `medium` (default) | a pull request is about to open with any tier above `tests-docs`, or a local handoff's highest tier is `critical` or names a concrete security, data-loss, compatibility, or concurrency risk | Quick | lean | none | 2 (3 in `build`, which adds `spec`) |
+| `high` | the highest tier is `structural` or above, for a pull request or a local handoff | the Depth table | batched | one fix validator | 7: 6 to hunt and verify, 1 to validate |
 
-The ceiling counts hunters, the verifier, and the refuter for one slice, and never more than four hunters; a diff split into slices multiplies it, and a delegated fix executor comes on top.
+The ceiling counts hunters, the verifier, the refuter, and the fix validator for one slice, and never more than four hunters; a diff split into slices multiplies it, and a delegated fix executor comes on top.
 
 A review the human asked for verifies batched. Never launch a verifier or refuter per finding: the batch is what keeps the cost flat as findings grow. When no review runs because of the level, record `no-review` with the level in `--summary`.
 
@@ -82,15 +82,22 @@ Each report must open with `loaded:` naming the standards and `revision:` matchi
 
 Fix confirmed findings inline. When you delegate the fix, give every confirmed finding to one fresh `executor` in one brief, never one executor per finding.
 
-## Rounds
+## Validate the fix
 
-At `high`, or when the human asked, run a second round only after substantive repairs to confirmed findings. It covers the repair delta at the same depth, with the context it needs, the requirements, and the new revision, and nothing from the earlier rationale or findings. The ledger lookup in Verify keeps it from relitigating. A nit alone starts no round. At `medium` there is one round, so a substantive repair stays unverified until the human decides.
+A review hunts once. Repairs get one check, not another hunt, so the cost of a review stays bounded.
 
-Allow at most two rounds. A new confirmed finding in repaired code at the cap stops the loop: tell the human the approach may need rethinking instead of starting a third round. A substantive repair after the cap stays unverified until the human decides.
+At `high`, or when the human asked, once every confirmed finding is fixed with its check turned green, launch one fresh `reviewer` with the validator brief from `references/verify.md`. Give it the confirmed findings, their red checks, the repair delta (`git diff <reviewed sha> <repaired sha>` over owned paths), the requirements, and the repaired revision, and nothing from the earlier rationale, the other findings, or which hunter raised a finding. A nit or a fix with no behavior change needs no validator.
+
+- `holds`: keep the finding `fixed`.
+- `fails`: record the finding `confirmed` again with the validator's trace, and take it to the human. Never start a second repair loop on your own.
+- A new defect the validator reports in the repaired code: record it as a round 2 finding with disposition `unverified`, and take it to the human.
+- `unknown`, or a report that does not echo the repaired revision: retry once with the input repaired, then leave the fix unverified and say so.
+
+At `medium` no validator runs, so a substantive repair stays unverified until the human decides. A further repair after validation is also unverified until the human decides.
 
 ## Record
 
-Record each disposition with `harness review record` (`references/ledger.md`) the moment it is decided, so the Verify lookup in a later round sees it. A review with no findings, or with depth none, writes one line too. Whoever commits a fix appends `fixed` with the fixing commit.
+Record each disposition with `harness review record` (`references/ledger.md`) the moment it is decided, so a later review's Verify lookup sees it. A review with no findings, or with depth none, writes one line too. Whoever commits a fix appends `fixed` with the fixing commit.
 
 The review posts nothing to the forge. `address-review` handles review threads from bots and other people on a pull request, using `references/triage-patterns.md`.
 

@@ -1,6 +1,6 @@
 # Verify findings
 
-Two briefs, each given once per review with every finding it covers. The parent pastes the matching brief together with the numbered findings and the revision. Neither brief says who raised a finding or why the code was written this way.
+Three briefs, each given once per review with every finding it covers. The parent pastes the matching brief together with the numbered findings and the revision. Neither brief says who raised a finding or why the code was written this way.
 
 ## Executor: make each one fail
 
@@ -33,3 +33,14 @@ Report, for each finding by its number, one of:
 - `refute: unknown`, with what you could not trace.
 
 Only `unreachable` with a cited cut counts as a refutation.
+
+## Reviewer: validate the fixes
+
+Given the confirmed findings, the check that proved each one, the repair delta, and the requirements, decide for each finding whether the repair removes the failure at its root, not at one symptom or one call site, and whether the repair breaks anything the findings did not name. Read the repaired code and its callers; you cannot run anything.
+
+Open your report with `revision:` echoing the repaired revision. Then report, for each finding by its number, one of:
+- `holds`, with the `path:line` where the failure path is now cut;
+- `fails`, with the trace that still reaches the failure;
+- `unknown`, with what you could not trace.
+
+After the findings, list any new defect the repair introduced, in the reviewer role's finding format. Report nothing about code the repair did not touch.

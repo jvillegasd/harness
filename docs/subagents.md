@@ -101,22 +101,23 @@ flowchart TD
     confirmed --> ledger[("local ledger per branch<br>in the Git directory")]
     refuted --> ledger
     unverified --> ledger
-    confirmed -->|"high: substantive repair"| round2["second round on the repair delta,<br>at most two rounds"]
+    confirmed -->|"high: after the fixes"| validator["one fresh reviewer validates<br>every fix on the repair delta"]
+    validator -->|"fails, or a new defect"| human(["to the human,<br>no second repair loop"])
 ```
 
-Each level, and at `high` each depth, launches these subagents per round. Hunters and the refuter are `reviewer` agents; the verifier is an `executor`.
+Each level, and at `high` each depth, launches these subagents. Hunters, the refuter, and the fix validator are `reviewer` agents; the verifier is an `executor`.
 
-| Level | Depth (set by) | Hunters (`reviewer`) | Verifier (`executor`) | Refuter (`reviewer`) | Total at most | Rounds |
+| Level | Depth (set by) | Hunters (`reviewer`) | Verifier (`executor`) | Refuter (`reviewer`) | Fix validator (`reviewer`) | Total at most |
 | --- | --- | --- | --- | --- | --- | --- |
 | `off` | none | 0 | 0 | 0 | 0 | 0 |
-| `medium` | Quick | 1: `bugs` | 0 (the parent reproduces findings itself) | 1 | 2 | 1 |
-| `medium` in `/build` | Quick plus `spec` | 2: `bugs`, `spec` | 0 | 1 | 3 | 1 |
+| `medium` | Quick | 1: `bugs` | 0 (the parent reproduces findings itself) | 1 | 0 | 2 |
+| `medium` in `/build` | Quick plus `spec` | 2: `bugs`, `spec` | 0 | 1 | 0 | 3 |
 | `high` | none (only `mechanical` or `tests-docs`) | 0 | 0 | 0 | 0 | 0 |
-| `high` | Quick (`structural` or `behavioral`) | 1: `bugs` | 1 | 1 | 3 | 2 |
-| `high` | Standard (`critical`, or the human asks) | up to 4: `bugs`, `spec` when requirements exist, `standards`, `risk` when a critical item is in a security or resilience category | 1 | 1 | 6 | 2 |
-| `high` | Deep (a critical one-way door, or the human asks for Deep) | up to 4: Standard plus a second `bugs` from another vendor, dropping `standards` when that would make five | 1 | 1 | 6 | 2 |
+| `high` | Quick (`structural` or `behavioral`) | 1: `bugs` | 1 | 1 | 1 | 4 |
+| `high` | Standard (`critical`, or the human asks) | up to 4: `bugs`, `spec` when requirements exist, `standards`, `risk` when a critical item is in a security or resilience category | 1 | 1 | 1 | 7 |
+| `high` | Deep (a critical one-way door, or the human asks for Deep) | up to 4: Standard plus a second `bugs` from another vendor, dropping `standards` when that would make five | 1 | 1 | 1 | 7 |
 
-The verifier and refuter launch only when findings are still open after the parent's own reproduction, so a clean hunt stops at the hunters. A review the human asks for always verifies batched, with one verifier. A diff too large for one hunter is split into slices, and each slice gets its own set, which multiplies these counts. Fixes for confirmed findings go to one fresh `executor` in one brief, or are made inline; that executor is on top of the totals.
+The verifier and refuter launch only when findings are still open after the parent's own reproduction, so a clean hunt stops at the hunters. The fix validator launches once, after every confirmed finding is fixed, and only when a fix changed behavior; a fix it rejects goes to the human rather than into a second repair loop. A review the human asks for always verifies batched, with one verifier. A diff too large for one hunter is split into slices, and each slice gets its own set, which multiplies these counts. Fixes for confirmed findings go to one fresh `executor` in one brief, or are made inline; that executor is on top of the totals.
 
 The four axes:
 

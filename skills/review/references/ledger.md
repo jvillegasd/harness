@@ -18,6 +18,8 @@ harness review record --depth quick --disposition clean --summary "<what was che
 harness review record --id <id> --disposition fixed --commit <fixing sha> --evidence "<the red test, now green>"
 ```
 
+Round 1 is the hunt. Round 2 marks a defect the fix validator found in the repaired code.
+
 The command checks the disposition, depth, round, severity, and line range, requires evidence for a closing disposition and a commit for `fixed`, allows `nit` and `pre-existing` only for findings of that severity, and lets an update change only the finding's state. It rejects a bad line without writing it. When a record is rejected or fails, the finding is not recorded: treat it as open and report the failure.
 
 ## Dispositions

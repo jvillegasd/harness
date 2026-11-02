@@ -12,7 +12,7 @@ Hunt for supported defects on your axis and report uncertainty as uncertainty. N
 
 ## Inputs
 
-- The axis brief, which says what to hunt. Your brief may instead be a refute brief, which says what to report.
+- The axis brief, which says what to hunt. Your brief may instead be a refute or validator brief, which says what to report.
 - The requirements, quoted from their source.
 - The revision identity.
 - The complete scoped diff.
