@@ -65,6 +65,7 @@ func LoadLocks(root string) ([]Lock, error) {
 		if !strings.HasPrefix(dir, "skills/") {
 			continue
 		}
+		dir = bodyDir(root, name, dir)
 		got, files, err := skills.FolderHash(filepath.Join(root, filepath.FromSlash(dir)))
 		verified := err == nil && entry.ComputedHash != "" && got == entry.ComputedHash
 		hashed := map[string]bool{}
@@ -75,6 +76,24 @@ func LoadLocks(root string) ([]Lock, error) {
 	}
 	sort.Slice(locks, func(i, j int) bool { return locks[i].Dir < locks[j].Dir })
 	return locks, nil
+}
+
+// bodyDir finds a locked body in the working tree: at its recorded skillPath folder, else flat at skills/<name>, else in a group at skills/<group>/<name>, which is where this repository keeps its skills. With none present it returns the recorded folder, so the entry stays unverified.
+func bodyDir(root, name, recorded string) string {
+	candidates := []string{recorded, "skills/" + name}
+	if groups, err := os.ReadDir(filepath.Join(root, "skills")); err == nil {
+		for _, g := range groups {
+			if g.IsDir() && !strings.HasPrefix(g.Name(), ".") {
+				candidates = append(candidates, "skills/"+g.Name()+"/"+name)
+			}
+		}
+	}
+	for _, dir := range candidates {
+		if fi, err := os.Stat(filepath.Join(root, filepath.FromSlash(dir))); err == nil && fi.IsDir() {
+			return dir
+		}
+	}
+	return recorded
 }
 
 // LoadConfig reads criticalPaths from the repository root's ConfigPath. A missing file or field means no configured paths; a field of the wrong shape, or an entry that is not a valid glob, is an error that names the field and the entry, because silently dropping a critical path would lower the floor.

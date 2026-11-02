@@ -11,7 +11,8 @@ import (
 const usage = `Usage: harness skills <command> [arguments]
 
 Commands:
-  add <owner/repo> <name>  Install and lock one upstream skill
+  add <owner/repo> <name> <group>
+                           Install and lock one upstream skill in skills/<group>/
   update                   Update every locked skill from upstream
   remove <name>            Remove one locked body, lock entry, and Claude link
   verify                   Recompute every locked body's folder hash offline
@@ -72,13 +73,16 @@ func Command(args []string, stdout, stderr io.Writer) int {
 func validateInvocation(sub string, rest []string) error {
 	switch sub {
 	case "add":
-		if len(rest) != 2 {
-			return fmt.Errorf("add expects 2 argument(s)")
+		if len(rest) != 3 {
+			return fmt.Errorf("add expects 3 argument(s)")
 		}
 		if err := validateSource(rest[0]); err != nil {
 			return err
 		}
-		return validateName(rest[1])
+		if err := validateName(rest[1]); err != nil {
+			return err
+		}
+		return validateName(rest[2])
 	case "remove":
 		if len(rest) != 1 {
 			return fmt.Errorf("remove expects 1 argument(s)")
@@ -97,6 +101,7 @@ type paths struct {
 	root   string
 	lock   string
 	skills string
+	agents string
 	claude string
 }
 
@@ -105,6 +110,7 @@ func pathsFor(c checkout.Checkout) paths {
 		root:   c.Root,
 		lock:   c.Lock(),
 		skills: c.Skills(),
+		agents: c.AgentSkills(),
 		claude: c.ClaudeSkills(),
 	}
 }

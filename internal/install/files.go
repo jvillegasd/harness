@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jvillegasd/harness/internal/agents"
+	"github.com/jvillegasd/harness/internal/checkout"
 	"github.com/jvillegasd/harness/internal/models"
 )
 
@@ -109,17 +110,13 @@ func (in *installer) agentRoots() [][2]string {
 	return [][2]string{{"claude", filepath.Join(in.home, ".claude", "agents")}, {"codex", filepath.Join(in.codexHome(), "agents")}, {"opencode", filepath.Join(in.config, "opencode", "agents")}}
 }
 
-// skillNames are the real directories under the checkout's skills namespace; a symlink there is not a skill this harness ships.
-func (in *installer) skillNames() []string {
-	list, err := os.ReadDir(in.dir.Skills())
-	must(err)
-	var names []string
-	for _, entry := range list {
-		if entry.IsDir() {
-			names = append(names, entry.Name())
-		}
+// skills are the real directories inside the checkout's skill groups, flattened to their bare names; a symlink there is not a skill this harness ships, and a name in two groups stops the install.
+func (in *installer) skills() []checkout.Skill {
+	skills, err := in.dir.SkillDirs()
+	if err != nil {
+		die("%v", err)
 	}
-	return names
+	return skills
 }
 
 func (in *installer) ensureBackupRoot() {

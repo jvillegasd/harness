@@ -201,10 +201,9 @@ func (in *installer) desired() []entry {
 	add := func(source, dest, component string, clients ...string) {
 		out = append(out, entry{Path: dest, Component: component, Clients: clients, source: source})
 	}
-	for _, skill := range in.skillNames() {
-		source := filepath.Join(in.dir.Skills(), skill)
-		add(source, filepath.Join(in.home, ".agents", "skills", skill), "skills", "claude", "codex", "opencode")
-		add(source, filepath.Join(in.home, ".claude", "skills", skill), "skills", "claude")
+	for _, skill := range in.skills() {
+		add(skill.Dir, filepath.Join(in.home, ".agents", "skills", skill.Name), "skills", "claude", "codex", "opencode")
+		add(skill.Dir, filepath.Join(in.home, ".claude", "skills", skill.Name), "skills", "claude")
 	}
 	add(in.dir.Policy(), filepath.Join(in.home, ".claude", "CLAUDE.md"), "policy", "claude")
 	add(in.dir.Policy(), filepath.Join(in.codexHome(), "AGENTS.md"), "policy", "codex")

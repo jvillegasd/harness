@@ -23,5 +23,5 @@ A run spends model budget, so it starts only when the human asks and names its s
    - A bug case is **caught** when a confirmed `bug` or `risk` falls within an expected path and line range.
    - A clean case scores one **false positive** per confirmed `bug` or `risk`.
    - Count unverified findings for both kinds.
-3. Append a summary line: date, the harness revision of `skills/review`, depth, reviewer model, recall, false positives, and unverified count.
+3. Append a summary line: date, the harness revision of `skills/workflow/review`, depth, reviewer model, recall, false positives, and unverified count.
 4. Compare it with the last run on the same cases. Keep a change to `review`, its references, or `reviewer.md` only when recall does not drop and false positives do not rise. Otherwise, report the regression to the human.

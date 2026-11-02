@@ -142,7 +142,7 @@ The review level is set only by the human (`harness review level`):
 | `medium` (default) | a pull request has any tier above `tests-docs`, or a local handoff is `critical` or names a security, data-loss, compatibility, or concurrency risk | lean, at most 2 subagents |
 | `high` | the highest tier is `structural` or above | batched, by tier, then one fix validator: at most 7 subagents |
 
-At `medium` and `high`, `/land` holds a pull request above `tests-docs` until a review covers its current patch. At `off` it reports the gap without holding. A review the human asks for runs at any level. The details are in `skills/review/SKILL.md`, and the subagents it uses are in `docs/subagents.md`.
+At `medium` and `high`, `/land` holds a pull request above `tests-docs` until a review covers its current patch. At `off` it reports the gap without holding. A review the human asks for runs at any level. The details are in `skills/workflow/review/SKILL.md`, and the subagents it uses are in `docs/subagents.md`.
 
 ## Unattended builds with `/build`
 

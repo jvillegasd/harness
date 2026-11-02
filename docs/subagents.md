@@ -12,7 +12,7 @@ A parent delegates only for a named benefit: independent inspection, useful para
 | --- | --- | --- | --- | --- |
 | `executor` | Implements one bounded slice inside the scope the parent names | Edits and commands inside that scope; never commits, pushes, opens a PR, changes a ticket, merges, removes a worktree, or delegates | One result: slice, dispatch, branch, revision, changed and pending files, checks, unresolved items, artifacts | `roles/executor.md` |
 | `code-search` | Answers one question about the repository | Read and search only | One citation per line: `path:line \| symbol \| mechanism` | `roles/code-search.md` |
-| `reviewer` | Hunts one review axis, tries to refute a batch of findings, or validates fixes, blind to the rationale | Read and search only | A header (`loaded:`, `revision:`, `axis:`, `findings:`, `summary:`) and findings by severity: `bug`, `risk`, `q`, `pre-existing`, `nit` | `skills/review/roles/reviewer.md` |
+| `reviewer` | Hunts one review axis, tries to refute a batch of findings, or validates fixes, blind to the rationale | Read and search only | A header (`loaded:`, `revision:`, `axis:`, `findings:`, `summary:`) and findings by severity: `bug`, `risk`, `q`, `pre-existing`, `nit` | `skills/workflow/review/roles/reviewer.md` |
 
 An executor brief carries five things: the goal, the scope it may touch, the exact base SHA, how to verify it, and what to report. An executor missing one asks rather than guesses.
 
@@ -123,10 +123,10 @@ The four axes:
 
 | Axis | Hunts | Brief |
 | --- | --- | --- |
-| `bugs` | Defects that change behavior: root cause, callers a grep misses, error paths, instruction drift, and whether the tests would catch the change breaking (assertions on visible behavior, edge cases, nondeterminism, skipped or focused tests) | `skills/review/references/bugs.md` |
-| `spec` | Requirements missing, partial, implemented wrong, or exceeded | `skills/review/references/spec.md` |
-| `standards` | Documented rules, `ponytail`, and the smell baseline; mostly judgement calls | `skills/review/references/standards.md` |
-| `risk` | Security (a reachable trust-boundary violation) and resilience (timeouts, retries, partial state and rollback, concurrency, visibility of new failures, measured performance) | `skills/review/references/risk.md` |
+| `bugs` | Defects that change behavior: root cause, callers a grep misses, error paths, instruction drift, and whether the tests would catch the change breaking (assertions on visible behavior, edge cases, nondeterminism, skipped or focused tests) | `skills/workflow/review/references/bugs.md` |
+| `spec` | Requirements missing, partial, implemented wrong, or exceeded | `skills/workflow/review/references/spec.md` |
+| `standards` | Documented rules, `ponytail`, and the smell baseline; mostly judgement calls | `skills/workflow/review/references/standards.md` |
+| `risk` | Security (a reachable trust-boundary violation) and resilience (timeouts, retries, partial state and rollback, concurrency, visibility of new failures, measured performance) | `skills/workflow/review/references/risk.md` |
 
 `bugs` carries what Gentle AI calls reliability, and `risk` carries its risk and resilience lenses, so four hunters cover all of them.
 

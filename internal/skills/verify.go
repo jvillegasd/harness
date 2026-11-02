@@ -38,7 +38,12 @@ func Verify(c checkout.Checkout) ([]LockResult, error) {
 			results = append(results, LockResult{Name: name, Status: "unverifiable"})
 			continue
 		}
-		got, err := folderHash(filepath.Join(p.skills, name))
+		body, err := findBody(p, name)
+		if err != nil || body == "" {
+			results = append(results, LockResult{Name: name, Status: "unverifiable"})
+			continue
+		}
+		got, err := folderHash(body)
 		if err != nil {
 			results = append(results, LockResult{Name: name, Status: "unverifiable"})
 			continue

@@ -344,15 +344,17 @@ var description = regexp.MustCompile(`(?m)^description:`)
 
 // checkInstall verifies what every run installs, so the mode that exists for reconciling confirms each copy landed.
 func (in *installer) checkInstall() {
-	for _, skill := range entries(in.dir.Skills()) {
-		if !isFile(filepath.Join(skill, "SKILL.md")) {
-			die("Missing SKILL.md: %s", skill)
+	ponytail := false
+	for _, skill := range in.skills() {
+		if !isFile(filepath.Join(skill.Dir, "SKILL.md")) {
+			die("Missing SKILL.md: %s", skill.Dir)
 		}
-		if exists(filepath.Join(in.config, "opencode", "skills", filepath.Base(skill))) {
-			die("Duplicate OpenCode skill path: %s", skill)
+		if exists(filepath.Join(in.config, "opencode", "skills", skill.Name)) {
+			die("Duplicate OpenCode skill path: %s", skill.Dir)
 		}
+		ponytail = ponytail || skill.Name == "ponytail"
 	}
-	if !isFile(filepath.Join(in.dir.Skills(), "ponytail", "SKILL.md")) {
+	if !ponytail {
 		die("Missing the ponytail skill body.")
 	}
 	in.checkFiles()
@@ -405,7 +407,14 @@ func (in *installer) checkTools() {
 	if !in.opencodeRegistered(resolved.Name()) {
 		die("OpenCode is missing an expected plugin or MCP server.")
 	}
-	validate := exec.Command("claude", "plugin", "validate", in.dir.Skills())
+	// The validator reads only skills/<name>/SKILL.md one level down and follows no symlink, so it gets a flat copy of the grouped tree.
+	flat, err := os.MkdirTemp("", "harness-skills-*")
+	must(err)
+	defer os.RemoveAll(flat)
+	for _, skill := range in.skills() {
+		must(os.CopyFS(filepath.Join(flat, "skills", skill.Name), os.DirFS(skill.Dir)))
+	}
+	validate := exec.Command("claude", "plugin", "validate", filepath.Join(flat, "skills"))
 	validate.Stderr = in.stderr
 	if err := validate.Run(); err != nil {
 		die("claude plugin validate failed: %v", err)
