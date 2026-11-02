@@ -26,6 +26,10 @@ func Read(path string) (map[string]json.RawMessage, error) {
 	if err := json.Unmarshal(data, &doc); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
+	// A literal null decodes to a nil map, which a caller's write would panic on.
+	if doc == nil {
+		doc = map[string]json.RawMessage{}
+	}
 	return doc, nil
 }
 

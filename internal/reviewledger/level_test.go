@@ -52,3 +52,16 @@ func TestLevelRejectsWithoutWriting(t *testing.T) {
 		}
 	}
 }
+
+func TestSaveLevelOverANullState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	if err := os.WriteFile(path, []byte("null"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := SaveLevel(path, "off"); err != nil {
+		t.Fatal(err)
+	}
+	if level, _, err := LoadLevel(path); err != nil || level != "off" {
+		t.Fatalf("got %q %v", level, err)
+	}
+}
