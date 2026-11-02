@@ -21,7 +21,7 @@ Skills compose around the task. Use investigation for unknowns, specifications f
 | `verification` | Appropriate local checks and honest revision-bound evidence |
 | `e2e-verification` | Scripted browser E2E QA of what ships, on an isolated install, with real screenshots per test and a published report; `create` and `maintain` modes write and keep current a project-local `verify-<app>` skill with a feature map |
 | `change-map` | Sort a change into review tiers (critical, behavioral, structural, tests-docs, mechanical) on a deterministic floor from `harness change-map`, and tell the human what to read and what each risky item is safe because of |
-| `review` | Focused independent inspection when requested, when `change-map` finds critical items, or when a concrete security, data-loss, compatibility, or concurrency risk exceeds ordinary checks; findings must be walked, the parent tries to reproduce them, and an opt-in adversary mode runs two reviewers on different clients |
+| `review` | Blind review at the depth the `change-map` tier sets (none, Quick, Standard, Deep): parallel hunters per axis (bugs, spec, standards, security), each finding proven by a blind executor's red test or refuted only with a cited cut, never dismissed by the author; dispositions go to a local ledger, never the PR |
 | `continuity` | One local task/spec document with a `## Decisions` table, committed with the work, a project-scoped Engram mirror only when it must stay uncommitted across sessions, and the choice of how to cross a phase boundary (continue, clear, hand off, delegate, or compact) |
 | `open-pr` | Explicitly requested commits, publication, and required-check repairs |
 | `address-review` | Apply feedback, review comments, or check repairs on the existing branch using its scoped authorization |
@@ -30,7 +30,7 @@ Skills compose around the task. Use investigation for unknowns, specifications f
 | `land`, `abandon` | Explicit merge/cleanup or scoped discard authority |
 | `harness-help` | Map the workflow and answer which skill fits a situation, with the part of the map that situation needs |
 
-Routine work creates no task artifact and requires no independent reviewer. Longer work reuses a document or creates `docs/agents/tasks/<feature>.md`; unavailable memory leaves its mirror explicitly pending. Recovery reads both copies, reconciles against Git, preserves unfinished requirements and conflicts, and invalidates stale checks. Legacy checkpoints remain intact as recoverable context, without granting authority.
+Routine work creates no task artifact, and review depth follows the `change-map` tier. Longer work reuses a document or creates `docs/agents/tasks/<feature>.md`; unavailable memory leaves its mirror explicitly pending. Recovery reads both copies, reconciles against Git, preserves unfinished requirements and conflicts, and invalidates stale checks. Legacy checkpoints remain intact as recoverable context, without granting authority.
 
 Not sure which skill fits? `/harness-help` answers from its map and names the one to three skills that match your situation.
 
@@ -64,7 +64,7 @@ Every command and leaf command answers `--help` and `-h` with its usage on stdou
 
 ## Role agents
 
-Three named roles remain: `executor` implements a bounded slice, `code-search` answers a repository question, and `reviewer` inspects a named concern independently. Delegate only for useful parallel work, context isolation, or independent inspection. `review` owns diff delivery and bounded triage; its role lives in `skills/review/roles/reviewer.md`. The other definitions remain under `roles/`. Client/model resolution is unchanged.
+Three named roles remain: `executor` implements a bounded slice, `code-search` answers a repository question, and `reviewer` hunts one review axis or tries to refute a finding, blind to the implementer's rationale. Delegate only for useful parallel work, context isolation, or independent inspection. `review` owns diff delivery and bounded triage; its role lives in `skills/review/roles/reviewer.md`. The other definitions remain under `roles/`. Client/model resolution is unchanged.
 
 A role assigned to the session's own client launches as a native subagent (the Agent tool in Claude Code, a subagent spawned by the agent's name in Codex, `task` in OpenCode), which loads only the rendered agent. A role assigned to another client launches through Orca, per the policy's **Delegation** section.
 
@@ -81,7 +81,9 @@ The installer renders the role definitions during each run and copies each into 
 
 Every restriction is best effort: the table is what each client documents, the generator prints the same gaps on every install, and no row is runtime-verified until a probe runs against an installed client. Probe during an intentional installation, never as a validation shortcut: in each client, launch each named agent, ask it to write a file, run a command, fetch a URL, and delegate, and record each result as enforced, not enforced, or unverified. The unverified rows are whether OpenCode's deny covers MCP tools, whether the `ccyolo`, `cxyolo`, and `ocyolo` launchers leave agent restrictions in force, whether Codex applies a custom agent's `[features]` block to a spawned subagent, diff delivery's escalation when a launch prompt cannot carry the complete snapshot, whether Claude Code applies a main-thread `--agent` session's `model` and `effort`, and the session's effort when `effort` is absent, whether OpenCode sends an agent's `reasoningEffort` with its requests, and whether the executor's delegation denies hold.
 
-The reviewer receives the concern, requirements, revision/content identity, complete scoped diff, and standards. It never receives implementation rationale, continuity notes, or earlier findings. Standards outside the project arrive inline. Findings identify the inspected snapshot; substantive repairs get at most one repair round, with blockers at the cap escalated. Missing required review remains unverified, never replaced by self-review. Routine changes need none.
+The reviewer receives an axis brief, requirements quoted from their source, the revision/content identity, the complete scoped diff, and standards. It never receives implementation rationale, continuity notes, or earlier findings. Standards outside the project arrive inline. Each `bug`, `risk`, or `q` finding the parent has not already reproduced goes to a fresh executor in a detached sibling worktree at the reviewed commit, which tries to make it fail (code from a fork's pull request is never run; its findings are only walked); a finding is refuted only when that check stays green or cannot run and a second reviewer cites where the failure path is cut; every other unproven finding goes to the human. Substantive repairs get at most one more round, and a new confirmed finding at the cap goes to the human. Missing required review remains unverified, never replaced by self-review. Changes that are only `mechanical` or `tests-docs` need none.
+
+Findings and their dispositions go through `harness review record` to a local ledger at `${XDG_DATA_HOME:-~/.local/share}/harness/reviews/<host>_<owner>_<repo>/ledger.jsonl`, outside `~/.harness` so uninstall keeps it, and never into a commit or PR body; `land` reads it for open findings and `retro` for repeated classes. Reviewer eval cases and runs live beside it (`skills/review/references/evals.md`).
 
 ### Assignments
 
@@ -241,7 +243,7 @@ It arrives only through `harness skills`. Four of its own routes are forbidden, 
 
 ### Security audit
 
-Locked `cloudflare/security-audit-skill` is the one security body, MIT licensed. Like `impeccable` it is description-matchable, so the control is scope rather than a guard: no workflow or local skill loads it, and `POLICY.md` keeps it guidance only, out of every review pass and ladder rung. Its full audit mode runs only on the body's own explicit triggers and by default writes artifacts under `~/security-audit-skill/<repo>/run-<N>`, outside the worktree, so removing them is the human's job. It is updated only through `harness skills update`.
+Locked `cloudflare/security-audit-skill` is the one security body, MIT licensed. Like `impeccable` it is description-matchable, so the control is scope rather than a guard: no workflow loads it whole, and `POLICY.md` keeps it guidance only. `review`'s security hunter receives guidance-mode excerpts when a critical item falls in a security category. Its full audit mode runs only on the body's own explicit triggers and by default writes artifacts under `~/security-audit-skill/<repo>/run-<N>`, outside the worktree, so removing them is the human's job. It is updated only through `harness skills update`.
 
 Its two validators, `validate-findings.cjs` and `validate-coverage-ledger.cjs`, use only Node's `fs`, `path`, and `util`, with no network or child processes. The bundled `*.test.cjs` files spawn Node and `mkfifo` and write temporary files; nothing in the harness runs them.
 
