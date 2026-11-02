@@ -35,7 +35,7 @@ Never dismiss these without the human, even if a similar comment was dismissed b
 - `recurring`: several real dismissals.
 - `strong`: narrow, repeatedly verified, and low-risk.
 
-`retro` proposes new entries and promotions from verdict comments and thread history. A useful pattern goes here, in a pull request, never only in private memory.
+New entries and promotions come from thread history, added by a pull request.
 
 ## Patterns
 
