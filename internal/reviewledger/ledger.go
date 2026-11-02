@@ -109,7 +109,7 @@ func Validate(e Entry) error {
 	return nil
 }
 
-// Key turns a remote URL or a repository path into a directory name that keeps the host, owner, and full repository path. Underscores are doubled before separators become single underscores, so distinct sources never share a key.
+// Key turns a remote URL or a repository path into a directory name that keeps the host, owner, and full repository path. Each run of ':' and '/' becomes one underscore, so the scp and URL forms of one remote share a key; a literal '_' or '%' is percent-escaped first, so an underscore in the key always marks a separator. A URL port is read as a path segment.
 func Key(source string) string {
 	s := strings.TrimSpace(source)
 	if i := strings.Index(s, "://"); i >= 0 {
@@ -119,7 +119,7 @@ func Key(source string) string {
 		s = s[at+1:]
 	}
 	s = strings.TrimRight(strings.TrimSuffix(strings.TrimRight(s, "/"), ".git"), "/")
-	s = strings.ReplaceAll(s, "_", "__")
+	s = strings.NewReplacer("%", "%25", "_", "%5F").Replace(s)
 	s = separators.ReplaceAllString(s, "_")
 	return strings.TrimPrefix(s, "_")
 }

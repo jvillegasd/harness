@@ -195,6 +195,19 @@ func record(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness review record: %v\n", err)
 		return 2
 	}
+	if e.Disposition == "fixed" {
+		// Store the fixing commit as a full SHA after the reviewed one, so a name like HEAD or the reviewed commit itself cannot close a finding.
+		commit, err := git(root, "rev-parse", "--verify", "--end-of-options", e.Commit+"^{commit}")
+		if err != nil {
+			fmt.Fprintf(stderr, "harness review record: --commit %q does not name a commit\n", e.Commit)
+			return 2
+		}
+		if _, err := git(root, "merge-base", "--is-ancestor", e.SHA, commit); err != nil || strings.HasPrefix(commit, e.SHA) {
+			fmt.Fprintf(stderr, "harness review record: --commit %s does not come after the reviewed commit %s\n", commit, e.SHA)
+			return 2
+		}
+		e.Commit = commit
+	}
 	if id == "" {
 		short := e.SHA
 		if len(short) > 7 {

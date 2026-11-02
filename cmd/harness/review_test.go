@@ -52,6 +52,7 @@ func listReview(t *testing.T, dir, data string) []listed {
 func TestReviewLedgerCommand(t *testing.T) {
 	dir, data := repo(t), t.TempDir()
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
+	base := git(t, dir, "rev-parse", "HEAD")
 	git(t, dir, "switch", "-q", "-c", "work")
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "change")
 
@@ -69,17 +70,22 @@ func TestReviewLedgerCommand(t *testing.T) {
 		return strings.TrimSpace(r.stdout)
 	}
 	fixed, open := add("confirmed"), add("unverified")
-	head := git(t, dir, "rev-parse", "HEAD")
-	if r := reviewRun(t, dir, data, "record", "--id", fixed, "--disposition", "fixed", "--evidence", "red test now green", "--commit", head); r.code != 0 {
+	reviewed := git(t, dir, "rev-parse", "HEAD")
+	git(t, dir, "commit", "-q", "--allow-empty", "-m", "fix")
+	if r := reviewRun(t, dir, data, "record", "--id", fixed, "--disposition", "fixed", "--evidence", "red test now green", "--commit", "HEAD"); r.code != 0 {
 		t.Fatalf("update exited %d: %s", r.code, r.stderr)
 	}
 
 	before, _ := os.ReadFile(file)
 	for _, bad := range [][]string{
 		{"record", "--depth", "standard", "--path", "a.go", "--lines", "40-x", "--severity", "bug", "--summary", "s", "--disposition", "confirmed"},
-		{"record", "--id", "missing", "--disposition", "fixed", "--evidence", "e", "--commit", head},
+		{"record", "--id", "missing", "--disposition", "fixed", "--evidence", "e", "--commit", "HEAD"},
 		{"record", "--id", open, "--severity", "nit", "--disposition", "nit"},
 		{"record", "--id", open, "--disposition", "fixed", "--evidence", "e"},
+		// A fix is a commit after the reviewed one: the reviewed commit, an older one, or a name that does not resolve closes nothing.
+		{"record", "--id", open, "--disposition", "fixed", "--evidence", "e", "--commit", reviewed},
+		{"record", "--id", open, "--disposition", "fixed", "--evidence", "e", "--commit", base},
+		{"record", "--id", open, "--disposition", "fixed", "--evidence", "e", "--commit", "no-such-rev"},
 	} {
 		if r := reviewRun(t, dir, data, bad...); r.code != 2 || r.stderr == "" {
 			t.Errorf("%v exited %d with %q, want 2 and a diagnostic", bad, r.code, r.stderr)
@@ -94,7 +100,8 @@ func TestReviewLedgerCommand(t *testing.T) {
 		t.Fatalf("list = %+v", got)
 	}
 
-	git(t, dir, "commit", "-q", "--amend", "--allow-empty", "-m", "rewritten")
+	git(t, dir, "switch", "-q", "-C", "work", base)
+	git(t, dir, "commit", "-q", "--allow-empty", "-m", "rewritten")
 	got = listReview(t, dir, data)
 	if len(got) != 2 || !got[0].Open || !got[1].Open || !got[1].Rewritten {
 		t.Fatalf("after a rewrite the open finding must stay, marked rewritten, and a fix the head lost must reopen: %+v", got)

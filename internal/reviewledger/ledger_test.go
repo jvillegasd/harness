@@ -26,6 +26,8 @@ func TestKeyKeepsHostOwnerAndPath(t *testing.T) {
 		{"git@github.com:a-b/c.git", "git@github.com:a/b-c.git"},
 		{"gitlab.com/a_b/c", "gitlab.com/a/b_c"},
 		{"/x/a_b/c", "/x/a/b_c"},
+		{"/x/a_/b", "/x/a/_b"},
+		{"/x/a%5Fb", "/x/a_b"},
 	} {
 		if Key(pair[0]) == Key(pair[1]) {
 			t.Errorf("%s and %s share the key %q", pair[0], pair[1], Key(pair[0]))
