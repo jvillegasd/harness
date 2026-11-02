@@ -1,4 +1,5 @@
-package reviewledger
+// Package reviewlevel keeps the human-set review level behind `harness review level`. Review findings and their dispositions live on the pull request, in the verdict comment `review` posts.
+package reviewlevel
 
 import (
 	"encoding/json"
@@ -72,6 +73,30 @@ func SaveLevel(path, level string) error {
 	}
 	doc["review"] = raw
 	return statefile.Write(path, doc)
+}
+
+const usage = `Usage: harness review level [--json]
+       harness review level off|medium|high
+
+Commands:
+  level  Print or set the review level: off, medium (default), or high
+`
+
+// Command runs `harness review` and returns the process exit code.
+func Command(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 {
+		fmt.Fprint(stderr, usage)
+		return 2
+	}
+	switch args[0] {
+	case "-h", "--help", "help":
+		fmt.Fprint(stdout, usage)
+		return 0
+	case "level":
+		return level(args[1:], stdout, stderr)
+	}
+	fmt.Fprintf(stderr, "harness review: unknown command %q; run harness review --help\n", args[0])
+	return 2
 }
 
 func level(args []string, stdout, stderr io.Writer) int {

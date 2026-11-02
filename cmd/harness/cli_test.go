@@ -109,9 +109,7 @@ func TestCommandHelpMatrix(t *testing.T) {
 		{"statusline"},
 		{"change-map"},
 		{"review"},
-		{"review", "record"},
-		{"review", "list"},
-		{"review", "path"},
+		{"review", "level"},
 	}
 	for _, command := range commands {
 		for _, flag := range []string{"--help", "-h"} {
@@ -173,10 +171,9 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"change-map", "--json=maybe"},
 		{"review"},
 		{"review", "bogus"},
-		{"review", "record", "--bogus"},
-		{"review", "record", "--round", "two"},
-		{"review", "list", "extra"},
-		{"review", "path", "--bogus"},
+		{"review", "record"},
+		{"review", "list"},
+		{"review", "path"},
 	}
 	for _, want := range args {
 		t.Run(strings.Join(want, " "), func(t *testing.T) {
