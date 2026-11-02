@@ -12,7 +12,7 @@ A parent delegates only for a named benefit: independent inspection, useful para
 | --- | --- | --- | --- | --- |
 | `executor` | Implements one bounded slice inside the scope the parent names | Edits and commands inside that scope; never commits, pushes, opens a PR, changes a ticket, merges, removes a worktree, or delegates | One result: slice, dispatch, branch, revision, changed and pending files, checks, unresolved items, artifacts | `roles/executor.md` |
 | `code-search` | Answers one question about the repository | Read and search only | One citation per line: `path:line \| symbol \| mechanism` | `roles/code-search.md` |
-| `reviewer` | Hunts one review axis, or tries to refute a batch of findings, blind to the rationale | Read and search only | A header (`loaded:`, `revision:`, `axis:`, `findings:`, `summary:`) and findings by severity: `bug`, `risk`, `q`, `pre-existing`, `nit` | `skills/review/roles/reviewer.md` |
+| `reviewer` | Hunts one review axis, tries to refute a batch of findings, or validates fixes, blind to the rationale | Read and search only | A header (`loaded:`, `revision:`, `axis:`, `findings:`, `summary:`) and findings by severity: `bug`, `risk`, `q`, `pre-existing`, `nit` | `skills/review/roles/reviewer.md` |
 
 An executor brief carries five things: the goal, the scope it may touch, the exact base SHA, how to verify it, and what to report. An executor missing one asks rather than guesses.
 
@@ -52,7 +52,7 @@ A reviewer that has not heard the implementer's reasoning judges the code, not t
 ```mermaid
 flowchart LR
     subgraph given["given"]
-        brief["axis or refute brief"]
+        brief["axis, refute, or validator brief"]
         req["requirements, quoted verbatim<br>from ticket, spec, or the human"]
         rev["revision and content identity"]
         diff["the complete scoped diff"]
@@ -80,11 +80,11 @@ Standards outside the project arrive inline, because a read-only role cannot rea
 flowchart TD
     snap["snapshot: fix base and reviewed commit,<br>save the patch in the branch directory"] --> hunt
 
-    subgraph hunt["hunt, all in parallel, one fresh reviewer each"]
-        bugs["bugs"]
+    subgraph hunt["hunt: at most four, in parallel, one fresh reviewer each"]
+        bugs["bugs<br>behavior, and whether the<br>tests would catch it breaking"]
         spec["spec<br>when requirements exist"]
         standards["standards"]
-        security["security<br>when a critical item is in a<br>security category"]
+        risk["risk<br>when a critical item is in a<br>security or resilience category"]
     end
 
     hunt --> collect["collect and dedupe bug, risk, q<br>nit and pre-existing reported only"]
@@ -101,22 +101,34 @@ flowchart TD
     confirmed --> ledger[("local ledger per branch<br>in the Git directory")]
     refuted --> ledger
     unverified --> ledger
-    confirmed -->|"high: substantive repair"| round2["second round on the repair delta,<br>at most two rounds"]
+    confirmed -->|"high or human-asked: after the fixes"| validator["one fresh reviewer validates<br>every fix on the repair delta"]
+    validator -->|"fails, or a new defect"| human(["to the human,<br>no second repair loop"])
 ```
 
-Each level, and at `high` each depth, launches these subagents per round. Hunters and the refuter are `reviewer` agents; the verifier is an `executor`.
+Each level, and at `high` each depth, launches these subagents. Hunters, the refuter, and the fix validator are `reviewer` agents; the verifier is an `executor`.
 
-| Level | Depth (set by) | Hunters (`reviewer`) | Verifier (`executor`) | Refuter (`reviewer`) | Total at most | Rounds |
+| Level | Depth (set by) | Hunters (`reviewer`) | Verifier (`executor`) | Refuter (`reviewer`) | Fix validator (`reviewer`) | Total at most |
 | --- | --- | --- | --- | --- | --- | --- |
 | `off` | none | 0 | 0 | 0 | 0 | 0 |
-| `medium` | Quick | 1: `bugs` | 0 (the parent reproduces findings itself) | 1 | 2 | 1 |
-| `medium` in `/build` | Quick plus `spec` | 2: `bugs`, `spec` | 0 | 1 | 3 | 1 |
+| `medium` | Quick | 1: `bugs` | 0 (the parent reproduces findings itself) | 1 | 0 | 2 |
+| `medium` in `/build` | Quick plus `spec` | 2: `bugs`, `spec` | 0 | 1 | 0 | 3 |
 | `high` | none (only `mechanical` or `tests-docs`) | 0 | 0 | 0 | 0 | 0 |
-| `high` | Quick (`structural` or `behavioral`) | 1: `bugs` | 1 | 1 | 3 | 2 |
-| `high` | Standard (`critical`, or the human asks) | up to 4: `bugs`, `spec` when requirements exist, `standards`, `security` when a critical item is in a security category | 1 | 1 | 6 | 2 |
-| `high` | Deep (a critical one-way door, or the human asks for Deep) | up to 5: Standard plus a second `bugs` from another vendor | 1 | 1 | 7 | 2 |
+| `high` | Quick (`structural` or `behavioral`) | 1: `bugs` | 1 | 1 | 1 | 4 |
+| `high` | Standard (`critical`, or the human asks) | up to 4: `bugs`, `spec` when requirements exist, `standards`, `risk` when a critical item is in a security or resilience category | 1 | 1 | 1 | 7 |
+| `high` | Deep (a critical one-way door, or the human asks for Deep) | up to 4: Standard plus a second `bugs` from another vendor, dropping `standards` when that would make five | 1 | 1 | 1 | 7 |
 
-The verifier and refuter launch only when findings are still open after the parent's own reproduction, so a clean hunt stops at the hunters. A review the human asks for always verifies batched, with one verifier. A diff too large for one hunter is split into slices, and each slice gets its own set, which multiplies these counts. Fixes for confirmed findings go to one fresh `executor` in one brief, or are made inline; that executor is on top of the totals.
+The verifier and refuter launch only when findings are still open after the parent's own reproduction, so a clean hunt stops at the hunters. The fix validator launches once, after every confirmed finding is fixed, and only when a fix changed behavior; a fix it rejects goes to the human rather than into a second repair loop. A fix it could not inspect stays `fixed` and is reported unverified rather than rejected, and non-blocking follow-ups go to the human without starting any repair. A review the human asks for always verifies batched, with one verifier. A diff too large for one hunter is split into slices, and each slice gets its own set, which multiplies these counts. Fixes for confirmed findings go to one fresh `executor` in one brief, or are made inline; that executor is on top of the totals.
+
+The four axes:
+
+| Axis | Hunts | Brief |
+| --- | --- | --- |
+| `bugs` | Defects that change behavior: root cause, callers a grep misses, error paths, instruction drift, and whether the tests would catch the change breaking (assertions on visible behavior, edge cases, nondeterminism, skipped or focused tests) | `skills/review/references/bugs.md` |
+| `spec` | Requirements missing, partial, implemented wrong, or exceeded | `skills/review/references/spec.md` |
+| `standards` | Documented rules, `ponytail`, and the smell baseline; mostly judgement calls | `skills/review/references/standards.md` |
+| `risk` | Security (a reachable trust-boundary violation) and resilience (timeouts, retries, partial state and rollback, concurrency, visibility of new failures, measured performance) | `skills/review/references/risk.md` |
+
+`bugs` carries what Gentle AI calls reliability, and `risk` carries its risk and resilience lenses, so four hunters cover all of them.
 
 Deep needs the reviewer assigned to a client other than the session's (the `diversity` preset does this). Its assigned hunters then launch through Orca and the extra `bugs` hunter launches natively, so two vendors hunt bugs; when the reviewer resolves to the session's client, review runs at Standard instead. There is never one verifier or refuter per finding: the batch keeps cost flat as findings grow.
 

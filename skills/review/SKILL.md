@@ -17,13 +17,13 @@ A reviewer that has not heard the implementer's reasoning judges the code, not t
 
 Read the level with `harness review level --json`; when the command is unavailable, use `medium` and say so. Only the human sets the level, so never run its setting form. It caps the reviews you start on your own. When the human asks for a review, it runs at any level, at Standard unless they name a depth.
 
-| Level | You start a review when | Depth | Verify | Rounds | Subagents at most |
+| Level | You start a review when | Depth | Verify | After repairs | Subagents at most |
 | --- | --- | --- | --- | --- | --- |
-| `off` | never | none | none | 0 | 0 |
-| `medium` (default) | a pull request is about to open with any tier above `tests-docs`, or a local handoff's highest tier is `critical` or names a concrete security, data-loss, compatibility, or concurrency risk | Quick | lean | 1 | 2 (3 in `build`, which adds `spec`) |
-| `high` | the highest tier is `structural` or above, for a pull request or a local handoff | the Depth table | batched | 2 | 7 per round |
+| `off` | never | none | none | none | 0 |
+| `medium` (default) | a pull request is about to open with any tier above `tests-docs`, or a local handoff's highest tier is `critical` or names a concrete security, data-loss, compatibility, or concurrency risk | Quick | lean | none | 2 (3 in `build`, which adds `spec`) |
+| `high` | the highest tier is `structural` or above, for a pull request or a local handoff | the Depth table | batched | one fix validator | 7: 6 to hunt and verify, 1 to validate |
 
-The ceiling counts hunters, the verifier, and the refuter for one slice; a diff split into slices multiplies it, and a delegated fix executor comes on top.
+The ceiling counts hunters, the verifier, the refuter, and the fix validator for one slice, and never more than four hunters; a diff split into slices multiplies it, and a delegated fix executor comes on top.
 
 A review the human asked for verifies batched. Never launch a verifier or refuter per finding: the batch is what keeps the cost flat as findings grow. When no review runs because of the level, record `no-review` with the level in `--summary`.
 
@@ -35,8 +35,10 @@ At `high`, or when the human asks for Deep, take the highest tier from `change-m
 | --- | --- | --- |
 | only `mechanical` or `tests-docs` | none | None; record `no-review` in the ledger |
 | `structural` or `behavioral` | Quick | `bugs` |
-| `critical`, or the human asks | Standard | `bugs`; `spec` when a requirements source exists; `standards`; `security` when a critical item falls in a category listed in `references/security.md` |
-| a critical one-way door (`change-map`'s merge danger), or the human asks for Deep | Deep | Standard plus a second `bugs` hunter from another vendor |
+| `critical`, or the human asks | Standard | `bugs`; `spec` when a requirements source exists; `standards`; `risk` when a critical item falls in a category listed in `references/risk.md` |
+| a critical one-way door (`change-map`'s merge danger), or the human asks for Deep | Deep | Standard plus a second `bugs` hunter from another vendor, within the four-hunter cap |
+
+Four axes cover the review: `bugs` (behavior and whether the tests would catch it breaking), `spec` (the requirements), `standards` (the documented rules and smells), and `risk` (trust boundaries and dependency failures). A review never runs more than four hunters per slice. When Deep would need a fifth, drop `standards`, whose findings are mostly judgement calls, before any other axis.
 
 Deep needs the reviewer assigned to a client other than the session's: check with `harness models resolve reviewer --json`. The `diversity` preset, or `harness models set reviewer --client <c> --model <m>` followed by `harness install`, does this. Both change machine state, so name them for the human rather than running them. The assigned hunters then launch through `orchestration`, as POLICY's Delegation section describes, and the extra `bugs` hunter launches natively on the session's client, so two vendors hunt bugs. When the reviewer resolves to the session's client, run Standard and say so.
 
@@ -55,7 +57,7 @@ Deep needs the reviewer assigned to a client other than the session's: check wit
 
 ## Hunt
 
-Launch one fresh `reviewer` per hunter, all in parallel. Give each one its axis brief from `references/<axis>.md`, the requirements, the snapshot patch, the revision identity, and the standards. Give the brief and patch by absolute path when they sit inside the project, and inline otherwise. The `security` hunter also gets the categories that triggered it and, pasted inline, the `security-audit` excerpts its brief lists. Withhold conversation history, implementation rationale, plans that carry rationale, continuity documents, worker results, and prior findings.
+Launch one fresh `reviewer` per hunter, all in parallel. Give each one its axis brief from `references/<axis>.md`, the requirements, the snapshot patch, the revision identity, and the standards. Give the brief and patch by absolute path when they sit inside the project, and inline otherwise. The `risk` hunter also gets the categories that triggered it and, for a security category, the `security-audit` excerpts its brief lists, pasted inline. Withhold conversation history, implementation rationale, plans that carry rationale, continuity documents, worker results, and prior findings.
 
 Each report must open with `loaded:` naming the standards and `revision:` matching the snapshot. Retry once with the input repaired, then report that hunter unverified. Keep each complete report locally when recovery needs it.
 
@@ -80,15 +82,23 @@ Each report must open with `loaded:` naming the standards and `revision:` matchi
 
 Fix confirmed findings inline. When you delegate the fix, give every confirmed finding to one fresh `executor` in one brief, never one executor per finding.
 
-## Rounds
+## Validate the fix
 
-At `high`, or when the human asked, run a second round only after substantive repairs to confirmed findings. It covers the repair delta at the same depth, with the context it needs, the requirements, and the new revision, and nothing from the earlier rationale or findings. The ledger lookup in Verify keeps it from relitigating. A nit alone starts no round. At `medium` there is one round, so a substantive repair stays unverified until the human decides.
+A review hunts once. Repairs get one check, not another hunt, so the cost of a review stays bounded.
 
-Allow at most two rounds. A new confirmed finding in repaired code at the cap stops the loop: tell the human the approach may need rethinking instead of starting a third round. A substantive repair after the cap stays unverified until the human decides.
+At `high`, or when the human asked, once every confirmed finding is fixed with its check turned green, launch one fresh `reviewer` with the validator brief from `references/verify.md`. Give it the confirmed findings, their red checks, the repair delta (`git diff <reviewed sha> <repaired sha>` over owned paths), the requirements, and the repaired revision, and nothing from the earlier rationale, the other findings, or which hunter raised a finding. A nit or a fix with no behavior change needs no validator.
+
+- `holds`: keep the finding `fixed`.
+- `fails`: record the finding `unverified` with the validator's trace, since a read-only trace proves nothing ran, and take it to the human. Never start a second repair loop on your own.
+- A new defect the validator reports in the repaired code: record it as a round 2 finding with disposition `unverified`, and take it to the human.
+- `unknown`, or a report that does not echo the repaired revision: it is not a failure, so do not reopen the finding yet. Retry once with the input repaired; when the retry also gives no verdict, record the finding `unverified` with what the validator could not read, so `land` holds it for the human.
+- `follow_ups`: report them to the human beside the review outcome. They are not findings: record none of them and start no repair for them.
+
+At `medium` no validator runs, so a substantive repair stays unverified until the human decides. A further repair after validation is also unverified until the human decides.
 
 ## Record
 
-Record each disposition with `harness review record` (`references/ledger.md`) the moment it is decided, so the Verify lookup in a later round sees it. A review with no findings, or with depth none, writes one line too. Whoever commits a fix appends `fixed` with the fixing commit.
+Record each disposition with `harness review record` (`references/ledger.md`) the moment it is decided, so a later review's Verify lookup sees it. A review with no findings, or with depth none, writes one line too. Whoever commits a fix appends `fixed` with the fixing commit.
 
 The review posts nothing to the forge. `address-review` handles review threads from bots and other people on a pull request, using `references/triage-patterns.md`.
 
@@ -104,5 +114,5 @@ A change to the snapshot invalidates the verdict until the affected evidence is 
 ## References
 
 - [Reviewer role](roles/reviewer.md)
-- Axis briefs: [bugs](references/bugs.md), [spec](references/spec.md), [standards](references/standards.md), [security](references/security.md)
+- Axis briefs: [bugs](references/bugs.md), [spec](references/spec.md), [standards](references/standards.md), [risk](references/risk.md)
 - [Verify briefs](references/verify.md), [ledger](references/ledger.md), [evals](references/evals.md), [triage patterns](references/triage-patterns.md)

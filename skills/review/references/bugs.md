@@ -14,7 +14,12 @@ Hunt for defects that change behavior. Read the diff against the whole repositor
 - **The class.** When a defect is one instance of a pattern, search the scope for every instance and list them all under one class.
 - **Instruction drift.** A line that the change makes false is a defect, whether it sits in the project instruction file, a README, a skill, or other docs. For documentation, failure means it lies.
 - **Error paths.** Look for a failure handled wrongly, swallowed, or missing, and for partial state left behind.
-- **Tests.** Look for a check that would still pass if the logic it covers were deleted, or a changed behavior that no check would catch regressing.
+- **Tests.** Judge whether the checks would catch this change breaking:
+  - a changed behavior with no check that asserts what a user or caller sees;
+  - a check that would still pass if the logic it covers were deleted, or that asserts internals instead of the behavior;
+  - edge cases the change makes reachable but no check covers: boundaries, empty and invalid input, retries, and failure paths;
+  - nondeterminism: time, order, randomness, or the network left uncontrolled, so the check passes or fails by chance;
+  - a focused or skipped test (`.only`, `skip`, `t.Skip`) left in, so CI passes without running the suite.
 - **Pre-existing.** A defect in code the diff did not introduce (check the base) is `pre-existing`.
 
-Style, naming, and structure belong to the standards hunter.
+Style, naming, and structure belong to the standards hunter, and trust boundaries and dependency failures to the risk hunter when one runs; when none runs, they are yours.
