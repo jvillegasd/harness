@@ -109,7 +109,7 @@ func Validate(e Entry) error {
 	return nil
 }
 
-// File is the ledger for branch in the repository at root: <git-common-dir>/harness-review/<branch>.jsonl. Git never tracks the common directory, every worktree of the repository shares it, and the branch name is path-escaped so a "/" stays inside one file name. `land` deletes the file once the branch merges, and `abandon` when it discards the branch.
+// File is the ledger for branch in the repository at root: <git-common-dir>/harness-review/branches/<branch>/ledger.jsonl. The branch directory also holds the branch's review patches, so `land` and `abandon` remove that one directory and nothing beside it. Git never tracks the common directory, every worktree of the repository shares it, and the branch name is path-escaped so a "/" stays inside one directory name.
 func File(root, branch string) (string, error) {
 	if branch == "" {
 		return "", fmt.Errorf("%w: no branch is checked out; pass --branch", ErrInvalid)
@@ -118,7 +118,7 @@ func File(root, branch string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(common, "harness-review", url.PathEscape(branch)+".jsonl"), nil
+	return filepath.Join(common, "harness-review", "branches", url.PathEscape(branch), "ledger.jsonl"), nil
 }
 
 // Append writes one line to the ledger file, creating its directory. A single O_APPEND write keeps concurrent records from interleaving.

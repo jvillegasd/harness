@@ -15,8 +15,8 @@ import (
 const usage = `Usage: harness review <command> [arguments]
 
 Record and read a branch's local review ledger, kept at
-<git-common-dir>/harness-review/<branch>.jsonl. Git never tracks it, and /land
-or /abandon deletes it with the branch.
+<git-common-dir>/harness-review/branches/<branch>/ledger.jsonl. Git never
+tracks it, and /land or /abandon deletes the branch directory with the branch.
 
 Commands:
   record  Append a new finding, or a new disposition for an existing one

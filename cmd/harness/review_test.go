@@ -59,11 +59,11 @@ func TestReviewLedgerCommand(t *testing.T) {
 	p := reviewRun(t, dir, data, "path")
 	file := strings.TrimSpace(p.stdout)
 	common := git(t, dir, "rev-parse", "--path-format=absolute", "--git-common-dir")
-	if p.code != 0 || file != filepath.Join(common, "harness-review", "work.jsonl") {
+	if p.code != 0 || file != filepath.Join(common, "harness-review", "branches", "work", "ledger.jsonl") {
 		t.Fatalf("path exited %d with %q", p.code, p.stdout)
 	}
-	// A slash in a branch name stays inside one file name.
-	if o := reviewRun(t, dir, data, "path", "--branch", "feat/x"); strings.TrimSpace(o.stdout) != filepath.Join(common, "harness-review", "feat%2Fx.jsonl") {
+	// A slash in a branch name stays inside one directory name.
+	if o := reviewRun(t, dir, data, "path", "--branch", "feat/x"); strings.TrimSpace(o.stdout) != filepath.Join(common, "harness-review", "branches", "feat%2Fx", "ledger.jsonl") {
 		t.Errorf("path --branch feat/x printed %q", o.stdout)
 	}
 

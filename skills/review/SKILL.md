@@ -49,7 +49,7 @@ Deep needs the reviewer assigned to a client other than the session's: check wit
    3. When work stays uncommitted and Verify runs batched, also save the verifier patch, `git diff --binary <sha> -- <owned paths>`, because the verifier worktree starts at the reviewed commit.
    4. Restore the index with `git reset -q -- <those untracked paths>`.
 
-   Save both patches outside the working tree, in the branch's patch directory, as `<run>-snapshot.patch` and `<run>-verifier.patch`, where `<run>` is the short reviewed SHA plus a UTC timestamp. The patch directory is the ledger path without `.jsonl`: `f="$(harness review path)"; mkdir -p "${f%.jsonl}"`. It sits in the Git directory, so Git never tracks it, every worktree of the repository shares it, and `land` or `abandon` deletes it with the branch. When it is too large for one hunter, split it into coherent slices (by module or call path) and give each slice its own hunters. An unreviewed slice stays unverified.
+   Save both patches outside the working tree, in the branch directory, as `<run>-snapshot.patch` and `<run>-verifier.patch`, where `<run>` is the short reviewed SHA plus a UTC timestamp. The branch directory holds the ledger: `d="$(dirname "$(harness review path)")" && mkdir -p "$d"`, which fails on a detached head rather than writing elsewhere. It sits in the Git directory, so Git never tracks it, every worktree of the repository shares it, and `land` or `abandon` deletes it with the branch. When it is too large for one hunter, split it into coherent slices (by module or call path) and give each slice its own hunters. An unreviewed slice stays unverified.
 3. Copy the requirements verbatim from their source: the ticket body and comment thread (latest wins), the spec, the task document's requirements, or the human's exact words. A paraphrase carries your framing into a blind brief. With no source, skip the `spec` hunter and report "no spec available".
 4. Gather the standards: the project instruction file, `CODING_STANDARDS.md` and `CONTRIBUTING.md` when present, any other file that documents how code is written here, and the `ponytail` body. Give project files by absolute path and paste external text inline, because a read-only role cannot read outside the project.
 
@@ -73,7 +73,7 @@ Each report must open with `loaded:` naming the standards and `revision:` matchi
    - **unverified**: anything else. Take each one to the human with both verdicts.
 8. Clean up the recorded worktree:
    1. Check its ignored files first: every `!!` line of `git -C <worktree> status --porcelain --ignored` must be regenerable build output.
-   2. Save the verifier's own work, staged and untracked files included, into the branch's patch directory: `git -C <worktree> add -A . && git -C <worktree> diff --cached --binary <baseline> > "<patch directory>/<worktree name>.patch"`.
+   2. Save the verifier's own work, staged and untracked files included, into the branch directory: `git -C <worktree> add -A . && git -C <worktree> diff --cached --binary <baseline> > "<branch directory>/<worktree name>.patch"`.
    3. Only when step 2 exited 0 and its patch file exists, remove the worktree with `git worktree remove --force <recorded path>`.
 
    Leave a worktree whose ignored files are not all build output or whose patch was not saved, and any path you did not record, and report it.
