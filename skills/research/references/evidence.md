@@ -1,8 +1,3 @@
----
-name: evidence
-description: Challenge a load-bearing claim with data instead of asserting it, starting with the query that could cancel the work.
----
-
 # Evidence
 
 Find out whether the premise is wrong before writing code.

@@ -67,12 +67,6 @@
       "skillPath": "skills/security-audit/SKILL.md",
       "computedHash": "98b97aad2873b3b9a8e064007c25e7827b493ba27fda8bfbdb41dab586767973"
     },
-    "sharpen": {
-      "source": "backnotprop/pstack",
-      "sourceType": "github",
-      "skillPath": "skills/sharpen/SKILL.md",
-      "computedHash": "ea086554887a219066acf376daa032377f95645c62d691fdc91130d0961cc34f"
-    },
     "statechart": {
       "source": "backnotprop/pstack",
       "sourceType": "github",

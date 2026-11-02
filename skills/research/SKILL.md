@@ -20,7 +20,7 @@ With no target above, use the latest unambiguous active question, claim, or unre
 
 2. Trace code paths, state ownership, lifecycle, history, tests, docs, and external behavior beyond the first plausible answer until evidence supports it. Prefer primary sources: official docs, code, specs, and first-party APIs. Verify time-sensitive facts at the source, never from search snippets or secondary summaries.
 
-   Telemetry is a primary source on the same footing as code. Read and follow `evidence` for any claim about runtime behavior, impact, frequency, or performance.
+   Telemetry is a primary source on the same footing as code. Read and follow `references/evidence.md` for any claim about runtime behavior, impact, frequency, or performance.
 
 3. Bound suspected regressions with telemetry or release history, then `git bisect` in a disposable worktree: create a sibling worktree (`git worktree add`) at the suspected revision and bisect there. Use the cheapest decisive test, profile, or trace per candidate. If a probe cannot decide, report the narrowed range. This is your own disposable experiment, so remove only that worktree afterward (POLICY's floor row on worktrees) and leave the main tree and repository history as they were.
 
@@ -34,7 +34,7 @@ With no target above, use the latest unambiguous active question, claim, or unre
 
 The worker ends on a text message holding only its findings. A trailing tool result is not the report: re-run that track once, and if it again ends without one, record it as no data (a `no data` row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`), since a missing report is not a refutation and not a track that found nothing.
 
-Before reusing a citation, read only the cited line and confirm the path resolves inside the repository and that the line carries the named symbol as a whole identifier. That check grounds the location only, not the claimed runtime mechanism: a load-bearing mechanism claim still goes through `evidence`.
+Before reusing a citation, read only the cited line and confirm the path resolves inside the repository and that the line carries the named symbol as a whole identifier. That check grounds the location only, not the claimed runtime mechanism: a load-bearing mechanism claim still goes through `references/evidence.md`.
 
 Drop a citation whose path is missing or outside the repository, whose line does not carry its symbol, or that lacks a field. Record it as refuted (a verdict row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`) and keep it out of the grounded evidence.
 
@@ -61,5 +61,5 @@ Recommend `/spec tickets from findings F2,F4` with the actual finding ids when w
 
 ## Skills this loads
 
-- `evidence`, read from its path, for any load-bearing claim about runtime behavior, impact, or frequency
+- `references/evidence.md`, this skill's evidence protocol, for any load-bearing claim about runtime behavior, impact, or frequency
 - `diagnosing-bugs` when the question is why something breaks and the first two evidence queries do not settle it

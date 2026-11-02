@@ -23,13 +23,13 @@ Accept a tracker item, pasted ticket, or production error signal for a bug, feat
 
    Fetch each blob once, after step 2 permits proceeding, and only images cited as evidence, in one call for the needed images. Record what they show in the evidence ledger right away so later steps use the ledger, not a re-fetch or a subagent.
 
-2. Before reading code, read and follow `evidence` and run the kill query: is this still happening, reachable by real users, or ever called? A kill result ends triage with a one-paragraph report. Report and skip unconfigured capabilities.
+2. Before reading code, read and follow `research`'s `references/evidence.md` and run the kill query: is this still happening, reachable by real users, or ever called? A kill result ends triage with a one-paragraph report. Report and skip unconfigured capabilities.
 
 3. Supplement from the tracker only when the input is an id or URL with no pasted body. Where the tracker is local markdown, read the `local-tracker` skill: the id resolves to a ticket file, and reading it means reading its `## Comments` too.
 
 4. Investigate the code to ground the analysis, citing `path:line`. Search the repository directly by default. Delegate only when a worker earns its launch: independent searches that can run in parallel, or context isolation that keeps a large search's file contents out of this context. Name that purpose in one line, launch each track as the `code-search` role (POLICY's Delegation section), and give each worker one bounded repository question. Handle its citations as `research` describes under Code-search citations. Then confirm or refute the root-cause hypothesis with at most two further evidence queries.
 
-5. For remaining load-bearing ambiguity, rank the assumptions behind it by consequence, resolve each through repository precedent, history, and `evidence`, and stop if the premise is refuted. Batch only the surviving questions into one stop, as POLICY's "Asking and deciding" describes.
+5. For remaining load-bearing ambiguity, rank the assumptions behind it by consequence, resolve each through repository precedent, history, and that evidence protocol, and stop if the premise is refuted. Batch only the surviving questions into one stop, as POLICY's "Asking and deciding" describes.
 
 ## Output
 
@@ -50,6 +50,6 @@ The brief is planning input, not an implementation contract. Return it as is; a 
 
 ## Skills this loads
 
-- `evidence`, read from its path
+- `research`'s `references/evidence.md`, read from its path
 - `diagnosing-bugs` when the root cause resists the first two evidence queries
 - `local-tracker`, read from its path, only when the input is a ticket id or path and `docs/agents/harness.json` sets `"tracker": "local-markdown"`

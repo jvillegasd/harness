@@ -345,8 +345,18 @@ func seedLockedSkill(t *testing.T, lr lockRun, name string) {
 func TestSkillsVerifyMatchesThePinnedLock(t *testing.T) {
 	lr := locksVerifySandbox(t)
 	r := ok(t, lr.harness(t, "skills", "verify"), "skills verify")
-	if got := strings.Count(r.stdout, ": match"); got != 15 {
-		t.Fatalf("verify matched %d skills, want 15:\n%s", got, r.stdout)
+	data, err := os.ReadFile(filepath.Join(lr.root, "skills-lock.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lock struct {
+		Skills map[string]json.RawMessage `json:"skills"`
+	}
+	if err := json.Unmarshal(data, &lock); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Count(r.stdout, ": match"); got != len(lock.Skills) {
+		t.Fatalf("verify matched %d skills, want all %d locked:\n%s", got, len(lock.Skills), r.stdout)
 	}
 }
 
