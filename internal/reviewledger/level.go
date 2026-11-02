@@ -24,10 +24,14 @@ Print the review level, or set it. The level caps the reviews an agent starts
 on its own; an explicit request for a review always runs.
 
   off     Agents start no review.
-  medium  Agents review only critical-tier changes or a named concrete risk,
-          with one hunter and one batched refuter. The default.
+  medium  Agents review every pull request above tests-docs, and local work
+          only when critical or a named concrete risk, with one hunter and
+          one batched refuter. The default.
   high    Agents review structural and riskier changes at the depth the
           change-map tier sets, with batched verification.
+
+At medium and high, /land holds a pull request above tests-docs until a
+review covers its current patch; at off it reports the gap.
 
 The level is stored in ~/.harness/state.json. Only a human sets it.
 `

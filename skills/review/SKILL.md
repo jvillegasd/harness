@@ -20,8 +20,8 @@ Read the level with `harness review level --json`; when the command is unavailab
 | Level | You start a review when | Depth | Verify | Rounds | Subagents at most |
 | --- | --- | --- | --- | --- | --- |
 | `off` | never | none | none | 0 | 0 |
-| `medium` (default) | the highest tier is `critical`, or a concrete security, data-loss, compatibility, or concurrency risk is named | Quick | lean | 1 | 2 (3 in `build`, which adds `spec`) |
-| `high` | the highest tier is `structural` or above | the Depth table | batched | 2 | 7 per round |
+| `medium` (default) | a pull request is about to open with any tier above `tests-docs`, or a local handoff's highest tier is `critical` or names a concrete security, data-loss, compatibility, or concurrency risk | Quick | lean | 1 | 2 (3 in `build`, which adds `spec`) |
+| `high` | the highest tier is `structural` or above, for a pull request or a local handoff | the Depth table | batched | 2 | 7 per round |
 
 The ceiling counts hunters, the verifier, and the refuter for one slice; a diff split into slices multiplies it, and a delegated fix executor comes on top.
 
