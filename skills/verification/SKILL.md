@@ -18,8 +18,7 @@ A pass is only worth what it covers. Binding each result to a revision, and nami
 1. Compare the requested behavior with the actual diff, including owned untracked files. Identify the meaningful failure behavior and the affected seams.
 2. Resolve commands from project instructions, task runners, or the toolchain. Run cheap targeted checks first, then the repository-required ones. Use existing tests, and add regression coverage where it can fail for the right reason. TDD applies only when the task or project asks for it.
 3. Bind results to the commit. Commit owned work first where POLICY lets you; only work that stays uncommitted needs a content identity covering tracked and untracked inputs. Record each command with its outcome: pass, fail, skipped, unavailable, or stale. A later edit makes the affected evidence stale, and HEAD equality alone does not identify a dirty tree.
-4. Run `review` at the depth `change-map` sets, or deeper when the human asked or a named security, data-loss, compatibility, or concurrency concern remains beyond ordinary checks.
-5. Fix owned failures and rerun the affected checks. When failures repeat without progress, stop and report as POLICY's "Asking and deciding" describes. For authorized PR delivery, also run the forge's required checks; otherwise stop after the local ones.
+4. Fix owned failures and rerun the affected checks. When failures repeat without progress, stop and report as POLICY's "Asking and deciding" describes. For authorized PR delivery, also run the forge's required checks; otherwise stop after the local ones.
 
 A fixture, a static read-back, or a self-review is not live acceptance or independent inspection, so report it as what it is.
 

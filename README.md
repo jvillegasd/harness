@@ -21,7 +21,7 @@ Skills compose around the task. Use investigation for unknowns, specifications f
 | `verification` | Appropriate local checks and honest revision-bound evidence |
 | `e2e-verification` | Scripted browser E2E QA of what ships, on an isolated install, with real screenshots per test and a published report; `create` and `maintain` modes write and keep current a project-local `verify-<app>` skill with a feature map |
 | `change-map` | Sort a change into review tiers (critical, behavioral, structural, tests-docs, mechanical) on a deterministic floor from `harness change-map`, and tell the human what to read and what each risky item is safe because of |
-| `review` | Blind review at the depth the `change-map` tier sets (none, Quick, Standard, Deep): parallel hunters per axis (bugs, spec, standards, security), each finding proven by a blind executor's red test or refuted only with a cited cut, never dismissed by the author; dispositions go to a local ledger, never the PR |
+| `review` | Blind review gated by the human's review level (`harness review level`: `off`, `medium` by default, or `high`) and the `change-map` tier: parallel hunters per axis (bugs, spec, standards, security), findings proven by one batched blind executor's red tests or refuted only with a cited cut from one batched blind refuter, never dismissed by the author; dispositions go to a local ledger, never the PR |
 | `continuity` | One local task/spec document with a `## Decisions` table, committed with the work, a project-scoped Engram mirror only when it must stay uncommitted across sessions, and the choice of how to cross a phase boundary (continue, clear, hand off, delegate, or compact) |
 | `open-pr` | Explicitly requested commits, publication, and required-check repairs |
 | `address-review` | Apply feedback, review comments, or check repairs on the existing branch using its scoped authorization |
@@ -30,7 +30,7 @@ Skills compose around the task. Use investigation for unknowns, specifications f
 | `land`, `abandon` | Explicit merge/cleanup or scoped discard authority |
 | `harness-help` | Map the workflow and answer which skill fits a situation, with the part of the map that situation needs |
 
-Routine work creates no task artifact, and review depth follows the `change-map` tier. Longer work reuses a document or creates `docs/agents/tasks/<feature>.md`; unavailable memory leaves its mirror explicitly pending. Recovery reads both copies, reconciles against Git, preserves unfinished requirements and conflicts, and invalidates stale checks. Legacy checkpoints remain intact as recoverable context, without granting authority.
+Routine work creates no task artifact. Agent-started review follows the review level: `off` starts none, `medium` (the default) reviews only `critical` changes with at most two subagents, and `high` reviews by `change-map` tier with at most seven subagents per round. Only the human sets the level (`! harness review level high` in Claude Code, where the agent's own setting forms are denied); an explicit request for review runs at any level. Longer work reuses a document or creates `docs/agents/tasks/<feature>.md`; unavailable memory leaves its mirror explicitly pending. Recovery reads both copies, reconciles against Git, preserves unfinished requirements and conflicts, and invalidates stale checks. Legacy checkpoints remain intact as recoverable context, without granting authority.
 
 Not sure which skill fits? `/harness-help` answers from its map and names the one to three skills that match your situation.
 
