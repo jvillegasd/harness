@@ -54,6 +54,35 @@ Invoke `setup-harness` to configure a repository's tracker. GitHub mode installs
 
 GitHub dependencies become ready only when their blockers were closed by merged PRs. Closing an issue manually does not count. A parent closes when all required children have merge evidence. Tracker writes and ticket publication require an explicit request.
 
+### GitHub ticket lifecycle
+
+This tracks one actionable ticket enrolled in the lifecycle workflow, using the default label names. Repositories can configure different names. **Main agent** means your primary session. **Reconciler** means the installed GitHub workflow, not a subagent. A ready label does not authorize work to start.
+
+```mermaid
+stateDiagram-v2
+    state "blocked" as Blocked
+    state "ready-for-agent" as Ready
+    state "in-progress" as Active
+    state "ready-for-human" as Handoff
+    state "Closed with merge evidence" as Closed
+
+    Blocked --> Ready: Reconciler confirms all blockers have merge evidence
+    Ready --> Active: Main agent claims ticket with your authorization
+    Active --> Handoff: Main agent hands off PR with authorized tracker write
+    Handoff --> Closed: You invoke /land and main agent confirms merge and ticket closure
+    Ready --> Blocked: Reconciler finds an unsatisfied dependency
+    Active --> Blocked: Reconciler finds an unsatisfied dependency
+    Handoff --> Blocked: Reconciler finds an unsatisfied dependency
+    Closed --> [*]
+```
+
+- **ready-for-agent:** all blockers have merge evidence, or there are no blockers. The main agent rechecks the claim before taking it and must not overwrite another run's claim.
+- **ready-for-human:** the PR is ready for human review, with required checks and applicable review satisfied. PR feedback stays on the existing branch. The label does not mean a human must implement the ticket.
+- **blocked:** a blocker lacks merge evidence, including when its repository cannot be read. Reconciliation can replace an active label with this label. Otherwise it preserves active claims and handoffs.
+- **Closed with merge evidence:** a merged PR closed the ticket. Manual closure alone does not release dependents. `/land` checks tracker reconciliation and applies scoped repairs if the workflow did not run.
+
+A parent issue is a container, not an actionable ticket in this diagram. It closes only after every required child has merge evidence. Reopening and `/abandon` release are recovery paths, outside this delivery view. The diagram describes the written workflow and reconciler rules, not proof of live agent compliance.
+
 ## When work stops
 
 The agent reports contradictory evidence, scope changes, or repeated failed attempts instead of guessing indefinitely. The report should say what failed and what decision or evidence is needed next.
