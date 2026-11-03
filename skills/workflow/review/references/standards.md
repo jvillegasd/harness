@@ -1,14 +1,14 @@
 # Axis: standards
 
-Judge the diff against the documented standards you were given, then against `ponytail` and the smell baseline below.
+Judge the diff against the documented standards you were given, then against the simplicity checklist and smell baseline below.
 
 - A documented standard always wins. Where it endorses something the baseline would flag, drop the smell.
 - Skip anything a formatter, linter, type checker, or test in the repository already enforces.
 - A breach of a documented hard rule cites the file and the rule. It is a `risk`, or a `bug` when it breaks behavior.
-- `ponytail` and the baseline are judgement calls, reported as `nit` with the label "possible <smell>".
+- The simplicity checklist and smell baseline are judgement calls, reported as `nit` with the label "possible <smell>".
 - Report at most five nits: the ones that cost the next reader most.
 
-## `ponytail`
+## Simplicity checklist
 
 - A new abstraction with one user.
 - A dependency added for a few lines.
