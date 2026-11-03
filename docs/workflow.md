@@ -88,3 +88,70 @@ A parent issue is a container, not an actionable ticket in this diagram. It clos
 The agent reports contradictory evidence, scope changes, or repeated failed attempts instead of guessing indefinitely. The report should say what failed and what decision or evidence is needed next.
 
 To discard unmerged work, invoke `/abandon` and approve its named inventory. Unrelated work and user worktrees must survive.
+
+### Resume retained work
+
+Resuming assumes the implementation still exists. The main agent uses the request, current Git state, and any existing task document or memory mirror. A small task needs no recovery document.
+
+```mermaid
+stateDiagram-v2
+    state "Retained work" as Retained
+    state "Context and Git inspected" as Inspected
+    state "Needs your input" as Waiting
+    state "Next action established" as Next
+    state "Current evidence checked" as Checked
+    state "Work resumed" as Resumed
+
+    [*] --> Retained: You ask to resume
+    Retained --> Inspected: Main agent reads context and inspects branch and working changes
+    Inspected --> Waiting: Consequential context is missing or conflicting
+    Waiting --> Inspected: You resolve the gap
+    Inspected --> Next: Main agent reconciles requirements with current Git state
+    Next --> Checked: Main agent rechecks stale evidence needed for the next action
+    Checked --> Resumed: Main agent continues within existing authorization
+```
+
+Missing context blocks only dependent work. Old notes grant no new authority, and checks against a changed or unidentified snapshot are stale. See [continuity](../skills/support/continuity/SKILL.md) for recovery details.
+
+### Abandon an attempt
+
+Only your explicit `/abandon` starts disposal. An **inventory** lists the exact commits, branch tips, uncommitted changes, task worktree, review records, and tracker changes proposed for discard or modification. Approval covers that list only.
+
+```mermaid
+stateDiagram-v2
+    state "Target inspected" as Target
+    state "Stop and keep live claim" as Open
+    state "Use /land for merged work" as Merged
+    state "Discard and tracker changes listed" as Inventory
+    state "Needs your decision" as Waiting
+    state "Inventory approved" as Approved
+    state "Tracker reconciliation" as Reconciling
+    state "Tracking reconciled or not applicable" as Reconciled
+    state "Approved resources discarded" as Discarded
+    state "Requirement retained for a new attempt" as Retry
+    state "Requirement explicitly cancelled" as Cancelled
+
+    [*] --> Target: You invoke /abandon and main agent inspects target
+    Target --> Open: PR is open
+    Target --> Merged: PR is merged
+    Target --> Inventory: PR is closed unmerged or no PR exists
+    Inventory --> Waiting: Cancellation is unsupported or retained scope still needs a decision
+    Waiting --> Inventory: You resolve scope or cancellation representation
+    Inventory --> Approved: You approve exact discard and tracker changes
+    Approved --> Inventory: Main agent finds changed inventory or tracker scope
+    Approved --> Reconciling: Main agent applies approved tracker changes
+    Reconciling --> Reconciled: Main agent verifies tracker state or skips trackerless work
+    Reconciling --> Waiting: Tracker writes failed or final state is unresolved
+    Reconciled --> Inventory: Final check finds changed branch tips or discard contents
+    Reconciled --> Discarded: Main agent preserves recovery notes and removes only approved resources
+    Discarded --> Retry: Requirement is still needed
+    Discarded --> Cancelled: You explicitly cancelled the requirement
+```
+
+Tracker reconciliation must finish before disposal. On partial failure, the main agent reports completed and remaining changes and resumes from the actual state. Reopening a closed ticket requires explicit approval. Released open tickets become `blocked` or `ready-for-agent` according to their dependencies.
+
+GitHub cancellation records the approved scope change and closes the ticket as `not planned`, without treating cancellation as merge evidence. Local Markdown tracking has no cancellation representation, so cancellation stops before writes until that decision is settled.
+
+Disposal can delete the approved task worktree and local branch. A remote branch is deleted only when its PR remains closed unmerged and its tip matches the approved inventory. A remote branch without a PR stays. User worktrees and unrelated work remain protected.
+
+**Retry is a new attempt.** Preserved notes retain context, not a guarantee that discarded code can be recovered. See [abandon](../skills/ops/abandon/SKILL.md) for the full safeguards.
