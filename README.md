@@ -30,6 +30,8 @@ harness install --uninstall
 
 Uninstall asks first, preserves edited copies, and leaves installed packages and user data. Use `--help` for client and component filters. `--no-backup` deletes installation collisions; `--clear-backups` deletes archives. Both are destructive.
 
+See [installation and your files](docs/installation.md) for how installation and removal handle existing copies.
+
 ## Everyday use
 
 | Need | Ask for |
