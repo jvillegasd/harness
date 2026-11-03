@@ -85,6 +85,18 @@
       "skillPath": "skills/engineering/tdd/SKILL.md",
       "computedHash": "daf55026f456af104a72fa43247f7bcec89e5127316dc5b1b8d675d6a9d8ce94"
     },
+    "technical-writing": {
+      "source": "backnotprop/pstack",
+      "sourceType": "github",
+      "skillPath": "skills/technical-writing/SKILL.md",
+      "computedHash": "a7c43dc2b94eeff919575766da35b695d61b677ec44476bb8feb5d82c5fa0328"
+    },
+    "unslop": {
+      "source": "backnotprop/pstack",
+      "sourceType": "github",
+      "skillPath": "skills/unslop/SKILL.md",
+      "computedHash": "eca0ad9fa3a3867c83f3aaf3a058e247a569c8976a68ca423a569b93eb86de5d"
+    },
     "writing-for-agents": {
       "source": "mattpocock/skills",
       "sourceType": "github",
