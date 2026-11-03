@@ -115,11 +115,10 @@ Missing context blocks only dependent work. Old notes grant no new authority, an
 
 ### Abandon an attempt
 
-Only your explicit `/abandon` starts disposal. First choose its scope: **dispose attempt, keep requirement** (the default), or **dispose attempt and cancel requirement**. Without a target, it scopes to the current task attempt, not an unrelated stranded branch. An **inventory** lists the exact commits, branch tips, uncommitted changes, task worktree, review records, and tracker changes proposed for discard or modification. Approval covers that list only.
+Only your explicit `/abandon` starts disposal. An **inventory** lists the exact commits, branch tips, uncommitted changes, task worktree, review records, and tracker changes proposed for discard or modification. Approval covers that list only.
 
 ```mermaid
 stateDiagram-v2
-    state "Disposal scope selected" as Scope
     state "Target inspected" as Target
     state "Stop and keep live claim" as Open
     state "Use /land for merged work" as Merged
@@ -132,8 +131,7 @@ stateDiagram-v2
     state "Requirement retained for a new attempt" as Retry
     state "Requirement explicitly cancelled" as Cancelled
 
-    [*] --> Scope: You invoke /abandon keeping requirement by default or explicitly cancelling it
-    Scope --> Target: Main agent inspects selected task attempt
+    [*] --> Target: You invoke /abandon and main agent inspects target
     Target --> Open: PR is open
     Target --> Merged: PR is merged
     Target --> Inventory: PR is closed unmerged or no PR exists
