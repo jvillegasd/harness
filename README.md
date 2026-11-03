@@ -102,15 +102,14 @@ The installer sources `aliases.sh` from `~/.zshrc`. These launchers grant broad 
 ```sh
 harness update            # All groups
 harness update clients    # Claude Code, Codex, OpenCode
-harness update ides       # Orca, Zed
 harness update packages   # Node, gh, uv
 harness update mcps       # Engram, agent-browser, registrations
 harness update skills     # Locked upstream skills and lockfile
 ```
 
-A bare update runs packages, clients, MCPs, skills, then IDEs. It discovers ownership before upgrading and inventories Homebrew once. Upgrades name individual formulae or casks and preserve the installation and release channels. Orca-managed clients stay owned by Orca. Recognized native Claude Code and OpenCode installations use vendor updaters. Stable npm Codex installations update through their owning prefix; prerelease or ambiguous installations need manual updates.
+A bare update runs packages, clients, MCPs, then skills. It discovers ownership before upgrading and inventories Homebrew once. Upgrades name individual formulae or casks and preserve the installation and release channels. Orca-managed clients stay owned by Orca. Recognized native Claude Code and OpenCode installations use vendor updaters. Stable npm Codex installations update through their owning prefix; prerelease or ambiguous installations need manual updates.
 
-Missing tools are skipped. Unsupported IDE installations report their in-app update route. Cask updates require Homebrew's `--no-quit` support. No IDE is quit, relaunched, or restarted. MCP updates refresh agent-browser's browser runtime and client registrations without reinstalling Harness policy, settings, skills, or roles.
+Missing tools are skipped. Cask updates require Homebrew's `--no-quit` support. MCP updates refresh agent-browser's browser runtime and client registrations without reinstalling Harness policy, settings, skills, or roles.
 
 The summary distinguishes observed version changes, unchanged versions, successful commands whose version change is unavailable, skips, manual updates, and failures. Unrelated updates continue after a failure; dependent operations are skipped. Exit status 1 means an operation failed. Completed upgrades are not rolled back.
 

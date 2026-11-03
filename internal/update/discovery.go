@@ -2,7 +2,6 @@ package update
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -149,10 +148,6 @@ func (r *runner) discover(selected []string) []target {
 	}
 	var targets []target
 	for _, group := range selected {
-		if group == "ides" {
-			targets = append(targets, inv.ides()...)
-			continue
-		}
 		names := map[string][]string{"packages": {"node", "gh", "uv"}, "clients": {"claude", "codex", "opencode"}, "mcps": {"engram", "agent-browser"}}[group]
 		for _, name := range names {
 			t := target{group: group, name: name, status: "skipped", notice: "not installed"}
@@ -176,7 +171,7 @@ func (r *runner) discover(selected []string) []target {
 			targets = append(targets, t)
 		}
 	}
-	// Deduplicate the complete plan, including IDE casks.
+	// Deduplicate the complete plan.
 	seen := map[string]bool{}
 	for i := range targets {
 		t := &targets[i]
@@ -241,51 +236,4 @@ func (r *runner) nativeClient(t target) target {
 		t.command = []string{npm, "install", "--global", "--prefix", prefix, "@openai/codex@latest"}
 	}
 	return t
-}
-
-func (inv inventory) ides() []target {
-	var out []target
-	for _, name := range []string{"orca", "zed"} {
-		found := false
-		for _, c := range inv.Casks {
-			if !slices.Contains([]string{name, name + "-preview", name + "@preview", name + "-dev", name + "@dev"}, c.Token) || !c.installed() {
-				continue
-			}
-			t := target{group: "ides", name: c.Token, command: []string{inv.brew, "upgrade", "--cask", "--no-quit", c.token()}, versionCommand: []string{inv.brew, "list", "--cask", "--versions", c.token()}}
-			if !inv.noQuit {
-				t.status = "manual"
-				t.notice = "Homebrew lacks --no-quit; use the IDE's Check for Updates on its current release channel"
-			}
-			out = append(out, t)
-			found = true
-		}
-		if found {
-			continue
-		}
-		if path, err := exec.LookPath(name); err == nil {
-			if t, ok := inv.brewTarget("ides", name, path); ok {
-				out = append(out, t)
-				continue
-			}
-		}
-		apps := []string{strings.ToUpper(name[:1]) + name[1:] + ".app", strings.ToUpper(name[:1]) + name[1:] + " Preview.app"}
-		installed := false
-		if _, err := exec.LookPath(name); err == nil {
-			installed = true
-		}
-		for _, app := range apps {
-			for _, base := range []string{"/Applications", filepath.Join(os.Getenv("HOME"), "Applications")} {
-				if _, err := os.Stat(filepath.Join(base, app)); err == nil {
-					installed = true
-				}
-			}
-		}
-		t := target{group: "ides", name: name, status: "skipped", notice: "not installed"}
-		if installed {
-			t.status = "manual"
-			t.notice = fmt.Sprintf("use %s's in-app Check for Updates on its current release channel; no restart performed", name)
-		}
-		out = append(out, t)
-	}
-	return out
 }
