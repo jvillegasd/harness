@@ -35,7 +35,10 @@ This follows one actionable finding through the review skill. The subagent roles
 ```mermaid
 stateDiagram-v2
     state "Finding reported" as Reported
-    state "Evidence under review" as Evidence
+    state "Main agent attempts confirmation" as Confirmation
+    state "executor attempts reproduction" as Reproduction
+    state "reviewer attempts refutation" as Refutation
+    state "Unverified" as Unverified
     state "Confirmed" as Confirmed
     state "Refuted" as Refuted
     state "Fixed" as Fixed
@@ -43,11 +46,15 @@ stateDiagram-v2
     state "Needs your decision" as Decision
 
     [*] --> Reported: reviewer hunts for defects
-    Reported --> Confirmed: Main agent reproduces the defect
-    Reported --> Evidence: Main agent cannot confirm
-    Evidence --> Confirmed: executor reproduces the defect when verification applies
-    Evidence --> Refuted: reviewer refutes with cited evidence
-    Evidence --> Decision: Evidence remains inconclusive
+    Reported --> Confirmation: Main agent checks the finding
+    Confirmation --> Confirmed: Defect reproduced or prose contradiction cited
+    Confirmation --> Refutation: Not confirmed at medium without explicit review request
+    Confirmation --> Reproduction: Not confirmed at high or with explicit review request
+    Reproduction --> Confirmed: executor reproduces the defect
+    Reproduction --> Refutation: Not reproduced or unable to run
+    Refutation --> Refuted: reviewer cites where failure path is prevented
+    Refutation --> Unverified: Evidence remains inconclusive
+    Unverified --> Decision: Main agent brings finding to you
     Confirmed --> Fixed: Main agent commits repair with the check passing
     Fixed --> Validated: reviewer accepts fix when validation applies
     Fixed --> Decision: Main agent requests your decision at medium
@@ -56,7 +63,7 @@ stateDiagram-v2
     Refuted --> [*]
 ```
 
-At `medium`, the main agent tries to reproduce findings. At `high`, or for an explicitly requested review, an `executor` also tests remaining findings. Prose contradictions can be confirmed by citing the conflicting instructions instead of running a test. Refutation requires both a finding that was not reproduced and a `reviewer`'s cited explanation of where its failure path is prevented.
+At `medium`, the main agent tries to reproduce findings. At `high`, or for an explicitly requested review, an `executor` also tests remaining findings. Code from fork PRs is not run during review, so those findings go to the `reviewer` for refutation without executor reproduction. Prose contradictions can be confirmed by citing the conflicting instructions instead of running a test. Refutation requires both a finding that was not reproduced and a `reviewer`'s cited explanation of where its failure path is prevented.
 
 Fix validation by a `reviewer` applies at `high` or for an explicitly requested review when the repair changes behavior. A successful validation leaves the ledger disposition `fixed`; **Fix validated** is a diagram label. Fixes without behavior changes need no validation by a `reviewer`. At `medium`, substantive repairs await your decision.
 
