@@ -100,7 +100,7 @@ At `medium` no validator runs, so a substantive repair stays unverified until th
 
 Record each disposition with `harness review record` (`references/ledger.md`) the moment it is decided, so a later review's Verify lookup sees it. A review with no findings, or with depth none, writes one line too. Whoever commits a fix appends `fixed` with the fixing commit.
 
-The review posts nothing to the forge. `address-review` handles review threads from bots and other people on a pull request, using `references/triage-patterns.md`.
+The review posts nothing to the forge. `address-review` handles review threads from bots and other people on a pull request, using its own [triage patterns](../address-review/references/triage-patterns.md).
 
 ## Output
 
@@ -115,4 +115,4 @@ A change to the snapshot invalidates the verdict until the affected evidence is 
 
 - [Reviewer role](roles/reviewer.md)
 - Axis briefs: [bugs](references/bugs.md), [spec](references/spec.md), [standards](references/standards.md), [risk](references/risk.md)
-- [Verify briefs](references/verify.md), [ledger](references/ledger.md), [evals](references/evals.md), [triage patterns](references/triage-patterns.md)
+- [Verify briefs](references/verify.md), [ledger](references/ledger.md), [evals](references/evals.md)
