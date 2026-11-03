@@ -348,12 +348,7 @@ func (in *installer) registerEngramClaudeMCP() {
 	if _, err := exec.LookPath("claude"); err != nil {
 		die("Claude Code is missing; run without --skip-packages to install it.")
 	}
-	_ = exec.Command("claude", "mcp", "remove", "--scope", "user", "engram").Run()
-	add := exec.Command("claude", "mcp", "add", "--scope", "user", "engram", "--", binary, "mcp", "--tools=agent")
-	add.Stderr = in.stderr
-	if err := add.Run(); err != nil {
-		die("claude mcp add engram failed: %v", err)
-	}
+	must(in.registerMCP("claude", "engram", binary))
 }
 
 // openCodeConfig reads opencode.json and its mcp object, refusing a file this run could not rewrite. install calls it before any client is touched, so a config this run refuses leaves every registration, Engram's included, as it was.
@@ -391,24 +386,8 @@ func (in *installer) installAgentBrowser() {
 	if _, err := exec.LookPath("codex"); err != nil {
 		die("Codex is missing; run without --skip-packages to install it.")
 	}
-	path, doc, servers := in.openCodeConfig()
-	_ = in.codex("mcp", "remove", "agent-browser").Run()
-	add := in.codex("mcp", "add", "agent-browser", "--", binary, "mcp")
-	if err := add.Run(); err != nil {
-		die("codex mcp add agent-browser failed: %v", err)
+	in.openCodeConfig()
+	for _, client := range []string{"codex", "claude", "opencode"} {
+		must(in.registerMCP(client, "agent-browser", binary))
 	}
-	_ = exec.Command("claude", "mcp", "remove", "--scope", "user", "agent-browser").Run()
-	add = exec.Command("claude", "mcp", "add", "--scope", "user", "agent-browser", "--", binary, "mcp")
-	add.Stderr = in.stderr
-	if err := add.Run(); err != nil {
-		die("claude mcp add agent-browser failed: %v", err)
-	}
-	servers.set("agent-browser", encode(struct {
-		Command []string `json:"command"`
-		Enabled bool     `json:"enabled"`
-		Type    string   `json:"type"`
-	}{[]string{binary, "mcp"}, true, "local"}))
-	doc.set("mcp", encode(servers))
-	must(os.MkdirAll(filepath.Dir(path), 0o755))
-	must(os.WriteFile(path, render(doc), 0o644))
 }

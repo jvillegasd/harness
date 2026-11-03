@@ -113,6 +113,9 @@ func add(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
 // update runs skills.sh against a scratch copy of the lock, which is all it needs to compare every entry with upstream, then copies each body it rewrote into the group that already holds it.
 func update(c checkout.Checkout, stdout, stderr io.Writer) error {
 	p := pathsFor(c)
+	if err := CheckUpdate(c); err != nil {
+		return err
+	}
 	scratch, err := scratchProject(p)
 	if err != nil {
 		return err
@@ -144,14 +147,17 @@ func update(c checkout.Checkout, stdout, stderr io.Writer) error {
 		if body == "" {
 			return fmt.Errorf("skills.sh updated %s, which no skill group holds", e.Name())
 		}
-		staged := body + ".harness-update"
-		if err := os.RemoveAll(staged); err != nil {
+		staged, err := os.MkdirTemp(filepath.Dir(body), ".harness-update-*")
+		if err != nil {
 			return err
 		}
 		swaps = append(swaps, swap{body, staged})
 		if err := copyTree(filepath.Join(scratch, ".agents", "skills", e.Name()), staged); err != nil {
 			return err
 		}
+	}
+	if err := CheckUpdate(c); err != nil {
+		return err
 	}
 	for _, sw := range swaps {
 		if err := os.RemoveAll(sw.body); err != nil {
@@ -346,11 +352,48 @@ func reviewPaths(p paths, stdout io.Writer) error {
 		cmd.Stderr = io.Discard
 		_ = cmd.Run()
 	}
-	fmt.Fprint(stdout, "\nReview the upstream body, then commit only the approved change\n")
+	fmt.Fprint(stdout, "\nReview the upstream body and lockfile before running harness install; commit only the approved change\n")
 	return nil
 }
 
 func insideWorkTree(dir string) bool {
 	cmd := exec.Command("git", "-C", dir, "rev-parse", "--is-inside-work-tree")
 	return cmd.Run() == nil
+}
+
+// CheckUpdate refuses local edits to the lock and every locked body, including
+// ignored files, since replacement removes the entire body directory.
+func CheckUpdate(c checkout.Checkout) error {
+	p := pathsFor(c)
+	lf, err := readLock(p.lock)
+	if err != nil {
+		return err
+	}
+	paths := []string{"skills-lock.json"}
+	for _, name := range lf.skills.keys {
+		if err := validateName(name); err != nil {
+			return err
+		}
+		body, err := findBody(p, name)
+		if err != nil {
+			return err
+		}
+		if body == "" {
+			return fmt.Errorf("locked body missing: %s", name)
+		}
+		rel, err := filepath.Rel(p.root, body)
+		if err != nil {
+			return err
+		}
+		paths = append(paths, rel)
+	}
+	args := append([]string{"-C", p.root, "--literal-pathspecs", "status", "--porcelain=v1", "--untracked-files=all", "--ignored", "--"}, paths...)
+	out, err := exec.Command("git", args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("checking locked paths requires a Git checkout: %w: %s", err, out)
+	}
+	if len(out) > 0 {
+		return fmt.Errorf("local changes in locked paths; commit or preserve them before updating:\n%s", out)
+	}
+	return nil
 }
