@@ -6,6 +6,7 @@ Start with a plain request. The agent inspects the repository, implements the ag
 
 | Situation | Skill |
 | --- | --- |
+| An everyday task or one ticket needs implementation with TDD | `implement` |
 | A fuzzy idea needs decisions | `/grill-with-docs` |
 | A ticket needs investigation before implementation | `/triage` |
 | A question needs evidence | `research` |
@@ -19,6 +20,8 @@ Start with a plain request. The agent inspects the repository, implements the ag
 | A session needs a retrospective | `/retro` |
 
 These are independent tools. Using one does not require or automatically start another. A slash marks an explicit invocation here; consult each skill for its inputs.
+
+Use `/implement <task or ticket>` for everyday implementation with TDD in the current session. It accepts a plain request, reuses agreed test seams or settles them with you, and finishes with local checks. It uses one task branch; `/build` adds unattended orchestration across slices and workers.
 
 ## Local work and delivery
 
