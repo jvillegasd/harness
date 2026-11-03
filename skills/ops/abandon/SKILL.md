@@ -1,13 +1,13 @@
 ---
 name: abandon
-description: "Dispose of the current implementation attempt and keep its requirement, or explicitly cancel the requirement too. Invoke only by name: \"abandon this\", \"this spike is dead\", \"the PR was closed without merging\", \"release the ticket\"."
-argument-hint: "[target] [keep requirement | cancel requirement]"
+description: "Release an abandoned attempt or reconcile explicitly cancelled scope, then retire its worktree. Invoke only by name: \"abandon this\", \"this spike is dead\", \"the PR was closed without merging\", \"release the ticket\"."
+argument-hint: "[ticket id, branch, or pull request number; omit to detect]"
 disable-model-invocation: true
 metadata:
   opencode/autoinvoke: "false"
 ---
 
-Choose the scope first: dispose of the implementation attempt while keeping the requirement, or cancel the requirement too. Then reconcile tracking and remove only the approved task resources.
+Close the lifecycle for work that will not land: release stranded claims, reconcile explicitly cancelled scope, and retire the worktree.
 
 Target: $ARGUMENTS
 
@@ -15,18 +15,9 @@ Target: $ARGUMENTS
 
 Discarded work cannot be recovered, so this is the only workflow that discards unmerged work. It names everything it will discard, gets one confirmation of that inventory from the human, and deletes nothing beyond it. A prototype uses it only after an explicit discard request. Open or merged pull requests are outside this workflow, and it changes no application code.
 
-## Scope first
-
-- **Dispose attempt, keep requirement** (default): remove the approved task branch, task worktree, and review records. Release a bound ticket for a new attempt without changing its requirement or dependency relationships. A plain `/abandon` means this mode.
-- **Dispose attempt and cancel requirement**: do the same disposal and also reconcile the explicitly cancelled requirement. Use this only when the human says the requirement is no longer needed. A ticket reference selects a target, not cancellation. Ask which mode only when the live request is ambiguous or contradictory.
-
-State the selected mode and target before inspection. With no target, use the current task branch and its task worktree. If the current checkout is the default branch, belongs to unrelated work, or has no identifiable task attempt, ask for a target rather than choosing another stranded attempt. A user worktree is never removed.
-
-Choosing the mode does not approve an unseen discard list. Prepare the concrete list below and get its approval once. Preserve all existing disposal and tracker safeguards.
-
 ## Steps
 
-1. Resolve the target. A pull request number resolves directly; a ticket id resolves to its branch, and to that branch's pull request when one exists; a branch name resolves directly. With no target argument, resolve the current attempt as described in Scope first. Where the tracker is local markdown, read the `local-tracker` skill: it says how an id resolves to a ticket file and how a pull request resolves back to one. The ticket is optional, so a branch that never had one is a valid target. For a bound ticket, read its description and complete comment thread in order, then its parent's description and complete comment thread, and the live parent and dependency relationships. On a partial rerun, recover previously affected parents and dependents from the recorded cancellation history as well as live relationships. Distinguish abandoning an implementation attempt from cancelling the requirement: a closed unmerged pull request or a dead run alone means release for retry. Cancellation needs explicit human intent that the requirement is no longer needed. The request or the ticket thread may propose it; the live confirmation in step 3, which lists its exact scope changes, is what authorizes it. If intent is unclear, preserve the requirement and relationships, and leave a closed ticket and any recorded cancellation as they are.
+1. Resolve the target. A pull request number resolves directly; a ticket id resolves to its branch, and to that branch's pull request when one exists; a branch name resolves directly. With no input, find the stranded work and name what you picked: a ticket at mapped `in_progress` whose branch has no open pull request, or a retained worktree whose branch has a closed unmerged pull request. Where the tracker is local markdown, read the `local-tracker` skill: it says how an id resolves to a ticket file and how a pull request resolves back to one. The ticket is optional, so a branch that never had one is a valid target. For a bound ticket, read its description and complete comment thread in order, then its parent's description and complete comment thread, and the live parent and dependency relationships. On a partial rerun, recover previously affected parents and dependents from the recorded cancellation history as well as live relationships. Distinguish abandoning an implementation attempt from cancelling the requirement: a closed unmerged pull request or a dead run alone means release for retry. Cancellation needs explicit human intent that the requirement is no longer needed. The request or the ticket thread may propose it; the live confirmation in step 3, which lists its exact scope changes, is what authorizes it. If intent is unclear, preserve the requirement and relationships, and leave a closed ticket and any recorded cancellation as they are.
 
 2. Gate before writes. Stop and report an open pull request as a finding, not an error; its claim remains live. For a merged request, stop and tell the human to invoke `/land <n>`; merging and cleanup after a merge belong to that human invocation. Continue only for closed unmerged requests or no request.
 
