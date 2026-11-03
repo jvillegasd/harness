@@ -1,21 +1,12 @@
 # Axis: standards
 
-Judge the diff against the documented standards you were given, then against the simplicity checklist and smell baseline below.
+Judge the diff against the documented standards you were given, then invoke the `ponytail` skill for simplicity checks and apply the smell baseline below.
 
 - A documented standard always wins. Where it endorses something the baseline would flag, drop the smell.
 - Skip anything a formatter, linter, type checker, or test in the repository already enforces.
 - A breach of a documented hard rule cites the file and the rule. It is a `risk`, or a `bug` when it breaks behavior.
-- The simplicity checklist and smell baseline are judgement calls, reported as `nit` with the label "possible <smell>".
+- `ponytail` and the smell baseline are judgement calls, reported as `nit` with the label "possible <smell>".
 - Report at most five nits: the ones that cost the next reader most.
-
-## Simplicity checklist
-
-- A new abstraction with one user.
-- A dependency added for a few lines.
-- Config for a constant.
-- Dead code and leftovers.
-- A comment that restates its line, or a docstring longer than what it documents.
-- On a UI diff, a palette, token system, or state set nobody asked for.
 
 ## Smell baseline
 
