@@ -87,7 +87,7 @@ A parent issue is a container, not an actionable ticket in this diagram. It clos
 
 The agent reports contradictory evidence, scope changes, or repeated failed attempts instead of guessing indefinitely. The report should say what failed and what decision or evidence is needed next.
 
-Discarding unmerged work requires an explicit human request and approval of the exact commits, files, branches, and task worktrees affected. Unrelated work and user worktrees must survive.
+An explicit request naming the commits, files, branches, or task worktrees to discard counts as approval of that scope. The agent inspects first and asks again only if the scope is ambiguous or additional work would be lost. Unrelated work and user worktrees must survive.
 
 ### Resume retained work
 

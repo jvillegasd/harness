@@ -44,7 +44,7 @@ See [installation and your files](docs/installation.md) for how installation and
 | Publish the work | “Open a PR” or “ship this” |
 | Merge the current PR | `/land` |
 
-Local work stays local until you request publication. Only your explicit `/land` merges a PR. Discarding unmerged work requires an explicit request and approval of exactly what will be lost.
+Local work stays local until you request publication. Only your explicit `/land` merges a PR. An explicit request naming work to discard authorizes that scope; ambiguity or additional work requires clarification.
 
 ```mermaid
 stateDiagram-v2
