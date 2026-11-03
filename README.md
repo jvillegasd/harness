@@ -57,7 +57,7 @@ stateDiagram-v2
     state "Ready to merge" as MergeReady
     state "Needs your input" as Waiting
 
-    [*] --> Local: You request work
+    [*] --> Local: Plain request or /implement
     Local --> Local: Agent fixes failed checks
     Local --> LocalReady: Agent completes work and local checks
     LocalReady --> Preparing: You request publication
