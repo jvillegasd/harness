@@ -53,7 +53,7 @@ Deep needs the reviewer assigned to a client other than the session's: check wit
 
    Save both patches outside the working tree, in the branch directory, as `<run>-snapshot.patch` and `<run>-verifier.patch`, where `<run>` is the short reviewed SHA plus a UTC timestamp. The branch directory holds the ledger: `d="$(dirname "$(harness review path)")" && mkdir -p "$d"`, which fails on a detached head rather than writing elsewhere. It sits in the Git directory, so Git never tracks it, every worktree of the repository shares it, and `land` deletes it with the branch. When it is too large for one hunter, split it into coherent slices (by module or call path) and give each slice its own hunters. An unreviewed slice stays unverified.
 3. Copy the requirements verbatim from their source: the ticket body and comment thread (latest wins), the spec, the task document's requirements, or the human's exact words. A paraphrase carries your framing into a blind brief. With no source, skip the `spec` hunter and report "no spec available".
-4. Gather the standards: the project instruction file, `CODING_STANDARDS.md` and `CONTRIBUTING.md` when present, any other file that documents how code is written here, and the `ponytail` body. Give project files by absolute path and paste external text inline, because a read-only role cannot read outside the project.
+4. Gather the standards: the project instruction file, `CODING_STANDARDS.md` and `CONTRIBUTING.md` when present, any other file that documents how code is written here. Include the `ponytail` skill body for the standards hunter to invoke for simplicity checks; its axis brief carries the smell baseline in `references/standards.md`. Give project files by absolute path and paste external text inline, because a read-only role cannot read outside the project.
 
 ## Hunt
 
@@ -100,7 +100,7 @@ At `medium` no validator runs, so a substantive repair stays unverified until th
 
 Record each disposition with `harness review record` (`references/ledger.md`) the moment it is decided, so a later review's Verify lookup sees it. A review with no findings, or with depth none, writes one line too. Whoever commits a fix appends `fixed` with the fixing commit.
 
-The review posts nothing to the forge. `address-review` handles review threads from bots and other people on a pull request, using `references/triage-patterns.md`.
+The review posts nothing to the forge. `address-review` handles pull request review threads, using its own [triage patterns](../address-review/references/triage-patterns.md).
 
 ## Output
 
@@ -115,4 +115,4 @@ A change to the snapshot invalidates the verdict until the affected evidence is 
 
 - [Reviewer role](roles/reviewer.md)
 - Axis briefs: [bugs](references/bugs.md), [spec](references/spec.md), [standards](references/standards.md), [risk](references/risk.md)
-- [Verify briefs](references/verify.md), [ledger](references/ledger.md), [evals](references/evals.md), [triage patterns](references/triage-patterns.md)
+- [Verify briefs](references/verify.md), [ledger](references/ledger.md), [evals](references/evals.md)
