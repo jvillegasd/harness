@@ -653,3 +653,49 @@ func TestSkillsUpdatePreservesUnrelatedChangesAndIndex(t *testing.T) {
 		t.Fatal("unrelated state changed")
 	}
 }
+
+func TestUpdateSkipsFailedNodeAndClientDependents(t *testing.T) {
+	lr := newLockRun(t)
+	seedLockedSkill(t, lr, "myskill")
+	commitLockFixture(t, lr)
+	lr.setNpx(t, false)
+	log := filepath.Join(lr.home, "updates.log")
+	for _, name := range []string{"node", "engram"} {
+		path := filepath.Join(lr.home, "Cellar", name, "1/bin", name)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		writeMode(t, path, "#!/bin/sh\necho 1\n", 0755)
+		if err := os.Symlink(path, filepath.Join(lr.shims, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	claude := filepath.Join(lr.home, ".local/share/claude/versions/1")
+	if err := os.MkdirAll(filepath.Dir(claude), 0755); err != nil {
+		t.Fatal(err)
+	}
+	writeMode(t, claude, `#!/bin/sh
+echo "claude $*" >> '`+log+`'
+[ "$1" != update ]
+`, 0755)
+	os.Symlink(claude, filepath.Join(lr.shims, "claude"))
+	writeMode(t, filepath.Join(lr.shims, "brew"), `#!/bin/sh
+echo "brew $*" >> '`+log+`'
+case "$*" in
+'--prefix') echo '`+lr.home+`';;
+'info --json=v2 --installed') echo '{"formulae":[{"name":"node","installed":[{"version":"1"}]},{"name":"engram","installed":[{"version":"1"}]}]}';;
+'upgrade --formula node') exit 1;;
+esac
+`, 0755)
+	r := lr.harness(t, "update")
+	if r.code != 1 {
+		t.Fatal(r)
+	}
+	calls := readFile(t, log)
+	if lr.npxLog(t) != "" || strings.Contains(calls, "claude mcp") {
+		t.Fatalf("dependent actions ran: %s %s", lr.npxLog(t), calls)
+	}
+	if !strings.Contains(calls, "upgrade --formula engram") || !strings.Contains(r.stdout, "Node prerequisite failed") || !strings.Contains(r.stdout, "client update failed") {
+		t.Fatal(calls, r.stdout)
+	}
+}

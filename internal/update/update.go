@@ -4,7 +4,6 @@ package update
 import (
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"slices"
 	"strings"
@@ -71,6 +70,10 @@ func Command(args []string, stdout, stderr io.Writer) int {
 				r.report("skipped", "skills", checkoutErr.Error())
 				continue
 			}
+			if ok, present := outcomes["node"]; present && !ok {
+				r.report("skipped", "skills", "Node prerequisite failed")
+				continue
+			}
 			if skillsErr != nil {
 				r.report("failed", "skills", skillsErr.Error())
 				continue
@@ -87,6 +90,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 				if target.name == "codex" && len(target.command) > 1 && target.command[1] == "install" {
 					if ok, present := outcomes["node"]; present && !ok {
 						r.report("skipped", target.name, "Node prerequisite failed")
+						outcomes[target.name] = false
 						continue
 					}
 				}
@@ -95,7 +99,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 					outcomes[target.name] = ok
 				}
 				if group == "mcps" {
-					r.reconcile(target, ok)
+					r.reconcile(target, ok, outcomes)
 				}
 			}
 		}
@@ -142,7 +146,6 @@ func (r *runner) update(t target) bool {
 	before := t.version()
 	cmd := exec.Command(t.command[0], t.command[1:]...)
 	cmd.Stdout, cmd.Stderr = r.out, r.err
-	cmd.Env = append(os.Environ(), "HOMEBREW_NO_AUTO_UPDATE=1")
 	if err := cmd.Run(); err != nil {
 		r.report("failed", t.name, err.Error())
 		return false
@@ -170,7 +173,7 @@ func (t target) version() string {
 	return strings.TrimSpace(string(out))
 }
 
-func (r *runner) reconcile(t target, ready bool) {
+func (r *runner) reconcile(t target, ready bool, outcomes map[string]bool) {
 	if !ready {
 		if t.name == "agent-browser" {
 			r.report("skipped", "agent-browser runtime", "package update prerequisite unavailable or failed")
@@ -197,6 +200,10 @@ func (r *runner) reconcile(t target, ready bool) {
 		item := t.name + " registration in " + client
 		if !slices.Contains(r.clients, client) {
 			r.report("skipped", item, "client not installed at discovery")
+			continue
+		}
+		if ok, present := outcomes[client]; present && !ok {
+			r.report("skipped", item, "client update failed or its prerequisite failed")
 			continue
 		}
 		if err := install.ReconcileMCP(client, t.name, binary, r.out, r.err); err != nil {

@@ -292,3 +292,25 @@ func TestUnsupportedOwnershipAndPrereleaseAreManual(t *testing.T) {
 		})
 	}
 }
+
+func TestUpgradePreservesHomebrewRefreshPolicy(t *testing.T) {
+	root := t.TempDir()
+	bin := filepath.Join(root, "bin")
+	t.Setenv("HOME", root)
+	t.Setenv("PATH", bin)
+	t.Setenv("HOMEBREW_NO_AUTO_UPDATE", "")
+	path := filepath.Join(root, "Cellar/gh/1/bin/gh")
+	shim(t, path, "echo 1")
+	os.MkdirAll(bin, 0755)
+	os.Symlink(path, filepath.Join(bin, "gh"))
+	shim(t, filepath.Join(bin, "brew"), `
+ case "$*" in
+ '--prefix') echo '`+root+`';;
+ 'info --json=v2 --installed') echo '{"formulae":[{"name":"gh","installed":[{"version":"1"}]}]}';;
+ 'upgrade --formula gh') [ -z "$HOMEBREW_NO_AUTO_UPDATE" ] || exit 9;;
+ esac`)
+	var out, err bytes.Buffer
+	if code := Command([]string{"packages"}, &out, &err); code != 0 {
+		t.Fatalf("refresh policy overridden: %d %s %s", code, &out, &err)
+	}
+}

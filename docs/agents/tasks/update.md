@@ -12,11 +12,14 @@ Acceptance: fake executable and temporary-home tests at the coordinator/CLI and 
 | --- | --- | --- |
 | Unknown and prerelease npm channels use manual updates | An installed version does not identify its original dist-tag; never silently migrate preview to stable | User's channel-preservation requirement |
 | MCP updates register servers directly without `engram setup` | Setup also installs hooks and skills outside the requested MCP scope | internal/install/clients.go |
-
 | Require Homebrew `--no-quit` for cask upgrades | Homebrew normally quits and reopens cask apps during upgrades; older versions receive manual fallback | Homebrew Manpage upgrade options |
 
 ## Status
 
-Implementation complete. Observed red CLI help, dirty locked-path, Homebrew ownership, and MCP prerequisite tests before implementation. The preflight summary initially omitted stderr diagnostics; its existing regression test caught this and the fix restores diagnostics. Focused checks, full checks, and independent review pending. No machine upgrades or installation performed.
+Implementation complete. Focused tests observed red then green for CLI validation, dirty locked paths, ownership, MCP prerequisites, and the review repairs. No machine upgrades or installation performed.
 
-Next: pass focused tests, commit the repair, run all repository checks, and independent bugs review at medium/Quick.
+Independent review at medium/Quick of a6db275 found missing prerequisite guards for skills after Node failure and MCP registrations after client failure. An external scratch repro and `TestUpdateSkipsFailedNodeAndClientDependents` confirmed both. `TestUpgradePreservesHomebrewRefreshPolicy` also reproduced forced suppression of metadata refresh. Repairs add the guards and preserve Homebrew's caller refresh policy. Findings are retained in the branch review ledger. Repair validation by a second reviewer does not run at medium, so the repair delta remains independently unverified.
+
+All six required checks are being rerun against the repair commit. Live package upgrades, MCP acceptance, and IDE trials remain unverified and require a separate execution request. The initial full suite passed on an earlier snapshot and is stale for the repair.
+
+Next: pass focused repair tests, commit, complete all six checks on that revision, record evidence, and hand off locally.
