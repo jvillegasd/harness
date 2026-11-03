@@ -36,6 +36,7 @@ See [installation and your files](docs/installation.md) for how installation and
 
 | Need | Ask for |
 | --- | --- |
+| Implement a feature, fix, or one ticket with TDD | `/implement <task or ticket>` |
 | Fix something broken or slow | Diagnosis and a fix |
 | Settle an unclear idea | `/grill-with-docs` |
 | Write a specification | `/spec` |
