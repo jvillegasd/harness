@@ -1,17 +1,15 @@
 # Source playbooks
 
-The why skill spawns one investigator per available evidence category, each reading a single source-specific playbook below. The playbooks are concrete examples for common MCPs. Adapt them for a different MCP in the same category.
+Choose sources that can answer the question and adapt these examples to the tools available. Search linked items and follow promising leads across categories. Read full discussions where they bear on a decision. Record access and retention gaps separately from searches that returned no results.
 
-| Category | Playbook | Example MCP it documents |
-|---|---|---|
-| Source control history | [`code-archaeology.md`](./sources/code-archaeology.md) | git, `gh` |
-| Issue / ticket tracker | [`linear.md`](./sources/linear.md) | Linear (adapt for Jira, GitHub Issues, Plane, Shortcut) |
-| Long-form documents | [`notion.md`](./sources/notion.md) | Notion (adapt for Confluence, Google Docs, Coda) |
-| Real-time team chat | [`slack.md`](./sources/slack.md) | Slack (adapt for Discord, Microsoft Teams, Mattermost) |
-| Infrastructure observability | [`datadog.md`](./sources/datadog.md) | Datadog (adapt for New Relic, Honeycomb, Grafana, Splunk) |
-| Error / exception tracking | [`sentry.md`](./sources/sentry.md) | Sentry (adapt for Rollbar, Bugsnag, Airbrake) |
-| Product analytics warehouse | [`databricks.md`](./sources/databricks.md) | Databricks SQL (adapt for Snowflake, BigQuery, ClickHouse, dbt) |
+| Evidence | Playbook |
+|---|---|
+| Git history and PRs | [Code archaeology](sources/code-archaeology.md) |
+| Issues and tickets | [Linear](sources/linear.md) |
+| Design documents | [Notion](sources/notion.md) |
+| Team discussion | [Slack](sources/slack.md) |
+| Infrastructure telemetry | [Datadog](sources/datadog.md) |
+| Error history | [Sentry](sources/sentry.md) |
+| Product analytics | [Databricks](sources/databricks.md) |
 
-Cross-cutting:
-
-- [`incident-postmortem.md`](./sources/incident-postmortem.md). Add this if the target code looks defensive (null checks, retry, timeout, rate limit, feature flag, egress guard, OOM handler).
+For defensive code or a suspected incident, also consult [incident and postmortem context](sources/incident-postmortem.md). These are examples, not assumptions about a project's tools or schema. Check available tool schemas and data before querying.
