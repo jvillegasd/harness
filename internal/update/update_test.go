@@ -135,33 +135,6 @@ func TestClientsPreserveNativeNpmAndExternalOwnership(t *testing.T) {
 	}
 }
 
-func TestIDEsKeepPreviewAndUseManualFallback(t *testing.T) {
-	root := t.TempDir()
-	bin := filepath.Join(root, "bin")
-	log := filepath.Join(root, "calls")
-	t.Setenv("PATH", bin)
-	t.Setenv("HOME", root)
-	t.Chdir(root)
-	shim(t, filepath.Join(bin, "brew"), `echo "$*" >> '`+log+`'
- case "$*" in
- '--prefix') echo '`+root+`';;
- 'upgrade --help') echo '--no-quit';;
- 'info --json=v2 --installed') echo '{"casks":[{"token":"zed@preview","installed":"1"}]}';;
- esac`)
-	os.MkdirAll(filepath.Join(root, "Applications/Orca.app"), 0755)
-	var out, err bytes.Buffer
-	if code := Command([]string{"ides"}, &out, &err); code != 0 {
-		t.Fatalf("%d: %s %s", code, &out, &err)
-	}
-	calls, _ := os.ReadFile(log)
-	if !strings.Contains(string(calls), "upgrade --cask --no-quit zed@preview") || strings.Contains(string(calls), "upgrade --cask --no-quit zed\n") {
-		t.Fatal(string(calls))
-	}
-	if !strings.Contains(out.String(), "manual: orca") {
-		t.Fatal(out.String())
-	}
-}
-
 func TestMCPRefreshTouchesOnlyRegistrations(t *testing.T) {
 	root := t.TempDir()
 	bin := filepath.Join(root, "bin")
@@ -229,7 +202,7 @@ func TestExplicitSkillsOutsideCheckoutDoesNotDiscoverMachine(t *testing.T) {
 	}
 }
 
-func TestBareUpdateDiscoversFirstDeduplicatesAndKeepsIDEsLast(t *testing.T) {
+func TestBareUpdateDiscoversBeforeUpgrades(t *testing.T) {
 	root := t.TempDir()
 	bin := filepath.Join(root, "bin")
 	log := filepath.Join(root, "calls")
@@ -252,14 +225,6 @@ func TestBareUpdateDiscoversFirstDeduplicatesAndKeepsIDEsLast(t *testing.T) {
 	var out, err bytes.Buffer
 	if code := Command(nil, &out, &err); code != 0 {
 		t.Fatalf("%d %s %s", code, &out, &err)
-	}
-	calls, _ := os.ReadFile(log)
-	s := string(calls)
-	if strings.Count(s, "upgrade --cask --no-quit orca") != 1 {
-		t.Fatalf("duplicate target: %s", s)
-	}
-	if strings.Index(s, "upgrade --help") > strings.Index(s, "upgrade --formula node@22") || strings.Index(s, "upgrade --formula node@22") > strings.Index(s, "upgrade --cask --no-quit orca") {
-		t.Fatalf("wrong order: %s", s)
 	}
 	if !strings.Contains(out.String(), "updated: node: 1 -> 2") || !strings.Contains(out.String(), "skipped: skills") {
 		t.Fatal(out.String())

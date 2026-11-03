@@ -143,7 +143,7 @@ func TestCommandInvocationMatrix(t *testing.T) {
 	args := [][]string{
 		{"bogus"},
 		{"update", "bogus"},
-		{"update", "clients", "ides"},
+		{"update", "clients", "packages"},
 		{"update", "clients", "--help", "extra"},
 		{"dispatch", "reviewer", "--prompt-file", "prompt.md"},
 		{"locks", "verify"},

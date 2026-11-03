@@ -13,19 +13,18 @@ import (
 	"github.com/jvillegasd/harness/internal/skills"
 )
 
-var groups = []string{"packages", "clients", "mcps", "skills", "ides"}
+var groups = []string{"packages", "clients", "mcps", "skills"}
 
-const usage = `Usage: harness update [clients|ides|packages|mcps|skills]
+const usage = `Usage: harness update [clients|packages|mcps|skills]
 
-With no group, run packages, clients, mcps, skills, then ides, sequentially.
+With no group, run packages, clients, mcps, then skills, sequentially.
 Only installed tools with recognized ownership are updated, through their existing
 channel. Missing tools are skipped; ambiguous installations need manual updates.
-Homebrew upgrades always name a formula or cask. IDEs are never restarted.
+Homebrew upgrades always name a formula or cask.
 Failures do not stop unrelated updates; dependent actions are skipped. Exit 1
 means an operation failed. Skips and manual notices do not fail the run.
 
   clients   Claude Code, Codex, OpenCode (Orca-managed copies are skipped)
-  ides      Orca, Zed, preserving stable/preview; manual fallback when unsupported
   packages  Node, gh, uv
   mcps      Engram, agent-browser, browser runtime, existing client registrations
   skills    Update locked upstream bodies and lockfile in a clean Harness checkout
