@@ -30,7 +30,7 @@ The author may reproduce a finding but cannot dismiss it alone. Confirmed findin
 
 ## Finding lifecycle
 
-This follows one actionable finding through the review skill. Findings are deduplicated first. Nits and pre-existing defects are reported separately.
+This follows one actionable finding through the review skill. The subagent roles are `reviewer` and `executor`. **Main agent** means your primary session, called the parent in the skill. Hunting, refutation, and fix validation use separate `reviewer` instances, not additional roles. The main agent can repair findings itself or delegate repairs to an `executor`, but only the main agent commits. Findings are deduplicated first. Nits and pre-existing defects are reported separately.
 
 ```mermaid
 stateDiagram-v2
@@ -42,25 +42,25 @@ stateDiagram-v2
     state "Fix validated" as Validated
     state "Needs your decision" as Decision
 
-    [*] --> Reported: Reviewer hunts for defects
-    Reported --> Confirmed: Parent reproduces the defect
-    Reported --> Evidence: Parent cannot confirm
-    Evidence --> Confirmed: Verifier reproduces the defect
-    Evidence --> Refuted: Independent reviewer cites why the failure cannot occur
+    [*] --> Reported: reviewer hunts for defects
+    Reported --> Confirmed: Main agent reproduces the defect
+    Reported --> Evidence: Main agent cannot confirm
+    Evidence --> Confirmed: executor reproduces the defect when verification applies
+    Evidence --> Refuted: reviewer refutes with cited evidence
     Evidence --> Decision: Evidence remains inconclusive
-    Confirmed --> Fixed: Agent repairs and commits with the check passing
-    Fixed --> Validated: Fresh reviewer accepts the fix when validation applies
-    Fixed --> Decision: Medium review leaves substantive repair for you
-    Fixed --> Decision: Validator rejects fix or cannot validate after retry
+    Confirmed --> Fixed: Main agent commits repair with the check passing
+    Fixed --> Validated: reviewer accepts fix when validation applies
+    Fixed --> Decision: Main agent requests your decision at medium
+    Fixed --> Decision: reviewer rejects fix or cannot validate after retry
     Validated --> [*]
     Refuted --> [*]
 ```
 
-At `medium`, the parent tries to reproduce findings. At `high`, or for an explicitly requested review, a fresh executor also tests remaining findings. Prose contradictions can be confirmed by citing the conflicting instructions instead of running a test. Refutation requires both a finding that was not reproduced and an independent reviewer's cited explanation of where its failure path is prevented.
+At `medium`, the main agent tries to reproduce findings. At `high`, or for an explicitly requested review, an `executor` also tests remaining findings. Prose contradictions can be confirmed by citing the conflicting instructions instead of running a test. Refutation requires both a finding that was not reproduced and a `reviewer`'s cited explanation of where its failure path is prevented.
 
-Fresh fix validation applies at `high` or for an explicitly requested review when the repair changes behavior. A successful validation leaves the ledger disposition `fixed`; **Fix validated** is a diagram label. Fixes without behavior changes need no validator. At `medium`, substantive repairs await your decision.
+Fix validation by a `reviewer` applies at `high` or for an explicitly requested review when the repair changes behavior. A successful validation leaves the ledger disposition `fixed`; **Fix validated** is a diagram label. Fixes without behavior changes need no validation by a `reviewer`. At `medium`, substantive repairs await your decision.
 
-Inconclusive evidence, failed validation, and new defects discovered during validation are recorded as `unverified` and brought to you. The agent does not start a second repair loop on its own. A changed review snapshot needs its affected evidence rechecked.
+Inconclusive evidence, failed validation, and new defects discovered during validation are recorded as `unverified` and brought to you. The main agent does not start a second repair loop on its own. A changed review snapshot needs its affected evidence rechecked.
 
 ## Enforcement limits
 
