@@ -120,6 +120,7 @@ type runner struct {
 func (r *runner) report(status, name, detail string) {
 	r.results = append(r.results, fmt.Sprintf("%s: %s: %s", status, name, detail))
 	if status == "failed" {
+		fmt.Fprintf(r.err, "harness update: %s: %s\n", name, detail)
 		r.failed = true
 	}
 }

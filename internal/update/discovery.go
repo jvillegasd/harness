@@ -148,7 +148,6 @@ func (r *runner) discover(selected []string) []target {
 		}
 	}
 	var targets []target
-	seen := map[string]bool{}
 	for _, group := range selected {
 		if group == "ides" {
 			targets = append(targets, inv.ides()...)
@@ -178,7 +177,7 @@ func (r *runner) discover(selected []string) []target {
 		}
 	}
 	// Deduplicate the complete plan, including IDE casks.
-	seen = map[string]bool{}
+	seen := map[string]bool{}
 	for i := range targets {
 		t := &targets[i]
 		if len(t.command) == 0 {

@@ -13,6 +13,10 @@ Acceptance: fake executable and temporary-home tests at the coordinator/CLI and 
 | Unknown and prerelease npm channels use manual updates | An installed version does not identify its original dist-tag; never silently migrate preview to stable | User's channel-preservation requirement |
 | MCP updates register servers directly without `engram setup` | Setup also installs hooks and skills outside the requested MCP scope | internal/install/clients.go |
 
+| Require Homebrew `--no-quit` for cask upgrades | Homebrew normally quits and reopens cask apps during upgrades; older versions receive manual fallback | Homebrew Manpage upgrade options |
+
 ## Status
 
-Inspection complete; implementation in progress. Next: red CLI test, coordinator, scoped MCP helper, skill protection, tests, docs, checks, review.
+Implementation complete. Observed red CLI help, dirty locked-path, Homebrew ownership, and MCP prerequisite tests before implementation. The preflight summary initially omitted stderr diagnostics; its existing regression test caught this and the fix restores diagnostics. Focused checks, full checks, and independent review pending. No machine upgrades or installation performed.
+
+Next: pass focused tests, commit the repair, run all repository checks, and independent bugs review at medium/Quick.
