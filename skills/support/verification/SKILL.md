@@ -22,7 +22,7 @@ A pass is only worth what it covers. Binding each result to a revision, and nami
 
 A fixture, a static read-back, or a self-review is not live acceptance or independent inspection, so report it as what it is.
 
-For persistent backend, API, or logical journey coverage, use `journey-verification` to create and run tests with the minimal required services and reusable fixtures or provider fakes.
+For persistent frontend, backend, API, or logical journey coverage, use `journey-verification` to create and run tests with the minimal required services and reusable fixtures or provider fakes.
 
 ## Certainty ladder
 
