@@ -41,6 +41,7 @@ See [installation and your files](docs/installation.md) for how installation and
 | Settle an unclear idea | `/grill-with-docs` |
 | Write a specification | `/spec` |
 | Build test-first | `tdd` |
+| Keep frontend or backend journey tests | `journey-verification` |
 | Review changes | `review` |
 | Publish the work | “Open a PR” or “ship this” |
 | Merge the current PR | `/land` |
