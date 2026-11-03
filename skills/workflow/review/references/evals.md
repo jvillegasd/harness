@@ -1,6 +1,6 @@
 # Review evals
 
-Measure whether the reviewer finds real defects without noise, using cases from this repository's own history. Cases and runs live in `"$(git rev-parse --path-format=absolute --git-common-dir)/harness-review/evals"` as `evals.jsonl` and `runs/<date>.jsonl`. That is inside the Git directory, so they never go into the repository, and it sits outside the `branches/` directories that `land` and `abandon` delete.
+Measure whether the reviewer finds real defects without noise, using cases from this repository's own history. Cases and runs live in `"$(git rev-parse --path-format=absolute --git-common-dir)/harness-review/evals"` as `evals.jsonl` and `runs/<date>.jsonl`. That is inside the Git directory, so they never go into the repository, and it sits outside the `branches/` directories that `land` deletes.
 
 Each case is one JSON line, and refers to commits rather than copying code:
 
