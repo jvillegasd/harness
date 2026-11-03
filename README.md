@@ -109,11 +109,7 @@ harness update skills     # Locked upstream skills and lockfile
 
 A bare update runs packages, clients, MCPs, then skills. It discovers ownership before upgrading and inventories Homebrew once. Upgrades name individual formulae or casks and preserve the installation and release channels. Orca-managed clients stay owned by Orca. Recognized native Claude Code and OpenCode installations use vendor updaters. Stable npm Codex installations update through their owning prefix; prerelease or ambiguous installations need manual updates.
 
-Missing tools are skipped. Cask updates require Homebrew's `--no-quit` support. MCP updates refresh agent-browser's browser runtime and client registrations without reinstalling Harness policy, settings, skills, or roles.
-
-The summary distinguishes observed version changes, unchanged versions, successful commands whose version change is unavailable, skips, manual updates, and failures. Unrelated updates continue after a failure; dependent operations are skipped. Exit status 1 means an operation failed. Completed upgrades are not rolled back.
-
-Machine groups work outside a checkout. A bare update there skips skills, while explicit `harness update skills` fails before machine discovery. Both skill update commands refuse staged, unstaged, untracked, or ignored changes in locked bodies or `skills-lock.json`. Unrelated work and its index state are preserved. Review the reported body and lockfile changes before running `harness install` to deploy them. The updater never commits, publishes, installs missing tools, or updates Harness itself.
+MCP updates refresh agent-browser's browser runtime and client registrations without reinstalling Harness policy, settings, skills, or roles. See the [CLI reference](docs/cli.md#update-installed-tools) for update behavior and failure handling.
 
 ## Maintain skills
 

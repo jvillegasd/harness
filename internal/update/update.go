@@ -17,22 +17,14 @@ var groups = []string{"packages", "clients", "mcps", "skills"}
 
 const usage = `Usage: harness update [clients|packages|mcps|skills]
 
-With no group, run packages, clients, mcps, then skills, sequentially.
-Only installed tools with recognized ownership are updated, through their existing
-channel. Missing tools are skipped; ambiguous installations need manual updates.
-Homebrew upgrades always name a formula or cask.
-Failures do not stop unrelated updates; dependent actions are skipped. Exit 1
-means an operation failed. Skips and manual notices do not fail the run.
+Update installed tools. Omit the group to update all groups.
 
-  clients   Claude Code, Codex, OpenCode (Orca-managed copies are skipped)
-  packages  Node, gh, uv
-  mcps      Engram, agent-browser, browser runtime, existing client registrations
-  skills    Update locked upstream bodies and lockfile in a clean Harness checkout
+  clients   Update Claude Code, Codex, and OpenCode
+  packages  Update Node, gh, and uv
+  mcps      Update Engram, agent-browser, and client registrations
+  skills    Update locked skills in this checkout
 
-Machine groups work from any directory. A bare update outside a Harness checkout
-skips skills; explicit update skills fails. Locally changed locked paths are
-refused. Review skill changes before running harness install to deploy them.
-This command neither installs missing tools nor updates Harness itself.
+Details: docs/cli.md#update-installed-tools
 `
 
 // Command validates the entire invocation before discovery or mutation.

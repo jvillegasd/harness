@@ -30,22 +30,19 @@ const usage = `Usage: harness install [--skip-packages] [--no-backup]
        harness install --clear-backups
 
   --skip-packages
-                 Reconcile the policy, skill, and role agent copies,
-                 the tracked client settings, and the Engram and agent-browser
-                 registrations, without installing packages. No package manager is called,
-                 so Engram, agent-browser, and Claude Code have to be installed
-                 already; a full run is what installs them.
-  --no-backup    Delete whatever is in the way instead of moving it to
-                 ~/.dotfiles-backups. Destructive and unrecoverable: a private
-                 skill or a hand-edited config sitting at a managed path is
-                 gone, not archived.
+                 Reconcile the policy, skill, and role agent copies, tracked
+                 client settings, and Engram and agent-browser registrations.
+                 Packages are not installed, so Engram, agent-browser, and
+                 Claude Code must already be installed.
+  --no-backup    Delete files at managed paths instead of archiving them in
+                 ~/.dotfiles-backups. Private skills and hand-edited configs
+                 at those paths will be lost.
   --uninstall    Remove the harness-managed configuration recorded in
-                 ~/.harness/state.json: the copies it wrote, the tracked keys
-                 in the Claude config, the ~/.zshrc alias block, and the Engram
-                 and agent-browser registrations. A copy edited since it was
-                 written stays. Binaries, packages, ~/.engram, ~/.agent-browser,
-                 and ~/.dotfiles-backups are not touched. It asks before
-                 removing anything.
+                 ~/.harness/state.json, including copied files, tracked Claude
+                 settings, the ~/.zshrc alias block, and Engram and
+                 agent-browser registrations. Edited copies stay. Binaries,
+                 packages, ~/.engram, ~/.agent-browser, and ~/.dotfiles-backups
+                 are left alone. Prompts before removing anything.
   --client       With --uninstall, limit it to claude, codex, or opencode;
                  repeatable.
   --component    With --uninstall, limit it to agents, aliases, mcp,
@@ -53,12 +50,9 @@ const usage = `Usage: harness install [--skip-packages] [--no-backup]
                  installed client still uses stays.
   --yes          With --uninstall, skip the confirmation.
   --clear-backups
-                 Delete every archive under ~/.dotfiles-backups/harness/,
-                 which is where an install moves whatever was in the way of a
-                 managed path. Destructive and unrecoverable, and it is the
-                 only copy of anything of yours an install displaced. Touches
-                 nothing else in ~/.dotfiles-backups and installs nothing;
-                 runs on its own.
+                 Delete every archive under ~/.dotfiles-backups/harness/.
+                 These archives hold files displaced from managed paths.
+                 Nothing else in ~/.dotfiles-backups is touched. Runs alone.
 
 Install and uninstall run from any directory. An install copies this binary
 to ~/.local/bin/harness, where the Claude Code status line runs it, copies the

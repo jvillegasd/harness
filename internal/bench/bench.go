@@ -19,18 +19,15 @@ import (
 
 const usage = `Usage: harness bench [--split <date>] [--since <date>] [--client <name>] [--home <dir>] [--rows]
 
-Compare the session population before and after a harness change.
+Compare sessions before and after a harness change.
 
-  --split   Commit date of the change under test, YYYY-MM-DD. Sessions before
-            it are before, on or after it after. Required for the report, not
-            for --rows.
+  --split   Change date (YYYY-MM-DD). Required for reports, not --rows.
   --since   Ignore sessions older than this date.
-  --client  Limit to claude, codex, or opencode; repeatable (default: all).
-  --home    Session-store root (default: the current home).
+  --client  Include claude, codex, or opencode. Repeatable (default: all).
+  --home    Session store directory (default: your home directory).
   --rows    Print one JSON object per session instead of the report.
 
-Run it from inside the checkout, where the work patterns live in
-bench/cohorts.json.
+Run inside the checkout. Work patterns come from bench/cohorts.json.
 `
 
 // Command runs `harness bench` and returns the process exit code.
