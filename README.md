@@ -95,6 +95,27 @@ Use `harness models --help` to inspect presets and per-role assignments. Changin
 
 The installer sources `aliases.sh` from `~/.zshrc`. These launchers grant broad access. Claude Code also gets a harness status line; Codex uses its own footer.
 
+## Update installed tools
+
+`harness install` installs missing tools and reconciles Harness assets. It leaves installed package versions alone. To upgrade installed tools explicitly:
+
+```sh
+harness update            # All groups
+harness update clients    # Claude Code, Codex, OpenCode
+harness update ides       # Orca, Zed
+harness update packages   # Node, gh, uv
+harness update mcps       # Engram, agent-browser, registrations
+harness update skills     # Locked upstream skills and lockfile
+```
+
+A bare update runs packages, clients, MCPs, skills, then IDEs. It discovers ownership before upgrading and inventories Homebrew once. Upgrades name individual formulae or casks and preserve the installation and release channels. Orca-managed clients stay owned by Orca. Recognized native Claude Code and OpenCode installations use vendor updaters. Stable npm Codex installations update through their owning prefix; prerelease or ambiguous installations need manual updates.
+
+Missing tools are skipped. Unsupported IDE installations report their in-app update route. Cask updates require Homebrew's `--no-quit` support. No IDE is quit, relaunched, or restarted. MCP updates refresh agent-browser's browser runtime and client registrations without reinstalling Harness policy, settings, skills, or roles.
+
+The summary distinguishes observed version changes, unchanged versions, successful commands whose version change is unavailable, skips, manual updates, and failures. Unrelated updates continue after a failure; dependent operations are skipped. Exit status 1 means an operation failed. Completed upgrades are not rolled back.
+
+Machine groups work outside a checkout. A bare update there skips skills, while explicit `harness update skills` fails before machine discovery. Both skill update commands refuse staged, unstaged, untracked, or ignored changes in locked bodies or `skills-lock.json`. Unrelated work and its index state are preserved. Review the reported body and lockfile changes before running `harness install` to deploy them. The updater never commits, publishes, installs missing tools, or updates Harness itself.
+
 ## Maintain skills
 
 Skills live in `skills/<group>/<name>/`; clients invoke them by name. Groups organize the repository, not the workflow.

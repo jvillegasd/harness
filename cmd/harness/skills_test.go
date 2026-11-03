@@ -212,6 +212,7 @@ func TestSkillsUpdateDrivesNpx(t *testing.T) {
 	if r := lr.harness(t, "skills", "update", "extra"); r.code == 0 {
 		t.Fatal("update with an argument should fail")
 	}
+	commitLockFixture(t, lr)
 	ok(t, lr.harness(t, "skills", "update"), "skills update")
 	if got := lr.npxLog(t); !strings.Contains(got, "npx skills@1 update --project --yes") {
 		t.Fatalf("npx log = %q", got)
@@ -229,6 +230,7 @@ mkdir -p .agents/skills/myskill
 echo "# new" > .agents/skills/myskill/SKILL.md
 sed 's/0000000000000000000000000000000000000000000000000000000000000000/1111111111111111111111111111111111111111111111111111111111111111/' skills-lock.json > lock.tmp && mv lock.tmp skills-lock.json
 `, 0o755)
+	commitLockFixture(t, lr)
 	ok(t, lr.harness(t, "skills", "update"), "skills update")
 	if got := readFile(t, filepath.Join(lr.root, "skills/g/myskill/SKILL.md")); got != "# new\n" {
 		t.Fatalf("grouped body = %q", got)
@@ -550,6 +552,7 @@ echo "# new" > .agents/skills/aaa/SKILL.md
 echo "# new" > .agents/skills/zzz/SKILL.md
 echo '{"version": 1, "skills": {}}' > skills-lock.json
 `, 0o755)
+	commitLockFixture(t, lr)
 	if r := lr.harness(t, "skills", "update"); r.code == 0 || !strings.Contains(r.stderr, "zzz") {
 		t.Fatalf("update exited %d with stderr %q; want a refusal naming zzz", r.code, r.stderr)
 	}
@@ -558,5 +561,95 @@ echo '{"version": 1, "skills": {}}' > skills-lock.json
 	}
 	if got := readFile(t, filepath.Join(lr.root, "skills-lock.json")); got != lock {
 		t.Fatalf("the refused update rewrote the lock:\n%s", got)
+	}
+}
+
+func commitLockFixture(t *testing.T, lr lockRun) {
+	t.Helper()
+	for _, args := range [][]string{{"init"}, {"add", "."}, {"-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "fixture"}} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = lr.root
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+}
+
+func TestSkillsUpdatePreservesDirtyLockedPaths(t *testing.T) {
+	for _, change := range []string{"body", "staged", "untracked", "ignored", "lock"} {
+		t.Run(change, func(t *testing.T) {
+			lr := newLockRun(t)
+			lr.setNpx(t, false)
+			seedLockedSkill(t, lr, "myskill")
+			if change == "ignored" {
+				writeMode(t, filepath.Join(lr.root, ".gitignore"), "private.txt\n", 0644)
+			}
+			commitLockFixture(t, lr)
+			path := filepath.Join(lr.root, "skills/g/myskill/SKILL.md")
+			if change == "lock" {
+				path = filepath.Join(lr.root, "skills-lock.json")
+			}
+			if change == "untracked" || change == "ignored" {
+				path = filepath.Join(lr.root, "skills/g/myskill/private.txt")
+			}
+			f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				t.Fatal(err)
+			}
+			f.WriteString("\n ")
+			f.Close()
+			if change == "staged" {
+				cmd := exec.Command("git", "add", path)
+				cmd.Dir = lr.root
+				if err := cmd.Run(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			before := readFile(t, path)
+			index := exec.Command("git", "diff", "--cached", "--binary")
+			index.Dir = lr.root
+			indexBefore, _ := index.Output()
+			for _, args := range [][]string{{"skills", "update"}, {"update", "skills"}} {
+				r := lr.harness(t, args...)
+				if r.code != 1 || !strings.Contains(r.stderr, "local changes") {
+					t.Fatalf("%v: %+v", args, r)
+				}
+			}
+			if readFile(t, path) != before || lr.npxLog(t) != "" {
+				t.Fatal("dirty update changed files or ran npx")
+			}
+			index = exec.Command("git", "diff", "--cached", "--binary")
+			index.Dir = lr.root
+			after, _ := index.Output()
+			if string(after) != string(indexBefore) {
+				t.Fatal("index changed")
+			}
+		})
+	}
+}
+
+func TestSkillsUpdatePreservesUnrelatedChangesAndIndex(t *testing.T) {
+	lr := newLockRun(t)
+	lr.setNpx(t, false)
+	seedLockedSkill(t, lr, "myskill")
+	unrelated := filepath.Join(lr.root, "notes.md")
+	writeMode(t, unrelated, "original\n", 0644)
+	commitLockFixture(t, lr)
+	writeMode(t, unrelated, "staged\n", 0644)
+	cmd := exec.Command("git", "add", "notes.md")
+	cmd.Dir = lr.root
+	if err := cmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+	writeMode(t, unrelated, "unstaged\n", 0644)
+	before := exec.Command("git", "diff", "--cached", "--binary")
+	before.Dir = lr.root
+	index, _ := before.Output()
+	ok(t, lr.harness(t, "update", "skills"), "update skills")
+	after := exec.Command("git", "diff", "--cached", "--binary")
+	after.Dir = lr.root
+	got, _ := after.Output()
+	if string(got) != string(index) || readFile(t, unrelated) != "unstaged\n" {
+		t.Fatal("unrelated state changed")
 	}
 }
