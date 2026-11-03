@@ -53,7 +53,7 @@ This capability merges, reconciles an authorized tracker binding, and retires a 
 
    Repair only direct dependents. A deeper chain keeps sitting on the old commits until its own base lands, and that run finds its boundary as above, so rebasing it now would only repeat work. A conflict that is more than mechanical stops here: leave the head branch undeleted, report which dependents were repaired and which were not, and treat the rest as `/address-review` work. Nothing below runs until every dependent is repaired or reported.
 
-7. Verify the merge and default-branch health. Fetch and prune, locate `<default>`'s worktree with `git worktree list`, then run `git -C <that path> merge --ff-only origin/<default>`. Run the repository-required local checks on the updated default branch and report failures before cleanup. Pass `-C` so the right branch is updated, and use it in place of `git checkout <default>`, which fails when another worktree owns the branch.
+7. Update the default branch. Fetch and prune, locate `<default>`'s worktree with `git worktree list`, then run `git -C <that path> merge --ff-only origin/<default>`. Pass `-C` so the right branch is updated, and use it in place of `git checkout <default>`, which fails when another worktree owns the branch.
 
    When recovery material exists, read `continuity` and preserve it before retirement. Record the confirmed merge and remaining cleanup in the retained copy of the task document outside a checkout slated for retirement; mirror if available. Keep the merged checkout clean of this bookkeeping, create no checkpoint merely to land, and leave legacy records as they are.
 
