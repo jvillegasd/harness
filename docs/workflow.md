@@ -38,6 +38,8 @@ The [README state diagram](../README.md#everyday-use) shows the delivery path:
 
 These describe the intended workflow, not a centrally enforced task status. Live agent compliance is separate from the written policy.
 
+See the [finding lifecycle](subagents.md#finding-lifecycle) for how review concerns are confirmed, refuted, repaired, and validated.
+
 For longer work, the agent keeps requirements, decisions, evidence, and the next action in `docs/agents/tasks/<feature>.md`. Small tasks need no extra document.
 
 ## Larger builds

@@ -28,6 +28,40 @@ At `medium`, reviews use a lean bug hunt and independent refutation when needed.
 
 The author may reproduce a finding but cannot dismiss it alone. Confirmed findings need fixes; unresolved findings go to the human. Findings stay in a local per-branch ledger inside the Git directory, not in commits or PR bodies.
 
+## Finding lifecycle
+
+This follows one actionable finding through the review skill. Findings are deduplicated first. Nits and pre-existing defects are reported separately.
+
+```mermaid
+stateDiagram-v2
+    state "Finding reported" as Reported
+    state "Evidence under review" as Evidence
+    state "Confirmed" as Confirmed
+    state "Refuted" as Refuted
+    state "Fixed" as Fixed
+    state "Fix validated" as Validated
+    state "Needs your decision" as Decision
+
+    [*] --> Reported: Reviewer hunts for defects
+    Reported --> Confirmed: Parent reproduces the defect
+    Reported --> Evidence: Parent cannot confirm
+    Evidence --> Confirmed: Verifier reproduces the defect
+    Evidence --> Refuted: Independent reviewer cites why the failure cannot occur
+    Evidence --> Decision: Evidence remains inconclusive
+    Confirmed --> Fixed: Agent repairs and commits with the check passing
+    Fixed --> Validated: Fresh reviewer accepts the fix when validation applies
+    Fixed --> Decision: Medium review leaves substantive repair for you
+    Fixed --> Decision: Validator rejects fix or cannot validate after retry
+    Validated --> [*]
+    Refuted --> [*]
+```
+
+At `medium`, the parent tries to reproduce findings. At `high`, or for an explicitly requested review, a fresh executor also tests remaining findings. Prose contradictions can be confirmed by citing the conflicting instructions instead of running a test. Refutation requires both a finding that was not reproduced and an independent reviewer's cited explanation of where its failure path is prevented.
+
+Fresh fix validation applies at `high` or for an explicitly requested review when the repair changes behavior. A successful validation leaves the ledger disposition `fixed`; **Fix validated** is a diagram label. Fixes without behavior changes need no validator. At `medium`, substantive repairs await your decision.
+
+Inconclusive evidence, failed validation, and new defects discovered during validation are recorded as `unverified` and brought to you. The agent does not start a second repair loop on its own. A changed review snapshot needs its affected evidence rechecked.
+
 ## Enforcement limits
 
 Client restrictions differ. Claude Code and OpenCode restrict read-only roles with tool permissions and shell guards. Some executor limits remain instructions. Codex workers launched through Orca use a workspace-write sandbox with network access; it blocks commits through read-only Git metadata, but read-only role behavior and publication limits still depend on instructions. Native Codex subagents inherit the parent's sandbox.
