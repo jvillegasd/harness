@@ -16,17 +16,17 @@ import (
 
 const usage = `Usage: harness change-map [--base <ref>] [--json]
 
-Classify the files this branch changes into review tiers, lowest to highest:
-mechanical, tests-docs, structural, behavioral, critical. The tier is a floor
-from deterministic signals; judgment may raise it, never lower it.
+Classify changed files into review tiers: mechanical, tests-docs, structural,
+behavioral, or critical. Deterministic signals set the minimum tier; judgment
+can raise it.
 
-  --base  Ref to compare against (default: origin/HEAD if it resolves, else
-          main). Files changed since the merge base with HEAD, including
-          staged, unstaged, deleted, and untracked files, are classified.
+  --base  Ref to compare against (default: origin/HEAD, or main if unavailable).
+          Classifies staged, unstaged, deleted, and untracked files since the
+          merge base with HEAD.
   --json  Print one JSON object instead of tab-separated lines.
 
-Add repo-relative globs under "criticalPaths" in docs/agents/harness.json to
-mark files that always need a human.
+Set repo-relative globs in "criticalPaths" in docs/agents/harness.json for
+files that always need human review.
 `
 
 // File is one classified changed file.
