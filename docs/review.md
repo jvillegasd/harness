@@ -1,72 +1,105 @@
 # How review works
 
-Review gives a change an independent reading before delivery. The reviewer sees the requirements, source, diff, and project conventions, without the author's rationale. Tests establish observed behavior; review looks for mistakes the tests and author missed. A missed defect costs more than an extra question, so review favors recall: nothing is dropped on the author's word.
+Review gives a change a second pair of eyes before it reaches you. Other agents read the change without hearing why the author wrote it that way, so they judge the code rather than the explanation. Tests show what the code does; review looks for what the tests and the author missed.
 
-## Levels control independent perspectives
+Review leans toward catching too much rather than too little. The author can prove a problem is real, but can never dismiss one alone. Anything nobody could prove or disprove comes to you.
 
-Medium uses one general reviewer covering correctness, requirements, error paths, compatibility, relevant security risks, conventions, and test gaps. A specialist is an additional perspective, not the only place a question gets checked.
+## Pick how much review you want
 
-High adds one or two specialists where the change warrants them: requirements, consequential risks, or interfaces and structure. For example, a retry change deserves deeper failure and concurrency analysis. It need not purchase a separate style review. Explicit Deep adds a second general reviewer, from another vendor when the installed assignments support that, and keeps the union of both reports, because different models catch different defects.
+Your review level decides when reviews start on their own and how many agents they may use. Set it with `harness review level off|medium|high`; `medium` is the default. Only you change it.
 
-The setting and risk answer different questions. Your level controls how much independent scrutiny you want. The change's risk controls automatic entry and which specialists are useful. An explicit review keeps the selected level; with review off, an explicit request uses Medium. Asking for a review does not silently select High.
+| Level | Starts on its own for | Who reviews | Most agents per review |
+| --- | --- | --- | --- |
+| `off` | Nothing | (an explicit request runs at Medium) | 0 unless you ask |
+| `medium` | Every PR beyond docs or tests, and local work that is critical or names a security, data-loss, compatibility, or concurrency risk | One general reviewer | 2 |
+| `high` | Every PR or local change that is structural or riskier | The general reviewer plus one or two specialists | 6 |
+| Deep | Only when you ask for it by name | High plus a second general reviewer | 7 |
+
+Asking for a review always runs one, at your configured level (Medium when the level is `off`). It never silently upgrades to High.
+
+The general reviewer covers correctness, requirements, error handling, compatibility, relevant security, project conventions, and missing tests. A specialist digs deeper into one area where the change needs it:
+
+- **Requirements:** does the change do exactly what the ticket or spec asked, no more and no less?
+- **Risk:** trust boundaries, data loss, failing dependencies, or concurrency.
+- **Standards:** changed interfaces, structure, and the project's documented conventions.
+
+Deep's second general reviewer comes from another model vendor when your setup allows it. Every finding from either reviewer is kept, because different models catch different bugs.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Entry
-  Entry --> Skipped: off or automatic trigger absent
-  Entry --> Medium: medium or explicit request while off
-  Entry --> High: high
-  Entry --> Deep: explicit Deep request
-  Medium --> Snapshot: general reviewer
-  High --> Snapshot: general plus relevant specialists
-  Deep --> Snapshot: High plus a second general reviewer
-  Snapshot --> Hunt: committed revision and blind briefs
-  Hunt --> Findings: all hunters finished
-  Hunt --> Unverified: missing coverage or changed source
-  Findings --> Complete: no supported findings
-  Findings --> Resolve: findings need evidence
-  Resolve --> Complete: all findings resolved
-  Resolve --> Unverified: unresolved evidence or exhausted cap
+  state "No review" as Skipped
+  state "Medium: one general reviewer" as Medium
+  state "High: general reviewer + specialists" as High
+  state "Deep: High + second general reviewer" as Deep
+
+  [*] --> Skipped: level is off, or the change is too small to trigger one
+  [*] --> Medium: level is medium, or you ask while it is off
+  [*] --> High: level is high
+  [*] --> Deep: you ask for Deep
+  Medium --> Reviewed
+  High --> Reviewed
+  Deep --> Reviewed
   Skipped --> [*]
-  Complete --> [*]
-  Unverified --> [*]
+  Reviewed --> [*]
 ```
 
-Automatic Medium reviews cover PRs above documentation and test-only changes, and local handoffs with critical or concrete security, data-loss, compatibility, or concurrency risk. High also covers structural and behavioral local handoffs. Unattended build reviews ordinary implementation at Medium too.
+## What happens during a review
 
-## Findings need evidence
+1. **Freeze the change.** The agent commits its work, and reviewers read exactly that commit. Nothing is edited until every reviewer has reported.
+2. **Hunt.** Reviewers get the requirements (copied word for word), the diff, and the project's standards. They never see the conversation or the author's reasoning.
+3. **Prove each finding.** The agent tries to reproduce every problem by running a small test or script. At High and Deep, a separate agent can run what the main agent could not.
+4. **Challenge what could not be proven.** A bug nobody could reproduce goes to a fresh reviewer, whose only job is to show it cannot happen. A smaller risk or an open question comes straight to you instead.
+5. **Fix and check.** Each confirmed problem is fixed with a test that failed before the fix and passes after. At High and Deep, one more reviewer reads the fix to make sure it solves the root cause and breaks nothing else.
 
-The author can confirm a defect with a reproduction but cannot dismiss it alone. The parent tries to reproduce every finding. At High and Deep, one batch executor may run what the parent could not. Only an unreproduced bug goes to a fresh refuter, which receives the findings and the source without the author's explanation. An unreproduced risk or question goes straight to the human.
+## What happens to a finding
 
 ```mermaid
 stateDiagram-v2
+  state "Reported" as Reported
+  state "Confirmed" as Confirmed
+  state "Challenged" as Challenged
+  state "Dismissed" as Refuted
+  state "Fixed" as Fixed
+  state "Fix rechecked" as Rechecked
+  state "Needs your decision" as Decision
+  state "Noted only" as Advisory
+
   [*] --> Reported
-  Reported --> Advisory: nit or pre-existing
-  Reported --> Confirmed: reproduction or contradictory prose proves defect
-  Reported --> Refutation: unreproduced bug
-  Reported --> Unverified: unreproduced risk or question
-  Refutation --> Refuted: cited path proves failure unreachable
-  Refutation --> Unverified: reachable or unknown without proof
-  Confirmed --> Repair: one correction batch
-  Repair --> Fixed: regression check passes (Medium)
-  Repair --> Recheck: regression check passes (High, Deep)
-  Repair --> Unverified: check fails or cannot run
-  Recheck --> Fixed: independent recheck says holds
-  Recheck --> Unverified: fails, unavailable, or new defect
-  Advisory --> [*]
+  Reported --> Advisory: style nit, or a problem that existed before this change
+  Reported --> Confirmed: a test reproduces it, or two instructions contradict each other
+  Reported --> Challenged: a bug nobody could reproduce
+  Reported --> Decision: a risk or question nobody could reproduce
+  Challenged --> Refuted: the challenger shows exactly where the failure is blocked
+  Challenged --> Decision: the challenger cannot rule it out
+  Confirmed --> Fixed: fix committed, its test now passes
+  Fixed --> [*]: Medium, the passing test is the proof
+  Fixed --> Rechecked: High or Deep, a reviewer confirms the fix holds
+  Fixed --> Decision: the recheck finds the fix incomplete or a new problem
+  Rechecked --> [*]
   Refuted --> [*]
-  Fixed --> [*]
-  Unverified --> [*]
+  Advisory --> [*]
+  Decision --> [*]
 ```
 
-A green reproduction alone does not refute a finding. At Medium, the red check turning green proves the repair. At High and Deep, one recheck reviewer reads the repair delta rather than starting another broad hunt. Unresolved findings return to the human instead of opening an unlimited correction loop.
+A test that fails to reproduce a bug is not enough to dismiss it; the challenger must also point to the line that blocks it. There is only ever one round of fixes. If a fix does not hold, the agent brings it to you instead of looping.
 
-## Caps cover the whole review
+## What you get at the end
 
-Medium permits two role calls: one general reviewer and a conditional refuter. A clean review spends one call and creates no worktree. High permits six: up to three hunters plus a conditional executor, refuter, and recheck. Deep permits seven by adding the second general reviewer.
+- The level used, which reviewers ran and why, and how many agents it took.
+- The exact commit that was reviewed and which standards the reviewers read.
+- Findings grouped by reviewer, worst first within each group, each marked confirmed, fixed, dismissed, or waiting on you.
+- Anything that could not be covered, such as a reviewer that failed or a part of the change too large to fit.
 
-Retries, delegated corrections, and slices count against the same cap. Splitting a large diff does not multiply it. Required work that cannot fit is reported as unverified, with the missing coverage named. These are invocation limits, not dollar or token guarantees.
+Your decisions are recorded too: "this is intended" or "not worth fixing" keeps your words as the reason. `/land` asks you to reconfirm any dismissal before it merges.
 
-Reviewers read a committed revision. Only the High executor gets a detached worktree, removed once its work is saved. Findings and fixes remain in the existing branch ledger. A changed revision invalidates affected evidence; a clean outcome applies only to the inspected scope. Review does not grant permission to push or merge.
+## Where results live
 
-The [review skill](../skills/workflow/review/SKILL.md) defines the executable procedure. These diagrams explain its intended flow; they are not a model-checked proof or evidence of live agent behavior.
+Findings stay on your machine in a per-branch ledger inside the Git directory. They never go into commits, and a PR only carries one `Reviewed: <base>..<sha>` line. `/land` deletes the ledger once the branch merges. See [`harness review`](cli.md#review-commands) for reading it.
+
+At Medium and High, `/land` holds a PR beyond docs or tests until a review covers its latest commit. Review never pushes or merges on its own.
+
+## Limits
+
+- Agent counts are caps, not cost guarantees. Retries, fixes, and splitting a large change all count against the same cap; what does not fit is reported as unreviewed.
+- A clean review applies only to the commit it read. New commits need the affected parts rechecked.
+- The [review skill](../skills/workflow/review/SKILL.md) is the exact procedure agents follow. These diagrams explain it; they are not proof of how agents behave in practice.

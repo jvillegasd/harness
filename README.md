@@ -79,7 +79,7 @@ stateDiagram-v2
 
 **Ready locally is a complete outcome.** Stop there if you do not want a PR. A publication request can come with the original task or later. From **Needs your input**, work resumes at the stage that was blocked. See [the workflow guide](docs/workflow.md#local-work-and-delivery) for details.
 
-Review defaults to `medium`. Set it yourself with `harness review level off|medium|high`. Medium reviews PRs above documentation/test-only changes and local changes with concrete risks. High adds relevant specialist perspectives. An explicit review request keeps your selected level and works at any level. See [how review works](docs/review.md) for coverage, budgets, and state machines.
+Review defaults to `medium`. Set it yourself with `harness review level off|medium|high`. Medium sends PRs beyond docs or tests, and local changes with a concrete risk, to one independent reviewer; High adds one or two specialists where the change needs them; Deep, only on request, adds a second general reviewer. Asking for a review always runs one at your level. Problems nobody can prove or disprove come to you. See [how review works](docs/review.md) for what happens during a review, and [`harness review`](docs/cli.md#review-commands) for reading the results.
 
 Read [the workflow guide](docs/workflow.md) for optional planning, builds, and tracker setup, or [the delegation guide](docs/subagents.md) for worker roles.
 
