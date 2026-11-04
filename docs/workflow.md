@@ -16,6 +16,10 @@ Start with a plain request. The agent inspects the repository, implements the ag
 | You want test-first implementation | `tdd` |
 | A frontend needs design work | `impeccable` |
 | A state machine needs model checking | `/statechart` |
+| Code needs a durable formal check of a model or proof | `/create-formal-verification-skill` |
+| A formal check may be stale after merges or refactors | `/maintain-formal-verification-skill` |
+| The project needs a scripted way to drive the real app | `/create-verification-skill` |
+| A project verify skill or its feature map may have drifted | `/maintain-verification-skill` |
 | A feature, bugfix, PR, or path needs a real end-to-end run | `/e2e-verification` |
 | A session needs a retrospective | `/retro` |
 
