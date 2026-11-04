@@ -13,6 +13,18 @@
       "skillPath": "skills/engineering/codebase-design/SKILL.md",
       "computedHash": "aa11a96c08451f4ff86052d5da94004a8c97bb4ea41b2ac8a4300c189f66c89c"
     },
+    "create-formal-verification-skill": {
+      "source": "backnotprop/pstack",
+      "sourceType": "github",
+      "skillPath": "skills/create-formal-verification-skill/SKILL.md",
+      "computedHash": "ecccfa683447517ba3ebcfbd3099e1f8b05b4b41875a0194942182564d553997"
+    },
+    "create-verification-skill": {
+      "source": "backnotprop/pstack",
+      "sourceType": "github",
+      "skillPath": "skills/create-verification-skill/SKILL.md",
+      "computedHash": "1a096d6f6707ba90440de5fe94bdad1e2a26e5160a6c1bc84f632fd8e4ae4294"
+    },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -54,6 +66,18 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
       "computedHash": "f768cb44209e0d30e3449b8f95ea3dc8293093f73cfe02127d530db43412cf76"
+    },
+    "maintain-formal-verification-skill": {
+      "source": "backnotprop/pstack",
+      "sourceType": "github",
+      "skillPath": "skills/maintain-formal-verification-skill/SKILL.md",
+      "computedHash": "a41b8cffadbd598e4e06dbe57e0ee5c4307f3252814257ccaef198363b359d6c"
+    },
+    "maintain-verification-skill": {
+      "source": "backnotprop/pstack",
+      "sourceType": "github",
+      "skillPath": "skills/maintain-verification-skill/SKILL.md",
+      "computedHash": "273ceda1dc53a0f13b4c695b6bbd01217325cd348b6f7995e07d0b8196162b75"
     },
     "ponytail": {
       "source": "DietrichGebert/ponytail",
