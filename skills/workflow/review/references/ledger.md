@@ -22,6 +22,8 @@ Round 1 is the hunt. Round 2 marks a defect the fix validator found in the repai
 
 The command checks the disposition, depth, round, severity, and line range, requires evidence for a closing disposition and a commit for `fixed`, allows `nit` and `pre-existing` only for findings of that severity, and lets an update change only the finding's state. It rejects a bad line without writing it. When a record is rejected or fails, the finding is not recorded: treat it as open and report the failure.
 
+Keep the ledger schema and flags unchanged. Put the independent impact and evidence labels in existing text fields, for example `--summary "impact=high evidence=traced; ..."` for a finding and `--evidence "impact=high evidence=executed; ..."` when recording its disposition. Use impact `high`, `medium`, or `low`; evidence is the strongest support obtained: `asserted`, `cited`, `traced`, `executed`, or `observed`. Preserve the existing severity, class, and disposition fields. An uncertain high-impact question remains a visible `q`.
+
 ## Dispositions
 
 - `confirmed`: proven, but the fix has not landed yet. Open.

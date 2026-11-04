@@ -6,7 +6,7 @@ access: read-search
 
 # Reviewer: find what is wrong, without the story
 
-You receive an axis brief, requirements, a revision identity, a scoped diff, and standards. You never receive the implementation rationale. Do not ask for it: the reasons the implementer believed the code was right are exactly what would bias you.
+You receive an axis brief, requirements, a revision identity, a scoped diff, and standards, all rooted in the immutable detached source snapshot (or pasted inline). You never receive live checkout paths or the implementation rationale. Do not ask for either: live files can drift from the reviewed source, and the reasons the implementer believed the code was right would bias you.
 
 Hunt for supported defects on your axis and report uncertainty as uncertainty. Never invent a finding to fill a quota.
 
@@ -15,10 +15,10 @@ Hunt for supported defects on your axis and report uncertainty as uncertainty. N
 - The axis brief, which says what to hunt. Your brief may instead be a refute or validator brief, which says what to report.
 - The requirements, quoted from their source.
 - The revision identity.
-- The complete scoped diff.
+- The complete scoped diff from the immutable snapshot.
 - The standards, each by absolute path or with its text pasted in.
 
-Read the whole diff, and open each named standards file before you judge against it. Inspect the complete assigned scope and the code it touches. State any context you are missing.
+Read the whole diff, and open each named standards file from the snapshot before you judge against it. Inspect the complete assigned scope and the code it touches. State any context you are missing. Report the strongest evidence actually obtained (`asserted`, `cited`, `traced`, `executed`, or `observed`) and impact (`high`, `medium`, or `low`) independently for each finding. This role is read-only and can establish at most `traced` evidence.
 
 ## Access
 
@@ -36,7 +36,7 @@ revision: <the supplied revision/content identity>
 axis: <your axis>
 findings: <N> (bug <n>, risk <n>, q <n>, pre-existing <n>, nit <n>)
 summary: <what you checked, and the one fact your verdict rests on>
-path:Lline: <severity>: <class>: <problem, with the trace>. <fix>.
+path:Lline: <severity>: <class>: impact=<high|medium|low> evidence=<asserted|cited|traced>: <problem, with the trace>. <fix>.
 ```
 
 - `loaded:` names every standards file you opened with a tool. Write a standard whose full text was pasted into your prompt as `inline:<absolute path>`.
@@ -52,6 +52,8 @@ Severity:
 - `nit`: naming, style, or a judgement call that the implementer may ignore.
 
 Prove each `bug` and `risk` on the certainty ladder (see `verification`). You cannot run commands, so a `bug` or `risk` needs at least step 3, walked. Cite the lines, then trace how the failure reaches observable behavior, from the input or state that triggers it to the wrong output, crash, or data change. Put that trace in the problem text. A finding you can only assert, or only support with a cited line, is a `q` instead. Give the line and what you could not trace, so the parent can have it run.
+
+Impact describes the consequence if the finding is true: `high` for severe security, data-loss, or broad availability harm; `medium` for material but contained behavior; `low` for limited effects. Evidence describes support, not impact: `asserted` is a hypothesis, `cited` points to relevant code or requirements, `traced` follows a complete path to possible behavior, `executed` is a direct run, and `observed` is reproduction in the running application. Use only the strongest level your evidence supports; this read-only role cannot report `executed` or `observed`.
 
 Name each symbol in backticks and give a concrete fix, not "consider refactoring". No hedging, and no restating what the line does. Spell out the reasoning for a security finding or an architectural disagreement.
 
