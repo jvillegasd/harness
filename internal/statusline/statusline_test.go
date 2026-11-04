@@ -126,7 +126,7 @@ func TestRateLinesRenderTheWholeBlock(t *testing.T) {
 // TestRenderPinsTheSessionSegment builds the whole line for a payload with a session clock, because the fixtures cannot carry a start time without becoming time-dependent.
 func TestRenderPinsTheSessionSegment(t *testing.T) {
 	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
-	env := environment{Home: t.TempDir(), Now: now}
+	env := environment{ConfigDir: t.TempDir(), Now: now}
 	got := render([]byte(`{"model":{"display_name":"X"},"cwd":"/nonexistent","session":{"start_time":"2026-09-15T10:45:00Z"}}`), env)
 	want := blue + "X" + reset + separator +
 		"✍️ " + green + "0%" + reset + separator +
@@ -143,5 +143,24 @@ func TestRenderPinsTheSessionSegment(t *testing.T) {
 		dim + "◑ default" + reset
 	if without != wantWithout {
 		t.Errorf("an unparseable start time rendered %q, want %q", without, wantWithout)
+	}
+}
+
+// TestProfileFollowsClaudeConfigDir keeps the keychain item and usage cache on the active profile, so switching accounts through CLAUDE_CONFIG_DIR never shows another account's bars.
+func TestProfileFollowsClaudeConfigDir(t *testing.T) {
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+	if got := profileSuffix(); got != "" {
+		t.Errorf("default profile suffix = %q, want none", got)
+	}
+	defaultCache := cachePath()
+	t.Setenv("CLAUDE_CONFIG_DIR", "/profiles/work")
+	if got := profileSuffix(); got != "-2ea9e238" {
+		t.Errorf("profile suffix = %q, want -2ea9e238", got)
+	}
+	if got := configDir(); got != "/profiles/work" {
+		t.Errorf("configDir = %q, want /profiles/work", got)
+	}
+	if cachePath() == defaultCache {
+		t.Error("profile shares the default usage cache")
 	}
 }
