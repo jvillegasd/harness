@@ -13,8 +13,9 @@ harness review record --depth standard --axis bugs --reviewer claude/opus --roun
   --path <file> --lines 40-52 --severity bug --class missing-guard \
   --summary "<one line>" --disposition unverified --evidence "<verifier output>"
 
-# A whole review with no findings, or depth none: no --path.
+# A whole review with no findings, or a skipped review: no --path.
 harness review record --depth quick --disposition clean --summary "<what was checked>"
+harness review record --depth none --disposition no-review --summary "level medium: tests-docs only"
 
 # A later state for the same finding: only --disposition, --evidence, and --commit.
 harness review record --id <id> --disposition fixed --commit <fixing sha> --evidence "<the red test, now green>"

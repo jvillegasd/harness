@@ -49,7 +49,7 @@ stateDiagram-v2
 2. **Hunt.** Reviewers get the requirements (copied word for word), the diff, and the project's standards. They never see the conversation or the author's reasoning.
 3. **Prove each finding.** The agent tries to reproduce every problem by running a small test or script. At High and Deep, a separate agent can run what the main agent could not.
 4. **Challenge what could not be proven.** A bug nobody could reproduce goes to a fresh reviewer, whose only job is to show it cannot happen. A smaller risk or an open question comes straight to you instead.
-5. **Fix and check.** Each confirmed problem is fixed with a test that failed before the fix and passes after. At High and Deep, one more reviewer reads the fix to make sure it solves the root cause and breaks nothing else.
+5. **Fix and check.** Each confirmed problem is fixed with a test that failed before the fix and passes after; for contradictory instructions, the fix is rewording them so they agree. At High and Deep, one more reviewer reads the fix to make sure it solves the root cause and breaks nothing else.
 
 ## What happens to a finding
 
@@ -100,6 +100,6 @@ At Medium and High, `/land` holds a PR beyond docs or tests until a review cover
 
 ## Limits
 
-- Agent counts are caps, not cost guarantees. Retries, fixes, and splitting a large change all count against the same cap; what does not fit is reported as unreviewed.
+- Agent counts are caps, not cost guarantees. Retries, delegated fixes, and splitting a large change all count against the same cap; what does not fit is reported as unreviewed.
 - A clean review applies only to the commit it read. New commits need the affected parts rechecked.
 - The [review skill](../skills/workflow/review/SKILL.md) is the exact procedure agents follow. These diagrams explain it; they are not proof of how agents behave in practice.

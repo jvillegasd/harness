@@ -63,6 +63,7 @@ stateDiagram-v2
     Fixed --> Decision: reviewer rejects fix or finds a regression
     Rechecked --> [*]
     Refuted --> [*]
+    Decision --> [*]
 ```
 
 The main agent tries to reproduce every finding. At `high` and Deep, an `executor` also runs findings the main agent could not reproduce inline. Code from fork PRs is not run during review. Prose contradictions can be confirmed by citing the conflicting instructions. Only a bug goes to the refuter, and refutation requires both a failed reproduction and a `reviewer`'s cited explanation of where its failure path is prevented. An unreproduced risk or question goes to you, because a missed defect costs more than a question.
