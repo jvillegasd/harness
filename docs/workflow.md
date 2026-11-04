@@ -16,7 +16,7 @@ Start with a plain request. The agent inspects the repository, implements the ag
 | You want test-first implementation | `tdd` |
 | A frontend needs design work | `impeccable` |
 | A state machine needs model checking | `/statechart` |
-| A release needs browser QA | `/e2e-verification` |
+| A feature, bugfix, PR, or path needs a real end-to-end run | `/e2e-verification` |
 | A session needs a retrospective | `/retro` |
 
 These are independent tools. Using one does not require or automatically start another. A slash marks an explicit invocation here; consult each skill for its inputs.
