@@ -1,6 +1,8 @@
 package statusline
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -162,5 +164,41 @@ func TestProfileFollowsClaudeConfigDir(t *testing.T) {
 	}
 	if cachePath() == defaultCache {
 		t.Error("profile shares the default usage cache")
+	}
+}
+
+// TestProfileReadsItsOwnLogin drives the real lookups under a CLAUDE_CONFIG_DIR profile: the keychain is asked for the profile's suffixed item, the credentials file and settings come from the profile directory, and the default login is never used.
+func TestProfileReadsItsOwnLogin(t *testing.T) {
+	profile := t.TempDir()
+	shims := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", profile)
+	t.Setenv("CLAUDE_CODE_OAUTH_TOKEN", "")
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("PATH", shims)
+	service := "Claude Code-credentials" + profileSuffix()
+	security := "#!/bin/sh\nif [ \"$3\" = '" + service + "' ]; then echo '{\"claudeAiOauth\":{\"accessToken\":\"profile-keychain\"}}'; exit 0; fi\necho '{\"claudeAiOauth\":{\"accessToken\":\"default-keychain\"}}'\n"
+	if err := os.WriteFile(filepath.Join(shims, "security"), []byte(security), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := oauthToken(); got != "profile-keychain" {
+		t.Errorf("keychain token = %q, want profile-keychain", got)
+	}
+
+	if err := os.WriteFile(filepath.Join(shims, "security"), []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(profile, ".credentials.json"), []byte(`{"claudeAiOauth":{"accessToken":"profile-file"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := oauthToken(); got != "profile-file" {
+		t.Errorf("credentials-file token = %q, want profile-file", got)
+	}
+
+	if err := os.WriteFile(filepath.Join(profile, "settings.json"), []byte(`{"effortLevel":"high"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := render([]byte(`{"model":{"display_name":"X"},"cwd":"/nonexistent"}`), environment{ConfigDir: configDir(), Now: time.Now()})
+	if !strings.Contains(got, "high") {
+		t.Errorf("render ignored the profile's effort level: %q", got)
 	}
 }
