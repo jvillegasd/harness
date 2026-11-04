@@ -26,9 +26,10 @@ on its own; an explicit request for a review always runs.
   off     Agents start no review.
   medium  Agents review every pull request above tests-docs, and local work
           only when critical or a named concrete risk, with one hunter and
-          one batched refuter. The default.
-  high    Agents review structural and riskier changes at the depth the
-          change-map tier sets, with batched verification.
+          a refuter only for bugs it cannot reproduce. The default.
+  high    Agents review structural and riskier changes with a general
+          reviewer plus specialists, batched verification, and one fix
+          recheck.
 
 At medium and high, /land holds a pull request above tests-docs until a
 review covers its current patch; at off it reports the gap.

@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Blind reviewer that hunts one review axis, tries to refute a batch of findings, or validates fixes, without the implementation rationale. Read and search only.
+description: Blind reviewer that hunts one review axis, tries to refute a batch of findings, or rechecks fixes, without the implementation rationale. Read and search only.
 access: read-search
 ---
 
@@ -12,7 +12,7 @@ Hunt for supported defects on your axis and report uncertainty as uncertainty. N
 
 ## Inputs
 
-- The axis brief, which says what to hunt. Your brief may instead be a refute or validator brief, which says what to report.
+- The axis brief, which says what to hunt. Your brief may instead be a refute or recheck brief, which says what to report.
 - The requirements, quoted from their source.
 - The revision identity.
 - The complete scoped diff.

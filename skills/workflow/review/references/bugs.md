@@ -1,7 +1,10 @@
-# Axis: bugs
+# General reviewer: bugs and baseline coverage
 
 Hunt for defects that change behavior. Read the diff against the whole repository and the requirements, and answer three questions: does it solve its problem, does it fit the system, and does it break anything else?
 
+- **Requirements.** Trace every supplied requirement to the changed behavior. Report missing behavior and unrequested scope. Without a requirements source, state that limit.
+- **Contracts and security.** Inspect compatibility, permissions, input validation, data preservation, and failure recovery wherever the change touches them.
+- **Conventions.** Check documented project rules and unnecessary complexity; leave tool-enforced formatting to tooling.
 - **Root cause.** On a bug fix, find the root cause and check that the fix lands there, not at one symptom or one call site.
 - **The safety fact.** Most risky-looking changes are safe because of one fact, such as "this call only drops entries that are already dead". Find that fact and try to break it. If it holds, say so on your `summary:` line. If it fails, that is your finding.
 - **Where grep stops.** Listing callers is the easy part. Follow what a symbol search misses:
@@ -22,4 +25,4 @@ Hunt for defects that change behavior. Read the diff against the whole repositor
   - a focused or skipped test (`.only`, `skip`, `t.Skip`) left in, so CI passes without running the suite.
 - **Pre-existing.** A defect in code the diff did not introduce (check the base) is `pre-existing`.
 
-Style, naming, and structure belong to the standards hunter, and trust boundaries and dependency failures to the risk hunter when one runs; when none runs, they are yours.
+Specialists add independent depth. Their presence never removes these baseline questions from your review.
