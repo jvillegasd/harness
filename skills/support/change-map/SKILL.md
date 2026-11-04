@@ -53,4 +53,4 @@ Decisions you did not ask for: <decision>: <reason>
 Open decisions (since mode): <decision>: <recommendation>
 ```
 
-In a pull request body, this map replaces a free-form summary and takes the review-guide form in `open-pr`'s [PR body template](../../workflow/open-pr/references/pr-body.md), which lists every file with its tier. In chat, keep the same order and keep it short.
+In a pull request body, this map replaces a free-form summary and takes the review-guide form in `open-pr`'s [PR body template](../open-pr/references/pr-body.md), which lists every file with its tier. In chat, keep the same order and keep it short.

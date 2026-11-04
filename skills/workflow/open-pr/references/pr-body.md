@@ -47,5 +47,5 @@ Merge danger: <one-way or two-way> door. Blast radius: <a few words>.
 
 <Closes #N, only for scope actually completed. Omit otherwise.>
 
-<Reviewed: <base>..<sha>, or Review: not run (level <level>)>
+<Reviewed: <base>..<sha>, or Review: not run (level <level>). When any review slice stayed unreviewed, write neither line and name the gap under Risks.>
 ```
