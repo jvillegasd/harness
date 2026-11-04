@@ -58,16 +58,15 @@ func Command(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 0
 	}
 	now := time.Now()
-	home, _ := os.UserHomeDir()
-	fmt.Fprint(stdout, render(input, environment{Home: home, Now: now, Usage: loadUsage(now)}))
+	fmt.Fprint(stdout, render(input, environment{ConfigDir: configDir(), Now: now, Usage: loadUsage(now)}))
 	return 0
 }
 
-// environment carries everything render reads beyond the payload itself: the home whose Claude settings name the effort level, the current time for the session clock, and the fetched usage data, nil when none is available.
+// environment carries everything render reads beyond the payload itself: the Claude config directory whose settings name the effort level, the current time for the session clock, and the fetched usage data, nil when none is available.
 type environment struct {
-	Home  string
-	Now   time.Time
-	Usage *usage
+	ConfigDir string
+	Now       time.Time
+	Usage     *usage
 }
 
 // isEmpty is the shell's `[ -z "$input" ]`, which saw the payload after command substitution stripped its trailing newlines.
@@ -103,7 +102,7 @@ func render(input []byte, env environment) string {
 	}
 
 	effort := "default"
-	if data, err := os.ReadFile(filepath.Join(env.Home, ".claude", "settings.json")); err == nil {
+	if data, err := os.ReadFile(filepath.Join(env.ConfigDir, "settings.json")); err == nil {
 		var settings map[string]any
 		if json.Unmarshal(data, &settings) == nil {
 			if truthy(settings["effortLevel"]) {

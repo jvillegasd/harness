@@ -2,6 +2,8 @@ package statusline
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -57,9 +59,28 @@ func loadUsage(now time.Time) *usage {
 	return parseUsage(data)
 }
 
-// cachePath puts the sixty-second cache in the system temporary directory. The shell renderer hardcoded /tmp/claude, which on macOS is not os.TempDir(), so the first draw after an upgrade warms a fresh cache.
+// cachePath puts the sixty-second cache in the system temporary directory, one file per Claude config directory so accounts logged in under different profiles never share bars.
 func cachePath() string {
-	return filepath.Join(os.TempDir(), "claude", "statusline-usage-cache.json")
+	return filepath.Join(os.TempDir(), "claude", "statusline-usage-cache"+profileSuffix()+".json")
+}
+
+// configDir is where Claude Code keeps settings and credentials: CLAUDE_CONFIG_DIR when set, otherwise ~/.claude.
+func configDir() string {
+	if dir := os.Getenv("CLAUDE_CONFIG_DIR"); dir != "" {
+		return dir
+	}
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".claude")
+}
+
+// profileSuffix is the suffix Claude Code appends to its keychain service name when CLAUDE_CONFIG_DIR is set: a dash and the first eight hex digits of the directory's SHA-256. The default directory has none.
+func profileSuffix() string {
+	dir := os.Getenv("CLAUDE_CONFIG_DIR")
+	if dir == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(dir))
+	return "-" + hex.EncodeToString(sum[:])[:8]
 }
 
 // hasFiveHour is the guard the shell applied with `jq -e .five_hour`: a response without it is not usage data and is never cached.
@@ -154,29 +175,28 @@ func nextMonth(now time.Time) string {
 	return strings.ToLower(first.AddDate(0, 1, 0).Format("Jan 2"))
 }
 
-// oauthToken resolves the credential the shell read: the environment first, then the macOS keychain, then the credentials file, then the freedesktop secret store.
+// oauthToken resolves the credential of the active Claude profile: the environment first, then the macOS keychain, then the credentials file, then the freedesktop secret store.
 func oauthToken() string {
+	service := "Claude Code-credentials" + profileSuffix()
 	if token := os.Getenv("CLAUDE_CODE_OAUTH_TOKEN"); token != "" && token != "null" {
 		return token
 	}
 	if _, err := exec.LookPath("security"); err == nil {
-		if out, err := exec.Command("security", "find-generic-password", "-s", "Claude Code-credentials", "-w").Output(); err == nil {
+		if out, err := exec.Command("security", "find-generic-password", "-s", service, "-w").Output(); err == nil {
 			if token := accessToken(out); token != "" {
 				return token
 			}
 		}
 	}
-	if home, err := os.UserHomeDir(); err == nil {
-		if data, err := os.ReadFile(filepath.Join(home, ".claude", ".credentials.json")); err == nil {
-			if token := accessToken(data); token != "" {
-				return token
-			}
+	if data, err := os.ReadFile(filepath.Join(configDir(), ".credentials.json")); err == nil {
+		if token := accessToken(data); token != "" {
+			return token
 		}
 	}
 	if _, err := exec.LookPath("secret-tool"); err == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		if out, err := exec.CommandContext(ctx, "secret-tool", "lookup", "service", "Claude Code-credentials").Output(); err == nil {
+		if out, err := exec.CommandContext(ctx, "secret-tool", "lookup", "service", service).Output(); err == nil {
 			if token := accessToken(out); token != "" {
 				return token
 			}
