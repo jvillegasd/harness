@@ -10,6 +10,8 @@ Each case is one JSON line, and refers to commits rather than copying code:
 
 ## Seed
 
+The [2026-11-03 candidate shortlist](../../../../docs/agents/review-levels.md#evaluation-candidates-awaiting-confirmation) contains three historical defect candidates and two provisional clean candidates. It is preparation only: none has a human-confirmed label or authorizes a model run.
+
 1. **Bug cases.** For each `fix:` or revert commit, run `git blame` on its changed lines at its parent to find the commit that introduced them. The introducing commit's diff (`<intro>^..<intro>`) is the case. The expected finding is the fixed lines mapped back to `<intro>` with `git log -L` or `git blame --reverse`, because hunters cite lines at the case's head. For a fix that only adds lines, such as a missing guard, use the lines around the insertion. Ledger entries with the disposition `fixed`, while their branch is unmerged, are candidates too.
 2. **Clean cases.** Take merged changes whose lines no later commit fixed or reverted.
 3. Show each candidate to the human. A case counts only once they confirm it, and `confirmed_by` records that.
