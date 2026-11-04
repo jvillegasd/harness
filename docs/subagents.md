@@ -24,13 +24,13 @@ Use `harness models --help` for presets and overrides. The parent retains comple
 
 Reviewers receive requirements, a revision identity, the scoped diff, and project standards. They do not receive implementation rationale, conversation history, or continuity notes.
 
-At `medium`, reviews use a lean bug hunt and independent refutation when needed. At `high`, review depth follows the change's risk and may add specification, standards, and security or resilience checks. Explicit review requests use batched verification. The [review skill](../skills/workflow/review/SKILL.md) defines the exact worker counts and procedure.
+At `medium`, one general reviewer hunts, and a refuter runs only for bugs the main agent could not reproduce. At `high`, one or two specialists (requirements, consequential risk, or structure and conventions) join the general reviewer, an `executor` may reproduce findings, and fixes get one recheck. An explicit Deep review adds a second general reviewer and keeps the union of both reports. The [review skill](../skills/workflow/review/SKILL.md) defines the exact worker counts and procedure.
 
 The author may reproduce a finding but cannot dismiss it alone. Confirmed findings need fixes; unresolved findings go to the human. Findings stay in a local per-branch ledger inside the Git directory, not in commits or PR bodies.
 
 ## Finding lifecycle
 
-This follows one actionable finding through the review skill. The subagent roles are `reviewer` and `executor`. **Main agent** means your primary session, called the parent in the skill. Hunting, refutation, and fix validation use separate `reviewer` instances, not additional roles. The main agent can repair findings itself or delegate repairs to an `executor`, but only the main agent commits. Findings are deduplicated first. Nits and pre-existing defects are reported separately.
+This follows one actionable finding through the review skill. The subagent roles are `reviewer` and `executor`. **Main agent** means your primary session, called the parent in the skill. Hunting, refutation, and the fix recheck use separate `reviewer` instances, not additional roles. The main agent can repair findings itself or delegate repairs to an `executor`, but only the main agent commits. Findings are deduplicated first. Nits and pre-existing defects are reported separately.
 
 ```mermaid
 stateDiagram-v2
@@ -42,32 +42,32 @@ stateDiagram-v2
     state "Confirmed" as Confirmed
     state "Refuted" as Refuted
     state "Fixed" as Fixed
-    state "Fix validated" as Validated
+    state "Fix rechecked" as Rechecked
     state "Needs your decision" as Decision
 
     [*] --> Reported: reviewer hunts for defects
     Reported --> Confirmation: Main agent checks the finding
     Confirmation --> Confirmed: Defect reproduced or prose contradiction cited
-    Confirmation --> Refutation: Not confirmed at medium without explicit review request
-    Confirmation --> Reproduction: Not confirmed at high or with explicit review request
+    Confirmation --> Reproduction: Needs a run, at high or Deep
+    Confirmation --> Refutation: Unreproduced bug
+    Confirmation --> Unverified: Unreproduced risk or question
     Reproduction --> Confirmed: executor reproduces the defect
-    Reproduction --> Refutation: Not reproduced or unable to run
+    Reproduction --> Refutation: Bug not reproduced or unable to run
+    Reproduction --> Unverified: Risk or question not reproduced
     Refutation --> Refuted: reviewer cites where failure path is prevented
     Refutation --> Unverified: Evidence remains inconclusive
     Unverified --> Decision: Main agent brings finding to you
     Confirmed --> Fixed: Main agent commits repair with the check passing
-    Fixed --> Validated: reviewer accepts fix when validation applies
-    Fixed --> Decision: Main agent requests your decision at medium
-    Fixed --> Decision: reviewer rejects fix or cannot validate after retry
-    Validated --> [*]
+    Fixed --> [*]: At medium, the passing check is the proof
+    Fixed --> Rechecked: At high or Deep, reviewer says the fix holds
+    Fixed --> Decision: reviewer rejects fix or finds a regression
+    Rechecked --> [*]
     Refuted --> [*]
 ```
 
-At `medium`, the main agent tries to reproduce findings. At `high`, or for an explicitly requested review, an `executor` also tests remaining findings. Code from fork PRs is not run during review, so those findings go to the `reviewer` for refutation without executor reproduction. Prose contradictions can be confirmed by citing the conflicting instructions instead of running a test. Refutation requires both a finding that was not reproduced and a `reviewer`'s cited explanation of where its failure path is prevented.
+The main agent tries to reproduce every finding. At `high` and Deep, an `executor` also runs findings the main agent could not reproduce inline. Code from fork PRs is not run during review. Prose contradictions can be confirmed by citing the conflicting instructions. Only a bug goes to the refuter, and refutation requires both a failed reproduction and a `reviewer`'s cited explanation of where its failure path is prevented. An unreproduced risk or question goes to you, because a missed defect costs more than a question.
 
-Fix validation by a `reviewer` applies at `high` or for an explicitly requested review when the repair changes behavior. A successful validation leaves the ledger disposition `fixed`; **Fix validated** is a diagram label. Fixes without behavior changes need no validation by a `reviewer`. At `medium`, substantive repairs await your decision.
-
-Inconclusive evidence, failed validation, and new defects discovered during validation are recorded as `unverified` and brought to you. The main agent does not start a second repair loop on its own. A changed review snapshot needs its affected evidence rechecked.
+Inconclusive evidence, failed rechecks, and new defects found in a recheck are recorded as `unverified` and brought to you. The main agent does not start a second repair loop on its own. A changed reviewed revision needs its affected evidence rechecked.
 
 ## Enforcement limits
 
