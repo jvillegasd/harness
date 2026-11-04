@@ -29,7 +29,7 @@ An implementation request authorizes local edits and commits on a task branch th
 
 “Open a PR” or “ship this” authorizes commits, push, PR creation or updates, and required-check repairs. Feedback stays on the same branch. Publication does not authorize merging: invoke `/land` for that.
 
-Before handoff, the agent runs the repository checks and explains what changed, what to review, and any gaps. Review depth follows your `harness review level` setting. At `medium` and `high`, landing a PR above `tests-docs` requires review of its current patch.
+Before handoff, the agent runs the repository checks and explains what changed, what to review, and any gaps. [Review coverage](review.md) follows your `harness review level` setting. At `medium` and `high`, landing a PR above `tests-docs` requires review of its current patch.
 
 The [README state diagram](../README.md#everyday-use) shows the delivery path:
 
