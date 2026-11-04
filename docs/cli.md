@@ -48,6 +48,13 @@ harness review list
 harness review path
 ```
 
-`list` prints the current branch's recorded findings as JSON. An `open` finding still needs attention. A `rewritten` finding was reviewed against a commit no longer in the branch's history and needs reassessment. Use `--branch <name>` with either command to inspect another branch.
+`list` prints the current branch's recorded findings as JSON. Status is evaluated against `--head`, which defaults to the current checkout's `HEAD`. An `open` finding still needs attention. A `rewritten` finding was reviewed against a commit outside that head's history and needs reassessment.
+
+To inspect another branch, pass its name to both `--branch` and `--head`. For example, for a branch named `feat/example`:
+
+```sh
+harness review list --branch feat/example --head feat/example
+harness review path --branch feat/example
+```
 
 `path` prints the ledger's location inside the Git directory. Records are local to this machine and shared by worktrees of the same repository. They are not uploaded with a PR. Landing a branch deletes its review directory.
