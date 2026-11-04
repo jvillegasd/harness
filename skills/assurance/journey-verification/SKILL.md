@@ -4,7 +4,7 @@ description: "Create and run persistent frontend, backend, API, and logical jour
 license: MIT
 ---
 
-Turn a meaningful sequence of actions into repeatable tests of real application behavior. A journey crosses the use cases needed to reach an outcome and checks the resulting state and side effects. A journey can cover a frontend with mocked APIs, backend logic with provider fakes, or a complete application with real dependencies. Its boundary determines what the result proves. Tests and their supporting assets stay in the target repository; `e2e-verification` handles disposable browser release verification.
+Turn a meaningful sequence of actions into repeatable tests of real application behavior. A journey crosses the use cases needed to reach an outcome and checks the resulting state and side effects. A journey can cover a frontend with mocked APIs, backend logic with provider fakes, or a complete application with real dependencies. Its boundary determines what the result proves. Tests and their supporting assets stay in the target repository; `e2e-verification` handles disposable end-to-end runs on a named feature, bugfix, PR, or path.
 
 ## Choose the boundary
 
