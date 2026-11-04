@@ -10,10 +10,10 @@ Three briefs, each given once per review with every finding it covers. The paren
 - **Verify**: each check runs and fails for the reason its finding gives.
 - **Report**: the fields below, once per finding.
 
-1. Read every finding and the code it cites in the review/verifier worktree. Confirm the tracked baseline and untracked source identity before running checks.
+1. Read every finding and the code it cites.
 2. For each finding, write the smallest test or script that calls the real code and fails loudly if the finding is true. Follow the style of an existing test file, or write a script that imports the shipped code. Keep one file per finding, so one check never masks another.
 3. Run each check. Confirm the failure comes from the cited path, because a check that fails for an unrelated reason proves nothing.
-4. Leave baseline source files, Git history, and everything outside the review/verifier worktree as you found them. Record all created paths and leave the artifacts for the parent to save. For a security finding, use dummy principals and secrets, and keep every run off the network and away from shared services. Confirm the source identity again after checks; a changed source makes affected verdicts unverified. The parent saves repro artifacts outside the worktree and removes only the recorded artifact paths before refutation, so the refuter sees the original source.
+4. Leave baseline source files, Git history, and everything outside the worktree as you found them. Record all created paths and leave the artifacts for the parent to save. For a security finding, use dummy principals and secrets, and keep every run off the network and away from shared services.
 
 This report replaces the executor role's output fields, since a detached worktree has no branch. For each finding, by its number, report `verdict: red`, `green`, or `could-not-run`, then:
 - the command;
@@ -25,7 +25,7 @@ This report replaces the executor role's output fields, since a detached worktre
 
 ## Reviewer: try to refute
 
-Given only the numbered findings and the original source paths in the reviewed snapshot, decide for each whether the failure it describes can reach observable behavior. The parent removes recorded repro files first. Do not read verifier artifacts or any changed verifier paths. Trace from the input or state that would trigger it toward the claimed wrong output, crash, or data change. Judge each finding on its own; one finding's verdict says nothing about another's. Confirm the supplied source identity and report any mismatch as unknown.
+Given only the numbered findings and the code, decide for each whether the failure it describes can reach observable behavior. Trace from the input or state that would trigger it toward the claimed wrong output, crash, or data change. Judge each finding on its own; one finding's verdict says nothing about another's. Read only the original snapshot supplied by the parent; report an identity mismatch as unknown.
 
 Report, for each finding by its number, one of:
 - `refute: unreachable`, with the `path:line` where the path is cut;
@@ -36,7 +36,7 @@ Only `unreachable` with a cited cut counts as a refutation.
 
 ## Reviewer: validate the fixes
 
-Given the confirmed findings, the check that proved each one, the repair delta, and the requirements, inspect the repaired source state in the recorded worktree with the delta applied and identified by its repaired revision and content digest. Decide for each finding whether the repair removes the failure at its root, not at one symptom or one call site, and whether the repair breaks anything the findings did not name. Read the repaired code and its callers; you cannot run anything. A report for the old revision does not validate the repair.
+Given the confirmed findings, the check that proved each one, the repair delta, and the requirements, decide for each finding whether the repair removes the failure at its root, not at one symptom or one call site, and whether the repair breaks anything the findings did not name. Read the repaired code and its callers; you cannot run anything. Use the repaired snapshot supplied by the parent.
 
 Open your report with the reviewer role's header lines, with `revision:` echoing the repaired revision and `axis: validate`. Then report, for each finding by its number, one of:
 - `holds`, with the `path:line` where the failure path is now cut;

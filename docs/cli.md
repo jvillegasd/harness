@@ -20,3 +20,34 @@ The updater continues after failures. It skips actions that depend on a failed o
 The `clients`, `packages`, and `mcps` groups work from any directory. The `skills` group requires a Harness checkout. A bare `harness update` outside a checkout skips skills.
 
 Both `harness update skills` and `harness skills update` refuse to run when a locked skill body or `skills-lock.json` has staged, unstaged, untracked, or ignored changes. Other local work stays untouched. Review updated skill bodies and the lockfile before running `harness install` to deploy them. The updater does not commit changes, publish them, install missing tools, or update Harness itself.
+
+## Choose a review level
+
+Ask your agent to review code. The `harness review` commands set your review preference and manage recorded findings; they do not start a review.
+
+```sh
+harness review level
+harness review level --json
+harness review level high
+```
+
+The first command prints the current level. The second also reports whether it came from a saved preference or the default. The third changes your preference to `high`; replace it with `off` or `medium` to choose another level.
+
+| Level | Automatic reviews |
+| --- | --- |
+| `off` | Agents start no reviews. You can still explicitly request one. |
+| `medium` | The default. Agents review PRs that change more than tests or documentation, and local work that is critical or has a concrete security, data-loss, compatibility, or concurrency risk. |
+| `high` | Agents also review structural and behavioral local changes. Review depth follows the change's risk, with batched verification. |
+
+Your preference is stored in `~/.harness/state.json`. Changing it preserves other settings and needs no reinstall. Only you choose the level. At `medium` and `high`, landing a PR that changes more than tests or documentation requires review of its current patch.
+
+## Inspect review findings
+
+```sh
+harness review list
+harness review path
+```
+
+`list` prints the current branch's recorded findings as JSON. An `open` finding still needs attention. A `rewritten` finding was reviewed against a commit no longer in the branch's history and needs reassessment. Use `--branch <name>` with either command to inspect another branch.
+
+`path` prints the ledger's location inside the Git directory. Records are local to this machine and shared by worktrees of the same repository. They are not uploaded with a PR. Landing a branch deletes its review directory.

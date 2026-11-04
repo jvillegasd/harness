@@ -20,7 +20,6 @@ Hunt for defects that change behavior. Read the diff against the whole repositor
   - edge cases the change makes reachable but no check covers: boundaries, empty and invalid input, retries, and failure paths;
   - nondeterminism: time, order, randomness, or the network left uncontrolled, so the check passes or fails by chance;
   - a focused or skipped test (`.only`, `skip`, `t.Skip`) left in, so CI passes without running the suite.
-- **Impact and evidence.** For every finding, report impact (`high`, `medium`, or `low`) separately from severity and class, and report the strongest evidence actually obtained (`asserted`, `cited`, `traced`, `executed`, or `observed`). The review parent may run at most one focused safety probe per slice after all hunting, including after a clean hunt. No supported findings does not prove the safety assumption. A probe can raise evidence only to what it actually executed or observed.
 - **Pre-existing.** A defect in code the diff did not introduce (check the base) is `pre-existing`.
 
 Style, naming, and structure belong to the standards hunter, and trust boundaries and dependency failures to the risk hunter when one runs; when none runs, they are yours.
