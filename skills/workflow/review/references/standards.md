@@ -10,7 +10,7 @@ Judge the diff against the documented standards you were given, then invoke the 
 
 ## Smell baseline
 
-Each entry describes a smell and its possible fix.
+Adapted from the smell baseline in Matt Pocock's `code-review` (mattpocock/skills, MIT, `skills/engineering/code-review/SKILL.md` at commit `7739eaed7f8f`), after Fowler's *Refactoring*, chapter 3. Compare against that file when Matt updates it. Each entry gives what the smell is, then the fix.
 
 - **Mysterious Name**: a name that does not reveal what the thing does or holds. Rename it; if no honest name comes, the design is murky.
 - **Duplicated Code**: the same logic shape in more than one hunk or file. Extract the shared shape.

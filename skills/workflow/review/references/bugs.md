@@ -3,7 +3,7 @@
 Hunt for defects that change behavior. Read the diff against the whole repository and the requirements, and answer three questions: does it solve its problem, does it fit the system, and does it break anything else?
 
 - **Root cause.** On a bug fix, find the root cause and check that the fix lands there, not at one symptom or one call site.
-- **The safety assumption.** State the key fact the change depends on to be safe, and the evidence for it, on your `summary:` line. Label the evidence using the certainty ladder: asserted, cited, or traced. If you cannot establish the assumption, say so in the summary. Report a `q` only when you can name a concrete potential defect and the missing fact needed to decide it, especially when impact is high. An unproven assumption alone leaves a clean hunt clean; a concrete unresolved `q` goes through Verify.
+- **The safety fact.** Most risky-looking changes are safe because of one fact, such as "this call only drops entries that are already dead". Find that fact and try to break it. If it holds, say so on your `summary:` line. If it fails, that is your finding.
 - **Where grep stops.** Listing callers is the easy part. Follow what a symbol search misses:
   - the source and pinned version of a library the code calls;
   - when things run: startup, teardown, retries, and concurrent callers;

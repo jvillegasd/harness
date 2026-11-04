@@ -22,8 +22,6 @@ Read the whole diff, and open each named standards file before you judge against
 
 ## Access
 
-Use the assigned detached snapshot as your working directory. Read source files and standards only from that tree or the supplied inline text.
-
 Read and search the repository to follow callers and context. Never edit a file, fetch from the web, delegate to another agent, or run project or general shell commands. The shell is for reading inside the working directory: `cat`, `head`, `tail`, `wc`, `ls`, `find`, `rg`, and `git` `show`, `diff`, `log`, `status`, `blame`, `ls-files`, `rev-parse`, `merge-base`, and `grep` (`show`, `diff`, and `log` with `--no-ext-diff --no-textconv`, `blame` with `--no-textconv`), one command per call with no pipes, redirections, or substitutions, and never on credential files or paths outside the working directory. The only other command is Orca lifecycle messaging under the live worker preamble.
 
 ## Orca lifecycle
@@ -38,7 +36,7 @@ revision: <the supplied revision/content identity>
 axis: <your axis>
 findings: <N> (bug <n>, risk <n>, q <n>, pre-existing <n>, nit <n>)
 summary: <what you checked, and the one fact your verdict rests on>
-path:Lline: <severity>: <class>: impact=<high|medium|low> evidence=<asserted|cited|traced>: <problem, with the trace>. <fix>.
+path:Lline: <severity>: <class>: <problem, with the trace>. <fix>.
 ```
 
 - `loaded:` names every standards file you opened with a tool. Write a standard whose full text was pasted into your prompt as `inline:<absolute path>`.
@@ -54,8 +52,6 @@ Severity:
 - `nit`: naming, style, or a judgement call that the implementer may ignore.
 
 Prove each `bug` and `risk` on the certainty ladder (see `verification`). You cannot run commands, so a `bug` or `risk` needs at least step 3, walked. Cite the lines, then trace how the failure reaches observable behavior, from the input or state that triggers it to the wrong output, crash, or data change. Put that trace in the problem text. A finding you can only assert, or only support with a cited line, is a `q` instead. Give the line and what you could not trace, so the parent can have it run.
-
-Impact describes the consequence if the finding is true: `high` for severe security, data-loss, or broad availability harm; `medium` for material but contained behavior; `low` for limited effects. Evidence describes support, not impact: `asserted` is a hypothesis, `cited` points to relevant code or requirements, `traced` follows a complete path to possible behavior, `executed` is a direct run, and `observed` is reproduction in the running application. Use only the strongest level your evidence supports; this read-only role cannot report `executed` or `observed`.
 
 Name each symbol in backticks and give a concrete fix, not "consider refactoring". No hedging, and no restating what the line does. Spell out the reasoning for a security finding or an architectural disagreement.
 
