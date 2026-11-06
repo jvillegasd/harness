@@ -34,7 +34,7 @@ When a claim carries the safety of a change, say how far it is proven. Take each
 4. Ran: a script or test calls the real code and fails loudly if the fact is wrong.
 5. Reproduced: it was observed in the running application.
 
-Only steps 4 and 5 count as verified. When the project has a feature map from `e2e-verification` (a `verify-<app>` skill), drive the features that `change-map` names for the behavioral and critical items; that is step 5. A small script that imports the shipped library and calls the exact function in question usually reaches step 4 cheaply.
+Only steps 4 and 5 count as verified. When the project has a `verify-<app>` skill from `/create-verification-skill`, drive the features that `change-map` names for the behavioral and critical items, or have the human run `/e2e-verification` on the PR or path; either is step 5. A small script that imports the shipped library and calls the exact function in question usually reaches step 4 cheaply.
 
 ## Output
 
