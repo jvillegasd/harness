@@ -111,7 +111,7 @@ func TestModelsResetRemovesOverrideThenBlock(t *testing.T) {
 	}
 }
 
-// TestModelsResolveReportsTheAssignment covers what resolve is for now that every role launches through Orca: the client, model, effort, and source, with no route to choose and no session to choose it against.
+// TestModelsResolveReportsTheAssignment covers what resolve is for: the client, model, effort, and source a parent maps onto a native subagent or a T3 Code delegate_task target.
 func TestModelsResolveReportsTheAssignment(t *testing.T) {
 	base := modelsBase(t)
 	resolved := func(role string) map[string]string {

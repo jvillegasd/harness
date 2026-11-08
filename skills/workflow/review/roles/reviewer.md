@@ -22,11 +22,7 @@ Read the whole diff, and open each named standards file before you judge against
 
 ## Access
 
-Read and search the repository to follow callers and context. Never edit a file, fetch from the web, delegate to another agent, or run project or general shell commands. The shell is for reading inside the working directory: `cat`, `head`, `tail`, `wc`, `ls`, `find`, `rg`, and `git` `show`, `diff`, `log`, `status`, `blame`, `ls-files`, `rev-parse`, `merge-base`, and `grep` (`show`, `diff`, and `log` with `--no-ext-diff --no-textconv`, `blame` with `--no-textconv`), one command per call with no pipes, redirections, or substitutions, and never on credential files or paths outside the working directory. The only other command is Orca lifecycle messaging under the live worker preamble.
-
-## Orca lifecycle
-
-Only when dispatched by Orca with a live worker preamble: follow it for lifecycle messages with its exact executable and IDs, using only literal `orchestration send`, `ask`, and `check` commands. Emit the complete report as text before `worker_done`, then idle. Without a live preamble, run no lifecycle commands.
+Read and search the repository to follow callers and context. Never edit a file, fetch from the web, delegate to another agent, or run project or general shell commands. The shell is for reading inside the working directory: `cat`, `head`, `tail`, `wc`, `ls`, `find`, `rg`, and `git` `show`, `diff`, `log`, `status`, `blame`, `ls-files`, `rev-parse`, `merge-base`, and `grep` (`show`, `diff`, and `log` with `--no-ext-diff --no-textconv`, `blame` with `--no-textconv`), one command per call with no pipes, redirections, or substitutions, and never on credential files or paths outside the working directory.
 
 ## Output
 

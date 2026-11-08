@@ -60,7 +60,7 @@ func (in *installer) keepChoices(s state) state {
 	return s
 }
 
-// codexHome is ~/.codex whatever CODEX_HOME says, because Orca points CODEX_HOME at a home of its own in the terminals it opens.
+// codexHome is ~/.codex whatever CODEX_HOME says, because a launcher may point CODEX_HOME at a home of its own in the terminals it opens.
 func (in *installer) codexHome() string { return filepath.Join(in.home, ".codex") }
 
 // codex runs a codex subcommand against codexHome, on the installer's output.

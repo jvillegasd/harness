@@ -85,7 +85,7 @@ Read [the workflow guide](docs/workflow.md) for optional planning, builds, and t
 
 ## Models and aliases
 
-Use `harness models --help` to inspect presets and per-role assignments. Changing an assignment requires installation to refresh the rendered agents. Roles assigned to the current client run natively; other clients run through Orca.
+Use `harness models --help` to inspect presets and per-role assignments. Changing an assignment requires installation to refresh the rendered agents. Roles assigned to the current client run natively; roles assigned to another client run through T3 Code's `delegate_task`.
 
 | Alias | Starts |
 | --- | --- |

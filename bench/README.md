@@ -30,7 +30,7 @@ Eight per session, each a median across the cohort. The first three are cost, th
 | `tool_calls` | Tool invocations the assistant made. |
 | `minutes` | First stamped entry to last. |
 | `commands` | Slash-command invocations, including workflow skills invoked as `/name`, so explicit routing adoption is visible. |
-| `delegation` | Messages the session's subagents produced. `POLICY.md` names subagent overspawn as a failure mode. A role dispatched through Orca runs as a session of its own rather than a subagent, so it never reaches this metric and instead joins the population every median is taken over. |
+| `delegation` | Messages the session's subagents produced. `POLICY.md` names subagent overspawn as a failure mode. A role delegated through T3 Code's `delegate_task` runs as a session of its own rather than a subagent, so it never reaches this metric and instead joins the population every median is taken over. |
 | `interrupts` | Times a human stopped a run. |
 | `denials` | Times a human refused a tool call. |
 | `errors` | Tool results that failed. A refusal is a denial, never also an error. |

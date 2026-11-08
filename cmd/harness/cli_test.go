@@ -12,7 +12,7 @@ import (
 )
 
 // shimTools are the external tools a harness command could reach for. Every one is replaced by a logging shim on the controlled PATH, so a run that spawns any of them is caught.
-var shimTools = []string{"codex", "npm", "engram", "agent-browser", "node", "uv", "zed", "orca", "orca-dev", "orca-ide", "git", "gh", "npx", "brew", "wt", "go", "claude", "opencode", "bash", "sh", "mv", "du", "security", "secret-tool", "curl"}
+var shimTools = []string{"codex", "npm", "engram", "agent-browser", "node", "uv", "zed", "git", "gh", "npx", "brew", "wt", "go", "claude", "opencode", "bash", "sh", "mv", "du", "security", "secret-tool", "curl"}
 
 // cliResult is what one harness invocation produced, with timedOut set when holding stdin open stopped it.
 type cliResult struct {

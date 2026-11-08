@@ -27,10 +27,10 @@ var supported = map[string][]field{
 
 type field struct{ name, pattern string }
 
-const access = "Read and search the repository to follow callers and context. Never edit a file, fetch from the web, delegate to another agent, or run project or general shell commands. The shell is for reading inside the working directory: `cat`, `head`, `tail`, `wc`, `ls`, `find`, `rg`, and `git` `show`, `diff`, `log`, `status`, `blame`, `ls-files`, `rev-parse`, `merge-base`, and `grep` (`show`, `diff`, and `log` with `--no-ext-diff --no-textconv`, `blame` with `--no-textconv`), one command per call with no pipes, redirections, or substitutions, and never on credential files or paths outside the working directory. The only other command is Orca lifecycle messaging under the live worker preamble."
+const access = "Read and search the repository to follow callers and context. Never edit a file, fetch from the web, delegate to another agent, or run project or general shell commands. The shell is for reading inside the working directory: `cat`, `head`, `tail`, `wc`, `ls`, `find`, `rg`, and `git` `show`, `diff`, `log`, `status`, `blame`, `ls-files`, `rev-parse`, `merge-base`, and `grep` (`show`, `diff`, and `log` with `--no-ext-diff --no-textconv`, `blame` with `--no-textconv`), one command per call with no pipes, redirections, or substitutions, and never on credential files or paths outside the working directory."
 
 var claudeControls = map[string][]string{
-	"read-search": {"tools: Read, Grep, Glob, Bash", "permissionMode: dontAsk", "hooks:", "  PreToolUse:", "    - matcher: Bash", "      hooks:", "        - type: command", `          command: 'test -n "$HARNESS_LIFECYCLE_GUARD" || exit 2; "$HARNESS_LIFECYCLE_GUARD" models lifecycle-guard || exit 2'`},
+	"read-search": {"tools: Read, Grep, Glob, Bash", "permissionMode: dontAsk", "hooks:", "  PreToolUse:", "    - matcher: Bash", "      hooks:", "        - type: command", `          command: '"$HOME/.local/bin/harness" models read-guard || exit 2'`},
 	"implement":   {"disallowedTools: Agent"},
 }
 
@@ -52,9 +52,6 @@ var opencodeControls = map[string]string{
 		"    \"git commit*\": deny\n" +
 		"    \"git push*\": deny\n" +
 		"    \"git worktree remove*\": deny\n" +
-		"    \"orca worktree rm*\": deny\n" +
-		"    \"orca-ide worktree rm*\": deny\n" +
-		"    \"orca-dev worktree rm*\": deny\n" +
 		"    \"wt remove*\": deny\n" +
 		"    \"wt merge*\": deny\n" +
 		"    \"wt step commit*\": deny\n" +
@@ -86,8 +83,8 @@ var gaps = []string{
 	"gap: claude: the executor keeps Bash, because a disallowedTools specifier removes the whole tool, so its commit, push, pull request, merge, and tracker limits are instructions only",
 	"gap: claude: a model parameter passed at launch overrides an agent's model frontmatter, and an availableModels allowlist substitutes a blocked model with a warning, so the policy forbids the parameter and neither is enforced",
 	"gap: codex: an agent file inherits the parent's sandbox and approval policy, so a native Codex subagent's read-search and executor limits are instructions only",
-	"gap: codex: an Orca launch runs in the workspace-write sandbox with network on, because the sandbox otherwise blocks the Orca CLI, so commit is enforced by the read-only .git while gh, push of existing commits, and a read-search role's writes are instructions only",
-	"gap: opencode: the executor's bash denies match command prefixes, so the same action spelled another way is not denied, including an Orca executable taken from ORCA_CLI_COMMAND, and the denied orca worktree rm spelling came from the installed Orca CLI's help rather than this tree, so a new Orca needs it re-verified",
+	"gap: opencode: the executor's bash denies match command prefixes, so the same action spelled another way is not denied",
+	"gap: t3: a role delegated through T3 Code's delegate_task runs as a fresh provider session that loads no installed role agent, and T3 has no read-only runtime mode, so its role definition and access limits travel in the brief as instructions only",
 }
 
 var unverified = []string{
@@ -98,6 +95,7 @@ var unverified = []string{
 	"unverified: diff delivery's escalation when a launch prompt cannot carry the complete snapshot, which is protocol rather than exercised behavior",
 	"unverified: claude applying a main-thread --agent session's model and effort frontmatter, and the session's effort when effort is absent",
 	"unverified: opencode sending an agent's reasoningEffort with its model requests",
+	"unverified: claude running a read-search role's read-guard hook from $HOME/.local/bin/harness inside a native subagent",
 	"unverified: claude disallowedTools: Agent and opencode task: deny stopping the executor from delegating",
 }
 

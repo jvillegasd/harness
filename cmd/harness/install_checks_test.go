@@ -237,10 +237,10 @@ func TestUninstallOpenCodeLeavesClaudeCopies(t *testing.T) {
 	}
 }
 
-// Codex is configured in ~/.codex even when the terminal points CODEX_HOME elsewhere, as Orca's do, and its uninstall leaves the copies the other clients still use.
+// Codex is configured in ~/.codex even when the terminal points CODEX_HOME elsewhere, as a launcher may, and its uninstall leaves the copies the other clients still use.
 func TestCodexInstallsIntoHomeCodexAndUninstallsAlone(t *testing.T) {
 	base := sandbox(t)
-	elsewhere := filepath.Join(base, "orca-codex-home")
+	elsewhere := filepath.Join(base, "launcher-codex-home")
 	extra := []string{"TMPDIR=" + filepath.Join(base, "tmp"), "HARNESS_ASSETS=" + filepath.Join(base, "checkout"), "CODEX_HOME=" + elsewhere}
 	ok(t, runHarness(t, base, extra, "install", "--skip-packages"), "install under another CODEX_HOME")
 	codexHome := filepath.Join(base, "home", ".codex")

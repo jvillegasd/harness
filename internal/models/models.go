@@ -1,4 +1,4 @@
-// Package models chooses, per machine, which client, model, and effort each delegated role runs on. The choice lives in the models block of ~/.harness/state.json: a preset, plus per-role overrides. The installer renders it into each client's role agents, and a workflow asks it which client a role carries: its own client launches the role as a native subagent, and another client goes through Orca.
+// Package models chooses, per machine, which client, model, and effort each delegated role runs on. The choice lives in the models block of ~/.harness/state.json: a preset, plus per-role overrides. The installer renders it into each client's role agents, and a workflow asks it which client a role carries: its own client launches the role as a native subagent, and another client goes through T3 Code's delegate_task.
 package models
 
 import (
@@ -182,7 +182,7 @@ func codexCatalog() ([]string, map[string][]string, error) {
 	return slugs, efforts, nil
 }
 
-// CodexCommand runs codex against ~/.codex under home, whatever CODEX_HOME the caller's terminal set, because the harness installs Codex's configuration there and Orca points CODEX_HOME at a home of its own.
+// CodexCommand runs codex against ~/.codex under home, whatever CODEX_HOME the caller's terminal set, because the harness installs Codex's configuration there and a launcher may point CODEX_HOME at a home of its own.
 func CodexCommand(home string, args ...string) *exec.Cmd {
 	cmd := exec.Command("codex", args...)
 	cmd.Env = CodexEnv(home)

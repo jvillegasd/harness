@@ -14,7 +14,7 @@ Definitions live in [roles/](../roles/) and [the review skill](../skills/workflo
 
 ## Launching a role
 
-Resolve the assignment with `harness models resolve <role> --json`. A role assigned to the session's client uses a native subagent. A role assigned to another client uses Orca and its orchestration guide, with arguments prepared by `harness models launch-args`.
+Resolve the assignment with `harness models resolve <role> --json`. A role assigned to the session's client uses a native subagent. A role assigned to another client runs only in a T3 Code session, through `delegate_task` with the provider, model, and effort the assignment maps to; POLICY's Delegation section gives the mapping. A T3 Code child loads no installed role agent, so its brief opens with the role definition.
 
 A missing or stale installed role needs deliberate `harness install` provisioning. Do not silently substitute another agent. If independence is required and the reviewer cannot run, report the review as unverified.
 
@@ -72,6 +72,6 @@ Inconclusive evidence, failed rechecks, and new defects found in a recheck are r
 
 ## Enforcement limits
 
-Client restrictions differ. Claude Code and OpenCode restrict read-only roles with tool permissions and shell guards. Some executor limits remain instructions. Codex workers launched through Orca use a workspace-write sandbox with network access; it blocks commits through read-only Git metadata, but read-only role behavior and publication limits still depend on instructions. Native Codex subagents inherit the parent's sandbox.
+Client restrictions differ. Claude Code and OpenCode restrict read-only roles with tool permissions and shell guards. Some executor limits remain instructions. Native Codex subagents inherit the parent's sandbox. A T3 Code delegate runs in the runtime mode it inherits, and T3 Code has no read-only mode, so a delegated role's access limits are instructions in its brief.
 
 These are best-effort controls. Repository tests validate generated configuration, not live compliance. Runtime enforcement remains unverified until an authorized probe runs against the installed client.

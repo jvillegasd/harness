@@ -10,7 +10,7 @@ import (
 )
 
 // A read-only role may read and search inside its working directory, and nothing else: no writes, no other program, no path or link leading out, and no credential-shaped file.
-func TestLifecycleGuardAllowsReadsInsideTheWorkingDirectory(t *testing.T) {
+func TestReadGuardAllowsReadsInsideTheWorkingDirectory(t *testing.T) {
 	base := t.TempDir()
 	dir := filepath.Join(base, "repo")
 	for path, body := range map[string]string{"repo/a.go": "package a\n", "repo/.env": "TOKEN=x\n", "outside.txt": "private\n"} {
@@ -24,7 +24,6 @@ func TestLifecycleGuardAllowsReadsInsideTheWorkingDirectory(t *testing.T) {
 	if err := os.Symlink(filepath.Join(base, "outside.txt"), filepath.Join(dir, "link")); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("HARNESS_ORCA_COMMAND", "orca")
 	for _, tc := range []struct {
 		command string
 		allow   bool
@@ -82,7 +81,7 @@ func TestLifecycleGuardAllowsReadsInsideTheWorkingDirectory(t *testing.T) {
 	} {
 		input, _ := json.Marshal(map[string]any{"tool_name": "Bash", "cwd": dir, "tool_input": map[string]string{"command": tc.command}})
 		var output bytes.Buffer
-		if code := LifecycleGuard(bytes.NewReader(input), &output); code != 0 {
+		if code := ReadGuard(bytes.NewReader(input), &output); code != 0 {
 			t.Fatal(code)
 		}
 		want := `"permissionDecision":"deny"`
@@ -95,7 +94,7 @@ func TestLifecycleGuardAllowsReadsInsideTheWorkingDirectory(t *testing.T) {
 	}
 }
 
-// OpenCode's plugin sends no cwd, so the guard falls back to its own working directory.
+// A hook request without a cwd falls back to the guard's own working directory.
 func TestReadCommandFallsBackToTheProcessDirectory(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "a.go"), nil, 0o644); err != nil {
@@ -104,8 +103,18 @@ func TestReadCommandFallsBackToTheProcessDirectory(t *testing.T) {
 	t.Chdir(dir)
 	input, _ := json.Marshal(map[string]any{"tool_name": "Bash", "tool_input": map[string]string{"command": "cat a.go"}})
 	var output bytes.Buffer
-	LifecycleGuard(bytes.NewReader(input), &output)
+	ReadGuard(bytes.NewReader(input), &output)
 	if !strings.Contains(output.String(), `"permissionDecision":"allow"`) {
 		t.Fatal(output.String())
+	}
+}
+
+// Anything that is not a well-formed Bash request is denied.
+func TestReadGuardDeniesMalformedInput(t *testing.T) {
+	for _, input := range []string{"malformed", `{"tool_name":"Write","tool_input":{"command":"cat a.go"}}`} {
+		var output bytes.Buffer
+		if code := ReadGuard(strings.NewReader(input), &output); code != 0 || !strings.Contains(output.String(), `"permissionDecision":"deny"`) {
+			t.Fatalf("%s => %d %s", input, code, output.String())
+		}
 	}
 }
