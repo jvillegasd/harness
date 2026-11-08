@@ -32,7 +32,9 @@ At High, select one or two specialists and state the concrete question each will
 - `risk`: inspect consequential trust boundaries, data loss, dependency failures, or concurrency using `references/risk.md`.
 - `standards`: inspect changed interfaces, structure, and documented conventions using `references/standards.md`.
 
-Choose by consequences, not file count. If no specialist has a distinct useful question, keep only the general reviewer and say why. Deep's second general reviewer comes from another vendor when the installed reviewer assignment permits it; its findings join the union, because different models catch different defects. Resolve roles through POLICY's delegation rules; never change models or install agents to obtain diversity, and report when diversity is unavailable.
+Choose by consequences, not file count. If no specialist has a distinct useful question, keep only the general reviewer and say why. Resolve roles through POLICY's delegation rules.
+
+Deep's second general reviewer comes from another vendor, because different models catch different defects; its findings join the union. In a T3 Code session, launch it with `delegate_task` on a provider other than the `reviewer` assignment's client (`codex` for a Claude reviewer, `claudeAgent` for a Codex or OpenCode one) at that provider's default model, with `isolation: "worktree"` so it reads the snapshot commit in a checkout of its own. Its brief opens with the installed `reviewer` definition, whose access rules it follows as instructions, then the bugs axis brief and the same inputs as every hunter. Outside T3 Code, or when `orchestrator_capabilities` lists no other provider, run a second native `reviewer` and report that vendor diversity was unavailable. Never change models or install agents to obtain it.
 
 The cap counts every role call in the review, retries and delegated fixes included. Splitting a large diff does not reset it. If coverage cannot fit, report the uncovered scope rather than exceeding the cap. When no review is triggered, record `no-review` with the level.
 

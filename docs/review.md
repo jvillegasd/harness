@@ -23,7 +23,7 @@ The general reviewer covers correctness, requirements, error handling, compatibi
 - **Risk:** trust boundaries, data loss, failing dependencies, or concurrency.
 - **Standards:** changed interfaces, structure, and the project's documented conventions.
 
-Deep's second general reviewer comes from another model vendor when your setup allows it. Every finding from either reviewer is kept, because different models catch different bugs.
+Deep's second general reviewer comes from another model vendor (Codex for a Claude reviewer, Claude otherwise) when the session runs in T3 Code, which can start other providers' agents. Elsewhere it is a second reviewer from the same vendor, and the report says diversity was unavailable. Findings from both reviewers count, because different models catch different bugs.
 
 ```mermaid
 stateDiagram-v2
