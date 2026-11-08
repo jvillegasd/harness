@@ -33,7 +33,7 @@ harness review level high       # set it: off, medium (default), or high
 harness review level --json     # machine-readable, used by agents
 ```
 
-The level is stored in `~/.harness/state.json` and applies to every repository on this machine. Only you set it; agents read it but never change it. `/land` checks the level at merge time, not the one in force when the PR was opened.
+The level is stored in `~/.harness/state.json` and applies to every repository on this machine. Only you set it; agents read it but never change it. `/land` checks the level in force when it runs, not the one in force when the PR was opened.
 
 ### Read what a review found
 

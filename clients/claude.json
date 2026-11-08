@@ -30,6 +30,7 @@
       "Bash(harness review level high:*)"
     ],
     "ask": [
+      "Bash(gh pr merge:*)",
       "Bash(git worktree remove --force:*)",
       "Bash(git worktree remove -f:*)"
     ]

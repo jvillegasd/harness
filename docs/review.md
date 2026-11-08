@@ -91,7 +91,7 @@ Your decisions are recorded too: "this is intended" or "not worth fixing" keeps 
 
 Findings stay on your machine in a per-branch ledger inside the Git directory. They never go into commits, and a PR only carries one `Reviewed: <base>..<sha>` line. `/land` deletes the ledger once the branch merges. See [`harness review`](cli.md#review-commands) for reading it.
 
-At Medium and High, `/land` holds a PR beyond docs or tests until a review covers its latest commit. Review never pushes or merges on its own.
+At Medium and High, the PR's readiness report says whether a review covers its latest commit, `/land merge` refuses to merge a PR beyond docs or tests until one does, and `/land` after your own merge reports when none did. Review never pushes or merges on its own.
 
 ## Limits
 

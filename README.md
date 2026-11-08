@@ -44,9 +44,9 @@ See [installation and your files](docs/installation.md) for how installation and
 | Keep frontend or backend journey tests | `journey-verification` |
 | Review changes | `review` |
 | Publish the work | “Open a PR” or “ship this” |
-| Merge the current PR | `/land` |
+| Clean up after you merge a PR | `/land` (or `/land merge` to have it merge) |
 
-Local work stays local until you request publication. Only your explicit `/land` merges a PR. An explicit request naming work to discard authorizes that scope; ambiguity or additional work requires clarification.
+Local work stays local until you request publication. You merge PRs yourself, after reading the readiness report the PR ends with; an agent merges only when you run `/land merge`. An explicit request naming work to discard authorizes that scope; ambiguity or additional work requires clarification.
 
 ```mermaid
 stateDiagram-v2
@@ -66,8 +66,8 @@ stateDiagram-v2
     PR --> PR: Agent fixes failed checks or addresses feedback
     PR --> MergeReady: Required checks and review satisfied
     MergeReady --> PR: New changes require checks or review
-    MergeReady --> Merged: You invoke /land and agent verifies and merges
-    Merged --> [*]
+    MergeReady --> Merged: You merge, or invoke /land merge and the agent rechecks the gates and merges
+    Merged --> [*]: You invoke /land and the agent cleans up
 
     Local --> Waiting: Agent needs a decision or required check is unavailable
     Preparing --> Waiting: Agent needs a decision or required check or review is unavailable
