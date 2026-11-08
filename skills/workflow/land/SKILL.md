@@ -55,7 +55,7 @@ This capability merges, reconciles an authorized tracker binding, and retires a 
 
 7. Update the default branch. Fetch and prune, locate `<default>`'s worktree with `git worktree list`, then run `git -C <that path> merge --ff-only origin/<default>`. Pass `-C` so the right branch is updated, and use it in place of `git checkout <default>`, which fails when another worktree owns the branch. When no worktree holds `<default>`, update its ref without switching the task checkout: record its old SHA, require `git merge-base --is-ancestor <old sha> origin/<default>` to succeed, then run `git update-ref refs/heads/<default> origin/<default> <old sha>`. A divergent branch or failed compare-and-swap stops cleanup; never overwrite it. If the local default branch does not exist, create it with `git branch --track <default> origin/<default>`. Preserve the task branch name captured in step 1 for later cleanup.
 
-   When recovery material exists, read `continuity` and preserve it before retirement. Record the confirmed merge and remaining cleanup in the retained copy of the task document outside a checkout slated for retirement; mirror if available. Keep the merged checkout clean of this bookkeeping, create no checkpoint merely to land, and leave legacy records as they are.
+   The task document, when there is one, merged with the work as `open-pr` finalized it; the merge commit is its landing evidence, so commit nothing to the default branch for it.
 
    Reaching this step straight from step 2, run step 4's conformance check here and resume at step 8 rather than step 5, because steps 5 and 6 belong to the run that does the merging. Someone else merged this pull request, so a blocking mismatch is reported rather than prevented, and the landing stops here.
 
@@ -67,5 +67,4 @@ This capability merges, reconciles an authorized tracker binding, and retires a 
 
 ## Skills this loads
 
-- `continuity`, read from its path only when recovery material exists
 - `local-tracker`, read from its path, only when ticket-bound and `docs/agents/harness.json` sets `"tracker": "local-markdown"`

@@ -47,7 +47,7 @@ These describe the intended workflow, not a centrally enforced task status. Live
 
 See [what happens to a finding](review.md#what-happens-to-a-finding) for how review concerns are proven or dropped, repaired, and rechecked.
 
-For longer work, the agent keeps requirements, decisions, evidence, and the next action in `docs/agents/tasks/<feature>.md`. Small tasks need no extra document.
+For longer work, the agent keeps requirements, decisions, evidence, and the next action in `docs/agents/tasks/<feature>.md`, committed on the task branch. It merges with the work and stays in the repository as the record of what was done and why. Small tasks need no extra document.
 
 ## Larger builds
 
@@ -98,7 +98,7 @@ An explicit request naming the commits, files, branches, or task worktrees to di
 
 ### Resume retained work
 
-Resuming assumes the implementation still exists. The main agent uses the request, current Git state, and any existing task document or memory mirror. A small task needs no recovery document.
+Resuming assumes the implementation still exists. The main agent uses the request, the task document, and the branch's commits and diff. A paused session leaves a `wip:` commit and an updated task document, so the next one picks up from there. Work already verified at an unchanged commit is trusted, not redone. A small task needs no recovery document.
 
 ```mermaid
 stateDiagram-v2
@@ -118,4 +118,4 @@ stateDiagram-v2
     Checked --> Resumed: Main agent continues within existing authorization
 ```
 
-Missing context blocks only dependent work. Old notes grant no new authority, and checks against a changed or unidentified snapshot are stale. See [continuity](../skills/support/continuity/SKILL.md) for recovery details.
+Missing context blocks only dependent work. Old notes grant no new authority, and checks against a changed commit are stale. See [continuity](../skills/support/continuity/SKILL.md) for recovery details.
