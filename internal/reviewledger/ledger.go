@@ -51,7 +51,9 @@ type Finding struct {
 var (
 	dispositions = []string{"confirmed", "unverified", "fixed", "dropped", "refuted", "intentional", "wont-matter", "pre-existing", "nit", "clean", "no-review"}
 	severities   = []string{"bug", "risk", "q", "pre-existing", "nit"}
-	depths       = []string{"none", "quick", "standard", "deep"}
+	depths       = []string{"none", "medium", "high", "deep"}
+	// legacyDepths are the names earlier ledgers stored for the medium and high levels; reads and new records translate them.
+	legacyDepths = map[string]string{"quick": "medium", "standard": "high"}
 	// needEvidence are the dispositions that close a finding on someone's word, so the word must be recorded.
 	needEvidence = []string{"fixed", "dropped", "refuted", "intentional", "wont-matter"}
 	linesRe      = regexp.MustCompile(`^[0-9]+(-[0-9]+)?$`)
@@ -162,9 +164,18 @@ func Read(file string) ([]Entry, error) {
 		if err := json.Unmarshal(scanner.Bytes(), &e); err != nil {
 			return nil, fmt.Errorf("%s line %d: %w", file, n, err)
 		}
+		e.Depth = CanonicalDepth(e.Depth)
 		entries = append(entries, e)
 	}
 	return entries, scanner.Err()
+}
+
+// CanonicalDepth returns the current name for a depth an earlier ledger stored under its old name, and any other value unchanged.
+func CanonicalDepth(depth string) string {
+	if name, ok := legacyDepths[depth]; ok {
+		return name
+	}
+	return depth
 }
 
 // Find returns the latest line for id.

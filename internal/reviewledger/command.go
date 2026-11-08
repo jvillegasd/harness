@@ -43,7 +43,8 @@ only a finding of that severity.
   --sha          Reviewed commit (default: HEAD)
   --digest       Snapshot patch hash when the reviewed work is uncommitted
   --round        1 or 2 (default 1)
-  --depth        none, quick, standard, or deep
+  --depth        none, medium, high, or deep (quick and standard, the
+                 earlier names for medium and high, are translated)
   --axis         Hunter axis, such as bugs or spec
   --reviewer     Client and model, such as claude/opus
   --path         File the finding cites
@@ -195,7 +196,7 @@ func record(args []string, stdout, stderr io.Writer) int {
 		e = prior
 	} else {
 		e.Digest, e.Path = optional(digest), optional(path)
-		e.Branch = branch
+		e.Branch, e.Depth = branch, CanonicalDepth(e.Depth)
 		if e.SHA == "" {
 			e.SHA, _ = git(root, "rev-parse", "HEAD")
 		}

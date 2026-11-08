@@ -4,13 +4,14 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
 func str(s string) *string { return &s }
 
 func finding() Entry {
-	return Entry{Branch: "feat", SHA: "abc", Round: 1, Depth: "standard", Path: str("a.go"), Lines: "40-52", Severity: "bug", Summary: "s", Disposition: "confirmed"}
+	return Entry{Branch: "feat", SHA: "abc", Round: 1, Depth: "high", Path: str("a.go"), Lines: "40-52", Severity: "bug", Summary: "s", Disposition: "confirmed"}
 }
 
 func TestValidate(t *testing.T) {
@@ -78,7 +79,7 @@ func TestLatestState(t *testing.T) {
 	c.ID, c.Disposition, c.Evidence, c.Commit = "C", "fixed", "t", "elsewhere"
 	other := finding()
 	other.ID, other.Branch = "D", "main"
-	whole := Entry{ID: "E", Branch: "feat", SHA: "abc", Round: 1, Depth: "quick", Disposition: "clean"}
+	whole := Entry{ID: "E", Branch: "feat", SHA: "abc", Round: 1, Depth: "medium", Disposition: "clean"}
 
 	got := Latest([]Entry{a, b, c, other, aFixed, whole}, "feat", inHead)
 	want := []struct {
@@ -120,5 +121,28 @@ func TestAppendReadRoundTrip(t *testing.T) {
 	}
 	if entries[0].Path != nil || entries[0].Digest != nil || *entries[1].Path != "a.go" {
 		t.Errorf("nulls and values must survive: %+v", entries)
+	}
+}
+
+func TestReadTranslatesEarlierDepthNames(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "ledger.jsonl")
+	for _, depth := range []string{"quick", "standard", "deep", "none"} {
+		if err := Append(file, Entry{ID: depth, Branch: "feat", Depth: depth}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entries, err := Read(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, e := range entries {
+		got = append(got, e.Depth)
+		if err := Validate(Entry{Branch: "feat", SHA: "abc", Round: 1, Depth: e.Depth, Disposition: "clean"}); err != nil {
+			t.Errorf("an update copying depth %q from an earlier line would be rejected: %v", e.Depth, err)
+		}
+	}
+	if want := []string{"medium", "high", "deep", "none"}; !slices.Equal(got, want) {
+		t.Errorf("depths read as %v, want %v", got, want)
 	}
 }

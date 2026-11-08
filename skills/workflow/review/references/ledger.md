@@ -4,17 +4,17 @@ The ledger is the local record of every finding and its disposition on one branc
 
 ## Record
 
-The CLI retains its existing depth values: record Medium as `quick`, High as `standard`, explicit Deep as `deep`, and a skipped review as `none`. Put the configured level, selected perspectives, and planned/actual role calls in `--summary`. These storage names do not select coverage.
+Record the depth as the level the review ran at: `medium`, `high`, `deep`, or `none` for a skipped review. Earlier ledgers stored `quick` and `standard`; the CLI reads and accepts them as `medium` and `high`. Put the configured level, selected perspectives, and planned/actual role calls in `--summary`.
 
 ```sh
 # A new finding; prints its id. Branch and sha default to the current branch and HEAD.
-harness review record --depth standard --axis bugs --reviewer claude/opus --round 1 \
+harness review record --depth high --axis bugs --reviewer claude/opus --round 1 \
   --base <base> --sha <reviewed sha> [--digest <snapshot hash>] \
   --path <file> --lines 40-52 --severity bug --class missing-guard \
   --summary "<one line>" --disposition confirmed --evidence "<the red run>"
 
 # A whole review with no findings, or a skipped review: no --path.
-harness review record --depth quick --disposition clean --summary "<what was checked>"
+harness review record --depth medium --disposition clean --summary "<what was checked>"
 harness review record --depth none --disposition no-review --summary "level medium: tests-docs only"
 
 # A later state for the same finding: only --disposition, --evidence, and --commit.
