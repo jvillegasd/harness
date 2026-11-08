@@ -34,8 +34,25 @@ When a claim carries the safety of a change, say how far it is proven. Take each
 4. Ran: a script or test calls the real code and fails loudly if the fact is wrong.
 5. Reproduced: it was observed in the running application.
 
-Only steps 4 and 5 count as verified. When the project has a `verify-<app>` skill from `/create-verification-skill`, drive the features that `change-map` names for the behavioral and critical items, or have the human run `/e2e-verification` on the PR or path; either is step 5. A small script that imports the shipped library and calls the exact function in question usually reaches step 4 cheaply.
+Only steps 4 and 5 count as verified. A small script that imports the shipped library and calls the exact function in question usually reaches step 4 cheaply. The verdict below reaches step 5.
+
+## Verdict
+
+Before a pull request opens or its head changes, and at `build`'s integration, get an independent run-as-user verdict when `change-map` lists `critical` or `behavioral` items and the project has a `verify-<app>` skill from `/create-verification-skill`. Without one, report the verdict as unavailable and name `/create-verification-skill`. The author's own drive of the app is a check, not a verdict.
+
+1. **Scope.** Pick the files under `verify-<app>/features/` that the `critical` and `behavioral` items touch. Each such item that no feature covers is a gap: name it, and suggest the feature map update `/maintain-verification-skill` would make.
+2. **Revisions.** A feature change is driven at the head. A bugfix is driven at the base and then the head: its reproduction must fail on the base for the reported reason and pass on the head.
+3. **Runner.** One fresh runner that never saw the implementation. In a T3 Code session, start it with `delegate_task` on the session's own provider with `isolation: "worktree"`; elsewhere, launch a fresh native subagent. Its brief carries the `verify-<app>` skill path, the selected feature files, the revisions, the requirements quoted from their source, and the report format below. It withholds the conversation, the rationale, the diff's explanation, and review findings. The runner follows the skill's Launch, Doctor, Drive, Evidence, and Cleanup sections, edits no tracked file, and fixes nothing.
+4. **Report.** The runner returns:
+   ```
+   verdict: PASS | PASS+NOTES | FAIL
+   revision: <head sha> (base <sha> for a bugfix)
+   <feature>: pass | fail | could-not-drive: <what was driven, the end state observed, the evidence path>
+   gaps: <unmapped items> | none
+   ```
+   FAIL means a driven feature missed its proving end state, or a bugfix reproduction did not fail on the base and pass on the head. PASS+NOTES means every driven feature passed and something stayed open: a gap, or a feature that could not be driven, each named. PASS means every selected feature passed with no gaps.
+5. **Use.** The verdict is bound to its head. A later commit makes it stale unless it changes only tests or documentation. Fix a FAIL and run a fresh verdict; never overrule one. Report it as one line: `Verdict: <verdict> at <sha>`, with the gaps.
 
 ## Output
 
-What passed, its scope and revision, and the remaining failures or unverified behavior. Keep the evidence in an existing task document only when `continuity` needs it.
+What passed, its scope and revision, the verdict line when one ran, and the remaining failures or unverified behavior. Keep the evidence in an existing task document only when `continuity` needs it.
