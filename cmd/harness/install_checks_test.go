@@ -674,3 +674,20 @@ func TestCompactionHooksKeepTheUsersOwn(t *testing.T) {
 		}
 	}
 }
+
+// A user's own ~/.codex/hooks.json keeps its hooks: the install adds the harness's compaction group beside them, and the uninstall removes only that group.
+func TestCodexHooksKeepTheUsersOwn(t *testing.T) {
+	base := sandbox(t)
+	path := filepath.Join(base, "home", ".codex", "hooks.json")
+	writeMode(t, path, `{"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "echo mine"}]}]}}`+"\n", 0o644)
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	text := readFileOr(path)
+	if !strings.Contains(text, "echo mine") || !strings.Contains(text, `harness\" resume`) {
+		t.Fatalf("after install, hooks.json lacks the user's hook or the harness hook:\n%s", text)
+	}
+	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	text = readFileOr(path)
+	if !strings.Contains(text, "echo mine") || strings.Contains(text, "resume") {
+		t.Errorf("after uninstall, hooks.json should hold only the user's hook:\n%s", text)
+	}
+}

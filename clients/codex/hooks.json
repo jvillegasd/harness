@@ -1,5 +1,4 @@
 {
-  "description": "Managed by the harness: restore the task context after Codex compacts a session.",
   "hooks": {
     "SessionStart": [
       {

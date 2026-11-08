@@ -348,6 +348,59 @@ func hooksHold(live, tracked any, removed bool) bool {
 	return true
 }
 
+func (in *installer) codexHooksPath() string {
+	return filepath.Join(in.codexHome(), "hooks.json")
+}
+
+// reconcileCodexHooks merges the hooks in clients/codex/hooks.json into ~/.codex/hooks.json, which the user and other tools may also write, the way reconcileClaudeSettings merges Claude Code's: only the harness's own groups are replaced, and every other key and hook stays. With remove it takes the harness's groups out, and deletes a file left with nothing in it.
+func (in *installer) reconcileCodexHooks(remove bool) {
+	path := in.codexHooksPath()
+	if remove && !isFile(path) {
+		return
+	}
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		data = []byte("{}\n")
+	} else if err != nil {
+		die("Reading %s failed: %v", path, err)
+	}
+	live, err := parseObject(data)
+	if err != nil {
+		die("%s is not a JSON object, so the harness compaction hook cannot be merged into it: %v", path, err)
+	}
+	tracked, err := os.ReadFile(filepath.Join(in.dir.Clients(), "codex", "hooks.json"))
+	must(err)
+	want, err := parseObject(tracked)
+	must(err)
+	current, _ := live.get("hooks")
+	if merged := mergeHooks(current, want.vals["hooks"], !remove); string(merged) == "{}" {
+		live.del("hooks")
+	} else {
+		live.set("hooks", merged)
+	}
+	if remove && len(live.keys) == 0 {
+		in.backupCopy(path)
+		must(os.Remove(path))
+		in.log("Removed the harness compaction hook and the now empty %s", path)
+		return
+	}
+	must(os.MkdirAll(filepath.Dir(path), 0o755))
+	in.writeIfChanged(path, data, render(live), "Reconciled the harness compaction hook in %s")
+}
+
+// codexHooksHold reports whether the tracked hook groups are in ~/.codex/hooks.json, or with removed, whether no harness group is left there.
+func (in *installer) codexHooksHold(removed bool) bool {
+	tracked, ok := decodeFile(filepath.Join(in.dir.Clients(), "codex", "hooks.json"))
+	if !ok {
+		return false
+	}
+	live, ok := decodeFile(in.codexHooksPath())
+	if !ok {
+		return removed && !isFile(in.codexHooksPath())
+	}
+	return hooksHold(live["hooks"], tracked["hooks"], removed)
+}
+
 const aliasMarker = "# portable-harness aliases"
 
 var (

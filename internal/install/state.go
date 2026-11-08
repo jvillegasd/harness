@@ -209,8 +209,7 @@ func (in *installer) desired() []entry {
 		}
 	}
 	add(in.dir.Aliases(), in.aliasesPath(), "aliases", allClients...)
-	// Claude Code's compaction hook is a tracked key in clients/claude.json; the other two clients take a file of their own.
-	add(filepath.Join(in.dir.Clients(), "codex", "hooks.json"), filepath.Join(in.codexHome(), "hooks.json"), "settings", "codex")
+	// Claude Code's and Codex's compaction hooks are merged into files the user shares (reconcileClaudeSettings, reconcileCodexHooks); OpenCode's is a plugin file of its own.
 	add(filepath.Join(in.dir.Clients(), "opencode", "plugins", "harness-resume.ts"), filepath.Join(in.config, "opencode", "plugins", "harness-resume.ts"), "settings", "opencode")
 	return out
 }

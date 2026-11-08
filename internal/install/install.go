@@ -238,6 +238,7 @@ func (in *installer) install() {
 	in.installAgentBrowser()
 	in.registerEngramClaudeMCP()
 	in.reconcileClaudeSettings()
+	in.reconcileCodexHooks(false)
 	in.checkInstall()
 	if !in.skipPackages {
 		in.checkTools()
@@ -356,6 +357,9 @@ func (in *installer) checkInstall() {
 	in.checkFiles()
 	if !in.trackedSettingsHold(false) {
 		die("Tracked Claude settings are not reconciled in %s.", in.settingsPath())
+	}
+	if !in.codexHooksHold(false) {
+		die("The harness compaction hook is not reconciled in %s.", in.codexHooksPath())
 	}
 	in.checkStatusline()
 }
