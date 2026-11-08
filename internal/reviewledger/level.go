@@ -34,8 +34,9 @@ on its own; an explicit request for a review always runs.
 At every level only findings a run proves are kept; the rest are counted
 as dropped.
 
-At medium and high, /land holds a pull request above tests-docs until a
-review covers its current patch; at off it reports the gap.
+At medium and high, a pull request above tests-docs needs a review of its
+current patch: /land merge refuses to merge without one, and /land after
+your own merge reports when it was missing. At off the gap is reported.
 
 The level is stored in ~/.harness/state.json. Only a human sets it.
 `

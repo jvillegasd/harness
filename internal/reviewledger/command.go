@@ -53,8 +53,9 @@ only a finding of that severity.
   --class        Short kebab-case defect class
   --summary      One-line description
   --disposition  confirmed, fixed, dropped, intentional, wont-matter,
-                 pre-existing, nit, clean, or no-review (unverified and
-                 refuted remain readable from earlier reviews)
+                 pre-existing, nit, clean, or no-review; unverified and
+                 refuted are earlier dispositions new reviews do not
+                 write. A confirmed or fixed finding cannot be dropped.
   --evidence     The run's output, what a dropped finding's run showed, or
                  the human's words
   --commit       The fixing commit, for --disposition fixed
@@ -190,6 +191,11 @@ func record(args []string, stdout, stderr io.Writer) int {
 		prior, ok := Find(entries, id)
 		if !ok {
 			fmt.Fprintf(stderr, "harness review record: no finding %q in %s\n", id, file)
+			return 2
+		}
+		// A proven finding stays proven: dropping is for findings no run proved, so it cannot close a confirmed or fixed one on an agent's word.
+		if e.Disposition == "dropped" && (prior.Disposition == "confirmed" || prior.Disposition == "fixed") {
+			fmt.Fprintf(stderr, "harness review record: finding %s is %s, and a proven finding cannot be dropped; record the human's decision as intentional or wont-matter instead\n", id, prior.Disposition)
 			return 2
 		}
 		prior.Disposition, prior.Evidence, prior.Commit = e.Disposition, e.Evidence, e.Commit
