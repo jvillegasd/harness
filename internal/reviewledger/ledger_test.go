@@ -15,32 +15,34 @@ func finding() Entry {
 
 func TestValidate(t *testing.T) {
 	for name, e := range map[string]Entry{
-		"a confirmed finding":   finding(),
-		"a whole-review line":   {Branch: "feat", SHA: "abc", Round: 1, Depth: "none", Disposition: "no-review"},
-		"a fixed finding":       func() Entry { e := finding(); e.Disposition, e.Evidence, e.Commit = "fixed", "test", "def"; return e }(),
-		"a nit kept as a nit":   func() Entry { e := finding(); e.Severity, e.Disposition = "nit", "nit"; return e }(),
-		"an old bug, recorded":  func() Entry { e := finding(); e.Severity, e.Disposition = "pre-existing", "pre-existing"; return e }(),
-		"a refuted with reason": func() Entry { e := finding(); e.Disposition, e.Evidence = "refuted", "cut at b.go:5"; return e }(),
+		"a confirmed finding":    finding(),
+		"a whole-review line":    {Branch: "feat", SHA: "abc", Round: 1, Depth: "none", Disposition: "no-review"},
+		"a fixed finding":        func() Entry { e := finding(); e.Disposition, e.Evidence, e.Commit = "fixed", "test", "def"; return e }(),
+		"a nit kept as a nit":    func() Entry { e := finding(); e.Severity, e.Disposition = "nit", "nit"; return e }(),
+		"an old bug, recorded":   func() Entry { e := finding(); e.Severity, e.Disposition = "pre-existing", "pre-existing"; return e }(),
+		"a refuted with reason":  func() Entry { e := finding(); e.Disposition, e.Evidence = "refuted", "cut at b.go:5"; return e }(),
+		"a dropped with its run": func() Entry { e := finding(); e.Disposition, e.Evidence = "dropped", "ran green"; return e }(),
 	} {
 		if err := Validate(e); err != nil {
 			t.Errorf("%s was rejected: %v", name, err)
 		}
 	}
 	for name, mutate := range map[string]func(*Entry){
-		"unknown disposition":    func(e *Entry) { e.Disposition = "dismissed" },
-		"unknown depth":          func(e *Entry) { e.Depth = "huge" },
-		"third round":            func(e *Entry) { e.Round = 3 },
-		"no branch":              func(e *Entry) { e.Branch = "" },
-		"no path":                func(e *Entry) { e.Path = nil },
-		"bad severity":           func(e *Entry) { e.Severity = "major" },
-		"bad lines":              func(e *Entry) { e.Lines = "40-x" },
-		"no summary":             func(e *Entry) { e.Summary = "" },
-		"whole with a path":      func(e *Entry) { e.Disposition = "clean" },
-		"fixed without commit":   func(e *Entry) { e.Disposition, e.Evidence = "fixed", "test" },
-		"refuted without reason": func(e *Entry) { e.Disposition = "refuted" },
-		"human call unquoted":    func(e *Entry) { e.Disposition = "wont-matter" },
-		"bug relabelled nit":     func(e *Entry) { e.Disposition = "nit" },
-		"bug relabelled old":     func(e *Entry) { e.Disposition = "pre-existing" },
+		"unknown disposition":     func(e *Entry) { e.Disposition = "dismissed" },
+		"unknown depth":           func(e *Entry) { e.Depth = "huge" },
+		"third round":             func(e *Entry) { e.Round = 3 },
+		"no branch":               func(e *Entry) { e.Branch = "" },
+		"no path":                 func(e *Entry) { e.Path = nil },
+		"bad severity":            func(e *Entry) { e.Severity = "major" },
+		"bad lines":               func(e *Entry) { e.Lines = "40-x" },
+		"no summary":              func(e *Entry) { e.Summary = "" },
+		"whole with a path":       func(e *Entry) { e.Disposition = "clean" },
+		"fixed without commit":    func(e *Entry) { e.Disposition, e.Evidence = "fixed", "test" },
+		"refuted without reason":  func(e *Entry) { e.Disposition = "refuted" },
+		"dropped without its run": func(e *Entry) { e.Disposition = "dropped" },
+		"human call unquoted":     func(e *Entry) { e.Disposition = "wont-matter" },
+		"bug relabelled nit":      func(e *Entry) { e.Disposition = "nit" },
+		"bug relabelled old":      func(e *Entry) { e.Disposition = "pre-existing" },
 	} {
 		e := finding()
 		mutate(&e)

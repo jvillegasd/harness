@@ -33,7 +33,7 @@ Without --id, append a new line and print its id. A finding needs --depth,
 
 With --id, append a new state for that finding: only --disposition,
 --evidence, and --commit are accepted, and the rest is copied from its latest
-line. A fixed, refuted, intentional, or wont-matter disposition needs
+line. A fixed, dropped, refuted, intentional, or wont-matter disposition needs
 --evidence; fixed also needs --commit. A nit or pre-existing disposition fits
 only a finding of that severity.
 
@@ -51,9 +51,11 @@ only a finding of that severity.
   --severity     bug, risk, q, pre-existing, or nit
   --class        Short kebab-case defect class
   --summary      One-line description
-  --disposition  confirmed, unverified, fixed, refuted, intentional,
-                 wont-matter, pre-existing, nit, clean, or no-review
-  --evidence     Verifier output, the refute cut, or the human's words
+  --disposition  confirmed, fixed, dropped, intentional, wont-matter,
+                 pre-existing, nit, clean, or no-review (unverified and
+                 refuted remain readable from earlier reviews)
+  --evidence     The run's output, what a dropped finding's run showed, or
+                 the human's words
   --commit       The fixing commit, for --disposition fixed
 `
 

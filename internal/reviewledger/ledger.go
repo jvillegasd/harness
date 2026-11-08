@@ -49,11 +49,11 @@ type Finding struct {
 }
 
 var (
-	dispositions = []string{"confirmed", "unverified", "fixed", "refuted", "intentional", "wont-matter", "pre-existing", "nit", "clean", "no-review"}
+	dispositions = []string{"confirmed", "unverified", "fixed", "dropped", "refuted", "intentional", "wont-matter", "pre-existing", "nit", "clean", "no-review"}
 	severities   = []string{"bug", "risk", "q", "pre-existing", "nit"}
 	depths       = []string{"none", "quick", "standard", "deep"}
 	// needEvidence are the dispositions that close a finding on someone's word, so the word must be recorded.
-	needEvidence = []string{"fixed", "refuted", "intentional", "wont-matter"}
+	needEvidence = []string{"fixed", "dropped", "refuted", "intentional", "wont-matter"}
 	linesRe      = regexp.MustCompile(`^[0-9]+(-[0-9]+)?$`)
 	// ErrInvalid marks a rejected entry; tests use it to tell a rejection from an I/O failure.
 	ErrInvalid = errors.New("invalid entry")

@@ -24,23 +24,21 @@ Use `harness models --help` for presets and overrides. The parent retains comple
 
 Reviewers receive requirements, a revision identity, the scoped diff, and project standards. They do not receive implementation rationale, conversation history, or continuity notes.
 
-At `medium`, one general reviewer hunts, and a refuter runs only for bugs the main agent could not reproduce. At `high`, one or two specialists (requirements, consequential risk, or structure and conventions) join the general reviewer, an `executor` may reproduce findings, and fixes get one recheck. An explicit Deep review adds a second general reviewer and keeps the union of both reports. The [review skill](../skills/workflow/review/SKILL.md) defines the exact worker counts and procedure.
+At `medium`, one general reviewer hunts and the main agent runs its findings. At `high`, one or two specialists (requirements, consequential risk, or structure and conventions) join the general reviewer, an `executor` may reproduce findings, and fixes get one recheck. An explicit Deep review adds a second general reviewer and keeps the union of both reports. The [review skill](../skills/workflow/review/SKILL.md) defines the exact worker counts and procedure.
 
-The author may reproduce a finding but cannot dismiss it alone. Confirmed findings need fixes; unresolved findings go to the human. Findings stay in a local per-branch ledger inside the Git directory, not in commits or PR bodies.
+Only findings a run proves survive; the rest are dropped and counted. Confirmed findings need fixes. Findings stay in a local per-branch ledger inside the Git directory, not in commits or PR bodies.
 
 ## Finding lifecycle
 
-This follows one actionable finding through the review skill. The subagent roles are `reviewer` and `executor`. **Main agent** means your primary session, called the parent in the skill. Hunting, refutation, and the fix recheck use separate `reviewer` instances, not additional roles. The main agent can repair findings itself or delegate repairs to an `executor`, but only the main agent commits. Findings are deduplicated first. Nits and pre-existing defects are reported separately.
+This follows one actionable finding through the review skill. The subagent roles are `reviewer` and `executor`. **Main agent** means your primary session, called the parent in the skill. Hunting and the fix recheck use separate `reviewer` instances, not additional roles. The main agent can repair findings itself or delegate repairs to an `executor`, but only the main agent commits. Findings are deduplicated first. Nits and pre-existing defects are reported separately.
 
 ```mermaid
 stateDiagram-v2
     state "Finding reported" as Reported
     state "Main agent attempts confirmation" as Confirmation
     state "executor attempts reproduction" as Reproduction
-    state "reviewer attempts refutation" as Refutation
-    state "Unverified" as Unverified
+    state "Dropped and counted" as Dropped
     state "Confirmed" as Confirmed
-    state "Refuted" as Refuted
     state "Fixed" as Fixed
     state "Fix rechecked" as Rechecked
     state "Needs your decision" as Decision
@@ -49,26 +47,21 @@ stateDiagram-v2
     Reported --> Confirmation: Main agent checks the finding
     Confirmation --> Confirmed: Defect reproduced or prose contradiction cited
     Confirmation --> Reproduction: Needs a run, at high or Deep
-    Confirmation --> Refutation: Unreproduced bug
-    Confirmation --> Unverified: Unreproduced risk or question
+    Confirmation --> Dropped: Not reproduced, at medium
     Reproduction --> Confirmed: executor reproduces the defect
-    Reproduction --> Refutation: Bug not reproduced or unable to run
-    Reproduction --> Unverified: Risk or question not reproduced
-    Refutation --> Refuted: reviewer cites where failure path is prevented
-    Refutation --> Unverified: Evidence remains inconclusive
-    Unverified --> Decision: Main agent brings finding to you
+    Reproduction --> Dropped: Not reproduced or unable to run
     Confirmed --> Fixed: Main agent commits repair with the check passing
     Fixed --> [*]: At medium, the passing check is the proof
     Fixed --> Rechecked: At high or Deep, reviewer says the fix holds
-    Fixed --> Decision: reviewer rejects fix or finds a regression
+    Fixed --> Decision: the recheck's concern reproduces on the fixed code
     Rechecked --> [*]
-    Refuted --> [*]
+    Dropped --> [*]
     Decision --> [*]
 ```
 
-The main agent tries to reproduce every finding. At `high` and Deep, an `executor` also runs findings the main agent could not reproduce inline. Code from fork PRs is not run during review. Prose contradictions can be confirmed by citing the conflicting instructions. Only a bug goes to the refuter, and refutation requires both a failed reproduction and a `reviewer`'s cited explanation of where its failure path is prevented. An unreproduced risk or question goes to you, because a missed defect costs more than a question.
+The main agent tries to reproduce every finding. At `high` and Deep, an `executor` also runs findings the main agent could not reproduce inline. Code from fork PRs is not run during review. Prose contradictions can be confirmed by citing the conflicting instructions. Anything no run proves is dropped, and the report counts the drops per reviewer, so you read only proven defects.
 
-Inconclusive evidence, failed rechecks, and new defects found in a recheck are recorded as `unverified` and brought to you. The main agent does not start a second repair loop on its own. A changed reviewed revision needs its affected evidence rechecked.
+A failed recheck or a new defect it names is run on the fixed code; if it reproduces, it comes to you. The main agent does not start a second repair loop on its own. A changed reviewed revision needs its affected evidence rechecked.
 
 ## Enforcement limits
 

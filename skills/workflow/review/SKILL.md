@@ -7,11 +7,11 @@ metadata:
   version: "3.0"
 ---
 
-Get independent eyes on a change at the depth the human's review level allows. Blind hunters find defects. The parent confirms what it can reproduce. Only a blind refuter can dismiss a finding, and the human decides everything that stays unproven.
+Get independent eyes on a change at the depth the human's review level allows. Blind hunters find defects. A finding survives only when a run proves it; everything else is dropped and counted.
 
 ## Why
 
-A reviewer that has not heard the implementer's reasoning judges the code, not the story. A missed defect costs more than an extra question, so the review favors recall: a finding is never dropped on the author's word, and anything neither proven nor refuted goes to the human. A review that cannot run independently is reported as unverified, never replaced by self-review.
+A reviewer that has not heard the implementer's reasoning judges the code, not the story. Hunters favor recall and raise whatever they can trace; the review keeps only what a run proves, so the human reads defects instead of triaging guesses. A finding is dropped because no run proved it, never on the author's word. Each hunter's dropped count is reported, and the evals in `references/evals.md` show whether the rule costs recall. A review that cannot run independently is reported as unverified, never replaced by self-review.
 
 ## Level and coverage
 
@@ -20,8 +20,8 @@ Read `harness review level --json`; if it is unavailable, use `medium` and repor
 | Level | Automatic trigger | Hunters | Conditional calls | Cap |
 | --- | --- | --- | --- | --- |
 | `off` | Never | Explicit requests use Medium | | 0 automatically |
-| `medium` | PR above `tests-docs`; local handoff that is `critical` or names security, data-loss, compatibility, or concurrency risk | One general reviewer | Refuter | 2 |
-| `high` | PR or local handoff at `structural` or above | General reviewer plus one or two specialists | Executor, refuter, recheck | 6 |
+| `medium` | PR above `tests-docs`; local handoff that is `critical` or names security, data-loss, compatibility, or concurrency risk | One general reviewer | None | 2 |
+| `high` | PR or local handoff at `structural` or above | General reviewer plus one or two specialists | Executor, recheck | 6 |
 | Deep (explicit only) | Human request | High plus a second general reviewer | Same as High | 7 |
 
 Every general reviewer uses `references/bugs.md`: correctness, requirements, failure paths, compatibility, relevant security risks, project conventions, and test gaps. Higher levels add independent investigation; they never remove questions from Medium.
@@ -53,15 +53,12 @@ Each report must open with `loaded:` naming the standards and `revision:` matchi
 ## Verify
 
 1. Collect every `bug`, `risk`, and `q`, and dedupe by path, line range, and class. Report `nit` and `pre-existing` findings without verifying or fixing them here.
-2. Try to reproduce each finding yourself, with repro files in a scratch directory outside the checkout. A run that fails for the reason the finding gives confirms it and becomes its red check. A defect in prose, such as two contradictory instructions, is confirmed by citing both lines. Never run code from a fork's pull request; walk those findings instead. Refuting is never yours.
-3. Check the ledger (`references/ledger.md`): a finding that repeats a `refuted` entry on committed work, whose commit is an ancestor of `<sha>` with no change since to the finding's path or the cited cut, is reported as "previously refuted: <reason>".
-4. **High and Deep, when an open finding needs a run you could not do inline**, and never for a fork: record a sibling path in the branch directory as `worktree.txt`, create one detached worktree there with `git -c core.hooksPath=/dev/null worktree add --detach <path> <sha>`, apply the saved patch with `git -C <path> apply --binary <patch>` when the work is uncommitted, and launch one fresh `executor` there with the executor brief from `references/verify.md` and every such finding's text, never the rationale or which hunter raised it. `red` confirms the finding.
-5. **Only when an unconfirmed `bug` remains**, launch one fresh `reviewer` with the refute brief from `references/verify.md` and every such `bug`, each with its executor verdict when there was one.
-6. Dispose each finding:
+2. Try to reproduce each finding yourself, with repro files in a scratch directory outside the checkout. A run that fails for the reason the finding gives confirms it and becomes its red check. A defect in prose, such as two contradictory instructions, is confirmed by citing both lines. Never run code from a fork's pull request; a fork's findings that need a run are dropped.
+3. **High and Deep, when a finding needs a run you could not do inline**, and never for a fork: record a sibling path in the branch directory as `worktree.txt`, create one detached worktree there with `git -c core.hooksPath=/dev/null worktree add --detach <path> <sha>`, apply the saved patch with `git -C <path> apply --binary <patch>` when the work is uncommitted, and launch one fresh `executor` there with the executor brief from `references/verify.md` and every such finding's text, never the rationale or which hunter raised it. `red` confirms the finding.
+4. Dispose each finding:
    - **confirmed**: your run or the executor ran red, or contradictory prose was cited.
-   - **refuted**: a `bug` that was not reproduced **and** the refuter cited where its failure path is cut.
-   - **unverified**: everything else, including every unreproduced `risk` and `q`. Take each to the human with its evidence.
-7. Clean up the executor's worktree: every `!!` line of `git -C <wt> status --porcelain --ignored` must be regenerable build output; save its work with `git -C <wt> add -A . && git -C <wt> diff --cached --binary <sha> > "<branch directory>/<wt name>.patch"`; only when that exited 0 and the file exists, run `git worktree remove --force <path in worktree.txt>` and delete `worktree.txt`. Otherwise leave both and report the worktree.
+   - **dropped**: everything else, with what was tried: the run stayed green, could not run, or the finding needed a run this level does not launch. Report each hunter's dropped count and reasons, not the findings.
+5. Clean up the executor's worktree: every `!!` line of `git -C <wt> status --porcelain --ignored` must be regenerable build output; save its work with `git -C <wt> add -A . && git -C <wt> diff --cached --binary <sha> > "<branch directory>/<wt name>.patch"`; only when that exited 0 and the file exists, run `git worktree remove --force <path in worktree.txt>` and delete `worktree.txt`. Otherwise leave both and report the worktree.
 
 ## Fix
 
@@ -70,8 +67,8 @@ Fix confirmed findings inline and commit. A code finding is fixed when its red c
 At Medium, the green check or the reconciled lines are the proof. At High and Deep, launch one fresh `reviewer` with the recheck brief from `references/verify.md`, giving it the confirmed findings, their checks, the repair delta `git diff <sha> <repaired sha>` over owned paths, the requirements, and the repaired revision; it reads the repaired commit in the checkout. A nit or a fix with no behavior change needs no recheck.
 
 - `holds`: the finding stays `fixed`.
-- `fails`, or a new defect in the repaired code: record it `unverified` (a regression as round 2) and take it to the human. Never start a second repair loop on your own.
-- `unknown`, or a report that does not echo the repaired revision: retry once if the cap permits, then record the finding `unverified`.
+- `fails`, or a new defect in the repaired code: reproduce it on the repaired revision. A red run records the finding `confirmed` again (a regression as a new round 2 finding) and takes it to the human; otherwise drop it and count it. Never start a second repair loop on your own.
+- `unknown`, or a report that does not echo the repaired revision: retry once if the cap permits; the green check stands, and the recheck is reported as unknown.
 - `follow_ups`: report them beside the outcome; record none and repair none.
 
 ## Record
@@ -82,8 +79,9 @@ Record each disposition with `harness review record` (`references/ledger.md`) th
 
 - Level, coverage, selected specialists with their reasons, and calls used against the cap.
 - The reviewed revision and content identity, and the standards loaded.
-- Each axis's findings side by side, sorted by severity within the axis and never reranked across axes, each with its disposition and the ladder step it reached.
-- What stayed unverified: hunters, slices, findings, any worktree left in place.
+- Each axis's confirmed findings side by side, sorted by severity within the axis and never reranked across axes, each with its disposition and the run that proved it.
+- Each hunter's raised, confirmed, and dropped counts, with the reasons findings were dropped.
+- What stayed unverified: hunters, slices, any worktree left in place.
 
 A change to the reviewed revision invalidates the verdict until the affected evidence is rechecked.
 

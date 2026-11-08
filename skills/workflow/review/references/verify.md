@@ -1,6 +1,6 @@
 # Verify findings
 
-Three briefs, each given at most once per review with every finding it covers. The executor and recheck briefs run only at High and Deep; the refute brief covers unreproduced `bug` findings only. The parent pastes the matching brief together with the numbered findings and the revision. No brief says who raised a finding or why the code was written this way.
+Two briefs, each given at most once per review with every finding it covers, and both only at High and Deep. The parent pastes the matching brief together with the numbered findings and the revision. No brief says who raised a finding or why the code was written this way.
 
 ## Executor: make each one fail
 
@@ -23,17 +23,6 @@ This report replaces the executor role's output fields, since a detached worktre
 
 `red` means the finding is true.
 
-## Reviewer: try to refute
-
-Given only the numbered `bug` findings and the code, decide for each whether the failure it describes can reach observable behavior. Trace from the input or state that would trigger it toward the claimed wrong output, crash, or data change. Judge each finding on its own; one finding's verdict says nothing about another's.
-
-Report, for each finding by its number, one of:
-- `refute: unreachable`, with the `path:line` where the path is cut;
-- `refute: reachable`, with the completed trace;
-- `refute: unknown`, with what you could not trace.
-
-Only `unreachable` with a cited cut counts as a refutation.
-
 ## Reviewer: recheck the fixes
 
 Given the confirmed findings, the check that proved each one, the repair delta, and the requirements, decide for each finding whether the repair removes the failure at its root, not at one symptom or one call site, and whether the repair breaks anything the findings did not name. Read the repaired code and its callers; you cannot run anything.
@@ -43,7 +32,7 @@ Open your report with the reviewer role's header lines, with `revision:` echoing
 - `fails`, with the trace that still reaches the failure;
 - `unknown`, with what you could not read or trace.
 
-Use `unknown` when you could not read the code a verdict turns on. Never report `fails` for something you did not observe: a `fails` reopens the finding and sends it to the human.
+Use `unknown` when you could not read the code a verdict turns on. Never report `fails` for something you did not observe: the parent runs each `fails` before it reopens the finding.
 
 Then list:
 - `regressions:` each new defect the repair introduced, in the reviewer role's finding format, or `none`;
