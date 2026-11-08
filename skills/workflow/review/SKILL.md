@@ -20,7 +20,7 @@ Read `harness review level --json`; if it is unavailable, use `medium` and repor
 | Level | Automatic trigger | Hunters | Conditional calls | Cap |
 | --- | --- | --- | --- | --- |
 | `off` | Never | Explicit requests use Medium | | 0 automatically |
-| `medium` | PR above `tests-docs`; local handoff that is `critical` or names security, data-loss, compatibility, or concurrency risk | One general reviewer | None | 2 |
+| `medium` | PR or `build` integration branch above `tests-docs`; local handoff that is `critical` or names security, data-loss, compatibility, or concurrency risk | One general reviewer | None | 2 |
 | `high` | PR or local handoff at `structural` or above | General reviewer plus one or two specialists | Executor, recheck | 6 |
 | Deep (explicit only) | Human request | High plus a second general reviewer | Same as High | 7 |
 
@@ -35,6 +35,8 @@ At High, select one or two specialists and state the concrete question each will
 Choose by consequences, not file count. If no specialist has a distinct useful question, keep only the general reviewer and say why. Deep's second general reviewer comes from another vendor when the installed reviewer assignment permits it; its findings join the union, because different models catch different defects. Resolve roles through POLICY's delegation rules; never change models or install agents to obtain diversity, and report when diversity is unavailable.
 
 The cap counts every role call in the review, retries and delegated fixes included. Splitting a large diff does not reset it. If coverage cannot fit, report the uncovered scope rather than exceeding the cap. When no review is triggered, record `no-review` with the level.
+
+`land` requires a review covering the current patch of every pull request this table triggers at `medium` or `high`, and of any the human asked to have reviewed; at `off` it reports the gap without holding the merge.
 
 ## Snapshot
 
