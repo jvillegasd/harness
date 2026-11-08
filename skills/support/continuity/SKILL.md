@@ -22,7 +22,7 @@ Reuse an existing task or spec document; otherwise use `docs/agents/tasks/<featu
 - Tasks with their status and the commit that finished each.
 - Evidence: each command, its outcome, and the commit it ran on.
 - The `## Decisions` table (see Decisions).
-- State and next action: what is in progress, what comes next, the key files, and gotchas.
+- `## State and next action`: what is in progress, what comes next, the key files, and gotchas. Keep that heading: after a compaction, the client's hook restores this section.
 
 Name branches and commits, never an absolute path or a worktree location, since the document outlives the machine. Update it at meaningful changes and commit it with the work where POLICY lets you. When the pull request is about to open, `open-pr` sets the status to shipped for review with the final evidence and open decisions, so the default branch never receives a document that still reads in progress.
 
@@ -32,9 +32,11 @@ When the session must stop, or compaction is near on long work:
 
 1. Finish or back out of the current step.
 2. Commit the work on your own task branch as `wip: <step>`, with one line in the body if the tree is broken.
-3. Update the task document's state and next action: the goal, progress with evidence tied to commits, current state, next steps, key files, and gotchas. Commit it. Pausing work that has no document creates one, since needing a pause means the diff alone will not carry it.
+3. Update the task document's `## State and next action`: the goal, progress with evidence tied to commits, current state, next steps, key files, and gotchas. Commit it. Pausing work that has no document creates one, since needing a pause means the diff alone will not carry it.
 
 ## Resume
+
+After a compaction, the client's hook has already restored the branch, its head, and each changed task document's next action from `harness resume`; start from that.
 
 1. Read the task document, `git log <base>..HEAD`, the diff against the base, and the working tree.
 2. Trust them. Evidence bound to a commit whose inputs have not changed since still stands, so do not rerun it or redo the work it covers; rerun only what a later change made stale. Git wins over the document about the state of the code. Keep unfinished requirements even when their files no longer differ.

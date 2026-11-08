@@ -29,11 +29,6 @@ var (
 	allComponents = []string{"agents", "aliases", "mcp", "policy", "settings", "skills"}
 )
 
-// supports reports whether a client has the component at all; the tracked settings are Claude Code's alone.
-func supports(client, component string) bool {
-	return component != "settings" || client == "claude"
-}
-
 // entry is one managed copy: where it was written, what it belongs to, and the digest it had when written, which is how a later run tells the harness's copy from a user's edit.
 type entry struct {
 	Path      string   `json:"path"`
@@ -214,6 +209,9 @@ func (in *installer) desired() []entry {
 		}
 	}
 	add(in.dir.Aliases(), in.aliasesPath(), "aliases", allClients...)
+	// Claude Code's compaction hook is a tracked key in clients/claude.json; the other two clients take a file of their own.
+	add(filepath.Join(in.dir.Clients(), "codex", "hooks.json"), filepath.Join(in.codexHome(), "hooks.json"), "settings", "codex")
+	add(filepath.Join(in.dir.Clients(), "opencode", "plugins", "harness-resume.ts"), filepath.Join(in.config, "opencode", "plugins", "harness-resume.ts"), "settings", "opencode")
 	return out
 }
 

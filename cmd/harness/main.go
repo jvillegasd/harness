@@ -10,6 +10,7 @@ import (
 	"github.com/jvillegasd/harness/internal/changemap"
 	"github.com/jvillegasd/harness/internal/install"
 	"github.com/jvillegasd/harness/internal/models"
+	"github.com/jvillegasd/harness/internal/resume"
 	"github.com/jvillegasd/harness/internal/reviewledger"
 	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/statusline"
@@ -31,6 +32,7 @@ Commands:
   models     Choose each delegated role's client, model, and effort
   change-map Classify this branch's changed files into review tiers
   review     Record and read the local review ledger
+  resume     Print the task context a client restores after compaction
 `
 
 func run(args []string, stdout, stderr io.Writer) int {
@@ -55,6 +57,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return changemap.Command(args[1:], stdout, stderr)
 	case "review":
 		return reviewledger.Command(args[1:], stdout, stderr)
+	case "resume":
+		return resume.Command(args[1:], stdout, stderr)
 	case "-h", "--help", "help":
 		fmt.Fprint(stdout, usage)
 		return 0

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -618,5 +620,57 @@ func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
 	}
 	if got := readFile(t, replaced); got != "user work\n" {
 		t.Fatalf("retirement wrote through the user's symlink: %q", got)
+	}
+}
+
+// The compaction hooks reach every client, and Claude Code's merge replaces only the harness's own hook group: the user's hooks under the same event and under other events survive both the install and the uninstall, and a stale harness group is replaced rather than duplicated.
+func TestCompactionHooksKeepTheUsersOwn(t *testing.T) {
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	settings := filepath.Join(home, ".claude", "settings.json")
+	user := `{"matcher": "startup", "hooks": [{"type": "command", "command": "echo mine"}]}`
+	writeMode(t, settings, `{"hooks": {"SessionStart": [`+user+`, {"matcher": "compact", "hooks": [{"type": "command", "command": "\"$HOME/.local/bin/harness\" retired"}]}], "Stop": [`+user+`]}}`+"\n", 0o644)
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+
+	var got struct {
+		Hooks map[string][]struct {
+			Matcher string `json:"matcher"`
+			Hooks   []struct {
+				Command string `json:"command"`
+			} `json:"hooks"`
+		} `json:"hooks"`
+	}
+	decode := func() {
+		got.Hooks = nil
+		if err := json.Unmarshal([]byte(readFile(t, settings)), &got); err != nil {
+			t.Fatal(err)
+		}
+	}
+	decode()
+	var commands []string
+	for _, group := range got.Hooks["SessionStart"] {
+		commands = append(commands, group.Matcher+": "+group.Hooks[0].Command)
+	}
+	if want := []string{"startup: echo mine", `compact: "$HOME/.local/bin/harness" resume`}; !slices.Equal(commands, want) {
+		t.Errorf("SessionStart after install = %q, want %q", commands, want)
+	}
+	if len(got.Hooks["Stop"]) != 1 {
+		t.Errorf("the user's Stop hook changed: %+v", got.Hooks["Stop"])
+	}
+	for _, path := range []string{filepath.Join(home, ".codex", "hooks.json"), filepath.Join(home, ".config", "opencode", "plugins", "harness-resume.ts")} {
+		if !strings.Contains(readFileOr(path), "harness") {
+			t.Errorf("%s is missing its compaction hook", path)
+		}
+	}
+
+	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	decode()
+	if groups := got.Hooks["SessionStart"]; len(groups) != 1 || groups[0].Matcher != "startup" || len(got.Hooks["Stop"]) != 1 {
+		t.Errorf("the uninstall did not leave exactly the user's hooks: %+v", got.Hooks)
+	}
+	for _, path := range []string{filepath.Join(home, ".codex", "hooks.json"), filepath.Join(home, ".config", "opencode", "plugins", "harness-resume.ts")} {
+		if _, err := os.Stat(path); err == nil {
+			t.Errorf("the uninstall kept %s", path)
+		}
 	}
 }

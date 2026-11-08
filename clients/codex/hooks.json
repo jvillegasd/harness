@@ -1,0 +1,17 @@
+{
+  "description": "Managed by the harness: restore the task context after Codex compacts a session.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.local/bin/harness\" resume",
+            "statusMessage": "Restoring task context"
+          }
+        ]
+      }
+    ]
+  }
+}

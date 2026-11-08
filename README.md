@@ -93,7 +93,7 @@ Use `harness models --help` to inspect presets and per-role assignments. Changin
 | `cxyolo` | Codex with approvals and sandbox bypassed |
 | `ocyolo` | OpenCode with edit, shell, and web access allowed |
 
-The installer sources `aliases.sh` from `~/.zshrc`. These launchers grant broad access. Claude Code also gets a harness status line; Codex uses its own footer.
+The installer sources `aliases.sh` from `~/.zshrc`. These launchers grant broad access. Claude Code also gets a harness status line; Codex uses its own footer. Each client also gets a compaction hook that runs `harness resume`, so after a long session is compacted the agent gets back the branch, its latest commit, and the task document's next action. Codex runs it only after you trust it once in its `/hooks` screen.
 
 ## Update installed tools
 

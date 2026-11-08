@@ -43,5 +43,18 @@
   "statusLine": {
     "type": "command",
     "command": "\"$HOME/.local/bin/harness\" statusline"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.local/bin/harness\" resume"
+          }
+        ]
+      }
+    ]
   }
 }

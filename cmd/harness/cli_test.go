@@ -114,6 +114,7 @@ func TestCommandHelpMatrix(t *testing.T) {
 		{"review", "record"},
 		{"review", "list"},
 		{"review", "path"},
+		{"resume"},
 	}
 	for _, command := range commands {
 		for _, flag := range []string{"--help", "-h"} {
@@ -182,6 +183,7 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"review", "record", "--round", "two"},
 		{"review", "list", "extra"},
 		{"review", "path", "--bogus"},
+		{"resume", "extra"},
 	}
 	for _, want := range args {
 		t.Run(strings.Join(want, " "), func(t *testing.T) {

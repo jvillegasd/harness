@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -235,11 +236,7 @@ func (in *installer) installFiles() {
 
 	installed := map[string][]string{}
 	for _, client := range allClients {
-		for _, component := range allComponents {
-			if supports(client, component) {
-				installed[client] = append(installed[client], component)
-			}
-		}
+		installed[client] = slices.Clone(allComponents)
 	}
 	in.saveState(in.keepChoices(state{Version: stateVersion, Installed: installed, Files: want}))
 	in.installed = want
