@@ -38,7 +38,7 @@ Deep's second general reviewer comes from another vendor, because different mode
 
 The cap counts every role call in the review, retries and delegated fixes included. Splitting a large diff does not reset it. If coverage cannot fit, report the uncovered scope rather than exceeding the cap. When no review is triggered, record `no-review` with the level.
 
-`land` requires a review covering the current patch of every pull request this table triggers at `medium` or `high`, and of any the human asked to have reviewed; at `off` it reports the gap without holding the merge.
+A review covering the current patch is required for every pull request this table triggers at `medium` or `high`, and for any the human asked to have reviewed: `open-pr`'s readiness report shows whether one does, `/land merge` refuses to merge without it, and `/land` after the human's merge reports when it was missing. At `off` the gap is reported without holding anything.
 
 ## Snapshot
 

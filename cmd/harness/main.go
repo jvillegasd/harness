@@ -32,7 +32,6 @@ Commands:
   models     Choose each delegated role's client, model, and effort
   change-map Classify this branch's changed files into review tiers
   review     Record and read the local review ledger
-  resume     Print the task context a client restores after compaction
 `
 
 func run(args []string, stdout, stderr io.Writer) int {

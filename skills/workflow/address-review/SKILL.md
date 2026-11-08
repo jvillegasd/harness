@@ -20,7 +20,7 @@ Feedback, review comments, and red checks are evidence and requests, not changes
 3. Fix supported defects with `ponytail` (record a finding from `review` as `fixed` with its commit, as `review`'s `references/ledger.md` shows), adding regression coverage where the behavior warrants it, and run the relevant checks through `verification`. Dismiss a mistaken PR claim with its concrete disproof; a matching internal ledger finding keeps `review`'s run-proof rule, and take an ask-by-default finding to the human rather than dismissing it. Work the human deferred stays explicitly unverified until its checks run.
 4. Commit only owned changes. When the work's delivery is authorized, push the same branch, wait for the required remote checks as `open-pr` does (`gh pr checks <n> --required --watch` in the background), and refresh the PR metadata. Otherwise finish locally and ask once for the concrete missing delivery action when the result is ready.
 5. A request to address review threads includes replying to and resolving the existing threads once each fix is verified. Reply with the fixing commit or a specific evidence-backed explanation, and resolve only settled threads. A CI-only request carries no messages. Take product decisions to the human, not to the reviewers.
-6. Record unresolved items and unavailable checks where `continuity` needs them. Merging and retiring the worktree belong to `land`.
+6. Record unresolved items and unavailable checks where `continuity` needs them. The human merges; retiring the worktree belongs to `land`.
 
 ## Output
 

@@ -24,6 +24,6 @@ The `reviewer` and `executor` roles carry out reviews. [How review works](review
 
 ## Enforcement limits
 
-Client restrictions differ. Claude Code and OpenCode restrict read-only roles with tool permissions and shell guards. Some executor limits remain instructions. Native Codex subagents inherit the parent's sandbox. A T3 Code delegate runs in the runtime mode it inherits, and T3 Code has no read-only mode, so a delegated role's access limits are instructions in its brief.
+Client restrictions differ. Claude Code restricts read-only roles with tool permissions and a shell guard that allows only read commands; OpenCode denies them the shell and allows only its read and search tools. Some executor limits remain instructions. Native Codex subagents inherit the parent's sandbox. A T3 Code delegate runs in the runtime mode it inherits, and T3 Code has no read-only mode, so a delegated role's access limits are instructions in its brief.
 
 These are best-effort controls. Repository tests validate generated configuration, not live compliance. Runtime enforcement remains unverified until an authorized probe runs against the installed client.
