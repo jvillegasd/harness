@@ -26,7 +26,7 @@ The Harness AI installation that serves Claude Code, Codex, and OpenCode. `READM
 | `internal/reviewledger/` | The per-branch local review ledger behind `harness review`, which records findings and their dispositions inside the Git directory, and the review level behind `harness review level` |
 | `POLICY.md` | The vendor-neutral global policy linked into each client |
 | `skills/<group>/<name>/` | Independent capabilities (also invoked as `/name`), grouped by type: `workflow` (what a normal session invokes), `support` (the shared helpers those skills and the policy call), `planning`, `design`, `assurance`, and `ops`. Locked bodies sit in their group beside local ones; clients see only the bare name |
-| `skills/assurance/e2e-verification/SKILL.md`, `skills/assurance/e2e-verification/scripts/` | Targeted E2E runs on a feature, bugfix, PR, or path: an isolated environment, a Playwright suite with real screenshots per test, and the run kit and report builder it copies |
+| `skills/assurance/e2e-verification/SKILL.md`, `skills/assurance/e2e-verification/scripts/` | Targeted E2E runs on a feature, bugfix, PR, or path over the project's `verify-<app>` skill, with real screenshots per test, and the run kit and report builder it copies |
 | `clients/` | Client settings and the role assignments the installer reconciles |
 | `roles/` | Canonical roles no skill owns, the executor and code-search |
 | `aliases.sh` | The managed yolo-mode shell aliases |
