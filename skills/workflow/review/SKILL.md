@@ -76,7 +76,7 @@ At Medium, the green check or the reconciled lines are the proof. At High, launc
 
 ## Record
 
-Record each disposition with `harness review record` (`references/ledger.md`) the moment it is decided. A review with no findings, or with no review triggered, writes one line too. Whoever commits a fix appends `fixed` with the fixing commit. The review posts nothing to the forge; `address-review` handles pull request threads.
+Record every disposition in the ledger as `references/ledger.md` describes.
 
 ## Output
 
