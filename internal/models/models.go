@@ -26,6 +26,12 @@ type Assignment struct {
 // Roles are the delegated roles a preset assigns, in report order.
 var Roles = []string{"executor", "code-search", "reviewer"}
 
+// Lenses are the review lens roles. No preset assigns them: each follows the reviewer's assignment until `harness models set <lens>` overrides it.
+var Lenses = []string{"review-bugs", "review-spec", "review-risk", "review-standards"}
+
+// AllRoles is every role a choice can resolve or override, presets' roles first.
+var AllRoles = append(append([]string{}, Roles...), Lenses...)
+
 // retired roles were merged into reviewer or removed; an override left for one is dropped on load rather than failing every install.
 var retired = map[string]bool{"reviewer-a": true, "reviewer-b": true, "review-refuter": true}
 
@@ -254,6 +260,13 @@ func (c Choice) Resolve() map[string]Resolved {
 			continue
 		}
 		out[role] = Resolved{Presets[preset][role], "preset:" + preset}
+	}
+	for _, lens := range Lenses {
+		if a, ok := c.Roles[lens]; ok {
+			out[lens] = Resolved{a, "override"}
+			continue
+		}
+		out[lens] = Resolved{out["reviewer"].Assignment, "reviewer"}
 	}
 	return out
 }

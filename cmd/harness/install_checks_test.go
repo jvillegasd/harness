@@ -12,7 +12,7 @@ import (
 )
 
 // agentOutputs are the role agents this checkout renders, per client.
-var agentOutputs = []string{"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml", "opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md"}
+var agentOutputs = []string{"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "claude/review-bugs.md", "claude/review-risk.md", "claude/review-spec.md", "claude/review-standards.md", "codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml", "codex/review-bugs.toml", "codex/review-risk.toml", "codex/review-spec.toml", "codex/review-standards.toml", "opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md", "opencode/review-bugs.md", "opencode/review-risk.md", "opencode/review-spec.md", "opencode/review-standards.md"}
 
 func readFile(t *testing.T, path string) string {
 	t.Helper()

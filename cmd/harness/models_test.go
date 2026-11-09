@@ -268,8 +268,12 @@ func TestEveryAssignedRoleIsDispatchable(t *testing.T) {
 		t.Fatal(err)
 	}
 	for role := range config.Roles {
-		if !slices.Contains(models.Roles, role) {
-			t.Errorf("clients/assignments.json assigns %q but models.Roles omits it, so the role cannot be resolved", role)
+		if !slices.Contains(models.AllRoles, role) {
+			t.Errorf("clients/assignments.json assigns %q but models.AllRoles omits it, so the role cannot be resolved", role)
+		}
+		// A review lens follows the reviewer's assignment, so no preset names it.
+		if slices.Contains(models.Lenses, role) {
+			continue
 		}
 		for preset, table := range models.Presets {
 			if _, ok := table[role]; !ok {

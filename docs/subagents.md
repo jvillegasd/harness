@@ -8,19 +8,20 @@ Work stays inline unless a worker offers independent inspection, useful parallel
 | --- | --- | --- |
 | `executor` | Implement one bounded slice | No commits, publication, tracker writes, merges, worktree removal, or further delegation |
 | `code-search` | Answer one repository question with file and line citations | Read and search only |
-| `reviewer` | Find defects or validate fixes | Read and search only; does not receive the author's rationale |
+| `reviewer` | Check that review fixes hold | Read and search only; does not receive the author's rationale |
+| `review-bugs`, `review-spec`, `review-risk`, `review-standards` | Hunt defects through one lens: general bugs, requirements, consequential risk, or standards | Same as `reviewer`, whose text each lens extends |
 
 Definitions live in [roles/](../roles/) and [the review skill](../skills/workflow/review/SKILL.md). A worker's completion message is not proof: the parent checks its scope, Git state, and results.
 
 ## Launching a role
 
-Each role is assigned a client, model, and effort; `harness models` shows and changes the assignments. A role assigned to the session's own client runs as a native subagent. A role assigned to another client runs only inside a T3 Code session, as a delegated task with that client's model and effort. A T3 Code child loads no installed role agent, so the role's definition travels in its brief.
+Each role is assigned a client, model, and effort; `harness models` shows and changes the assignments. A review lens follows the `reviewer` assignment until you set it on its own. A role assigned to the session's own client runs as a native subagent. A role assigned to another client runs only inside a T3 Code session, as a delegated task with that client's model and effort. A T3 Code child loads no installed role agent, so the role's definition travels in its brief.
 
 If a role is missing or stale on this machine, `harness install` provisions it; agents never quietly substitute another one. When a review needs an independent reviewer that cannot run, the review is reported as unverified rather than done by the author.
 
 ## Reviews
 
-The `reviewer` and `executor` roles carry out reviews. [How review works](review.md) explains what reviewers see, which findings reach you, and how fixes are checked.
+The review lenses, `reviewer`, and `executor` carry out reviews. [How review works](review.md) explains what reviewers see, which findings reach you, and how fixes are checked.
 
 ## Enforcement limits
 

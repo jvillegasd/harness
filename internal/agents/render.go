@@ -281,6 +281,31 @@ func assignmentBlock(block any, label string) (map[string]any, error) {
 	return obj, nil
 }
 
+// extendedBody reads the body of a definition another one extends, refusing a base that grants other access or itself extends another, so composition stays one level deep.
+func extendedBody(path, level string) (string, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	match := frontmatter.FindStringSubmatch(string(raw))
+	if match == nil {
+		return "", fmt.Errorf("missing frontmatter")
+	}
+	front := map[string]string{}
+	for _, line := range strings.Split(match[1], "\n") {
+		if key, value, ok := strings.Cut(line, ": "); ok {
+			front[key] = value
+		}
+	}
+	if front["access"] != level {
+		return "", fmt.Errorf("access must be %s, the access of the definition extending it", level)
+	}
+	if front["extends"] != "" {
+		return "", fmt.Errorf("it extends another definition itself")
+	}
+	return strings.TrimSpace(match[2]), nil
+}
+
 var frontmatter = regexp.MustCompile(`(?s)^---\n(.*?)\n---\n(.*)$`)
 
 func load(path, name string) (string, string, string, error) {
@@ -313,6 +338,15 @@ func load(path, name string) (string, string, string, error) {
 	if level != expected {
 		return "", "", "", fail(fmt.Sprintf("%s: access must be %s", path, expected))
 	}
+	// A definition that extends another, as a review lens extends the reviewer, renders the base's body first and its own after it, so the shared text exists once. The base must grant the same access, and the composed body is what the checks below see.
+	base := front["extends"]
+	if base != "" {
+		baseBody, err := extendedBody(filepath.Join(filepath.Dir(path), base), level)
+		if err != nil {
+			return "", "", "", fail(fmt.Sprintf("%s: extends %s: %v", path, base, err))
+		}
+		body = baseBody + "\n\n" + body
+	}
 	if level == "read-search" {
 		found := false
 		for _, line := range splitLines(body) {
@@ -322,6 +356,9 @@ func load(path, name string) (string, string, string, error) {
 			}
 		}
 		if !found {
+			if base != "" {
+				return "", "", "", fail(fmt.Sprintf("%s: missing the canonical Access line, which its base %s carries", path, base))
+			}
 			return "", "", "", fail(path + ": missing the canonical Access line")
 		}
 	}

@@ -22,7 +22,7 @@ The general reviewer covers correctness, requirements, error handling, compatibi
 - **Risk:** trust boundaries, data loss, failing dependencies, or concurrency.
 - **Standards:** changed interfaces, structure, and the project's documented conventions.
 
-Every reviewer runs on the model and effort you chose for the `reviewer` role with `harness models`.
+Each kind of reviewer is its own role (`review-bugs`, `review-spec`, `review-risk`, `review-standards`, and `reviewer` for the fix recheck). They all run on the model and effort you chose for `reviewer` with `harness models`, unless you set a lens on its own, for example `harness models set review-risk --client claude --model opus --effort high`.
 
 ```mermaid
 stateDiagram-v2

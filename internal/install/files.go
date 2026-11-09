@@ -85,7 +85,7 @@ func (in *installer) assigned() map[string]agents.Assigned {
 	}
 	assigned := choice.ForRender()
 	catalog := new(models.Catalog)
-	for _, role := range models.Roles {
+	for _, role := range models.AllRoles {
 		a := assigned[role]
 		err := catalog.Runnable(models.Assignment{Client: a.Client, Model: a.Model, Effort: a.Effort})
 		switch {

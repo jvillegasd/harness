@@ -97,7 +97,7 @@ func run(path string, args []string, stdout io.Writer) error {
 	case "show":
 		resolved := choice.Resolve()
 		catalog := new(Catalog)
-		for _, role := range Roles {
+		for _, role := range AllRoles {
 			r := resolved[role]
 			note := ""
 			if err := catalog.Runnable(r.Assignment); errors.Is(err, ErrNotListed) {
@@ -211,8 +211,8 @@ func resolve(choice Choice, args []string, stdout io.Writer) error {
 }
 
 func knownRole(role string) error {
-	if !slices.Contains(Roles, role) {
-		return fmt.Errorf("unknown role %q; choose %s", role, strings.Join(Roles, ", "))
+	if !slices.Contains(AllRoles, role) {
+		return fmt.Errorf("unknown role %q; choose %s", role, strings.Join(AllRoles, ", "))
 	}
 	return nil
 }

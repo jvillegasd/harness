@@ -11,9 +11,9 @@ import (
 )
 
 var outputNames = []string{
-	"claude/code-search.md", "claude/executor.md", "claude/reviewer.md",
-	"codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml",
-	"opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md",
+	"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "claude/review-bugs.md", "claude/review-risk.md", "claude/review-spec.md", "claude/review-standards.md",
+	"codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml", "codex/review-bugs.toml", "codex/review-risk.toml", "codex/review-spec.toml", "codex/review-standards.toml",
+	"opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md", "opencode/review-bugs.md", "opencode/review-risk.md", "opencode/review-spec.md", "opencode/review-standards.md",
 }
 
 // temp returns a resolved temporary directory, because macOS temp paths pass through a symlink and the renderer refuses a symlinked output ancestor.
@@ -798,4 +798,36 @@ func deepEqualStrings(a, b map[string]string) bool {
 		}
 	}
 	return true
+}
+
+// A review lens renders the reviewer's text and then its own under its own name, with the read-search controls, so the shared text exists once.
+func TestLensExtendsTheReviewer(t *testing.T) {
+	out := temp(t)
+	if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
+		t.Fatalf("generate exited %d: %s", code, stderr)
+	}
+	lens := readFile(t, filepath.Join(out, "claude", "review-spec.md"))
+	core, own := strings.Index(lens, "# Reviewer: find what is wrong, without the story"), strings.Index(lens, "## Lens: spec")
+	if core < 0 || own < core {
+		t.Errorf("review-spec does not carry the reviewer text followed by its lens:\n%s", lens)
+	}
+	for _, want := range []string{"name: review-spec\n", "permissionMode: dontAsk\n", "models read-guard"} {
+		if !strings.Contains(lens, want) {
+			t.Errorf("review-spec lacks %q", want)
+		}
+	}
+}
+
+// A base that itself extends another is refused, so composition stays one level deep.
+func TestExtendsIsOneLevelDeep(t *testing.T) {
+	dir := temp(t)
+	config := configCopy(t, dir, nil)
+	base := filepath.Join(dir, "roles", "reviewer.md")
+	raw := readFile(t, base)
+	if err := os.WriteFile(base, []byte(strings.Replace(raw, "access: read-search\n", "access: read-search\nextends: code-search.md\n", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, stderr := runCommand(t, config, filepath.Join(dir, "out")); code != 1 || !strings.Contains(stderr, "extends another definition itself") {
+		t.Errorf("exit %d, stderr %q", code, stderr)
+	}
 }

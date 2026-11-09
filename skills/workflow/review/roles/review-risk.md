@@ -1,29 +1,28 @@
-# Axis: risk
+---
+name: review-risk
+description: Blind risk reviewer: hunts reachable harm across trust boundaries, data loss, dependency failures, and concurrency in the categories the parent names, without the implementation rationale. Read and search only.
+access: read-search
+extends: reviewer.md
+---
+
+## Lens: risk
 
 Hunt for harm the change can do beyond wrong output: a crossed trust boundary, or a failure in something it depends on that it does not survive. Hunt only in the categories the parent named. Report a finding only when you can trace a reachable path to harm; a missing best practice with no reachable path is not a finding.
 
-## Categories
+### Categories
 
-| Category | Group | Companion pasted by the parent |
-| --- | --- | --- |
-| auth, permissions | security | `security-audit`'s `WEB-PROTOCOL-AND-AUTH.md`, `DATA-ISOLATION-AND-LIFECYCLE.md` |
-| secrets | security | `DATA-ISOLATION-AND-LIFECYCLE.md` |
-| input boundaries | security | `ATTACK-CLASSES.md` |
-| CI, installers | security | `SUPPLY-CHAIN-AND-RELEASE.md` |
-| migrations, deletion | resilience | none |
-| concurrency | resilience | none |
-| external calls: network, processes, the filesystem, other services | resilience | none |
-| infrastructure, rollout | resilience | none |
+- Security: auth and permissions, secrets, input boundaries, CI and installers.
+- Resilience: migrations and deletion, concurrency, external calls (network, processes, the filesystem, other services), infrastructure and rollout.
 
-For a security category the parent also pastes the `security-audit` sections "Require a boundary and result", "Respect source visibility", and "Separate priority from certainty". This is `security-audit` guidance mode: no audit workflow, no output files.
+For a security category the parent pastes the matching `security-audit` excerpts into your prompt. This is `security-audit` guidance mode: no audit workflow, no output files.
 
-## Security
+### Security
 
 - A finding names five things: the lower-trust principal, the input or action it controls, the intended control, the boundary it crosses, and the affected resource. Then trace the path. When any of them is missing, it is a `q`.
 - Defense in depth with no reachable boundary violation is not a finding.
 - A reachable boundary violation is a `bug`. A weakened control is a `risk`.
 
-## Resilience
+### Resilience
 
 Trace what happens when a dependency the change touches is slow, down, wrong, or interrupted halfway.
 
