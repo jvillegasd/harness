@@ -174,7 +174,7 @@ func TestEachClientGetsItsControls(t *testing.T) {
 		if !strings.HasPrefix(codex, "name = \""+role+"\"\n") || !strings.HasSuffix(codex, "\n'''\n\n[features]\napps = false\nplugins = false\n") {
 			t.Errorf("%s codex controls are wrong:\n%s", role, codex)
 		}
-		if !strings.Contains(claude, "\nname: "+role+"\n") || !strings.Contains(claude, "\ntools: Read, Grep, Glob, Bash\n") {
+		if !strings.Contains(claude, "\nname: "+role+"\n") || !strings.Contains(claude, "\ntools: Read, Grep, Glob, Bash, Skill\n") {
 			t.Errorf("%s claude frontmatter is wrong:\n%s", role, claude)
 		}
 		if !strings.Contains(opencode, "\nmode: all\npermission:\n  \"*\": deny\n") || !strings.Contains(opencode, "\n    \"*.env\": deny\n") {
@@ -256,11 +256,11 @@ func TestOnlyTheExecutorMayImplement(t *testing.T) {
 func TestCheckDetectsWidening(t *testing.T) {
 	mutations := []struct{ path, old, new string }{
 		{"claude/reviewer.md", "permissionMode: dontAsk\n", "permissionMode: bypassPermissions\n"},
-		{"claude/reviewer.md", "tools: Read, Grep, Glob, Bash\n", ""},
+		{"claude/reviewer.md", "tools: Read, Grep, Glob, Bash, Skill\n", ""},
 		{"opencode/reviewer.md", "  \"*\": deny", "  \"*\": allow"},
 		{"opencode/reviewer.md", "  list: allow\n", "  list: allow\n  bash: allow\n"},
 		{"opencode/reviewer.md", "mode: all\n", "mode: all\ntools:\n  bash: true\n"},
-		{"claude/code-search.md", "tools: Read, Grep, Glob, Bash\n", "tools: Read, Grep, Glob, Edit\n"},
+		{"claude/code-search.md", "tools: Read, Grep, Glob, Bash, Skill\n", "tools: Read, Grep, Glob, Edit\n"},
 		{"opencode/code-search.md", "  grep: allow\n", "  grep: allow\n  task: allow\n"},
 		{"claude/executor.md", "disallowedTools: Agent\n", ""},
 		{"opencode/executor.md", "  task: deny\n", "  task: allow\n"},

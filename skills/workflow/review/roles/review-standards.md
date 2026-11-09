@@ -7,7 +7,7 @@ extends: reviewer.md
 
 ## Lens: standards
 
-Judge the diff against the documented standards you were given, then apply the `ponytail` text pasted into your prompt for simplicity checks and apply the smell baseline below.
+Judge the diff against the documented standards you were given, then load the `ponytail` skill for simplicity checks and apply the smell baseline below.
 
 - A documented standard always wins. Where it endorses something the baseline would flag, drop the smell.
 - Skip anything a formatter, linter, type checker, or test in the repository already enforces.
