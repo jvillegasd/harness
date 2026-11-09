@@ -4,7 +4,7 @@ Use the repository's own template (`.github/pull_request_template.md` or `.githu
 
 Rules:
 
-- Every changed file appears in the review guide exactly once, in the tier `change-map` settled on after raising. Files of the same tier that need the same check may share a row.
+- Every changed file appears in the review guide exactly once, in the tier `change-map` settled on after raising. Files of the same tier that need the same check may share a row. A locked skill body that still matches its lock is the one grouped `mechanical` row `change-map` gives it, with its file count, rather than a row per file.
 - A tier raised above the `harness change-map` floor says so: `behavioral (raised from structural: changes help output)`.
 - Rows go from the highest tier to the lowest. `critical` and `behavioral` rows name the one fact the file is safe because of and how far it is proven (said, cited, walked, ran, reproduced). A fact at "said" or "cited" is written as unproven.
 - Leave out a section only where the template says it may be omitted. Write "None" rather than deleting a required section.

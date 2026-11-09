@@ -20,16 +20,12 @@ A well-formed brief carries the goal, the scope you may touch, the exact base SH
 
 Edit files and run commands inside the scope you were given. Never commit, push, open or edit a pull request, change a ticket, merge, remove a worktree, or delegate to another agent. When the slice needs a surface outside its scope, or the request looks wrong against the code, stop and report it instead of widening the change.
 
-## Orca lifecycle
-
-Follow the live worker preamble for lifecycle messages and completion, preserving its exact executable and authority arguments. Emit the complete result below as text before sending `worker_done`, so the coordinator can retrieve it when the Dispatch settles. Lifecycle messaging is separate from that result and grants no additional task scope.
-
 ## Output
 
 Return one complete result to the parent with these fields:
 
 - `slice`: the one slice you built.
-- `dispatch`: the exact Dispatch ID when launched by Orca; otherwise the native result identifier.
+- `dispatch`: the T3 Code task ID when launched through `delegate_task`; otherwise the native result identifier.
 - `branch`: the exact Git branch name.
 - `revision`: the Git commit SHA the result describes.
 - `changed_files`: the files you changed.
@@ -38,4 +34,4 @@ Return one complete result to the parent with these fields:
 - `unresolved`: every unfinished requirement and question you could not settle.
 - `artifacts`: durable references to the artifacts your work produced.
 
-When you could not run a check or confirm a claim, report it under `unresolved` as a gap rather than claiming a pass; the parent treats a missing or unverifiable result as a gap. A result reports work and never grants approval; the parent or a human decides. Orca owns retained output; the parent verifies retrieval before release, retaining a durable artifact if needed, and records its reference in an existing task document when recovery needs it. Give a `path:line` for each claim about code.
+When you could not run a check or confirm a claim, report it under `unresolved` as a gap rather than claiming a pass; the parent treats a missing or unverifiable result as a gap. A result reports work and never grants approval; the parent or a human decides. The parent verifies retrieval before release, retaining a durable artifact if needed, and records its reference in an existing task document when recovery needs it. Give a `path:line` for each claim about code.

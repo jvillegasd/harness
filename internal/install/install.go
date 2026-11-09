@@ -70,7 +70,9 @@ const summaryText = `Next steps (interactive; not run by this installer):
      ChatGPT Plus/Pro. "Manually enter API Key" bills the API instead.
   4. Authenticate: gh auth login
   5. Restart Claude Code, Codex, and OpenCode.
-  6. Invoke setup-harness in each project that should use the public lifecycle.
+  6. In Codex, open /hooks and trust the harness compaction hook in
+     ~/.codex/hooks.json; Codex skips a new or changed hook until then.
+  7. Invoke setup-harness in each project that should use the public lifecycle.
 
 Status line: harness statusline, which Claude Code runs on every draw.
 Codex and OpenCode get none from the harness.
@@ -236,6 +238,7 @@ func (in *installer) install() {
 	in.installAgentBrowser()
 	in.registerEngramClaudeMCP()
 	in.reconcileClaudeSettings()
+	in.reconcileCodexHooks(false)
 	in.checkInstall()
 	if !in.skipPackages {
 		in.checkTools()
@@ -354,6 +357,9 @@ func (in *installer) checkInstall() {
 	in.checkFiles()
 	if !in.trackedSettingsHold(false) {
 		die("Tracked Claude settings are not reconciled in %s.", in.settingsPath())
+	}
+	if !in.codexHooksHold(false) {
+		die("The harness compaction hook is not reconciled in %s.", in.codexHooksPath())
 	}
 	in.checkStatusline()
 }

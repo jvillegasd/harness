@@ -111,7 +111,7 @@ func TestModelsResetRemovesOverrideThenBlock(t *testing.T) {
 	}
 }
 
-// TestModelsResolveReportsTheAssignment covers what resolve is for now that every role launches through Orca: the client, model, effort, and source, with no route to choose and no session to choose it against.
+// TestModelsResolveReportsTheAssignment covers what resolve is for: the client, model, effort, and source a parent maps onto a native subagent or a T3 Code delegate_task target.
 func TestModelsResolveReportsTheAssignment(t *testing.T) {
 	base := modelsBase(t)
 	resolved := func(role string) map[string]string {
@@ -237,6 +237,13 @@ func TestInstallFallsBackForAnUnlistedModel(t *testing.T) {
 	if strings.Contains(readFile(t, filepath.Join(base, "home", ".config", "opencode", "agents", "reviewer.md")), "model:") {
 		t.Error("the OpenCode reviewer carries a model this machine cannot run")
 	}
+	// The lenses follow the reviewer, so they fall back with it, silently and without the model.
+	if strings.Contains(r.stderr+r.stdout, "review-bugs is assigned") {
+		t.Errorf("a lens that follows the reviewer warned on its own:\n%s%s", r.stdout, r.stderr)
+	}
+	if strings.Contains(readFile(t, filepath.Join(base, "home", ".config", "opencode", "agents", "review-bugs.md")), "model:") {
+		t.Error("the OpenCode review-bugs lens carries a model this machine cannot run")
+	}
 }
 
 // TestInstallRefusesATrackedPerRoleAssignment keeps the machine choice the only per-role source.
@@ -268,8 +275,12 @@ func TestEveryAssignedRoleIsDispatchable(t *testing.T) {
 		t.Fatal(err)
 	}
 	for role := range config.Roles {
-		if !slices.Contains(models.Roles, role) {
-			t.Errorf("clients/assignments.json assigns %q but models.Roles omits it, so the role cannot be resolved", role)
+		if !slices.Contains(models.AllRoles, role) {
+			t.Errorf("clients/assignments.json assigns %q but models.AllRoles omits it, so the role cannot be resolved", role)
+		}
+		// A review lens follows the reviewer's assignment, so no preset names it.
+		if slices.Contains(models.Lenses, role) {
+			continue
 		}
 		for preset, table := range models.Presets {
 			if _, ok := table[role]; !ok {

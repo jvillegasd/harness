@@ -7,6 +7,10 @@
   "roles": {
     "executor": {"definition": "../roles/executor.md"},
     "code-search": {"definition": "../roles/code-search.md"},
-    "reviewer": {"definition": "../skills/workflow/review/roles/reviewer.md"}
+    "reviewer": {"definition": "../skills/workflow/review/roles/reviewer.md"},
+    "review-bugs": {"definition": "../skills/workflow/review/roles/review-bugs.md"},
+    "review-spec": {"definition": "../skills/workflow/review/roles/review-spec.md"},
+    "review-risk": {"definition": "../skills/workflow/review/roles/review-risk.md"},
+    "review-standards": {"definition": "../skills/workflow/review/roles/review-standards.md"}
   }
 }

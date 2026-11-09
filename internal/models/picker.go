@@ -51,7 +51,7 @@ func newPicker(catalog *Catalog) picker {
 func (p picker) options() []string {
 	switch p.step {
 	case stepRole:
-		return append(slices.Clone(Roles), "save")
+		return append(slices.Clone(AllRoles), "save")
 	case stepClient:
 		clients := []string{"claude"}
 		if listed, _ := p.catalog.Codex(); len(listed) > 0 {

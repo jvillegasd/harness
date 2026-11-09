@@ -1,27 +1,51 @@
 ---
 name: continuity
-description: "Trigger: long work, interruption, resume, or a boundary between phases. Keep one task document, an optional Engram mirror, a decisions table, and choose how to cross the boundary."
+description: "Trigger: long work, a pause, a resume, or compaction. Keep one committed task document, pause safely, and resume from it without redoing verified work."
 license: MIT
 metadata:
   author: jvillegasd
-  version: "1.1"
+  version: "2.0"
 ---
 
-Keep work recoverable across sessions with one task document, mirrored in project-scoped Engram only when it cannot be committed, and decide how to cross a boundary between phases.
+Keep work recoverable across sessions with one task document committed on the task branch, and pause and resume without losing or redoing work.
 
 ## Why
 
-A fresh session has only the request and the Git diff. When the requirements, decisions, evidence, and next action would not survive that, the task document carries them. A document committed on the task branch is already durable; the mirror protects only a document that must stay uncommitted, such as one on a branch you may not commit to, when the work spans sessions. Bounded work that the request and diff already explain needs no document, and file count alone is no reason to make one. Reuse an existing task or spec document; otherwise use `docs/agents/tasks/<feature>.md`.
+A fresh session has only the request and the Git history. When that would not let it finish the work, the task document carries the rest: requirements, decisions, evidence, and the next action. Committed on the task branch, it is durable without any other copy, and it merges with the work as the record of what was done and why. Work that the request and the diff already explain needs no document, and file count alone is no reason to make one.
 
-## Steps
+## Task document
 
-1. Keep one document with requirements, acceptance checks, tasks and status, evidence with its revision and dirty-content identity, pending decisions, and the next action. Include the branch, worktree, and the document's own locator. Preserve exact user-specified strings and examples. Record existing authority as context with its source; the document grants no new permission.
-2. Append each decision to the document's `## Decisions` table as it is made (see Decisions). At meaningful changes and handoffs, update the document and commit it with the work where POLICY lets you; a committed document needs no mirror. When it must stay uncommitted and the work spans sessions, mirror its full contents and locator in one project-scoped Engram observation under a stable `task/<feature>` topic. Search in the project, read candidates fully, and update the same observation. Treat an ambiguous identity or a failed read as unknown rather than absent, so no duplicate is created and nothing is overwritten blindly. Read back every write; a failed save or read-back leaves the mirror marked pending. Use the host's session identity as given.
-3. On resume, read the document and its mirror when one exists, then inspect the branch, HEAD, index, working diff, and owned untracked files. Where the two copies conflict, keep both until evidence or the human resolves it, since a newer timestamp settles nothing. Keep unfinished requirements even when their files no longer differ. Checks against a changed or unidentified snapshot are stale, so re-derive the next action from the current state.
-4. When one copy is unavailable, continue independently settled work from the readable copy and Git, record the missing mirror, and ask only about consequential missing context that dependent work needs.
-5. Recover existing `checkpoint/<branch>` records and referenced legacy `handoff/<branch>` records when relevant. Validate their branch and reference identities, leave the originals in place, and carry valid requirements, rationale, pending work, and retained-result locators into the task document. Stale checks and recorded approvals carry over as neither evidence nor authority; unavailable legacy context stays pending.
-6. For delegated work, retain complete result identities, unresolved requirements, revision and file state, checks, and any artifact locators. Verify retrieval before and after releasing disposable resources, and keep a durable local copy outside them when needed, since a completion signal alone proves nothing.
-7. On completion, merge, or abandonment, update an existing document only when that helps and is authorized; a terminal state alone is no reason to create one. Preserve recovery material before an authorized worktree retirement, and report an unavailable mirror without blocking unrelated local work.
+Reuse an existing task or spec document; otherwise use `docs/agents/tasks/<feature>.md`. Keep:
+
+- A header: the branch, the status, and the request quoted verbatim, with its source.
+- Requirements and acceptance checks, preserving exact user-specified strings and examples. Record existing authority as context with its source; the document grants no new permission.
+- Tasks with their status and the commit that finished each.
+- Evidence: each command, its outcome, and the commit it ran on.
+- The `## Decisions` table (see Decisions).
+- `## State and next action`: what is in progress, what comes next, the key files, and gotchas. Keep that heading: after a compaction, the client's hook restores this section.
+
+Name branches and commits, never an absolute path or a worktree location, since the document outlives the machine. Update it at meaningful changes and commit it with the work where POLICY lets you. When the pull request is about to open, `open-pr` sets the status to shipped for review with the final evidence and open decisions, so the default branch never receives a document that still reads in progress.
+
+## Pause
+
+When the session must stop, or compaction is near on long work:
+
+1. Finish or back out of the current step.
+2. Commit the work on your own task branch as `wip: <step>`, with one line in the body if the tree is broken.
+3. Update the task document's `## State and next action`: the goal, progress with evidence tied to commits, current state, next steps, key files, and gotchas. Commit it. Pausing work that has no document creates one, since needing a pause means the diff alone will not carry it.
+
+## Resume
+
+After a compaction, the client's hook has already restored the branch, its head, and each changed task document's next action from `harness resume`; start from that.
+
+1. Read the task document, `git log <base>..HEAD`, the diff against the base, and the working tree.
+2. Trust them. Evidence bound to a commit whose inputs have not changed since still stands, so do not rerun it or redo the work it covers; rerun only what a later change made stale. Git wins over the document about the state of the code. Keep unfinished requirements even when their files no longer differ.
+3. Ask only about consequential context that dependent work needs and neither source carries. Old notes grant no new authority.
+4. Before delivering, check the inherited claims against the goal through `verification`, since a note can be wrong about what works.
+
+## Delegated work
+
+Retain each delegate's complete result, its revision and file state, and its checks before releasing it, because a completion signal alone proves nothing.
 
 ## Decisions
 
@@ -33,18 +57,6 @@ Keep a `## Decisions` table in the task document and append a row when a decisio
 
 `change-map` reads this table for "decisions you did not ask for", so a row here is what lets the human see an agent-made choice without reconstructing it.
 
-## Phase boundaries
-
-Decide how to cross only at a boundary between phases, such as spec to implementation or implementation to review, and not mid-phase. Choosing how to cross grants no authority to cross: the next phase needs its own authorization (a request, or an approval that covers it, such as a spec approval for local implementation), and an unattended run needs the human's `/build`. Take the first option that fits:
-
-1. **Continue in this context** when the next phase needs this one's reasoning verbatim, or when context remains.
-2. **Clear** when everything held here is disposable and the files and the task document carry what matters.
-3. **Hand off** (`handoff`) only for a new tool or client, a new repository, a colleague, or a side fork.
-4. **Delegate to a fresh subagent** when the next task is tight enough to run unattended.
-5. Otherwise **compact**, with a note of what comes next.
-
-Every move except continuing turns first-hand context into a summary, and a summary loses detail that cannot be recovered, so prefer continuing while it fits.
-
 ## Output
 
-At a handoff, name the task document, mirror status, unsettled requirements and decisions, stale or unavailable evidence, and the next action. Call the mirror durable only after its read-back succeeded.
+At a pause or handoff, name the task document, its last commit, unsettled requirements and decisions, stale evidence, and the next action.

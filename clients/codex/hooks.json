@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.local/bin/harness\" resume",
+            "statusMessage": "Restoring task context"
+          }
+        ]
+      }
+    ]
+  }
+}

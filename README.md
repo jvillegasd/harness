@@ -44,9 +44,9 @@ See [installation and your files](docs/installation.md) for how installation and
 | Keep frontend or backend journey tests | `journey-verification` |
 | Review changes | `review` |
 | Publish the work | “Open a PR” or “ship this” |
-| Merge the current PR | `/land` |
+| Clean up after you merge a PR | `/land` (or `/land merge` to have it merge) |
 
-Local work stays local until you request publication. Only your explicit `/land` merges a PR. An explicit request naming work to discard authorizes that scope; ambiguity or additional work requires clarification.
+Local work stays local until you request publication. You merge PRs yourself, after reading the readiness report the PR ends with; an agent merges only when you run `/land merge`. An explicit request naming work to discard authorizes that scope; ambiguity or additional work requires clarification.
 
 ```mermaid
 stateDiagram-v2
@@ -66,8 +66,8 @@ stateDiagram-v2
     PR --> PR: Agent fixes failed checks or addresses feedback
     PR --> MergeReady: Required checks and review satisfied
     MergeReady --> PR: New changes require checks or review
-    MergeReady --> Merged: You invoke /land and agent verifies and merges
-    Merged --> [*]
+    MergeReady --> Merged: You merge, or invoke /land merge and the agent rechecks the gates and merges
+    Merged --> [*]: You invoke /land and the agent cleans up
 
     Local --> Waiting: Agent needs a decision or required check is unavailable
     Preparing --> Waiting: Agent needs a decision or required check or review is unavailable
@@ -79,13 +79,13 @@ stateDiagram-v2
 
 **Ready locally is a complete outcome.** Stop there if you do not want a PR. A publication request can come with the original task or later. From **Needs your input**, work resumes at the stage that was blocked. See [the workflow guide](docs/workflow.md#local-work-and-delivery) for details.
 
-Review defaults to `medium`. Set it yourself with `harness review level off|medium|high`. Medium sends PRs beyond docs or tests, and local changes with a concrete risk, to one independent reviewer; High adds one or two specialists where the change needs them; Deep, only on request, adds a second general reviewer. Asking for a review always runs one at your level. Problems nobody can prove or disprove come to you. See [how review works](docs/review.md) for what happens during a review, and [`harness review`](docs/cli.md#review-commands) for reading the results.
+Review defaults to `medium`. Set it yourself with `harness review level off|medium|high`. Medium sends PRs beyond docs or tests, and local changes with a concrete risk, to one independent reviewer; High adds one or two specialists where the change needs them. Every reviewer runs on the model you set for the `reviewer` role with `harness models`, unless you set a review lens on its own. Asking for a review always runs one at your level. Only problems a run proves come to you; the rest are counted as dropped. See [how review works](docs/review.md) for what happens during a review, and [`harness review`](docs/cli.md#review-commands) for reading the results.
 
 Read [the workflow guide](docs/workflow.md) for optional planning, builds, and tracker setup, or [the delegation guide](docs/subagents.md) for worker roles.
 
 ## Models and aliases
 
-Use `harness models --help` to inspect presets and per-role assignments. Changing an assignment requires installation to refresh the rendered agents. Roles assigned to the current client run natively; other clients run through Orca.
+Use `harness models --help` to inspect presets and per-role assignments. Changing an assignment requires installation to refresh the rendered agents. Roles assigned to the current client run natively; roles assigned to another client run through T3 Code's `delegate_task`.
 
 | Alias | Starts |
 | --- | --- |
@@ -93,7 +93,7 @@ Use `harness models --help` to inspect presets and per-role assignments. Changin
 | `cxyolo` | Codex with approvals and sandbox bypassed |
 | `ocyolo` | OpenCode with edit, shell, and web access allowed |
 
-The installer sources `aliases.sh` from `~/.zshrc`. These launchers grant broad access. Claude Code also gets a harness status line; Codex uses its own footer.
+The installer sources `aliases.sh` from `~/.zshrc`. These launchers grant broad access. Claude Code also gets a harness status line; Codex uses its own footer. Each client also gets a compaction hook that runs `harness resume`, so after a long session is compacted the agent gets back the branch, its latest commit, and the task document's next action. Codex runs it only after you trust it once in its `/hooks` screen.
 
 ## Update installed tools
 

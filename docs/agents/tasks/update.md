@@ -1,6 +1,6 @@
 # Add harness update
 
-Branch: feat/update. Worktree: /Users/linkrs/Desktop/projects/harness. Source: user's supplied implementation plan. Authority covers local implementation, tests, commits, and independent review; no live upgrades, provisioning, push, or PR.
+Branch: feat/update. Status: shipped in fedcb83. Source: user's supplied implementation plan. Authority covers local implementation, tests, commits, and independent review; no live upgrades, provisioning, push, or PR.
 
 Implement `harness update [clients|ides|packages|mcps|skills]`. Inventory before mutation, preserve ownership and release channels, skip missing or unsupported installs, continue independent failures, and report observed outcomes. Bare order: packages, clients, mcps, skills, ides. Skills use the scratch updater with dirty locked-path protection shared with `skills update`. Machine groups work outside a checkout. MCP reconciliation must not install unrelated assets or restart clients.
 
@@ -22,7 +22,7 @@ Independent review at medium/Quick of a6db275 found missing prerequisite guards 
 
 All six required checks passed on c3ae47fd497ad72f639e35e61ba84a102e942146: `go vet ./...`, `test -z "$(gofmt -l .)"`, `go test ./...`, `go build ./...`, `git diff --check`, and `git diff --cached --check`. The full CLI package passed in 160.954 seconds; this is check evidence, not a performance claim. Live package upgrades, MCP acceptance, and IDE trials remain unverified and require a separate execution request. The initial full suite passed on an earlier snapshot and is stale for the repair.
 
-Complete locally. No push, PR, live update, or provisioning performed. The final documentation-only commit records this evidence; the implementation snapshot is c3ae47f.
+Shipped in fedcb83; the implementation snapshot reviewed and checked above is c3ae47f. No live update or provisioning was performed.
 
 ## Review map
 

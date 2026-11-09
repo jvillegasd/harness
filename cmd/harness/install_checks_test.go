@@ -1,16 +1,18 @@
 package main
 
 import (
+	"encoding/json"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
 
 // agentOutputs are the role agents this checkout renders, per client.
-var agentOutputs = []string{"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml", "opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md"}
+var agentOutputs = []string{"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "claude/review-bugs.md", "claude/review-risk.md", "claude/review-spec.md", "claude/review-standards.md", "codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml", "codex/review-bugs.toml", "codex/review-risk.toml", "codex/review-spec.toml", "codex/review-standards.toml", "opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md", "opencode/review-bugs.md", "opencode/review-risk.md", "opencode/review-spec.md", "opencode/review-standards.md"}
 
 func readFile(t *testing.T, path string) string {
 	t.Helper()
@@ -237,10 +239,10 @@ func TestUninstallOpenCodeLeavesClaudeCopies(t *testing.T) {
 	}
 }
 
-// Codex is configured in ~/.codex even when the terminal points CODEX_HOME elsewhere, as Orca's do, and its uninstall leaves the copies the other clients still use.
+// Codex is configured in ~/.codex even when the terminal points CODEX_HOME elsewhere, as a launcher may, and its uninstall leaves the copies the other clients still use.
 func TestCodexInstallsIntoHomeCodexAndUninstallsAlone(t *testing.T) {
 	base := sandbox(t)
-	elsewhere := filepath.Join(base, "orca-codex-home")
+	elsewhere := filepath.Join(base, "launcher-codex-home")
 	extra := []string{"TMPDIR=" + filepath.Join(base, "tmp"), "HARNESS_ASSETS=" + filepath.Join(base, "checkout"), "CODEX_HOME=" + elsewhere}
 	ok(t, runHarness(t, base, extra, "install", "--skip-packages"), "install under another CODEX_HOME")
 	codexHome := filepath.Join(base, "home", ".codex")
@@ -618,5 +620,74 @@ func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
 	}
 	if got := readFile(t, replaced); got != "user work\n" {
 		t.Fatalf("retirement wrote through the user's symlink: %q", got)
+	}
+}
+
+// The compaction hooks reach every client, and Claude Code's merge replaces only the harness's own hook group: the user's hooks under the same event and under other events survive both the install and the uninstall, and a stale harness group is replaced rather than duplicated.
+func TestCompactionHooksKeepTheUsersOwn(t *testing.T) {
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	settings := filepath.Join(home, ".claude", "settings.json")
+	user := `{"matcher": "startup", "hooks": [{"type": "command", "command": "echo mine"}]}`
+	writeMode(t, settings, `{"hooks": {"SessionStart": [`+user+`, {"matcher": "compact", "hooks": [{"type": "command", "command": "\"$HOME/.local/bin/harness\" retired"}]}], "Stop": [`+user+`]}}`+"\n", 0o644)
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+
+	var got struct {
+		Hooks map[string][]struct {
+			Matcher string `json:"matcher"`
+			Hooks   []struct {
+				Command string `json:"command"`
+			} `json:"hooks"`
+		} `json:"hooks"`
+	}
+	decode := func() {
+		got.Hooks = nil
+		if err := json.Unmarshal([]byte(readFile(t, settings)), &got); err != nil {
+			t.Fatal(err)
+		}
+	}
+	decode()
+	var commands []string
+	for _, group := range got.Hooks["SessionStart"] {
+		commands = append(commands, group.Matcher+": "+group.Hooks[0].Command)
+	}
+	if want := []string{"startup: echo mine", `compact: "$HOME/.local/bin/harness" resume`}; !slices.Equal(commands, want) {
+		t.Errorf("SessionStart after install = %q, want %q", commands, want)
+	}
+	if len(got.Hooks["Stop"]) != 1 {
+		t.Errorf("the user's Stop hook changed: %+v", got.Hooks["Stop"])
+	}
+	for _, path := range []string{filepath.Join(home, ".codex", "hooks.json"), filepath.Join(home, ".config", "opencode", "plugins", "harness-resume.ts")} {
+		if !strings.Contains(readFileOr(path), "harness") {
+			t.Errorf("%s is missing its compaction hook", path)
+		}
+	}
+
+	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	decode()
+	if groups := got.Hooks["SessionStart"]; len(groups) != 1 || groups[0].Matcher != "startup" || len(got.Hooks["Stop"]) != 1 {
+		t.Errorf("the uninstall did not leave exactly the user's hooks: %+v", got.Hooks)
+	}
+	for _, path := range []string{filepath.Join(home, ".codex", "hooks.json"), filepath.Join(home, ".config", "opencode", "plugins", "harness-resume.ts")} {
+		if _, err := os.Stat(path); err == nil {
+			t.Errorf("the uninstall kept %s", path)
+		}
+	}
+}
+
+// A user's own ~/.codex/hooks.json keeps its hooks: the install adds the harness's compaction group beside them, and the uninstall removes only that group.
+func TestCodexHooksKeepTheUsersOwn(t *testing.T) {
+	base := sandbox(t)
+	path := filepath.Join(base, "home", ".codex", "hooks.json")
+	writeMode(t, path, `{"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "echo mine"}]}]}}`+"\n", 0o644)
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	text := readFileOr(path)
+	if !strings.Contains(text, "echo mine") || !strings.Contains(text, `harness\" resume`) {
+		t.Fatalf("after install, hooks.json lacks the user's hook or the harness hook:\n%s", text)
+	}
+	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	text = readFileOr(path)
+	if !strings.Contains(text, "echo mine") || strings.Contains(text, "resume") {
+		t.Errorf("after uninstall, hooks.json should hold only the user's hook:\n%s", text)
 	}
 }

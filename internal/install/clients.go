@@ -173,7 +173,58 @@ func (in *installer) writeIfChanged(path string, before, after []byte, message s
 	in.log(message, path)
 }
 
-// reconcileClaudeSettings merges clients/claude.json into the live settings and leaves every other key alone, because Orca, engram setup, and the client all write machine state there. A tracked key replaces the live value, so deleting one from the tracked file deletes it from the machine. permissions merges one level down, which keeps the allowlist engram setup writes while deny and ask stay owned.
+// harnessCommand marks a hook the harness owns: one that runs the installed harness binary.
+const harnessCommand = `.local/bin/harness"`
+
+// harnessGroup reports whether a hook matcher group runs the installed harness, which is how a reconcile tells the harness's group from one the user or another tool wrote under the same event.
+func harnessGroup(raw json.RawMessage) bool {
+	var group struct {
+		Hooks []struct {
+			Command string `json:"command"`
+		} `json:"hooks"`
+	}
+	if json.Unmarshal(raw, &group) != nil {
+		return false
+	}
+	return slices.ContainsFunc(group.Hooks, func(h struct {
+		Command string `json:"command"`
+	}) bool {
+		return strings.Contains(h.Command, harnessCommand)
+	})
+}
+
+// mergeHooks returns the live hooks with every harness group under the tracked events replaced by the tracked groups, or with add false, only removed. Other events and other groups under the same event stay, in order. An event or a hooks object left empty by a removal goes.
+func mergeHooks(live, tracked json.RawMessage, add bool) json.RawMessage {
+	merged, err := parseObject(live)
+	if err != nil {
+		merged = newObject()
+	}
+	events, err := parseObject(tracked)
+	must(err)
+	for _, event := range events.keys {
+		var kept []json.RawMessage
+		if current, ok := merged.get(event); ok {
+			var groups []json.RawMessage
+			if json.Unmarshal(current, &groups) != nil {
+				continue
+			}
+			kept = slices.DeleteFunc(groups, harnessGroup)
+		}
+		if add {
+			var ours []json.RawMessage
+			must(json.Unmarshal(events.vals[event], &ours))
+			kept = append(kept, ours...)
+		}
+		if len(kept) == 0 {
+			merged.del(event)
+		} else {
+			merged.set(event, encode(kept))
+		}
+	}
+	return encode(merged)
+}
+
+// reconcileClaudeSettings merges clients/claude.json into the live settings and leaves every other key alone, because other tools, engram setup, and the client all write machine state there. A tracked key replaces the live value, so deleting one from the tracked file deletes it from the machine. permissions merges one level down, which keeps the allowlist engram setup writes while deny and ask stay owned. hooks keeps every hook the harness does not run, so the user's and other tools' hooks under the same event survive.
 func (in *installer) reconcileClaudeSettings() {
 	path := in.settingsPath()
 	must(os.MkdirAll(filepath.Dir(path), 0o755))
@@ -193,6 +244,10 @@ func (in *installer) reconcileClaudeSettings() {
 				value = encode(merged)
 			}
 		}
+		if key == "hooks" {
+			current, _ := live.get(key)
+			value = mergeHooks(current, value, true)
+		}
 		live.set(key, value)
 	}
 	in.writeIfChanged(path, before, render(live), "Reconciled the tracked Claude settings in %s")
@@ -207,6 +262,12 @@ func (in *installer) removeClaudeSettings() {
 	live, before, tracked := in.readSettings(path)
 	for _, key := range tracked.keys {
 		current, ok := live.get(key)
+		if ok && key == "hooks" {
+			if rest := mergeHooks(current, tracked.vals[key], false); string(rest) != "{}" {
+				live.set(key, rest)
+				continue
+			}
+		}
 		owned, err := parseObject(current)
 		if !ok || key != "permissions" || err != nil {
 			live.del(key)
@@ -241,6 +302,12 @@ func (in *installer) trackedSettingsHold(removed bool) bool {
 		return reflect.DeepEqual(value, want)
 	}
 	for key, want := range tracked {
+		if key == "hooks" {
+			if !hooksHold(live[key], want, removed) {
+				return false
+			}
+			continue
+		}
 		if key != "permissions" {
 			if !holds(live, key, want) {
 				return false
@@ -256,6 +323,82 @@ func (in *installer) trackedSettingsHold(removed bool) bool {
 		}
 	}
 	return true
+}
+
+// hooksHold reports whether every tracked hook group sits under its event in the live hooks, or with removed, whether no harness group is left under a tracked event.
+func hooksHold(live, tracked any, removed bool) bool {
+	have, _ := live.(map[string]any)
+	events, _ := tracked.(map[string]any)
+	for event, want := range events {
+		groups, _ := have[event].([]any)
+		for _, group := range want.([]any) {
+			present := slices.ContainsFunc(groups, func(g any) bool { return reflect.DeepEqual(g, group) })
+			if present == removed {
+				return false
+			}
+		}
+		if removed {
+			for _, g := range groups {
+				if raw, err := json.Marshal(g); err == nil && harnessGroup(raw) {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func (in *installer) codexHooksPath() string {
+	return filepath.Join(in.codexHome(), "hooks.json")
+}
+
+// reconcileCodexHooks merges the hooks in clients/codex/hooks.json into ~/.codex/hooks.json, which the user and other tools may also write, the way reconcileClaudeSettings merges Claude Code's: only the harness's own groups are replaced, and every other key and hook stays. With remove it takes the harness's groups out, and deletes a file left with nothing in it.
+func (in *installer) reconcileCodexHooks(remove bool) {
+	path := in.codexHooksPath()
+	if remove && !isFile(path) {
+		return
+	}
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		data = []byte("{}\n")
+	} else if err != nil {
+		die("Reading %s failed: %v", path, err)
+	}
+	live, err := parseObject(data)
+	if err != nil {
+		die("%s is not a JSON object, so the harness compaction hook cannot be merged into it: %v", path, err)
+	}
+	tracked, err := os.ReadFile(filepath.Join(in.dir.Clients(), "codex", "hooks.json"))
+	must(err)
+	want, err := parseObject(tracked)
+	must(err)
+	current, _ := live.get("hooks")
+	if merged := mergeHooks(current, want.vals["hooks"], !remove); string(merged) == "{}" {
+		live.del("hooks")
+	} else {
+		live.set("hooks", merged)
+	}
+	if remove && len(live.keys) == 0 {
+		in.backupCopy(path)
+		must(os.Remove(path))
+		in.log("Removed the harness compaction hook and the now empty %s", path)
+		return
+	}
+	must(os.MkdirAll(filepath.Dir(path), 0o755))
+	in.writeIfChanged(path, data, render(live), "Reconciled the harness compaction hook in %s")
+}
+
+// codexHooksHold reports whether the tracked hook groups are in ~/.codex/hooks.json, or with removed, whether no harness group is left there.
+func (in *installer) codexHooksHold(removed bool) bool {
+	tracked, ok := decodeFile(filepath.Join(in.dir.Clients(), "codex", "hooks.json"))
+	if !ok {
+		return false
+	}
+	live, ok := decodeFile(in.codexHooksPath())
+	if !ok {
+		return removed && !isFile(in.codexHooksPath())
+	}
+	return hooksHold(live["hooks"], tracked["hooks"], removed)
 }
 
 const aliasMarker = "# portable-harness aliases"

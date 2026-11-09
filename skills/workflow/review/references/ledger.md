@@ -4,17 +4,19 @@ The ledger is the local record of every finding and its disposition on one branc
 
 ## Record
 
-The CLI retains its existing depth values: record Medium as `quick`, High as `standard`, explicit Deep as `deep`, and a skipped review as `none`. Put the configured level, selected perspectives, and planned/actual role calls in `--summary`. These storage names do not select coverage.
+Record each disposition with `harness review record` the moment it is decided. A review with no findings, or with no review triggered, writes one line too. Whoever commits a fix appends `fixed` with the fixing commit.
+
+Record the depth as the level the review ran at: `medium`, `high`, or `none` for a skipped review. Earlier ledgers may hold `deep`, which is still read. Earlier ledgers stored `quick` and `standard`; the CLI reads and accepts them as `medium` and `high`. Put the configured level, selected perspectives, and planned/actual role calls in `--summary`.
 
 ```sh
 # A new finding; prints its id. Branch and sha default to the current branch and HEAD.
-harness review record --depth standard --axis bugs --reviewer claude/opus --round 1 \
+harness review record --depth high --axis bugs --reviewer claude/opus --round 1 \
   --base <base> --sha <reviewed sha> [--digest <snapshot hash>] \
   --path <file> --lines 40-52 --severity bug --class missing-guard \
-  --summary "<one line>" --disposition unverified --evidence "<verifier output>"
+  --summary "<one line>" --disposition confirmed --evidence "<the red run>"
 
 # A whole review with no findings, or a skipped review: no --path.
-harness review record --depth quick --disposition clean --summary "<what was checked>"
+harness review record --depth medium --disposition clean --summary "<what was checked>"
 harness review record --depth none --disposition no-review --summary "level medium: tests-docs only"
 
 # A later state for the same finding: only --disposition, --evidence, and --commit.
@@ -28,18 +30,19 @@ The command checks the disposition, depth, round, severity, and line range, requ
 ## Dispositions
 
 - `confirmed`: proven, but the fix has not landed yet. Open.
-- `unverified`: neither confirmed nor refuted. Open.
 - `fixed`: confirmed and repaired. Open again until the fixing commit is in the head.
-- `refuted`: not reproduced (the verifier reported `green` or `could-not-run`, or the parent's own run stayed green), and the refute brief cited where the failure path is cut.
+- `dropped`: no run proved it. `evidence` says what was tried: the run stayed green, could not run, or needed a run the level does not launch. Closed, and never shown to the human one by one.
 - `intentional`: the human says the behavior is wanted. `evidence` quotes their words.
 - `wont-matter`: the human decides not to fix it. `evidence` quotes their words.
 - `pre-existing`: the defect predates the diff.
 - `nit`: reported, not acted on.
+
+Earlier reviews also wrote `unverified` (open) and `refuted` (closed). Both are still read; new reviews write neither.
 
 The ledger is task data that any local process can write, so a recorded dismissal is a claim, not an authority. `land` asks the human to reaccept each one.
 
 ## Read
 
 `harness review list [--branch <name>] [--head <rev>]` prints the latest line of each finding and whole-review line on the branch as JSON; `[]` means nothing is recorded for it here.
-- `open` marks a finding that is `confirmed`, `unverified`, or `fixed` by a commit the head lacks.
+- `open` marks a finding that is `confirmed`, an earlier `unverified`, or `fixed` by a commit the head lacks.
 - `rewritten` marks a finding whose reviewed commit is no longer an ancestor of the head, as after a rebase. It still counts.

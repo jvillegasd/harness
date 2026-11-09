@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -84,10 +85,14 @@ func (in *installer) assigned() map[string]agents.Assigned {
 	}
 	assigned := choice.ForRender()
 	catalog := new(models.Catalog)
-	for _, role := range models.Roles {
+	for _, role := range models.AllRoles {
 		a := assigned[role]
 		err := catalog.Runnable(models.Assignment{Client: a.Client, Model: a.Model, Effort: a.Effort})
+		// A lens that follows the reviewer falls back with it, and the reviewer's own warning already names the fix.
+		quiet := a.Source == "reviewer"
 		switch {
+		case err != nil && quiet:
+			delete(assigned, role)
 		case errors.Is(err, models.ErrNotListed):
 			in.warn("%s is assigned %s model %s, which this machine does not list (%v); its agent keeps the client default until `harness models` names one this machine can run.", role, a.Client, a.Model, err)
 			delete(assigned, role)
@@ -235,11 +240,7 @@ func (in *installer) installFiles() {
 
 	installed := map[string][]string{}
 	for _, client := range allClients {
-		for _, component := range allComponents {
-			if supports(client, component) {
-				installed[client] = append(installed[client], component)
-			}
-		}
+		installed[client] = slices.Clone(allComponents)
 	}
 	in.saveState(in.keepChoices(state{Version: stateVersion, Installed: installed, Files: want}))
 	in.installed = want

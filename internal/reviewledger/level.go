@@ -25,14 +25,18 @@ on its own; an explicit request for a review always runs.
 
   off     Agents start no review.
   medium  Agents review every pull request above tests-docs, and local work
-          only when critical or a named concrete risk, with one hunter and
-          a refuter only for bugs it cannot reproduce. The default.
+          only when critical or a named concrete risk, with one hunter.
+          The default.
   high    Agents review structural and riskier changes with a general
-          reviewer plus specialists, batched verification, and one fix
-          recheck.
+          reviewer plus specialists, an executor to run findings, and one
+          fix recheck.
 
-At medium and high, /land holds a pull request above tests-docs until a
-review covers its current patch; at off it reports the gap.
+At every level only findings a run proves are kept; the rest are counted
+as dropped.
+
+At medium and high, a pull request above tests-docs needs a review of its
+current patch: /land merge refuses to merge without one, and /land after
+your own merge reports when it was missing. At off the gap is reported.
 
 The level is stored in ~/.harness/state.json. Only a human sets it.
 `

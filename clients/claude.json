@@ -30,6 +30,7 @@
       "Bash(harness review level high:*)"
     ],
     "ask": [
+      "Bash(gh pr merge:*)",
       "Bash(git worktree remove --force:*)",
       "Bash(git worktree remove -f:*)"
     ]
@@ -43,5 +44,18 @@
   "statusLine": {
     "type": "command",
     "command": "\"$HOME/.local/bin/harness\" statusline"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.local/bin/harness\" resume"
+          }
+        ]
+      }
+    ]
   }
 }

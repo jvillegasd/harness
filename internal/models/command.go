@@ -17,7 +17,7 @@ import (
 	"github.com/jvillegasd/harness/internal/statefile"
 )
 
-const usage = `usage: harness models [show|set|reset|resolve|launch-args]
+const usage = `usage: harness models [show|set|reset|resolve]
 
   (no arguments, in a terminal)                 Pick a preset, or each role's client, model, and effort
   show                                          Print each role's client, model, effort, and source
@@ -25,15 +25,18 @@ const usage = `usage: harness models [show|set|reset|resolve|launch-args]
   set <role> --client <c> --model <m> [--effort <e>]   Override one role
   reset [<role>]                                Drop one override, or the whole choice
   resolve <role> [--json]                       Print the role's client, model, effort, and source
-  launch-args <role> --orca-command <executable>  Print validated client argv as JSON for Orca; launch nothing
 
 The choice is stored in ~/.harness/state.json; ` + "`harness install`" + ` renders it into each client's role agents.
 `
 
 // Command runs `harness models`.
 func Command(args []string, stdout, stderr io.Writer) int {
-	if len(args) == 1 && args[0] == "lifecycle-guard" {
-		return LifecycleGuard(os.Stdin, stdout)
+	if len(args) == 1 && args[0] == "read-guard" {
+		return ReadGuard(os.Stdin, stdout)
+	}
+	if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
+		fmt.Fprint(stdout, usage)
+		return 0
 	}
 	// Without a terminal the picker would wait on input that never comes, so a script gets the usage instead.
 	if len(args) == 0 && (!term.IsTerminal(os.Stdin.Fd()) || !term.IsTerminal(os.Stdout.Fd())) {
@@ -94,7 +97,7 @@ func run(path string, args []string, stdout io.Writer) error {
 	case "show":
 		resolved := choice.Resolve()
 		catalog := new(Catalog)
-		for _, role := range Roles {
+		for _, role := range AllRoles {
 			r := resolved[role]
 			note := ""
 			if err := catalog.Runnable(r.Assignment); errors.Is(err, ErrNotListed) {
@@ -113,15 +116,6 @@ func run(path string, args []string, stdout io.Writer) error {
 		return Save(path, choice)
 	case "resolve":
 		return resolve(choice, rest, stdout)
-	case "launch-args":
-		if len(rest) != 3 || rest[1] != "--orca-command" {
-			return fmt.Errorf("launch-args takes <role> --orca-command <executable>")
-		}
-		argv, err := preparedArgs(choice, rest[0], rest[2])
-		if err != nil {
-			return err
-		}
-		return json.NewEncoder(stdout).Encode(argv)
 	}
 	return fmt.Errorf("unknown subcommand %q\n%s", sub, usage)
 }
@@ -217,8 +211,8 @@ func resolve(choice Choice, args []string, stdout io.Writer) error {
 }
 
 func knownRole(role string) error {
-	if !slices.Contains(Roles, role) {
-		return fmt.Errorf("unknown role %q; choose %s", role, strings.Join(Roles, ", "))
+	if !slices.Contains(AllRoles, role) {
+		return fmt.Errorf("unknown role %q; choose %s", role, strings.Join(AllRoles, ", "))
 	}
 	return nil
 }

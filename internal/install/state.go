@@ -29,11 +29,6 @@ var (
 	allComponents = []string{"agents", "aliases", "mcp", "policy", "settings", "skills"}
 )
 
-// supports reports whether a client has the component at all; the tracked settings are Claude Code's alone.
-func supports(client, component string) bool {
-	return component != "settings" || client == "claude"
-}
-
 // entry is one managed copy: where it was written, what it belongs to, and the digest it had when written, which is how a later run tells the harness's copy from a user's edit.
 type entry struct {
 	Path      string   `json:"path"`
@@ -60,7 +55,7 @@ func (in *installer) keepChoices(s state) state {
 	return s
 }
 
-// codexHome is ~/.codex whatever CODEX_HOME says, because Orca points CODEX_HOME at a home of its own in the terminals it opens.
+// codexHome is ~/.codex whatever CODEX_HOME says, because a launcher may point CODEX_HOME at a home of its own in the terminals it opens.
 func (in *installer) codexHome() string { return filepath.Join(in.home, ".codex") }
 
 // codex runs a codex subcommand against codexHome, on the installer's output.
@@ -214,6 +209,8 @@ func (in *installer) desired() []entry {
 		}
 	}
 	add(in.dir.Aliases(), in.aliasesPath(), "aliases", allClients...)
+	// Claude Code's and Codex's compaction hooks are merged into files the user shares (reconcileClaudeSettings, reconcileCodexHooks); OpenCode's is a plugin file of its own.
+	add(filepath.Join(in.dir.Clients(), "opencode", "plugins", "harness-resume.ts"), filepath.Join(in.config, "opencode", "plugins", "harness-resume.ts"), "settings", "opencode")
 	return out
 }
 

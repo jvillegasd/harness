@@ -128,3 +128,38 @@ func TestLoadDropsRetiredRoleOverrides(t *testing.T) {
 		t.Errorf("Roles = %v, want only the reviewer override", c.Roles)
 	}
 }
+
+// A review lens follows the reviewer's assignment until it is set on its own, and a reset returns it to the reviewer's.
+func TestLensFollowsTheReviewerUntilSet(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	show := func() string {
+		var out strings.Builder
+		if err := run(path, []string{"show"}, &out); err != nil {
+			t.Fatal(err)
+		}
+		return out.String()
+	}
+	if got := show(); !strings.Contains(got, "review-risk client=claude model=opus effort=low (reviewer)") {
+		t.Errorf("an unset lens does not follow the reviewer:\n%s", got)
+	}
+	for _, args := range [][]string{
+		{"set", "reviewer", "--client", "claude", "--model", "sonnet"},
+		{"set", "review-spec", "--client", "claude", "--model", "haiku"},
+	} {
+		if err := run(path, args, &strings.Builder{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := show()
+	for _, want := range []string{"review-risk client=claude model=sonnet effort=inherit (reviewer)", "review-spec client=claude model=haiku effort=inherit (override)"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("show lacks %q:\n%s", want, got)
+		}
+	}
+	if err := run(path, []string{"reset", "review-spec"}, &strings.Builder{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := show(); !strings.Contains(got, "review-spec client=claude model=sonnet effort=inherit (reviewer)") {
+		t.Errorf("a reset lens does not return to the reviewer:\n%s", got)
+	}
+}

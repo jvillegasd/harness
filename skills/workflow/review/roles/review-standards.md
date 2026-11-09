@@ -1,4 +1,11 @@
-# Axis: standards
+---
+name: review-standards
+description: Blind standards reviewer: judges the diff against the documented standards, ponytail, and a smell baseline, without the implementation rationale. Read and search only.
+access: read-search
+extends: reviewer.md
+---
+
+## Lens: standards
 
 Judge the diff against the documented standards you were given, then invoke the `ponytail` skill for simplicity checks and apply the smell baseline below.
 
@@ -8,7 +15,7 @@ Judge the diff against the documented standards you were given, then invoke the 
 - `ponytail` and the smell baseline are judgement calls, reported as `nit` with the label "possible <smell>".
 - Report at most five nits: the ones that cost the next reader most.
 
-## Smell baseline
+### Smell baseline
 
 Adapted from the smell baseline in Matt Pocock's `code-review` (mattpocock/skills, MIT, `skills/engineering/code-review/SKILL.md` at commit `7739eaed7f8f`), after Fowler's *Refactoring*, chapter 3. Compare against that file when Matt updates it. Each entry gives what the smell is, then the fix.
 

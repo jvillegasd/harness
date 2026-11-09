@@ -33,7 +33,7 @@ harness review level high       # set it: off, medium (default), or high
 harness review level --json     # machine-readable, used by agents
 ```
 
-The level is stored in `~/.harness/state.json` and applies to every repository on this machine. Only you set it; agents read it but never change it. `/land` checks the level at merge time, not the one in force when the PR was opened.
+The level is stored in `~/.harness/state.json` and applies to every repository on this machine. Only you set it; agents read it but never change it. `/land` checks the level in force when it runs, not the one in force when the PR was opened.
 
 ### Read what a review found
 
@@ -45,7 +45,7 @@ harness review path                     # where the ledger file lives
 
 `list` shows the latest state of each finding. `[]` means nothing was recorded for that branch on this machine. Two flags matter most:
 
-- `open: true`: the finding still needs attention. That covers confirmed or unverified findings, and fixes whose commit is not in the branch yet.
+- `open: true`: the finding still needs attention. That covers confirmed findings, unverified ones from older reviews, and fixes whose commit is not in the branch yet.
 - `rewritten: true`: the reviewed commit is no longer in the branch history, as after a rebase. The finding still counts.
 
 The ledger lives inside the Git directory, so Git never tracks it and every worktree of the repository shares it. `/land` deletes it once the branch merges.
@@ -55,16 +55,15 @@ The ledger lives inside the Git directory, so Git never tracks it and every work
 | Disposition | Meaning | Open? |
 | --- | --- | --- |
 | `confirmed` | Proven real; the fix has not landed yet | Yes |
-| `unverified` | Nobody could prove or disprove it; waiting on you | Yes |
 | `fixed` | Repaired by a named commit | Until that commit is in the branch |
-| `refuted` | Could not be reproduced, and a reviewer showed where the failure is blocked | No |
+| `dropped` | No run proved it; counted in the review, not shown one by one | No |
 | `intentional` | You said the behavior is wanted (your words are kept) | No |
 | `wont-matter` | You decided not to fix it (your words are kept) | No |
 | `pre-existing` | The problem existed before this change | No |
 | `nit` | A style point, reported but not acted on | No |
 | `clean` / `no-review` | A whole review that found nothing, or a review that was skipped | No |
 
-`/land` asks you to reconfirm every `refuted`, `intentional`, and `wont-matter` before merging, because any local process can write the ledger.
+Older reviews also recorded `unverified` (open) and `refuted` (closed). `/land` asks you to reconfirm every `refuted`, `intentional`, and `wont-matter`, because any local process can write the ledger.
 
 ### Record a finding by hand
 

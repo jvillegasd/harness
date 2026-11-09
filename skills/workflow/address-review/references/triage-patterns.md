@@ -12,7 +12,7 @@ Change code only to fix a confirmed defect. A comment that merely repeats gets a
 
 ## Ledger findings
 
-The implementing agent may dismiss a low-risk PR claim with concrete disproof. When a thread matches an internal `review` ledger finding, follow `review`'s independent verification and refutation rules for that finding. Resolving the PR thread does not close the ledger finding or authorize marking it `refuted`; record its disposition through `review`'s [ledger rules](../../review/references/ledger.md).
+The implementing agent may dismiss a low-risk PR claim with concrete disproof. When a thread matches an internal `review` ledger finding, follow `review`'s rule that only a run proves a finding. Resolving the PR thread does not close the ledger finding or authorize marking it `dropped`; record its disposition through `review`'s [ledger rules](../../review/references/ledger.md).
 
 ## Ask by default
 

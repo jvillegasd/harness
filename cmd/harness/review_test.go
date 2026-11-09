@@ -91,6 +91,8 @@ func TestReviewLedgerCommand(t *testing.T) {
 		{"record", "--id", open, "--disposition", "fixed", "--evidence", "e", "--commit", reviewed},
 		{"record", "--id", open, "--disposition", "fixed", "--evidence", "e", "--commit", base},
 		{"record", "--id", open, "--disposition", "fixed", "--evidence", "e", "--commit", "no-such-rev"},
+		// A proven finding is never dropped on an agent's word.
+		{"record", "--id", fixed, "--disposition", "dropped", "--evidence", "e"},
 	} {
 		if r := reviewRun(t, dir, data, bad...); r.code != 2 || r.stderr == "" {
 			t.Errorf("%v exited %d with %q, want 2 and a diagnostic", bad, r.code, r.stderr)

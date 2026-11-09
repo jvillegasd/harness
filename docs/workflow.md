@@ -31,23 +31,23 @@ Use `/implement <task or ticket>` for everyday implementation with TDD in the cu
 
 An implementation request authorizes local edits and commits on a task branch the agent creates. Consequential decisions come back to you; routine reversible choices do not need repeated approval.
 
-“Open a PR” or “ship this” authorizes commits, push, PR creation or updates, and required-check repairs. Feedback stays on the same branch. Publication does not authorize merging: invoke `/land` for that.
+“Open a PR” or “ship this” authorizes commits, push, PR creation or updates, and required-check repairs. Feedback stays on the same branch. Publication does not authorize merging. The agent ends with a readiness report: required checks, mergeability, review coverage, the run-as-user verdict, and open findings. You merge; then `/land` cleans up. `/land merge` has the agent recheck the gates and merge for you.
 
-Before handoff, the agent runs the repository checks and explains what changed, what to review, and any gaps. [Review coverage](review.md) follows your `harness review level` setting. At `medium` and `high`, landing a PR above `tests-docs` requires review of its current patch.
+Before handoff, the agent runs the repository checks and explains what changed, what to review, and any gaps. When the project has a verify skill (made with `/create-verification-skill`), a separate agent that never saw the implementation drives the changed features the way a user would and returns PASS, PASS+NOTES, or FAIL; for a bugfix it shows the bug on the old code and its absence on the new. [Review coverage](review.md) follows your `harness review level` setting. At `medium` and `high`, a PR above `tests-docs` needs a review of its current patch: the readiness report shows whether it has one, and `/land merge` refuses to merge without it.
 
 The [README state diagram](../README.md#everyday-use) shows the delivery path:
 
 - **Ready locally:** the requested local work and applicable checks are complete. No publication is required.
 - **Preparing PR:** publication is authorized. The agent completes local checks and applicable review before publishing.
 - **PR open:** remote checks and feedback may require more changes on the same branch. Changed code needs fresh checks and any applicable review.
-- **Ready to merge:** required checks and review are satisfied. The agent waits for your `/land`, then rechecks the gates before merging.
+- **Ready to merge:** required checks and review are satisfied, and the readiness report says so. You merge, or run `/land merge` to have the agent recheck the gates and merge.
 - **Needs your input:** a consequential decision or unavailable required check or reviewer blocks progress. Once resolved, work returns to the blocked stage. A failed check the agent can repair stays in the normal work loop.
 
 These describe the intended workflow, not a centrally enforced task status. Live agent compliance is separate from the written policy.
 
-See the [finding lifecycle](subagents.md#finding-lifecycle) for how review concerns are confirmed, refuted, repaired, and rechecked.
+See [what happens to a finding](review.md#what-happens-to-a-finding) for how review concerns are proven or dropped, repaired, and rechecked.
 
-For longer work, the agent keeps requirements, decisions, evidence, and the next action in `docs/agents/tasks/<feature>.md`. Small tasks need no extra document.
+For longer work, the agent keeps requirements, decisions, evidence, and the next action in `docs/agents/tasks/<feature>.md`, committed on the task branch. It merges with the work and stays in the repository as the record of what was done and why. Small tasks need no extra document.
 
 ## Larger builds
 
@@ -76,7 +76,7 @@ stateDiagram-v2
     Blocked --> Ready: Reconciler confirms all blockers have merge evidence
     Ready --> Active: Main agent claims ticket with your authorization
     Active --> Handoff: Main agent hands off PR with authorized tracker write
-    Handoff --> Closed: You invoke /land and main agent confirms merge and ticket closure
+    Handoff --> Closed: You merge, invoke /land, and main agent confirms merge and ticket closure
     Ready --> Blocked: Reconciler finds an unsatisfied dependency
     Active --> Blocked: Reconciler finds an unsatisfied dependency
     Handoff --> Blocked: Reconciler finds an unsatisfied dependency
@@ -98,7 +98,7 @@ An explicit request naming the commits, files, branches, or task worktrees to di
 
 ### Resume retained work
 
-Resuming assumes the implementation still exists. The main agent uses the request, current Git state, and any existing task document or memory mirror. A small task needs no recovery document.
+Resuming assumes the implementation still exists. The main agent uses the request, the task document, and the branch's commits and diff. A paused session leaves a `wip:` commit and an updated task document, so the next one picks up from there. Work already verified at an unchanged commit is trusted, not redone. A small task needs no recovery document.
 
 ```mermaid
 stateDiagram-v2
@@ -118,4 +118,4 @@ stateDiagram-v2
     Checked --> Resumed: Main agent continues within existing authorization
 ```
 
-Missing context blocks only dependent work. Old notes grant no new authority, and checks against a changed or unidentified snapshot are stale. See [continuity](../skills/support/continuity/SKILL.md) for recovery details.
+Missing context blocks only dependent work. Old notes grant no new authority, and checks against a changed commit are stale. See [continuity](../skills/support/continuity/SKILL.md) for recovery details.

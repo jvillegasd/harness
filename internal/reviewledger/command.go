@@ -33,7 +33,7 @@ Without --id, append a new line and print its id. A finding needs --depth,
 
 With --id, append a new state for that finding: only --disposition,
 --evidence, and --commit are accepted, and the rest is copied from its latest
-line. A fixed, refuted, intentional, or wont-matter disposition needs
+line. A fixed, dropped, refuted, intentional, or wont-matter disposition needs
 --evidence; fixed also needs --commit. A nit or pre-existing disposition fits
 only a finding of that severity.
 
@@ -43,7 +43,9 @@ only a finding of that severity.
   --sha          Reviewed commit (default: HEAD)
   --digest       Snapshot patch hash when the reviewed work is uncommitted
   --round        1 or 2 (default 1)
-  --depth        none, quick, standard, or deep
+  --depth        none, medium, or high; deep is still accepted, and quick
+                 and standard, the earlier names for medium and high, are
+                 translated
   --axis         Hunter axis, such as bugs or spec
   --reviewer     Client and model, such as claude/opus
   --path         File the finding cites
@@ -51,9 +53,12 @@ only a finding of that severity.
   --severity     bug, risk, q, pre-existing, or nit
   --class        Short kebab-case defect class
   --summary      One-line description
-  --disposition  confirmed, unverified, fixed, refuted, intentional,
-                 wont-matter, pre-existing, nit, clean, or no-review
-  --evidence     Verifier output, the refute cut, or the human's words
+  --disposition  confirmed, fixed, dropped, intentional, wont-matter,
+                 pre-existing, nit, clean, or no-review; unverified and
+                 refuted are earlier dispositions new reviews do not
+                 write. A confirmed or fixed finding cannot be dropped.
+  --evidence     The run's output, what a dropped finding's run showed, or
+                 the human's words
   --commit       The fixing commit, for --disposition fixed
 `
 
@@ -189,11 +194,16 @@ func record(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "harness review record: no finding %q in %s\n", id, file)
 			return 2
 		}
+		// A proven finding stays proven: dropping is for findings no run proved, so it cannot close a confirmed or fixed one on an agent's word.
+		if e.Disposition == "dropped" && (prior.Disposition == "confirmed" || prior.Disposition == "fixed") {
+			fmt.Fprintf(stderr, "harness review record: finding %s is %s, and a proven finding cannot be dropped; record the human's decision as intentional or wont-matter instead\n", id, prior.Disposition)
+			return 2
+		}
 		prior.Disposition, prior.Evidence, prior.Commit = e.Disposition, e.Evidence, e.Commit
 		e = prior
 	} else {
 		e.Digest, e.Path = optional(digest), optional(path)
-		e.Branch = branch
+		e.Branch, e.Depth = branch, CanonicalDepth(e.Depth)
 		if e.SHA == "" {
 			e.SHA, _ = git(root, "rev-parse", "HEAD")
 		}

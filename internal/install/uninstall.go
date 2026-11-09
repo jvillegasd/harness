@@ -86,6 +86,9 @@ func (in *installer) uninstallSelected() {
 	if selected("claude", "settings") {
 		in.removeClaudeSettings()
 	}
+	if selected("codex", "settings") {
+		in.reconcileCodexHooks(true)
+	}
 	if selected("claude", "mcp") {
 		in.removeClaudeMCP()
 	}
@@ -375,6 +378,9 @@ func (in *installer) checkRemoved(removed []entry, selected func(client, compone
 	}
 	if selected("claude", "settings") && isFile(in.settingsPath()) && !in.trackedSettingsHold(true) {
 		die("Tracked Claude settings survived the uninstall in %s.", in.settingsPath())
+	}
+	if selected("codex", "settings") && !in.codexHooksHold(true) {
+		die("The harness compaction hook survived the uninstall in %s.", in.codexHooksPath())
 	}
 	if selected("claude", "mcp") {
 		in.checkClaudeMCPRemoved()
