@@ -63,6 +63,33 @@ An installed skill may run the tools it ships, including a launcher that fetches
 
 Use `ponytail` for coding decisions, and domain or module guidance when it helps. Use `impeccable` for frontend work, with the project's styling layer taking precedence. Run `security-audit`'s full audit only when an audit, pen test, or report is requested.
 
+Apply the `principle-*` skills through this index, because Claude Code never loads them on its own. When an entry's trigger applies, read that principle's `SKILL.md` in full from the installed skills (`~/.claude/skills` in Claude Code, `~/.agents/skills` in Codex and OpenCode) before you act on it. This policy wins where one conflicts with it.
+
+- `principle-laziness-protocol`: refactoring, sizing a diff, or tempted to add abstractions or layers.
+- `principle-foundational-thinking`: before writing logic, when choosing core types, data structures, and what concurrent actors share.
+- `principle-redesign-from-first-principles`: integrating a new requirement into an existing design.
+- `principle-attack-the-premise`: two or more fixes that share one premise have failed the same gate.
+- `principle-subtract-before-you-add`: sequencing an addition, refactor, or rewrite.
+- `principle-minimize-reader-load`: reviewing or shaping code that is hard to trace.
+- `principle-outcome-oriented-execution`: planned rewrites and migrations with explicit phases.
+- `principle-experience-first`: product, UX, or feature-scope tradeoffs.
+- `principle-exhaust-the-design-space`: a novel interaction or architectural decision with no precedent.
+- `principle-build-the-lever`: non-trivial work a tool could do or prove.
+- `principle-model-the-domain`: stateful logic, or code that branches a lot or repeats a shape assumption.
+- `principle-boundary-discipline`: wiring validation, error handling, or framework adapters.
+- `principle-type-system-discipline`: designing types or a signature in a typed language.
+- `principle-make-operations-idempotent`: commands, lifecycle steps, or loops that run amid crashes and retries.
+- `principle-migrate-callers-then-delete-legacy-apis`: a new internal API while old callers exist.
+- `principle-separate-before-serializing-shared-state`: concurrent actors that might write the same file, branch, key, or object.
+- `principle-prove-it-works`: before declaring a task done.
+- `principle-fix-root-causes`: debugging.
+- `principle-sequence-verifiable-units`: multi-step work, and how commits and pull requests stack.
+- `principle-test-behavior-not-implementation`: writing, changing, or keeping a test.
+- `principle-explain-the-number`: before measuring, and before trusting or acting on a measured number.
+- `principle-guard-the-context-window`: large outputs, long files, repeated reads, or fan-out planning.
+- `principle-never-block-on-the-human`: tempted to ask whether to do reversible work.
+- `principle-encode-lessons-in-structure`: writing the same instruction a second time, or a recurring correction.
+
 ## Housekeeping
 
 Keep the environment limited to what the task needs. Run experiments, downloads, and one-off tools in disposable directories or isolated package environments (a skill's own pinned tool cache, as the Skills section allows, is the exception), and add a project dependency only when the delivered result needs it. Before handoff, clean up what you created (scratch files, logs, build outputs, temporary packages, incidental lockfile changes) and keep deliverables, evidence, continuity records, and anything you did not create. When ownership is uncertain, leave the item and report it. Prefer targeted removal over blanket cleanup commands or broad cache purges.

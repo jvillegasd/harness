@@ -103,7 +103,7 @@ var unverified = []string{
 	"unverified: diff delivery's escalation when a launch prompt cannot carry the complete snapshot, which is protocol rather than exercised behavior",
 	"unverified: claude applying a main-thread --agent session's model and effort frontmatter, and the session's effort when effort is absent",
 	"unverified: opencode sending an agent's reasoningEffort with its model requests",
-	"unverified: claude letting a dontAsk read-search role read an invoked skill's companion files through the tracked Read(~/.claude/skills/**) allow rule",
+	"unverified: claude letting a dontAsk read-search role read an invoked skill's companion files, and search and read the installed principle skills, through the tracked Read(~/.claude/skills/**) allow rule",
 	"unverified: opencode resolving ~ in a read-search role's external_directory patterns for the installed skill directories",
 	"unverified: claude running a read-search role's read-guard hook from $HOME/.local/bin/harness inside a native subagent",
 	"unverified: claude disallowedTools: Agent and opencode task: deny stopping the executor from delegating",
