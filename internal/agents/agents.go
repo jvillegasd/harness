@@ -17,10 +17,9 @@ var required = map[string]string{
 	"code-search": "read-search",
 	"reviewer":    "read-search",
 	// The review lenses extend the reviewer and keep its access.
-	"review-bugs":      "read-search",
-	"review-spec":      "read-search",
-	"review-risk":      "read-search",
-	"review-standards": "read-search",
+	"review-bugs": "read-search",
+	"review-spec": "read-search",
+	"review-risk": "read-search",
 }
 
 // Documented agent frontmatter values: https://code.claude.com/docs/en/sub-agents (model, effort), https://opencode.ai/docs/agents/ (model, plus provider options such as OpenAI's reasoningEffort), and Codex's custom agent files (model, model_reasoning_effort). OpenCode passes effort to the provider, so it is accepted only beside an openai/ model.

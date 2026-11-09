@@ -25,11 +25,10 @@ Read `harness review level --json`; if it is unavailable, use `medium` and repor
 
 The general reviewer is the `review-bugs` lens: correctness, requirements, failure paths, compatibility, relevant security risks, project conventions, and test gaps. Higher levels add independent investigation; they never remove questions from Medium.
 
-At High, select one or two specialist lenses and state the concrete question each will investigate:
+At High, select one or both specialist lenses and state the concrete question each will investigate:
 
 - `review-spec`: independently trace requirements to behavior when a requirements source exists.
 - `review-risk`: inspect consequential trust boundaries, data loss, dependency failures, or concurrency. Name the categories that triggered it; for a security category the lens loads `security-audit` in guidance mode itself.
-- `review-standards`: inspect changed interfaces, structure, and documented conventions.
 
 Choose by consequences, not file count. If no specialist has a distinct useful question, keep only the general reviewer and say why. Resolve roles through POLICY's delegation rules.
 
@@ -90,5 +89,5 @@ A change to the reviewed revision invalidates the verdict until the affected evi
 ## References
 
 - [Reviewer role](roles/reviewer.md), the shared text each lens extends and the recheck's role
-- Lens roles: [bugs](roles/review-bugs.md), [spec](roles/review-spec.md), [standards](roles/review-standards.md), [risk](roles/review-risk.md)
+- Lens roles: [bugs](roles/review-bugs.md), [spec](roles/review-spec.md), [risk](roles/review-risk.md)
 - [Verify briefs](references/verify.md), [ledger](references/ledger.md), [evals](references/evals.md)

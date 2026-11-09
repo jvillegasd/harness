@@ -9,7 +9,7 @@ Work stays inline unless a worker offers independent inspection, useful parallel
 | `executor` | Implement one bounded slice | No commits, publication, tracker writes, merges, worktree removal, or further delegation |
 | `code-search` | Answer one repository question with file and line citations | Read and search only |
 | `reviewer` | Check that review fixes hold | Read and search only; does not receive the author's rationale |
-| `review-bugs`, `review-spec`, `review-risk`, `review-standards` | Hunt defects through one lens: general bugs, requirements, consequential risk, or standards | Same as `reviewer`, whose text each lens extends |
+| `review-bugs`, `review-spec`, `review-risk` | Hunt defects through one lens: general bugs, requirements, or consequential risk | Same as `reviewer`, whose text each lens extends |
 
 Definitions live in [roles/](../roles/) and [the review skill](../skills/workflow/review/SKILL.md). A worker's completion message is not proof: the parent checks its scope, Git state, and results.
 

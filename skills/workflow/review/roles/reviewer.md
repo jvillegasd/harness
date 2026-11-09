@@ -12,7 +12,7 @@ Hunt for supported defects through your lens and report uncertainty as uncertain
 
 ## Inputs
 
-- Your lens: the section that follows this role text when you were launched as a lens role (`review-bugs`, `review-spec`, `review-risk`, `review-standards`), or a recheck brief in your prompt.
+- Your lens: the section that follows this role text when you were launched as a lens role (`review-bugs`, `review-spec`, `review-risk`), or a recheck brief in your prompt.
 - The requirements, quoted from their source.
 - The revision identity.
 - The complete scoped diff.
@@ -28,7 +28,7 @@ Read and search the repository to follow callers and context, and load a skill y
 ```
 loaded: <absolute path>, ... | none
 revision: <the supplied revision/content identity>
-axis: <your lens (bugs, spec, risk, standards) or recheck>
+axis: <your lens (bugs, spec, risk) or recheck>
 findings: <N> (bug <n>, risk <n>, q <n>, pre-existing <n>, nit <n>)
 summary: <what you checked, and the one fact your verdict rests on>
 path:Lline: <severity>: <class>: <problem, with the trace>. <fix>.
