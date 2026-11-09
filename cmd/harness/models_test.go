@@ -237,6 +237,13 @@ func TestInstallFallsBackForAnUnlistedModel(t *testing.T) {
 	if strings.Contains(readFile(t, filepath.Join(base, "home", ".config", "opencode", "agents", "reviewer.md")), "model:") {
 		t.Error("the OpenCode reviewer carries a model this machine cannot run")
 	}
+	// The lenses follow the reviewer, so they fall back with it, silently and without the model.
+	if strings.Contains(r.stderr+r.stdout, "review-bugs is assigned") {
+		t.Errorf("a lens that follows the reviewer warned on its own:\n%s%s", r.stdout, r.stderr)
+	}
+	if strings.Contains(readFile(t, filepath.Join(base, "home", ".config", "opencode", "agents", "review-bugs.md")), "model:") {
+		t.Error("the OpenCode review-bugs lens carries a model this machine cannot run")
+	}
 }
 
 // TestInstallRefusesATrackedPerRoleAssignment keeps the machine choice the only per-role source.

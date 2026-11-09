@@ -23,5 +23,5 @@ A run spends model budget, so it starts only when the human asks and names its s
    - A bug case is **caught** when a confirmed `bug` or `risk` falls within an expected path and line range.
    - A clean case scores one **false positive** per confirmed `bug` or `risk`.
    - Count dropped findings for both kinds. A dropped finding inside an expected range of a bug case is a **dropped catch**: a real defect the run rule cut.
-3. Append a summary line: date, the harness revision of `skills/workflow/review`, depth, reviewer model, recall, false positives, dropped count, and dropped catches.
-4. Compare it with the last run on the same cases. Keep a change to `review`, its references, or `reviewer.md` only when recall does not drop and false positives do not rise. Otherwise, report the regression to the human.
+3. Append a summary line: date, the harness revision of `skills/workflow/review`, depth, each hunter's resolved model, recall, false positives, dropped count, and dropped catches.
+4. Compare it with the last run on the same cases. Keep a change to `review`, its references, or its `roles/` only when recall does not drop and false positives do not rise. Otherwise, report the regression to the human.

@@ -831,3 +831,21 @@ func TestExtendsIsOneLevelDeep(t *testing.T) {
 		t.Errorf("exit %d, stderr %q", code, stderr)
 	}
 }
+
+// A lens may extend only a base with its own access: a base granting implement, assigned to no role, is refused for what it is, not for some later role.
+func TestExtendsRequiresTheSameAccess(t *testing.T) {
+	dir := temp(t)
+	config := configCopy(t, dir, nil)
+	base := readFile(t, filepath.Join(dir, "roles", "reviewer.md"))
+	writable := strings.Replace(strings.Replace(base, "access: read-search", "access: implement", 1), "name: reviewer", "name: unassigned", 1)
+	if err := os.WriteFile(filepath.Join(dir, "roles", "writable-base.md"), []byte(writable), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	lens := filepath.Join(dir, "roles", "review-bugs.md")
+	if err := os.WriteFile(lens, []byte(strings.Replace(readFile(t, lens), "extends: reviewer.md", "extends: writable-base.md", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, stderr := runCommand(t, config, filepath.Join(dir, "out")); code != 1 || !strings.Contains(stderr, "the access of the definition extending it") {
+		t.Errorf("exit %d, stderr %q", code, stderr)
+	}
+}

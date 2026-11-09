@@ -88,7 +88,11 @@ func (in *installer) assigned() map[string]agents.Assigned {
 	for _, role := range models.AllRoles {
 		a := assigned[role]
 		err := catalog.Runnable(models.Assignment{Client: a.Client, Model: a.Model, Effort: a.Effort})
+		// A lens that follows the reviewer falls back with it, and the reviewer's own warning already names the fix.
+		quiet := a.Source == "reviewer"
 		switch {
+		case err != nil && quiet:
+			delete(assigned, role)
 		case errors.Is(err, models.ErrNotListed):
 			in.warn("%s is assigned %s model %s, which this machine does not list (%v); its agent keeps the client default until `harness models` names one this machine can run.", role, a.Client, a.Model, err)
 			delete(assigned, role)
