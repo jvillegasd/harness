@@ -86,7 +86,7 @@ Record every disposition in the ledger as `references/ledger.md` describes.
 - Each hunter's raised, confirmed, and dropped counts, with the reasons findings were dropped.
 - What stayed unverified: hunters, slices, any worktree left in place.
 
-A change to the reviewed revision invalidates the verdict until the affected evidence is rechecked.
+A change to the reviewed revision invalidates the verdict until the affected evidence is rechecked. The review posts nothing to the forge; `address-review` handles pull request threads.
 
 ## References
 

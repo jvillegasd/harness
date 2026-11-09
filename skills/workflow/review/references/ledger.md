@@ -4,7 +4,7 @@ The ledger is the local record of every finding and its disposition on one branc
 
 ## Record
 
-Record each disposition with `harness review record` the moment it is decided. A review with no findings, or with no review triggered, writes one line too. Whoever commits a fix appends `fixed` with the fixing commit. The review posts nothing to the forge; `address-review` handles pull request threads.
+Record each disposition with `harness review record` the moment it is decided. A review with no findings, or with no review triggered, writes one line too. Whoever commits a fix appends `fixed` with the fixing commit.
 
 Record the depth as the level the review ran at: `medium`, `high`, or `none` for a skipped review. Earlier ledgers may hold `deep`, which is still read. Earlier ledgers stored `quick` and `standard`; the CLI reads and accepts them as `medium` and `high`. Put the configured level, selected perspectives, and planned/actual role calls in `--summary`.
 
