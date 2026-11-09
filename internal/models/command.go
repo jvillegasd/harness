@@ -113,7 +113,14 @@ func run(path string, args []string, stdout io.Writer) error {
 		if err != nil {
 			return err
 		}
-		return Save(path, choice)
+		if err := Save(path, choice); err != nil {
+			return err
+		}
+		// Setting reviewer onto cross-reviewer's client is allowed, so the two can swap vendors one set at a time, but it is named until cross-reviewer moves.
+		if r := choice.Resolve(); r["reviewer"].Client == r["cross-reviewer"].Client {
+			fmt.Fprintf(stdout, "warning: reviewer and cross-reviewer both run on %s, so Deep review has no second vendor; run `harness models set cross-reviewer --client <another client> --model <model>`\n", r["reviewer"].Client)
+		}
+		return nil
 	case "resolve":
 		return resolve(choice, rest, stdout)
 	}
@@ -152,6 +159,10 @@ func apply(choice Choice, args []string) (Choice, error) {
 	}
 	if err := Validate(a); err != nil {
 		return choice, err
+	}
+	// cross-reviewer exists to put Deep's second reviewer on another vendor, so it never takes the reviewer's client.
+	if reviewer := choice.Resolve()["reviewer"]; role == "cross-reviewer" && a.Client == reviewer.Client {
+		return choice, fmt.Errorf("cross-reviewer must run on another client than reviewer, which is on %s", reviewer.Client)
 	}
 	if choice.Roles == nil {
 		choice.Roles = map[string]Assignment{}

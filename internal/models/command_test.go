@@ -128,3 +128,33 @@ func TestLoadDropsRetiredRoleOverrides(t *testing.T) {
 		t.Errorf("Roles = %v, want only the reviewer override", c.Roles)
 	}
 }
+
+// cross-reviewer never takes the reviewer's client, while reviewer may move onto cross-reviewer's client with a warning, so the two can swap vendors one set at a time.
+func TestCrossReviewerStaysOnAnotherClient(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	if err := run(path, []string{"set", "cross-reviewer", "--client", "claude", "--model", "sonnet"}, &strings.Builder{}); err == nil {
+		t.Fatal("cross-reviewer was set onto the balanced reviewer's client")
+	}
+	var out strings.Builder
+	if err := run(path, []string{"set", "reviewer", "--client", "codex", "--model", "gpt-6.1-sol"}, &out); err != nil {
+		t.Fatalf("moving reviewer onto cross-reviewer's client: %v", err)
+	}
+	if !strings.Contains(out.String(), "both run on codex") {
+		t.Errorf("no warning for the shared client: %q", out.String())
+	}
+	if err := run(path, []string{"set", "cross-reviewer", "--client", "claude", "--model", "opus", "--effort", "low"}, &strings.Builder{}); err != nil {
+		t.Fatalf("completing the swap: %v", err)
+	}
+	if r := mustLoad(t, path).Resolve(); r["reviewer"].Client != "codex" || r["cross-reviewer"].Client != "claude" {
+		t.Errorf("after the swap: reviewer %s, cross-reviewer %s", r["reviewer"].Client, r["cross-reviewer"].Client)
+	}
+}
+
+func mustLoad(t *testing.T, path string) Choice {
+	t.Helper()
+	c, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
