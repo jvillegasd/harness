@@ -7,6 +7,7 @@
   "roles": {
     "executor": {"definition": "../roles/executor.md"},
     "code-search": {"definition": "../roles/code-search.md"},
-    "reviewer": {"definition": "../skills/workflow/review/roles/reviewer.md"}
+    "reviewer": {"definition": "../skills/workflow/review/roles/reviewer.md"},
+    "cross-reviewer": {"definition": "../skills/workflow/review/roles/reviewer.md", "shares": "reviewer"}
   }
 }

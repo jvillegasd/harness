@@ -214,8 +214,9 @@ func TestModelsPresetNeedsNoCatalog(t *testing.T) {
 		t.Errorf("show does not mark the unverifiable Codex model:\n%s", r.stdout)
 	}
 	r := ok(t, runInstaller(t, base, "--skip-packages"), "install without a Codex catalog")
-	if got := strings.Count(r.stderr+r.stdout, "listing Codex models failed"); got != 1 {
-		t.Errorf("want one listing-failure warning, got %d:\n%s%s", got, r.stdout, r.stderr)
+	// balanced puts two roles on Codex, the executor and cross-reviewer, and each keeps the client default with its own warning.
+	if got := strings.Count(r.stderr+r.stdout, "listing Codex models failed"); got != 2 {
+		t.Errorf("want one listing-failure warning per Codex role, got %d:\n%s%s", got, r.stdout, r.stderr)
 	}
 }
 

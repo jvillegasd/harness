@@ -102,7 +102,12 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 			report = append(report, fmt.Sprintf("pending: %s has an assignment and no definition, so no agent is generated", name))
 			continue
 		}
-		description, accessLevel, body, err := load(joinPath(filepath.Dir(configPath), def.(string)), name)
+		// A role that shares another's definition renders that definition's text under its own name, so one file serves both.
+		owner, _ := role["shares"].(string)
+		if owner == "" {
+			owner = name
+		}
+		description, accessLevel, body, err := load(joinPath(filepath.Dir(configPath), def.(string)), owner)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -177,9 +182,14 @@ func resolve(config map[string]any) (map[string]any, map[string]map[string][2]st
 		if !ok {
 			return nil, nil, fail(fmt.Sprintf("roles.%s must be an object", name))
 		}
-		allowed := []string{"definition", "claude", "codex", "opencode"}
+		allowed := []string{"definition", "shares", "claude", "codex", "opencode"}
 		if unknown := unknownKeys(roleObj, allowed); len(unknown) > 0 {
-			return nil, nil, fail(fmt.Sprintf("roles.%s: unknown keys %s; a role takes definition, %s", name, strings.Join(unknown, ", "), strings.Join(clientNames, ", ")))
+			return nil, nil, fail(fmt.Sprintf("roles.%s: unknown keys %s; a role takes definition, shares, %s", name, strings.Join(unknown, ", "), strings.Join(clientNames, ", ")))
+		}
+		if shares, ok := roleObj["shares"]; ok {
+			if text, isString := shares.(string); !isString || text == "" {
+				return nil, nil, fail(fmt.Sprintf("roles.%s.shares must name the role whose definition it reuses", name))
+			}
 		}
 		if def, ok := roleObj["definition"]; ok {
 			text, isString := def.(string)
