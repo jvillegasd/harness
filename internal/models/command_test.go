@@ -158,3 +158,30 @@ func mustLoad(t *testing.T, path string) Choice {
 	}
 	return c
 }
+
+// A reset that leaves cross-reviewer on the reviewer's client is named, and show names it too.
+func TestResetNamesASharedReviewerClient(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	for _, args := range [][]string{
+		{"set", "reviewer", "--client", "codex", "--model", "gpt-6.1-sol"},
+		{"set", "cross-reviewer", "--client", "claude", "--model", "opus"},
+	} {
+		if err := run(path, args, &strings.Builder{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var out strings.Builder
+	if err := run(path, []string{"reset", "cross-reviewer"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "both run on codex") {
+		t.Errorf("reset did not name the shared client: %q", out.String())
+	}
+	out.Reset()
+	if err := run(path, []string{"show"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "both run on codex") {
+		t.Errorf("show did not name the shared client:\n%s", out.String())
+	}
+}

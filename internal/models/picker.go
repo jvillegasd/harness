@@ -181,10 +181,16 @@ func (p picker) save(path string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	setsCross := false
 	for _, args := range p.sets {
 		if choice, err = apply(choice, args); err != nil {
 			return false, err
 		}
+		setsCross = setsCross || args[0] == "cross-reviewer"
+	}
+	// Checked once on the final choice, so a vendor swap saves in either order.
+	if err := pairCheck(choice, setsCross); err != nil {
+		return false, err
 	}
 	err = Save(path, choice)
 	return err == nil, err

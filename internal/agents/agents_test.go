@@ -817,3 +817,24 @@ func TestSharedDefinitionRendersUnderItsOwnName(t *testing.T) {
 		t.Errorf("claude cross-reviewer lacks its own name or the read-search controls:\n%s", head)
 	}
 }
+
+// A role that shares another's definition still gets its own required access: cross-reviewer pointed at the executor's definition is refused, and so is a shares naming no role.
+func TestSharedDefinitionKeepsTheRolesAccess(t *testing.T) {
+	for name, shares := range map[string]map[string]any{
+		"executor's definition": {"definition": "", "shares": "executor"},
+		"unknown role":          {"definition": "", "shares": "nobody"},
+	} {
+		dir := temp(t)
+		config := configCopy(t, dir, func(data map[string]any) {
+			roles := data["roles"].(map[string]any)
+			def := roles["executor"].(map[string]any)["definition"]
+			if shares["shares"] == "nobody" {
+				def = roles["reviewer"].(map[string]any)["definition"]
+			}
+			roles["cross-reviewer"] = map[string]any{"definition": def, "shares": shares["shares"]}
+		})
+		if code, _, _ := runCommand(t, config, filepath.Join(dir, "out")); code != 1 {
+			t.Errorf("%s: generate exited %d, want 1", name, code)
+		}
+	}
+}

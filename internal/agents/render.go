@@ -111,6 +111,10 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 		if err != nil {
 			return nil, nil, nil, err
 		}
+		// The shared definition's access was checked against its owner; the sharing role must still get exactly its own.
+		if expected, ok := required[name]; ok && owner != name && accessLevel != expected {
+			return nil, nil, nil, fail(fmt.Sprintf("roles.%s shares %s, whose access is %s, but %s must be %s", name, owner, accessLevel, name, expected))
+		}
 		// JSON string quoting is valid YAML for this text.
 		quoted := `"` + strings.ReplaceAll(strings.ReplaceAll(description, `\`, `\\`), `"`, `\"`) + `"`
 		claude := resolved["claude/"+name]
@@ -187,8 +191,8 @@ func resolve(config map[string]any) (map[string]any, map[string]map[string][2]st
 			return nil, nil, fail(fmt.Sprintf("roles.%s: unknown keys %s; a role takes definition, shares, %s", name, strings.Join(unknown, ", "), strings.Join(clientNames, ", ")))
 		}
 		if shares, ok := roleObj["shares"]; ok {
-			if text, isString := shares.(string); !isString || text == "" {
-				return nil, nil, fail(fmt.Sprintf("roles.%s.shares must name the role whose definition it reuses", name))
+			if text, isString := shares.(string); !isString || text == "" || text == name || roles[text] == nil {
+				return nil, nil, fail(fmt.Sprintf("roles.%s.shares must name another role whose definition it reuses", name))
 			}
 		}
 		if def, ok := roleObj["definition"]; ok {

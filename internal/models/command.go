@@ -87,7 +87,14 @@ func run(path string, args []string, stdout io.Writer) error {
 	sub, rest := args[0], args[1:]
 	// reset is the recovery for a stored choice Load refuses, so it reads the block without validating it.
 	if sub == "reset" {
-		return reset(path, rest)
+		if err := reset(path, rest); err != nil {
+			return err
+		}
+		// The choice left behind may still be unreadable; only a readable one can be checked.
+		if choice, err := Load(path); err == nil {
+			return pairWarning(choice, stdout)
+		}
+		return nil
 	}
 	choice, err := Load(path)
 	if err != nil {
@@ -107,20 +114,19 @@ func run(path string, args []string, stdout io.Writer) error {
 			}
 			fmt.Fprintf(stdout, "%s client=%s model=%s effort=%s (%s)%s\n", role, r.Client, r.Model, effortOrInherit(r.Effort), r.Source, note)
 		}
-		return nil
+		return pairWarning(choice, stdout)
 	case "set":
 		choice, err := apply(choice, rest)
 		if err != nil {
 			return err
 		}
+		if err := pairCheck(choice, len(rest) > 0 && rest[0] == "cross-reviewer"); err != nil {
+			return err
+		}
 		if err := Save(path, choice); err != nil {
 			return err
 		}
-		// Setting reviewer onto cross-reviewer's client is allowed, so the two can swap vendors one set at a time, but it is named until cross-reviewer moves.
-		if r := choice.Resolve(); r["reviewer"].Client == r["cross-reviewer"].Client {
-			fmt.Fprintf(stdout, "warning: reviewer and cross-reviewer both run on %s, so Deep review has no second vendor; run `harness models set cross-reviewer --client <another client> --model <model>`\n", r["reviewer"].Client)
-		}
-		return nil
+		return pairWarning(choice, stdout)
 	case "resolve":
 		return resolve(choice, rest, stdout)
 	}
@@ -160,15 +166,29 @@ func apply(choice Choice, args []string) (Choice, error) {
 	if err := Validate(a); err != nil {
 		return choice, err
 	}
-	// cross-reviewer exists to put Deep's second reviewer on another vendor, so it never takes the reviewer's client.
-	if reviewer := choice.Resolve()["reviewer"]; role == "cross-reviewer" && a.Client == reviewer.Client {
-		return choice, fmt.Errorf("cross-reviewer must run on another client than reviewer, which is on %s", reviewer.Client)
-	}
 	if choice.Roles == nil {
 		choice.Roles = map[string]Assignment{}
 	}
 	choice.Roles[role] = a
 	return choice, nil
+}
+
+// pairCheck refuses a write that puts cross-reviewer itself on the reviewer's client, because the role exists to give Deep review another vendor. Any other write that leaves the two on one client is allowed, so they can swap vendors one set at a time, and pairWarning names it.
+func pairCheck(c Choice, setsCross bool) error {
+	if r := c.Resolve(); setsCross && r["reviewer"].Client == r["cross-reviewer"].Client {
+		return fmt.Errorf("cross-reviewer must run on another client than reviewer, which is on %s", r["reviewer"].Client)
+	}
+	return nil
+}
+
+// pairWarning names a choice that leaves reviewer and cross-reviewer on one client, however it was reached.
+func pairWarning(c Choice, stdout io.Writer) error {
+	r := c.Resolve()
+	if r["reviewer"].Client != r["cross-reviewer"].Client {
+		return nil
+	}
+	_, err := fmt.Fprintf(stdout, "warning: reviewer and cross-reviewer both run on %s, so Deep review has no second vendor; run `harness models set cross-reviewer --client <another client> --model <model>`\n", r["reviewer"].Client)
+	return err
 }
 
 func reset(path string, args []string) error {
