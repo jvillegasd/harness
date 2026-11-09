@@ -9,7 +9,6 @@ Work stays inline unless a worker offers independent inspection, useful parallel
 | `executor` | Implement one bounded slice | No commits, publication, tracker writes, merges, worktree removal, or further delegation |
 | `code-search` | Answer one repository question with file and line citations | Read and search only |
 | `reviewer` | Find defects or validate fixes | Read and search only; does not receive the author's rationale |
-| `cross-reviewer` | Deep's second general reviewer, on another vendor | Same definition and limits as `reviewer` |
 
 Definitions live in [roles/](../roles/) and [the review skill](../skills/workflow/review/SKILL.md). A worker's completion message is not proof: the parent checks its scope, Git state, and results.
 

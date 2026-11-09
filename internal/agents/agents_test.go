@@ -11,9 +11,9 @@ import (
 )
 
 var outputNames = []string{
-	"claude/code-search.md", "claude/cross-reviewer.md", "claude/executor.md", "claude/reviewer.md",
-	"codex/code-search.toml", "codex/cross-reviewer.toml", "codex/executor.toml", "codex/reviewer.toml",
-	"opencode/code-search.md", "opencode/cross-reviewer.md", "opencode/executor.md", "opencode/reviewer.md",
+	"claude/code-search.md", "claude/executor.md", "claude/reviewer.md",
+	"codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml",
+	"opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md",
 }
 
 // temp returns a resolved temporary directory, because macOS temp paths pass through a symlink and the renderer refuses a symlinked output ancestor.
@@ -798,43 +798,4 @@ func deepEqualStrings(a, b map[string]string) bool {
 		}
 	}
 	return true
-}
-
-// cross-reviewer shares the reviewer's definition: it renders that body and access under its own name, so one file serves both roles.
-func TestSharedDefinitionRendersUnderItsOwnName(t *testing.T) {
-	out := temp(t)
-	if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
-		t.Fatalf("generate exited %d: %s", code, stderr)
-	}
-	for _, client := range []string{"claude", "opencode"} {
-		shared := readFile(t, filepath.Join(out, client, "cross-reviewer.md"))
-		own := readFile(t, filepath.Join(out, client, "reviewer.md"))
-		if !strings.Contains(shared, "# Reviewer: find what is wrong, without the story") || shared[strings.Index(shared, "\n---\n"):] != own[strings.Index(own, "\n---\n"):] {
-			t.Errorf("%s cross-reviewer does not carry the reviewer body", client)
-		}
-	}
-	if head := readFile(t, filepath.Join(out, "claude", "cross-reviewer.md")); !strings.Contains(head, "name: cross-reviewer\n") || !strings.Contains(head, "permissionMode: dontAsk\n") {
-		t.Errorf("claude cross-reviewer lacks its own name or the read-search controls:\n%s", head)
-	}
-}
-
-// A role that shares another's definition still gets its own required access: cross-reviewer pointed at the executor's definition is refused, and so is a shares naming no role.
-func TestSharedDefinitionKeepsTheRolesAccess(t *testing.T) {
-	for name, shares := range map[string]map[string]any{
-		"executor's definition": {"definition": "", "shares": "executor"},
-		"unknown role":          {"definition": "", "shares": "nobody"},
-	} {
-		dir := temp(t)
-		config := configCopy(t, dir, func(data map[string]any) {
-			roles := data["roles"].(map[string]any)
-			def := roles["executor"].(map[string]any)["definition"]
-			if shares["shares"] == "nobody" {
-				def = roles["reviewer"].(map[string]any)["definition"]
-			}
-			roles["cross-reviewer"] = map[string]any{"definition": def, "shares": shares["shares"]}
-		})
-		if code, _, _ := runCommand(t, config, filepath.Join(dir, "out")); code != 1 {
-			t.Errorf("%s: generate exited %d, want 1", name, code)
-		}
-	}
 }

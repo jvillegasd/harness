@@ -13,7 +13,6 @@ Your review level decides when reviews start on their own and how many agents th
 | `off` | Nothing | (an explicit request runs at Medium) | 0 unless you ask |
 | `medium` | Every PR beyond docs or tests, and local work that is critical or names a security, data-loss, compatibility, or concurrency risk | One general reviewer | 2 |
 | `high` | Every PR or local change that is structural or riskier | The general reviewer plus one or two specialists | 6 |
-| Deep | Only when you ask for it by name | High plus a second general reviewer | 7 |
 
 Asking for a review always runs one, at your configured level (Medium when the level is `off`). It never silently upgrades to High.
 
@@ -23,22 +22,19 @@ The general reviewer covers correctness, requirements, error handling, compatibi
 - **Risk:** trust boundaries, data loss, failing dependencies, or concurrency.
 - **Standards:** changed interfaces, structure, and the project's documented conventions.
 
-Deep's second general reviewer is the `cross-reviewer` role, which every `harness models` preset puts on the other vendor from `reviewer`; change it with `harness models set cross-reviewer`. When it cannot run on another vendor here, it is a second reviewer from the same vendor, and the report says diversity was unavailable. Findings from both reviewers count, because different models catch different bugs.
+Every reviewer runs on the model and effort you chose for the `reviewer` role with `harness models`.
 
 ```mermaid
 stateDiagram-v2
   state "No review" as Skipped
   state "Medium: one general reviewer" as Medium
   state "High: general reviewer + specialists" as High
-  state "Deep: High + second general reviewer" as Deep
 
   [*] --> Skipped: level is off, or the change is too small to trigger one
   [*] --> Medium: level is medium, or you ask while it is off
   [*] --> High: level is high
-  [*] --> Deep: you ask for Deep
   Medium --> Reviewed
   High --> Reviewed
-  Deep --> Reviewed
   Skipped --> [*]
   Reviewed --> [*]
 ```
@@ -47,8 +43,8 @@ stateDiagram-v2
 
 1. **Freeze the change.** The agent commits its work, and reviewers read exactly that commit. Nothing is edited until every reviewer has reported.
 2. **Hunt.** Reviewers get the requirements (copied word for word), the diff, and the project's standards. They never see the conversation or the author's reasoning.
-3. **Prove each finding.** The agent tries to reproduce every problem by running a small test or script. At High and Deep, a separate agent can run what the main agent could not. Contradictory instructions are proven by quoting both. Everything else is dropped and counted.
-4. **Fix and check.** Each confirmed problem is fixed with a test that failed before the fix and passes after; for contradictory instructions, the fix is rewording them so they agree. At High and Deep, one more reviewer reads the fix to make sure it solves the root cause and breaks nothing else.
+3. **Prove each finding.** The agent tries to reproduce every problem by running a small test or script. At High, a separate agent can run what the main agent could not. Contradictory instructions are proven by quoting both. Everything else is dropped and counted.
+4. **Fix and check.** Each confirmed problem is fixed with a test that failed before the fix and passes after; for contradictory instructions, the fix is rewording them so they agree. At High, one more reviewer reads the fix to make sure it solves the root cause and breaks nothing else.
 
 ## What happens to a finding
 
@@ -68,7 +64,7 @@ stateDiagram-v2
   Reported --> Dropped: no run proved it, counted in the report
   Confirmed --> Fixed: fix committed, its test now passes
   Fixed --> [*]: Medium, the passing test is the proof
-  Fixed --> Rechecked: High or Deep, a reviewer confirms the fix holds
+  Fixed --> Rechecked: High, a reviewer confirms the fix holds
   Fixed --> Decision: the recheck's concern reproduces on the fixed code
   Rechecked --> [*]
   Dropped --> [*]

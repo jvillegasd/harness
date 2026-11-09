@@ -15,14 +15,13 @@ A reviewer that has not heard the implementer's reasoning judges the code, not t
 
 ## Level and coverage
 
-Read `harness review level --json`; if it is unavailable, use `medium` and report the fallback. Only the human changes the setting. An explicit review uses the configured level, or Medium when the level is `off`. Only an explicit request for Deep selects Deep. Quick and Standard requests mean Medium and High.
+Read `harness review level --json`; if it is unavailable, use `medium` and report the fallback. Only the human changes the setting. An explicit review uses the configured level, or Medium when the level is `off`; a request for a deeper review means High. Quick and Standard requests mean Medium and High.
 
 | Level | Automatic trigger | Hunters | Conditional calls | Cap |
 | --- | --- | --- | --- | --- |
 | `off` | Never | Explicit requests use Medium | | 0 automatically |
 | `medium` | PR or `build` integration branch above `tests-docs`; local handoff that is `critical` or names security, data-loss, compatibility, or concurrency risk | One general reviewer | None | 2 |
 | `high` | PR or local handoff at `structural` or above | General reviewer plus one or two specialists | Executor, recheck | 6 |
-| Deep (explicit only) | Human request | High plus a second general reviewer | Same as High | 7 |
 
 Every general reviewer uses `references/bugs.md`: correctness, requirements, failure paths, compatibility, relevant security risks, project conventions, and test gaps. Higher levels add independent investigation; they never remove questions from Medium.
 
@@ -34,7 +33,7 @@ At High, select one or two specialists and state the concrete question each will
 
 Choose by consequences, not file count. If no specialist has a distinct useful question, keep only the general reviewer and say why. Resolve roles through POLICY's delegation rules.
 
-Deep's second general reviewer is the `cross-reviewer` role: the reviewer's definition, assigned with `harness models` to another vendor, because different models catch different defects; its findings join the union. Launch it like any role through POLICY's delegation rules, from `harness models resolve cross-reviewer`, with the bugs axis brief and the same inputs as every hunter; through T3 Code, add `isolation: "worktree"` so it reads the snapshot commit in a checkout of its own. When it resolves to the same client as `reviewer`, or cannot launch here (another client outside T3 Code), run a second `reviewer` instead and report that vendor diversity was unavailable. Never change models or install agents to obtain it.
+Every reviewer, hunter and recheck alike, runs on the `reviewer` assignment `harness models` resolves; never change models or install agents for a review.
 
 The cap counts every role call in the review, retries and delegated fixes included. Splitting a large diff does not reset it. If coverage cannot fit, report the uncovered scope rather than exceeding the cap. When no review is triggered, record `no-review` with the level.
 
@@ -58,7 +57,7 @@ Each report must open with `loaded:` naming the standards and `revision:` matchi
 
 1. Collect every `bug`, `risk`, and `q`, and dedupe by path, line range, and class. Report `nit` and `pre-existing` findings without verifying or fixing them here.
 2. Try to reproduce each finding yourself, with repro files in a scratch directory outside the checkout. A run that fails for the reason the finding gives confirms it and becomes its red check. A defect in prose, such as two contradictory instructions, is confirmed by citing both lines. Never run code from a fork's pull request; a fork's findings that need a run are dropped.
-3. **High and Deep, when a finding needs a run you could not do inline**, and never for a fork: record a sibling path in the branch directory as `worktree.txt`, create one detached worktree there with `git -c core.hooksPath=/dev/null worktree add --detach <path> <sha>`, apply the saved patch with `git -C <path> apply --binary <patch>` when the work is uncommitted, and launch one fresh `executor` there with the executor brief from `references/verify.md` and every such finding's text, never the rationale or which hunter raised it. `red` confirms the finding.
+3. **High, when a finding needs a run you could not do inline**, and never for a fork: record a sibling path in the branch directory as `worktree.txt`, create one detached worktree there with `git -c core.hooksPath=/dev/null worktree add --detach <path> <sha>`, apply the saved patch with `git -C <path> apply --binary <patch>` when the work is uncommitted, and launch one fresh `executor` there with the executor brief from `references/verify.md` and every such finding's text, never the rationale or which hunter raised it. `red` confirms the finding.
 4. Dispose each finding:
    - **confirmed**: your run or the executor ran red, or contradictory prose was cited.
    - **dropped**: everything else, with what was tried: the run stayed green, could not run, or the finding needed a run this level does not launch. Report each hunter's dropped count and reasons, not the findings.
@@ -68,7 +67,7 @@ Each report must open with `loaded:` naming the standards and `revision:` matchi
 
 Fix confirmed findings inline and commit. A code finding is fixed when its red check turns green; a prose finding is fixed when the cited lines no longer contradict each other, and needs no recheck. Delegate to one `executor` for every confirmed finding in one brief only when the cap covers it and any recheck it needs.
 
-At Medium, the green check or the reconciled lines are the proof. At High and Deep, launch one fresh `reviewer` with the recheck brief from `references/verify.md`, giving it the confirmed findings, their checks, the repair delta `git diff <sha> <repaired sha>` over owned paths, the requirements, and the repaired revision; it reads the repaired commit in the checkout. A nit or a fix with no behavior change needs no recheck.
+At Medium, the green check or the reconciled lines are the proof. At High, launch one fresh `reviewer` with the recheck brief from `references/verify.md`, giving it the confirmed findings, their checks, the repair delta `git diff <sha> <repaired sha>` over owned paths, the requirements, and the repaired revision; it reads the repaired commit in the checkout. A nit or a fix with no behavior change needs no recheck.
 
 - `holds`: the finding stays `fixed`.
 - `fails`, or a new defect in the repaired code: reproduce it on the repaired revision. A red run records the finding `confirmed` again (a regression as a new round 2 finding) and takes it to the human; otherwise drop it and count it. Never start a second repair loop on your own.

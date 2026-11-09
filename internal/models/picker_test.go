@@ -220,22 +220,3 @@ func TestPickerTablesMatch(t *testing.T) {
 		t.Errorf("claudeModels %v does not match claudeEfforts %v", claudeModels, aliases)
 	}
 }
-
-// The picker checks the reviewer pair once, on the final choice, so a swap entered cross-reviewer first saves.
-func TestPickerSavesASwapInEitherOrder(t *testing.T) {
-	catalog := &Catalog{codex: []string{"gpt-6.1-sol"}, codexEfforts: map[string][]string{"gpt-6.1-sol": {"low"}}, codexDone: true, opencodeErr: errors.New("opencode missing"), opencodeDone: true}
-	p := choose(t, choose(t, choose(t, choose(t, choose(t, newPicker(catalog), "custom"), "cross-reviewer"), "claude"), "opus"), "low")
-	p = choose(t, choose(t, choose(t, choose(t, p, "reviewer"), "codex"), "gpt-6.1-sol"), "low")
-	p = choose(t, p, "save")
-	path := statePath(t)
-	// save validates the Codex model against the catalog, so a fake codex lists it.
-	bin := t.TempDir()
-	shim := "#!/bin/sh\n[ \"$*\" = \"debug models\" ] && echo '{\"models\":[{\"slug\":\"gpt-6.1-sol\",\"visibility\":\"list\",\"supported_reasoning_levels\":[{\"effort\":\"low\"}]}]}'\n"
-	if err := os.WriteFile(filepath.Join(bin, "codex"), []byte(shim), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", bin)
-	if wrote, err := p.save(path); err != nil || !wrote {
-		t.Fatalf("save wrote=%v err=%v", wrote, err)
-	}
-}

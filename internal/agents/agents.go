@@ -16,8 +16,6 @@ var required = map[string]string{
 	"executor":    "implement",
 	"code-search": "read-search",
 	"reviewer":    "read-search",
-	// Deep's second reviewer: the reviewer's definition, assigned to another vendor.
-	"cross-reviewer": "read-search",
 }
 
 // Documented agent frontmatter values: https://code.claude.com/docs/en/sub-agents (model, effort), https://opencode.ai/docs/agents/ (model, plus provider options such as OpenAI's reasoningEffort), and Codex's custom agent files (model, model_reasoning_effort). OpenCode passes effort to the provider, so it is accepted only beside an openai/ model.

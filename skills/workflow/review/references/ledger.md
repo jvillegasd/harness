@@ -4,7 +4,7 @@ The ledger is the local record of every finding and its disposition on one branc
 
 ## Record
 
-Record the depth as the level the review ran at: `medium`, `high`, `deep`, or `none` for a skipped review. Earlier ledgers stored `quick` and `standard`; the CLI reads and accepts them as `medium` and `high`. Put the configured level, selected perspectives, and planned/actual role calls in `--summary`.
+Record the depth as the level the review ran at: `medium`, `high`, or `none` for a skipped review. Earlier ledgers may hold `deep`, which is still read. Earlier ledgers stored `quick` and `standard`; the CLI reads and accepts them as `medium` and `high`. Put the configured level, selected perspectives, and planned/actual role calls in `--summary`.
 
 ```sh
 # A new finding; prints its id. Branch and sha default to the current branch and HEAD.

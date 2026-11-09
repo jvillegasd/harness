@@ -1,6 +1,6 @@
 # Verify findings
 
-Two briefs, each given at most once per review with every finding it covers, and both only at High and Deep. The parent pastes the matching brief together with the numbered findings and the revision. No brief says who raised a finding or why the code was written this way.
+Two briefs, each given at most once per review with every finding it covers, and both only at High. The parent pastes the matching brief together with the numbered findings and the revision. No brief says who raised a finding or why the code was written this way.
 
 ## Executor: make each one fail
 
