@@ -20,8 +20,8 @@ Read `harness review level --json`; if it is unavailable, use `medium` and repor
 | Level | Automatic trigger | Hunters | Conditional calls | Cap |
 | --- | --- | --- | --- | --- |
 | `off` | Never | Explicit requests use Medium | | 0 automatically |
-| `medium` | PR or `build` integration branch above `tests-docs`; local handoff that is `critical` or names security, data-loss, compatibility, or concurrency risk | One general reviewer | None | 2 |
-| `high` | PR or local handoff at `structural` or above | General reviewer plus one or two specialists | Executor, recheck | 6 |
+| `medium` | PR or `build` integration branch above `tests-docs`; local handoff that is `critical` or names security, data-loss, compatibility, or concurrency risk | One general reviewer | Fix executor | 2 |
+| `high` | PR or local handoff at `structural` or above | General reviewer plus one or two specialists | Proof executor, fix executor, recheck | 6 |
 
 The general reviewer is the `review-bugs` lens: correctness, requirements, failure paths, compatibility, relevant security risks, project conventions, and test gaps. Higher levels add independent investigation; they never remove questions from Medium.
 
@@ -65,7 +65,7 @@ Each report must open with `loaded:` naming the standards and `revision:` matchi
 
 ## Fix
 
-Fix confirmed findings inline and commit. A code finding is fixed when its red check turns green; a prose finding is fixed when the cited lines no longer contradict each other, and needs no recheck. Delegate to one `executor` for every confirmed finding in one brief only when the cap covers it and any recheck it needs.
+Delegate every confirmed finding to one fresh `executor` in one brief, with the fix brief from `references/verify.md`. It edits the checkout and never commits. Read its diff, run each red check yourself, and commit the result. A code finding is fixed when its red check turns green; a prose finding is fixed when the cited lines no longer contradict each other, and needs no recheck. Fix inline only when the executor cannot launch or the cap has no call left for it beside any recheck the fix needs, and report which.
 
 At Medium, the green check or the reconciled lines are the proof. At High, launch one fresh `reviewer` with the recheck brief from `references/verify.md`, giving it the confirmed findings, their checks, the repair delta `git diff <sha> <repaired sha>` over owned paths, the requirements, and the repaired revision; it reads the repaired commit in the checkout. A nit or a fix with no behavior change needs no recheck.
 

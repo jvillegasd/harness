@@ -1,6 +1,6 @@
 # Verify findings
 
-Two briefs, each given at most once per review with every finding it covers, and both only at High. The parent pastes the matching brief together with the numbered findings and the revision. No brief says who raised a finding or why the code was written this way.
+Three briefs, each given at most once per review with every finding it covers. The proof and recheck briefs run only at High; the fix brief runs at Medium and High. The parent pastes the matching brief together with the numbered findings and the revision. No brief says who raised a finding or why the code was written this way.
 
 ## Executor: make each one fail
 
@@ -22,6 +22,16 @@ This report replaces the executor role's output fields, since a detached worktre
 - for `green` or `could-not-run`, what you tried.
 
 `red` means the finding is true.
+
+## Executor: fix the confirmed findings
+
+- **Goal**: remove each numbered finding at its root, not at one symptom or one call site.
+- **Scope**: the owned paths the parent names, in the checkout. Change nothing a finding does not need.
+- **Base**: the reviewed revision.
+- **Verify**: each finding's red check, given by the parent, now passes, and the checks the parent names still pass. A prose finding is verified when its cited lines no longer contradict each other.
+- **Report**: the executor role's output fields, with each finding's number beside the change that fixes it.
+
+The parent gives the confirmed findings, the check or cited lines that proved each one, and the requirements. Do not commit; the parent reads the diff, reruns the checks, and commits.
 
 ## Reviewer: recheck the fixes
 
