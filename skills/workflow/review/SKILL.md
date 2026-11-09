@@ -43,15 +43,14 @@ A review covering the current patch is required for every pull request this tabl
 
 1. Commit owned work where POLICY lets you, then record `<base>..<sha>`. Confirm both resolve with `git rev-parse` and that the diff is non-empty before launching anything. Hunters read the repository at `<sha>`; make no edits until every hunter has reported. Work you may not commit is reviewed from `git diff --binary <base> -- <owned paths>` saved in the branch directory (`dirname "$(harness review path)"`), with the patch's sha256 as its content identity. Such a review stops after Verify: record confirmed findings as `confirmed` and hand them to the human, because a fix cannot be committed or recorded `fixed`.
 2. Copy the requirements verbatim from their source: the ticket body and comment thread (latest wins), the spec, the task document's requirements, or the human's exact words. A paraphrase carries your framing into a blind brief. With no source, omit `review-spec` and report requirements coverage unavailable.
-3. Gather the standards: search the repository for every file that documents how code is written here. The project instruction file, and `CODING_STANDARDS.md` and `CONTRIBUTING.md` when present, are always on the list. Give them by absolute path, and paste any standard from outside the project inline, because a lens reads outside the project only the skills it loads.
 
 When a diff is too large for one hunter, split it into coherent slices (by module or call path); each hunter covers its lens across the slices within the cap. An unreviewed slice stays unverified.
 
 ## Hunt
 
-Launch one fresh lens role per hunter, all in parallel: its lens is in its definition, so give it only the requirements, the diff, the revision identity, and the standards, plus `review-risk`'s categories. Withhold conversation history, implementation rationale, plans that carry rationale, continuity documents, worker results, and prior findings.
+Launch one fresh lens role per hunter, all in parallel: its lens is in its definition, so give it only the requirements, the diff, and the revision identity, plus `review-risk`'s categories. Withhold conversation history, implementation rationale, plans that carry rationale, continuity documents, worker results, and prior findings.
 
-Each report must open with `loaded:` naming the standards and `revision:` matching the snapshot. Retry once with the input repaired if the cap permits, then report that hunter unverified.
+Each report must open with `loaded:` naming the standards files it opened, or `none`, and `revision:` matching the snapshot. Retry once with the input repaired if the cap permits, then report that hunter unverified.
 
 ## Verify
 
@@ -81,7 +80,7 @@ Record every disposition in the ledger as `references/ledger.md` describes.
 ## Output
 
 - Level, coverage, selected specialists with their reasons, and calls used against the cap.
-- The reviewed revision and content identity, and the standards loaded.
+- The reviewed revision and content identity, and the standards each hunter loaded.
 - Each axis's confirmed findings side by side, sorted by severity within the axis and never reranked across axes, each with its disposition and the run that proved it.
 - Each hunter's raised, confirmed, and dropped counts, with the reasons findings were dropped.
 - What stayed unverified: hunters, slices, any worktree left in place.
