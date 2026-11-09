@@ -28,7 +28,7 @@ The general reviewer is the `review-bugs` lens: correctness, requirements, failu
 At High, select one or two specialist lenses and state the concrete question each will investigate:
 
 - `review-spec`: independently trace requirements to behavior when a requirements source exists.
-- `review-risk`: inspect consequential trust boundaries, data loss, dependency failures, or concurrency. Name the categories that triggered it. For a security category, paste these `security-audit` excerpts inline: its sections "Require a boundary and result", "Respect source visibility", and "Separate priority from certainty", plus `WEB-PROTOCOL-AND-AUTH.md` and `DATA-ISOLATION-AND-LIFECYCLE.md` for auth and permissions, `DATA-ISOLATION-AND-LIFECYCLE.md` for secrets, `ATTACK-CLASSES.md` for input boundaries, and `SUPPLY-CHAIN-AND-RELEASE.md` for CI and installers.
+- `review-risk`: inspect consequential trust boundaries, data loss, dependency failures, or concurrency. Name the categories that triggered it. For a security category, load `security-audit` in guidance mode yourself and paste inline its core principles and the companion files its routing picks for those categories, because the lens cannot load a skill.
 - `review-standards`: inspect changed interfaces, structure, and documented conventions.
 
 Choose by consequences, not file count. If no specialist has a distinct useful question, keep only the general reviewer and say why. Resolve roles through POLICY's delegation rules.
@@ -43,7 +43,7 @@ A review covering the current patch is required for every pull request this tabl
 
 1. Commit owned work where POLICY lets you, then record `<base>..<sha>`. Confirm both resolve with `git rev-parse` and that the diff is non-empty before launching anything. Hunters read the repository at `<sha>`; make no edits until every hunter has reported. Work you may not commit is reviewed from `git diff --binary <base> -- <owned paths>` saved in the branch directory (`dirname "$(harness review path)"`), with the patch's sha256 as its content identity. Such a review stops after Verify: record confirmed findings as `confirmed` and hand them to the human, because a fix cannot be committed or recorded `fixed`.
 2. Copy the requirements verbatim from their source: the ticket body and comment thread (latest wins), the spec, the task document's requirements, or the human's exact words. A paraphrase carries your framing into a blind brief. With no source, omit `review-spec` and report requirements coverage unavailable.
-3. Gather the standards: the project instruction file, `CODING_STANDARDS.md` and `CONTRIBUTING.md` when present, and any other file that documents how code is written here. Include the `ponytail` skill body for the standards hunter. Give project files by absolute path and paste external text inline, because a read-only role cannot read outside the project.
+3. Gather the standards: search the repository for every file that documents how code is written here. The project instruction file, and `CODING_STANDARDS.md` and `CONTRIBUTING.md` when present, are always on the list. Include the `ponytail` skill body for the standards hunter. Give project files by absolute path and paste external text inline, because a read-only role cannot read outside the project.
 
 When a diff is too large for one hunter, split it into coherent slices (by module or call path); each hunter covers its lens across the slices within the cap. An unreviewed slice stays unverified.
 
