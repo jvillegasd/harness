@@ -109,6 +109,7 @@ func TestCommandHelpMatrix(t *testing.T) {
 		{"skills", "remove"},
 		{"skills", "verify"},
 		{"statusline"},
+		{"models"},
 		{"change-map"},
 		{"review"},
 		{"review", "record"},

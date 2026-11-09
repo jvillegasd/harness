@@ -34,6 +34,10 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 1 && args[0] == "read-guard" {
 		return ReadGuard(os.Stdin, stdout)
 	}
+	if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
+		fmt.Fprint(stdout, usage)
+		return 0
+	}
 	// Without a terminal the picker would wait on input that never comes, so a script gets the usage instead.
 	if len(args) == 0 && (!term.IsTerminal(os.Stdin.Fd()) || !term.IsTerminal(os.Stdout.Fd())) {
 		fmt.Fprint(stderr, usage)
