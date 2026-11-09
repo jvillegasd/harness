@@ -15,7 +15,7 @@ A reviewer that has not heard the implementer's reasoning judges the code, not t
 
 ## Level and coverage
 
-Read `harness review level --json`; if it is unavailable, use `medium` and report the fallback. Only the human changes the setting. An explicit review uses the configured level, or Medium when the level is `off`; a request for a deeper review means High. Quick and Standard requests mean Medium and High.
+Read `harness review level --json`; if it is unavailable, use `medium` and report the fallback. Only the human changes the setting. An explicit review uses the configured level, or Medium when the level is `off`. Quick and Standard requests mean Medium and High.
 
 | Level | Automatic trigger | Hunters | Conditional calls | Cap |
 | --- | --- | --- | --- | --- |

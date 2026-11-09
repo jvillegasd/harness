@@ -43,8 +43,9 @@ only a finding of that severity.
   --sha          Reviewed commit (default: HEAD)
   --digest       Snapshot patch hash when the reviewed work is uncommitted
   --round        1 or 2 (default 1)
-  --depth        none, medium, or high (deep, and quick and standard, the
-                 earlier names for medium and high, are translated)
+  --depth        none, medium, or high; deep is still accepted, and quick
+                 and standard, the earlier names for medium and high, are
+                 translated
   --axis         Hunter axis, such as bugs or spec
   --reviewer     Client and model, such as claude/opus
   --path         File the finding cites
