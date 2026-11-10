@@ -20,9 +20,8 @@ The general reviewer covers correctness, requirements, error handling, compatibi
 
 - **Requirements:** does the change do exactly what the ticket or spec asked, no more and no less?
 - **Risk:** trust boundaries, data loss, failing dependencies, or concurrency.
-- **Standards:** changed interfaces, structure, and the project's documented conventions.
 
-Each kind of reviewer is its own role (`review-bugs`, `review-spec`, `review-risk`, `review-standards`, and `reviewer` for the fix recheck). They all run on the model and effort you chose for `reviewer` with `harness models`, unless you set a lens on its own, for example `harness models set review-risk --client claude --model opus --effort high`.
+Each kind of reviewer is its own role (`review-bugs`, `review-spec`, `review-risk`, and `reviewer` for the fix recheck). They all run on the model and effort you chose for `reviewer` with `harness models`, unless you set a lens on its own, for example `harness models set review-risk --client claude --model opus --effort high`.
 
 ```mermaid
 stateDiagram-v2
@@ -42,7 +41,7 @@ stateDiagram-v2
 ## What happens during a review
 
 1. **Freeze the change.** The agent commits its work, and reviewers read exactly that commit. Nothing is edited until every reviewer has reported.
-2. **Hunt.** Reviewers get the requirements (copied word for word), the diff, and the project's standards. They never see the conversation or the author's reasoning.
+2. **Hunt.** Reviewers get the requirements (copied word for word) and the diff, and read the project's standards and principles themselves. They never see the conversation or the author's reasoning.
 3. **Prove each finding.** The agent tries to reproduce every problem by running a small test or script. At High, a separate agent can run what the main agent could not. Contradictory instructions are proven by quoting both. Everything else is dropped and counted.
 4. **Fix and check.** Each confirmed problem is fixed with a test that failed before the fix and passes after; for contradictory instructions, the fix is rewording them so they agree. At High, one more reviewer reads the fix to make sure it solves the root cause and breaks nothing else.
 

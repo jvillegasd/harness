@@ -12,7 +12,7 @@ import (
 )
 
 // agentOutputs are the role agents this checkout renders, per client.
-var agentOutputs = []string{"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "claude/review-bugs.md", "claude/review-risk.md", "claude/review-spec.md", "claude/review-standards.md", "codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml", "codex/review-bugs.toml", "codex/review-risk.toml", "codex/review-spec.toml", "codex/review-standards.toml", "opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md", "opencode/review-bugs.md", "opencode/review-risk.md", "opencode/review-spec.md", "opencode/review-standards.md"}
+var agentOutputs = []string{"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "claude/review-bugs.md", "claude/review-risk.md", "claude/review-spec.md", "codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml", "codex/review-bugs.toml", "codex/review-risk.toml", "codex/review-spec.toml", "opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md", "opencode/review-bugs.md", "opencode/review-risk.md", "opencode/review-spec.md"}
 
 func readFile(t *testing.T, path string) string {
 	t.Helper()
@@ -689,5 +689,35 @@ func TestCodexHooksKeepTheUsersOwn(t *testing.T) {
 	text = readFileOr(path)
 	if !strings.Contains(text, "echo mine") || strings.Contains(text, "resume") {
 		t.Errorf("after uninstall, hooks.json should hold only the user's hook:\n%s", text)
+	}
+}
+
+// The tracked allow rules join the user's own instead of replacing them: the install keeps every live rule and adds the harness's, and the uninstall removes only the harness's.
+func TestClaudeAllowKeepsTheUsersRules(t *testing.T) {
+	base := sandbox(t)
+	settings := filepath.Join(base, "home", ".claude", "settings.json")
+	writeMode(t, settings, `{"permissions": {"allow": ["Bash(make test)"], "defaultMode": "plan"}}`+"\n", 0o644)
+	allow := func() []string {
+		var got struct {
+			Permissions struct {
+				Allow []string `json:"allow"`
+			} `json:"permissions"`
+		}
+		if err := json.Unmarshal([]byte(readFile(t, settings)), &got); err != nil {
+			t.Fatal(err)
+		}
+		return got.Permissions.Allow
+	}
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	if got, want := allow(), []string{"Bash(make test)", "Read(~/.claude/skills/**)"}; !slices.Equal(got, want) {
+		t.Errorf("allow after install = %q, want %q", got, want)
+	}
+	ok(t, runInstaller(t, base, "--skip-packages"), "reinstall")
+	if got := allow(); len(got) != 2 {
+		t.Errorf("a reinstall duplicated the tracked rule: %q", got)
+	}
+	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	if got, want := allow(), []string{"Bash(make test)"}; !slices.Equal(got, want) {
+		t.Errorf("allow after uninstall = %q, want %q", got, want)
 	}
 }

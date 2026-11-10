@@ -224,7 +224,7 @@ func mergeHooks(live, tracked json.RawMessage, add bool) json.RawMessage {
 	return encode(merged)
 }
 
-// reconcileClaudeSettings merges clients/claude.json into the live settings and leaves every other key alone, because other tools, engram setup, and the client all write machine state there. A tracked key replaces the live value, so deleting one from the tracked file deletes it from the machine. permissions merges one level down, which keeps the allowlist engram setup writes while deny and ask stay owned. hooks keeps every hook the harness does not run, so the user's and other tools' hooks under the same event survive.
+// reconcileClaudeSettings merges clients/claude.json into the live settings and leaves every other key alone, because other tools, engram setup, and the client all write machine state there. A tracked key replaces the live value, so deleting one from the tracked file deletes it from the machine. permissions merges one level down: deny and ask stay owned, and allow gains the tracked rules beside the ones engram setup and the user write. hooks keeps every hook the harness does not run, so the user's and other tools' hooks under the same event survive.
 func (in *installer) reconcileClaudeSettings() {
 	path := in.settingsPath()
 	must(os.MkdirAll(filepath.Dir(path), 0o755))
@@ -239,7 +239,11 @@ func (in *installer) reconcileClaudeSettings() {
 				add, err := parseObject(value)
 				must(err)
 				for _, name := range add.keys {
-					merged.set(name, add.vals[name])
+					entries := add.vals[name]
+					if name == "allow" {
+						entries = mergeAllow(merged.vals[name], entries, true)
+					}
+					merged.set(name, entries)
 				}
 				value = encode(merged)
 			}
@@ -251,6 +255,24 @@ func (in *installer) reconcileClaudeSettings() {
 		live.set(key, value)
 	}
 	in.writeIfChanged(path, before, render(live), "Reconciled the tracked Claude settings in %s")
+}
+
+// mergeAllow adds the tracked allow rules to the live ones, keeping the live order and every rule engram setup or the user wrote, or with add false, removes only the tracked rules. A removal that leaves nothing returns nil, so the class goes. Live entries that are not a list are replaced on add and dropped on removal.
+func mergeAllow(live, tracked json.RawMessage, add bool) json.RawMessage {
+	var have, want []json.RawMessage
+	_ = json.Unmarshal(live, &have)
+	_ = json.Unmarshal(tracked, &want)
+	tracks := func(entry json.RawMessage) bool {
+		return slices.ContainsFunc(want, func(w json.RawMessage) bool { return string(w) == string(entry) })
+	}
+	kept := slices.DeleteFunc(slices.Clone(have), tracks)
+	if add {
+		kept = append(kept, want...)
+	}
+	if len(kept) == 0 {
+		return nil
+	}
+	return encode(kept)
 }
 
 // removeClaudeSettings deletes exactly what reconcileClaudeSettings writes: the tracked keys, and within permissions only the tracked classes. A permissions the harness emptied goes too.
@@ -275,6 +297,12 @@ func (in *installer) removeClaudeSettings() {
 		}
 		if classes, err := parseObject(tracked.vals[key]); err == nil {
 			for _, name := range classes.keys {
+				if name == "allow" {
+					if rest := mergeAllow(owned.vals[name], classes.vals[name], false); rest != nil {
+						owned.set(name, rest)
+						continue
+					}
+				}
 				owned.del(name)
 			}
 		}
@@ -317,6 +345,15 @@ func (in *installer) trackedSettingsHold(removed bool) bool {
 		owned, _ := live[key].(map[string]any)
 		classes, _ := want.(map[string]any)
 		for name, entry := range classes {
+			if name == "allow" {
+				have, _ := owned[name].([]any)
+				for _, rule := range entry.([]any) {
+					if slices.Contains(have, rule) == removed {
+						return false
+					}
+				}
+				continue
+			}
 			if !holds(owned, name, entry) {
 				return false
 			}

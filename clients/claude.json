@@ -1,5 +1,8 @@
 {
   "permissions": {
+    "allow": [
+      "Read(~/.claude/skills/**)"
+    ],
     "deny": [
       "Read(**/.env*)",
       "Read(**/.dev.vars*)",

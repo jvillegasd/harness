@@ -20,16 +20,15 @@ Read `harness review level --json`; if it is unavailable, use `medium` and repor
 | Level | Automatic trigger | Hunters | Conditional calls | Cap |
 | --- | --- | --- | --- | --- |
 | `off` | Never | Explicit requests use Medium | | 0 automatically |
-| `medium` | PR or `build` integration branch above `tests-docs`; local handoff that is `critical` or names security, data-loss, compatibility, or concurrency risk | One general reviewer | None | 2 |
-| `high` | PR or local handoff at `structural` or above | General reviewer plus one or two specialists | Executor, recheck | 6 |
+| `medium` | PR or `build` integration branch above `tests-docs`; local handoff that is `critical` or names security, data-loss, compatibility, or concurrency risk | One general reviewer | Fix executor | 2 |
+| `high` | PR or local handoff at `structural` or above | General reviewer plus one or two specialists | Proof executor, fix executor, recheck | 6 |
 
 The general reviewer is the `review-bugs` lens: correctness, requirements, failure paths, compatibility, relevant security risks, project conventions, and test gaps. Higher levels add independent investigation; they never remove questions from Medium.
 
-At High, select one or two specialist lenses and state the concrete question each will investigate:
+At High, select one or both specialist lenses and state the concrete question each will investigate:
 
 - `review-spec`: independently trace requirements to behavior when a requirements source exists.
-- `review-risk`: inspect consequential trust boundaries, data loss, dependency failures, or concurrency. Name the categories that triggered it. For a security category, paste these `security-audit` excerpts inline: its sections "Require a boundary and result", "Respect source visibility", and "Separate priority from certainty", plus `WEB-PROTOCOL-AND-AUTH.md` and `DATA-ISOLATION-AND-LIFECYCLE.md` for auth and permissions, `DATA-ISOLATION-AND-LIFECYCLE.md` for secrets, `ATTACK-CLASSES.md` for input boundaries, and `SUPPLY-CHAIN-AND-RELEASE.md` for CI and installers.
-- `review-standards`: inspect changed interfaces, structure, and documented conventions.
+- `review-risk`: inspect consequential trust boundaries, data loss, dependency failures, or concurrency. Name the categories that triggered it; for a security category the lens loads `security-audit` in guidance mode itself.
 
 Choose by consequences, not file count. If no specialist has a distinct useful question, keep only the general reviewer and say why. Resolve roles through POLICY's delegation rules.
 
@@ -43,15 +42,14 @@ A review covering the current patch is required for every pull request this tabl
 
 1. Commit owned work where POLICY lets you, then record `<base>..<sha>`. Confirm both resolve with `git rev-parse` and that the diff is non-empty before launching anything. Hunters read the repository at `<sha>`; make no edits until every hunter has reported. Work you may not commit is reviewed from `git diff --binary <base> -- <owned paths>` saved in the branch directory (`dirname "$(harness review path)"`), with the patch's sha256 as its content identity. Such a review stops after Verify: record confirmed findings as `confirmed` and hand them to the human, because a fix cannot be committed or recorded `fixed`.
 2. Copy the requirements verbatim from their source: the ticket body and comment thread (latest wins), the spec, the task document's requirements, or the human's exact words. A paraphrase carries your framing into a blind brief. With no source, omit `review-spec` and report requirements coverage unavailable.
-3. Gather the standards: the project instruction file, `CODING_STANDARDS.md` and `CONTRIBUTING.md` when present, and any other file that documents how code is written here. Include the `ponytail` skill body for the standards hunter. Give project files by absolute path and paste external text inline, because a read-only role cannot read outside the project.
 
 When a diff is too large for one hunter, split it into coherent slices (by module or call path); each hunter covers its lens across the slices within the cap. An unreviewed slice stays unverified.
 
 ## Hunt
 
-Launch one fresh lens role per hunter, all in parallel: its lens is in its definition, so give it only the requirements, the diff, the revision identity, and the standards, plus `review-risk`'s categories and excerpts. Withhold conversation history, implementation rationale, plans that carry rationale, continuity documents, worker results, and prior findings.
+Launch one fresh lens role per hunter, all in parallel: its lens is in its definition, so give it only the requirements, the diff, and the revision identity, plus `review-risk`'s categories. Withhold conversation history, implementation rationale, plans that carry rationale, continuity documents, worker results, and prior findings.
 
-Each report must open with `loaded:` naming the standards and `revision:` matching the snapshot. Retry once with the input repaired if the cap permits, then report that hunter unverified.
+Each report must open with `loaded:` naming the standards files it opened, or `none`, and `revision:` matching the snapshot. Retry once with the input repaired if the cap permits, then report that hunter unverified.
 
 ## Verify
 
@@ -65,7 +63,7 @@ Each report must open with `loaded:` naming the standards and `revision:` matchi
 
 ## Fix
 
-Fix confirmed findings inline and commit. A code finding is fixed when its red check turns green; a prose finding is fixed when the cited lines no longer contradict each other, and needs no recheck. Delegate to one `executor` for every confirmed finding in one brief only when the cap covers it and any recheck it needs.
+Delegate every confirmed finding to one fresh `executor` in one brief, with the fix brief from `references/verify.md`. It edits the checkout and never commits. Read its diff, run each red check yourself, and commit the result. A code finding is fixed when its red check turns green; a prose finding is fixed when the cited lines no longer contradict each other, and needs no recheck. Fix inline only when the executor cannot launch or the cap has no call left for it beside any recheck the fix needs, and report which.
 
 At Medium, the green check or the reconciled lines are the proof. At High, launch one fresh `reviewer` with the recheck brief from `references/verify.md`, giving it the confirmed findings, their checks, the repair delta `git diff <sha> <repaired sha>` over owned paths, the requirements, and the repaired revision; it reads the repaired commit in the checkout. A nit or a fix with no behavior change needs no recheck.
 
@@ -81,7 +79,7 @@ Record every disposition in the ledger as `references/ledger.md` describes.
 ## Output
 
 - Level, coverage, selected specialists with their reasons, and calls used against the cap.
-- The reviewed revision and content identity, and the standards loaded.
+- The reviewed revision and content identity, and the standards each hunter loaded.
 - Each axis's confirmed findings side by side, sorted by severity within the axis and never reranked across axes, each with its disposition and the run that proved it.
 - Each hunter's raised, confirmed, and dropped counts, with the reasons findings were dropped.
 - What stayed unverified: hunters, slices, any worktree left in place.
@@ -91,5 +89,5 @@ A change to the reviewed revision invalidates the verdict until the affected evi
 ## References
 
 - [Reviewer role](roles/reviewer.md), the shared text each lens extends and the recheck's role
-- Lens roles: [bugs](roles/review-bugs.md), [spec](roles/review-spec.md), [standards](roles/review-standards.md), [risk](roles/review-risk.md)
+- Lens roles: [bugs](roles/review-bugs.md), [spec](roles/review-spec.md), [risk](roles/review-risk.md)
 - [Verify briefs](references/verify.md), [ledger](references/ledger.md), [evals](references/evals.md)

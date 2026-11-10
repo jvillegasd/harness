@@ -49,7 +49,7 @@ On a task branch you created, commit each coherent unit of work once its relevan
 
 ## Delegation
 
-Work inline by default. Delegate for a named benefit, such as independent inspection, useful parallel work, or context isolation, rather than because of file count or diff size. When an invoked skill's own method requires isolated subagents, that method is the named benefit: launch them natively as the skill describes, without mapping them to a role. The roles are `executor` (a bounded implementation slice), `code-search` (a cited answer about the repository), `reviewer` (a check of review fixes, and the shared text the lenses extend), and the review lenses `review-bugs`, `review-spec`, `review-risk`, and `review-standards` (an independent hunt through one lens).
+Work inline by default. Delegate for a named benefit, such as independent inspection, useful parallel work, or context isolation, rather than because of file count or diff size. When an invoked skill's own method requires isolated subagents, that method is the named benefit: launch them natively as the skill describes, without mapping them to a role. The roles are `executor` (a bounded implementation slice), `code-search` (a cited answer about the repository), `reviewer` (a check of review fixes, and the shared text the lenses extend), and the review lenses `review-bugs`, `review-spec`, and `review-risk` (an independent hunt through one lens).
 
 To launch a role, run `harness models resolve <role> --json` and use the model and effort it returns. When the role is assigned to this session's client, launch the installed agent natively (Claude Code's Agent tool, a Codex subagent spawned by the agent's name, or OpenCode's `task`); otherwise, in a T3 Code session, start it with T3 Code's `delegate_task`: `target.providerInstanceId` is `claudeAgent`, `codex`, or `opencode` for the role's client; `target.model` is the resolved model unless it is `inherit`, taking the matching id `orchestrator_capabilities` lists for an alias such as `opus`; the effort goes in that provider's option (`effort`, `reasoningEffort`, or `variant`); and an executor that needs its own checkout gets `isolation: "worktree"`, which starts from the parent's commit. The child loads no installed role agent, so open its brief with the role's installed definition (such as `~/.claude/agents/<role>.md`) before the task; its access limits are then instructions only. Wait for the completion wake-up instead of polling, and `task_cancel` a delegate you no longer need. Outside T3 Code, a role assigned to another client cannot launch. If a role cannot launch, say so and work inline where independence is not required. A missing or stale agent needs deliberate provisioning with `harness install`, not a silent substitute.
 
@@ -62,6 +62,33 @@ Skills live in `skills/<group>/<name>/` and are available as `/name`. Only a hum
 An installed skill may run the tools it ships, including a launcher that fetches its own version- or checksum-pinned binary once into that skill's cache, because that is how the skill works rather than an install. The outputs its method writes, such as reports or snapshots, are part of the task. Commands that install or reconfigure, such as a skill's installer, updater, hooks, shortcuts, or edits to shell, client, or project configuration, stay unrun unless the human asks.
 
 Use `ponytail` for coding decisions, and domain or module guidance when it helps. Use `impeccable` for frontend work, with the project's styling layer taking precedence. Run `security-audit`'s full audit only when an audit, pen test, or report is requested.
+
+Apply the `principle-*` skills through this index, because Claude Code never loads them on its own. When an entry's trigger applies, read that principle's `SKILL.md` in full from the installed skills (`~/.claude/skills` in Claude Code, `~/.agents/skills` in Codex and OpenCode) before you act on it. This policy wins where one conflicts with it.
+
+- `principle-laziness-protocol`: refactoring, sizing a diff, or tempted to add abstractions or layers.
+- `principle-foundational-thinking`: before writing logic, when choosing core types, data structures, and what concurrent actors share.
+- `principle-redesign-from-first-principles`: integrating a new requirement into an existing design.
+- `principle-attack-the-premise`: two or more fixes that share one premise have failed the same gate.
+- `principle-subtract-before-you-add`: sequencing an addition, refactor, or rewrite.
+- `principle-minimize-reader-load`: reviewing or shaping code that is hard to trace.
+- `principle-outcome-oriented-execution`: planned rewrites and migrations with explicit phases.
+- `principle-experience-first`: product, UX, or feature-scope tradeoffs.
+- `principle-exhaust-the-design-space`: a novel interaction or architectural decision with no precedent.
+- `principle-build-the-lever`: non-trivial work a tool could do or prove.
+- `principle-model-the-domain`: stateful logic, or code that branches a lot or repeats a shape assumption.
+- `principle-boundary-discipline`: wiring validation, error handling, or framework adapters.
+- `principle-type-system-discipline`: designing types or a signature in a typed language.
+- `principle-make-operations-idempotent`: commands, lifecycle steps, or loops that run amid crashes and retries.
+- `principle-migrate-callers-then-delete-legacy-apis`: a new internal API while old callers exist.
+- `principle-separate-before-serializing-shared-state`: concurrent actors that might write the same file, branch, key, or object.
+- `principle-prove-it-works`: before declaring a task done.
+- `principle-fix-root-causes`: debugging.
+- `principle-sequence-verifiable-units`: multi-step work, and how commits and pull requests stack.
+- `principle-test-behavior-not-implementation`: writing, changing, or keeping a test.
+- `principle-explain-the-number`: before measuring, and before trusting or acting on a measured number.
+- `principle-guard-the-context-window`: large outputs, long files, repeated reads, or fan-out planning.
+- `principle-never-block-on-the-human`: tempted to ask whether to do reversible work.
+- `principle-encode-lessons-in-structure`: writing the same instruction a second time, or a recurring correction.
 
 ## Housekeeping
 

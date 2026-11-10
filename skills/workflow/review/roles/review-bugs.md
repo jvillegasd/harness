@@ -12,6 +12,7 @@ Hunt for defects that change behavior. Read the diff against the whole repositor
 - **Requirements.** Trace every supplied requirement to the changed behavior. Report missing behavior and unrequested scope. Without a requirements source, state that limit.
 - **Contracts and security.** Inspect compatibility, permissions, input validation, data preservation, and failure recovery wherever the change touches them.
 - **Conventions.** Check documented project rules and unnecessary complexity; leave tool-enforced formatting to tooling.
+- **Principles.** Search the descriptions of the installed `principle-*` skills (`~/.claude/skills` in Claude Code, `~/.agents/skills` in Codex and OpenCode), and read in full each one whose trigger matches the change. A breach that changes behavior is a `bug` or `risk`; any other breach is a `nit` labelled with the principle's name. Name the principles you read in `loaded:`.
 - **Root cause.** On a bug fix, find the root cause and check that the fix lands there, not at one symptom or one call site.
 - **The safety fact.** Most risky-looking changes are safe because of one fact, such as "this call only drops entries that are already dead". Find that fact and try to break it. If it holds, say so on your `summary:` line. If it fails, that is your finding.
 - **Where grep stops.** Listing callers is the easy part. Follow what a symbol search misses:
