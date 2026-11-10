@@ -51,11 +51,11 @@ Retain each delegate's complete result, its revision and file state, and its che
 
 Keep a `## Decisions` table in the task document and append a row when a decision is made, not at the end, so the reason is captured while it is fresh.
 
-| Decision | Why | Evidence |
-| --- | --- | --- |
-| What was chosen, including defaults and names the human did not ask for | The reason it beat the alternatives | `path:line`, a check result, a commit, or a link |
+| Decision | Instead of | By | Why | Evidence |
+| --- | --- | --- | --- | --- |
+| What was chosen, including defaults and names | The real alternative it beat, or `none` | `agent`, or `human` when the human chose it | The reason it beat the alternative | `path:line`, a check result, a commit, or a link |
 
-`change-map` reads this table for "decisions you did not ask for", so a row here is what lets the human see an agent-made choice without reconstructing it.
+`change-map` reads this table for the pull request's tradeoffs: an `agent` row is argued, a `human` row becomes one `(you chose)` line, and a row whose alternative is `none` stays out. A row here is what lets the human see a choice without reconstructing it.
 
 ## Output
 

@@ -7,7 +7,7 @@ metadata:
   version: "1.0"
 ---
 
-Map a change for its human reviewer: sort every changed file and hunk into a review tier, say what must be read line by line and what can be skimmed or skipped, back each risky item with the one fact it is safe because of, and surface the decisions the agent made on its own.
+Map a change for its human reviewer: sort every changed file and hunk into a review tier, say what must be read line by line and what can be skimmed or skipped, back each risky item with the one fact it is safe because of, and surface the tradeoffs behind the change.
 
 ## Why
 
@@ -31,7 +31,7 @@ Agents produce more code than a human can read carefully, and an undifferentiate
    When a critical change reveals a recurring sensitive area not covered by `criticalPaths` or a built-in critical rule, ask the human whether to add a focused path or glob to `docs/agents/harness.json` for future maps. Name the proposed pattern and why it merits a permanent critical floor. Classify the current change as critical regardless of the answer; change the configuration only if the human approves.
 4. For each `critical` and `behavioral` item, name the one fact the change is safe because of, and how far it is proven on the certainty ladder in `verification` (said, cited, walked, ran, reproduced). A fact at "said" or "cited" is unproven; say so instead of implying safety. When the project has a feature map (`verify-<app>/features/README.md`, from `/create-verification-skill`), name the affected feature for each `behavioral` and `critical` item so `verification` can drive it live (ladder step 5).
 5. Call the merge danger: a one-way door (hard to reverse: data migration, deletion, published interface, external message) or a two-way door, plus the blast radius in a few words.
-6. List the decisions the agent made that the human did not ask for (a default, a naming choice, a dependency, a skipped case), each with its reason. Take them from the task document's `## Decisions` table (see `continuity`) when there is one, from the commits, and from the session. In since mode, also list the open decisions only the human can make, each with a recommendation.
+6. List the tradeoffs: every decision with a real alternative that a reviewer would otherwise ask about (a schema, a dependency, a default, a skipped case), whoever made it. A one-way door from step 5 always gets one. Write an agent decision as `<chosen> over <alternative>: <why the alternative lost>`. Write a decision the human made, such as an answer to a question POLICY's "Asking and deciding" put to them, as one line, `(you chose) <chosen> over <alternative>`, without arguing it again, because the human already weighed it. Skip a choice that had no real alternative. Take them from the task document's `## Decisions` table (see `continuity`) when there is one, from the commits, and from the session. In since mode, also list the open decisions only the human can make, each with a recommendation.
 7. When a critical change involves concurrency, retries, leases, or a lifecycle state machine, suggest `/statechart`, which model-checks the rules with TLA+ and draws the states in the reader's words (its toolchain installs through `mise` on first use). When a project formal verify skill already covers the touched code, name it and its check; when the change skipped that check, suggest `/maintain-formal-verification-skill`.
 
 ## Output
@@ -49,7 +49,7 @@ Skim: path, path (structural, tests unchanged and passing)
 Skip: path (mechanical: lockfile)
 
 Merge danger: one-way | two-way door; blast radius: <few words>
-Decisions you did not ask for: <decision>: <reason>
+Tradeoffs: <chosen> over <alternative>: <why it lost> | (you chose) <chosen> over <alternative>
 Open decisions (since mode): <decision>: <recommendation>
 ```
 

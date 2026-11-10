@@ -7,6 +7,7 @@ Rules:
 - Every changed file appears in the review guide exactly once, in the tier `change-map` settled on after raising. Files of the same tier that need the same check may share a row. A locked skill body that still matches its lock is the one grouped `mechanical` row `change-map` gives it, with its file count, rather than a row per file.
 - A tier raised above the `harness change-map` floor says so: `behavioral (raised from structural: changes help output)`.
 - Rows go from the highest tier to the lowest. `critical` and `behavioral` rows name the one fact the file is safe because of and how far it is proven (said, cited, walked, ran, reproduced). A fact at "said" or "cited" is written as unproven.
+- `## Tradeoffs` lists `change-map`'s tradeoffs: an agent decision with the alternative it beat and why that alternative lost, and a decision the human made as one `(you chose)` line. Write "None" when no choice had a real alternative. It is the implementer's rationale, so it reaches the human and the squash commit, never a blind reviewer.
 - Leave out a section only where the template says it may be omitted. Write "None" rather than deleting a required section.
 
 ```markdown
@@ -32,9 +33,10 @@ Tiers: critical N, behavioral N, structural N, tests-docs N, mechanical N
 
 Merge danger: <one-way or two-way> door. Blast radius: <a few words>.
 
-## Decisions you did not ask for
+## Tradeoffs
 
-- <decision>: <reason>
+- <chosen> over <alternative>: <why the alternative lost>
+- (you chose) <chosen> over <alternative>
 
 ## Evidence
 
