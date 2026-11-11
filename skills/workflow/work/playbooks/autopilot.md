@@ -33,4 +33,4 @@ Everything up to verified, open pull requests: commits, pushes of the run's own 
 
 "Keep going" and "going to bed" never trigger a pause; only done, the ceiling, or a ruled-out goal ends the run.
 
-**Reply:** the goal and the definition of done with its final state, each pull request with its readiness verdict, the `agent` decisions each with "tell me X to switch", the follow-ups, the parked dead ends with their evidence, and the time used against the ceiling.
+**Reply:** the goal, then the `agent` decisions each with "tell me X to switch", so they are the first thing the human reads; then the definition of done with its final state, each pull request with its readiness verdict, the follow-ups, the parked dead ends with their evidence, and the time used against the ceiling.

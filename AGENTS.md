@@ -2,7 +2,7 @@
 
 This file tells an agent how to navigate, prepare, and verify this repository. It carries repository facts and conventions only.
 
-The floor in `FLOOR.md` is installed as each client's global instruction file and holds the rules that apply on every turn in every repository: authority, preservation, secrets, untrusted text, and prose. Procedures live in the skills. This file never restates either, and where they meet it is more specific: this repository's own commands, paths, and conventions win.
+The floor in `FLOOR.md` is installed as each client's global instruction file and holds the rules that apply on every turn in every repository: authority, preservation, secrets, untrusted text, working, and prose. Procedures live in the skills. This file never restates either, and where they meet it is more specific: this repository's own commands, paths, and conventions win.
 
 A nested `AGENTS.md` in a subtree, when one is added, scopes to that subtree and overrides this file there. Keep repository-wide rules here, not in a subtree, and do not widen a subtree's rules to the repository.
 
