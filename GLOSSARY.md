@@ -21,5 +21,5 @@ The `README` files and the prose guides under `docs/`, written for people. The a
 _Avoid_: documentation (unqualified), agent docs
 
 **Floor**:
-The short set of rules that hold on every turn in every repository, loaded into each client whether or not a skill runs: authority, preservation, secrets, untrusted text, and prose form.
+The short set of rules that hold on every turn in every repository, loaded into each client whether or not a skill runs: authority, preservation, secrets, untrusted text, working, and prose form.
 _Avoid_: policy, global rules, conventions
