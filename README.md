@@ -158,3 +158,11 @@ git diff --cached --check
 ```
 
 [AGENTS.md](AGENTS.md) describes the test boundaries. Tests check executable behavior, not whether an agent follows prose. Live behavioral evaluation needs an explicitly authorized model budget. [Bench](bench/README.md) compares session cost and friction; it does not prove correctness.
+
+## Acknowledgments
+
+This harness takes inspiration from these projects:
+
+- [Matt Pocock's skills](https://github.com/mattpocock/skills), the source of several locked skills and of the explicit-only entry points such as `/spec` and `/triage`.
+- [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai), which configures several coding agents from one setup, as this installer does.
+- [pstack](https://github.com/backnotprop/pstack), the source of the principle skills and the model for work mode's playbooks and autopilot.
