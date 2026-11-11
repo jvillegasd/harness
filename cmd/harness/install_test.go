@@ -57,7 +57,7 @@ func sandbox(t *testing.T) string {
 		t.Fatal(err)
 	}
 	root := filepath.Join("..", "..")
-	out, err := exec.Command("git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "POLICY.md", "aliases.sh", "bench", "clients", "roles", "skills", "skills-lock.json", "cmd", "internal", "go.mod", "go.sum").Output()
+	out, err := exec.Command("git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "FLOOR.md", "aliases.sh", "bench", "clients", "roles", "skills", "skills-lock.json", "cmd", "internal", "go.mod", "go.sum").Output()
 	if err != nil {
 		t.Fatal(err)
 	}

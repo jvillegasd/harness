@@ -8,7 +8,7 @@
     "ready_for_human": "ready-for-human"
   },
   "criticalPaths": [
-    "POLICY.md",
+    "FLOOR.md",
     "clients/**",
     "internal/install/**",
     "internal/models/**",

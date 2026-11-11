@@ -1,6 +1,6 @@
 # Installation and your files
 
-These diagrams follow one managed copy, such as a skill, policy, or role definition. The installer compares its content hash with the record in `~/.harness/state.json`. They do not describe client settings or MCP registrations, which are reconciled separately. Tracked settings can overwrite in-app preferences.
+These diagrams follow one managed copy, such as a skill, the floor, or a role definition. The installer compares its content hash with the record in `~/.harness/state.json`. They do not describe client settings or MCP registrations, which are reconciled separately. Tracked settings can overwrite in-app preferences.
 
 ## Installing
 

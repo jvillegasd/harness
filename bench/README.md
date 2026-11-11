@@ -1,6 +1,6 @@
 # bench
 
-`harness bench` answers one question: did a change to the harness move cost and friction in the sessions it actually produced? `POLICY.md` makes this the oracle for a harness change, because re-reading prose and judging it plausible proves nothing. Quality stays a human read of the transcripts.
+`harness bench` answers one question: did a change to the harness move cost and friction in the sessions it actually produced? This repository's `AGENTS.md` makes this the measurement for a harness change, because re-reading prose and judging it plausible proves nothing. Quality stays a human read of the transcripts.
 
 Deliberately not a synthetic task battery. Synthetic control tasks can swing between identical runs and contaminate their own fixture. Real sessions cost something else, arriving slowly and mixing variables no experiment controls, which is what `THIN` and the caveats below are for.
 
@@ -30,7 +30,7 @@ Eight per session, each a median across the cohort. The first three are cost, th
 | `tool_calls` | Tool invocations the assistant made. |
 | `minutes` | First stamped entry to last. |
 | `commands` | Slash-command invocations, including workflow skills invoked as `/name`, so explicit routing adoption is visible. |
-| `delegation` | Messages the session's subagents produced. `POLICY.md` names subagent overspawn as a failure mode. A role delegated through T3 Code's `delegate_task` runs as a session of its own rather than a subagent, so it never reaches this metric and instead joins the population every median is taken over. |
+| `delegation` | Messages the session's subagents produced. `delegation` launches a subagent only for a named benefit, so overspawn shows up here. A role delegated through T3 Code's `delegate_task` runs as a session of its own rather than a subagent, so it never reaches this metric and instead joins the population every median is taken over. |
 | `interrupts` | Times a human stopped a run. |
 | `denials` | Times a human refused a tool call. |
 | `errors` | Tool results that failed. A refusal is a denial, never also an error. |

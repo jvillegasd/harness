@@ -11,7 +11,7 @@ Deliver finished work as a pull request: commits, push, the PR itself, and requi
 
 ## Why
 
-An explicit request to open or ship a PR covers these steps together (see POLICY's Delivery section), so they run without a second approval. Implementation or plan approval alone does not invoke delivery. Merging is outside this request: the human merges, or asks `/land` to. This skill ends with a readiness report, the facts the human reads before merging.
+An explicit request to open or ship a PR covers these steps together (see the floor), so they run without a second approval. Implementation or plan approval alone does not invoke delivery. Merging is outside this request: the human merges, or asks `/land` to. This skill ends with a readiness report, the facts the human reads before merging.
 
 ## Steps
 

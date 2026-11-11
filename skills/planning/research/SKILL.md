@@ -22,11 +22,11 @@ With no target above, use the latest unambiguous active question, claim, or unre
 
    Telemetry is a primary source on the same footing as code. Read and follow `references/evidence.md` for any claim about runtime behavior, impact, frequency, or performance.
 
-3. Bound suspected regressions with telemetry or release history, then `git bisect` in a disposable worktree: create a sibling worktree (`git worktree add`) at the suspected revision and bisect there. Use the cheapest decisive test, profile, or trace per candidate. If a probe cannot decide, report the narrowed range. This is your own disposable experiment, so remove only that worktree afterward (POLICY's floor row on worktrees) and leave the main tree and repository history as they were.
+3. Bound suspected regressions with telemetry or release history, then `git bisect` in a disposable worktree: create a sibling worktree (`git worktree add`) at the suspected revision and bisect there. Use the cheapest decisive test, profile, or trace per candidate. If a probe cannot decide, report the narrowed range. This is your own disposable experiment, so remove only that worktree afterward (the floor's Preservation rules) and leave the main tree and repository history as they were.
 
 4. Compare independent evidence, test counterexamples, and resolve contradictions. Separate fact, inference, and unknown. Runtime claims not checked against available telemetry belong in `Contradictions and unknowns`, not `Conclusion`.
 
-5. Delegate parallel repository search only for genuinely independent tracks or a large search space. Launch each track as the `code-search` role (POLICY's Delegation section); when the role is unavailable, search inline and say so. Give each a distinct question and reconcile their evidence rather than concatenating their reports. A track searching the repository reports in the shape described under Code-search citations below, and every citation is verified there before reuse; external and telemetry queries stay in this context and keep the Findings ledger's `Evidence:` form.
+5. Delegate parallel repository search only for genuinely independent tracks or a large search space. Launch each track as the `code-search` role through `delegation`; when the role is unavailable, search inline and say so. Give each a distinct question and reconcile their evidence rather than concatenating their reports. A track searching the repository reports in the shape described under Code-search citations below, and every citation is verified there before reuse; external and telemetry queries stay in this context and keep the Findings ledger's `Evidence:` form.
 
 ## Code-search citations
 

@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Trigger: the human asks for review, or `open-pr`, `build`, or POLICY calls for one at the level `harness review level` sets."
+description: "Trigger: the human asks for review, or `open-pr`, `build`, or `/work` calls for one at the level `harness review level` sets."
 license: MIT
 metadata:
   author: jvillegasd
@@ -30,7 +30,7 @@ At High, select one or both specialist lenses and state the concrete question ea
 - `review-spec`: independently trace requirements to behavior when a requirements source exists.
 - `review-risk`: inspect consequential trust boundaries, data loss, dependency failures, or concurrency. Name the categories that triggered it; for a security category the lens loads `security-audit` in guidance mode itself.
 
-Choose by consequences, not file count. If no specialist has a distinct useful question, keep only the general reviewer and say why. Resolve roles through POLICY's delegation rules.
+Choose by consequences, not file count. If no specialist has a distinct useful question, keep only the general reviewer and say why. Resolve roles through `delegation`.
 
 Each lens is its own role, and each runs on the model `harness models` resolves for it: the `reviewer` assignment unless the human set that lens on its own. The fix recheck runs as `reviewer`. Never change models or install agents for a review.
 
@@ -40,7 +40,7 @@ A review covering the current patch is required for every pull request this tabl
 
 ## Snapshot
 
-1. Commit owned work where POLICY lets you, then record `<base>..<sha>`. Confirm both resolve with `git rev-parse` and that the diff is non-empty before launching anything. Hunters read the repository at `<sha>`; make no edits until every hunter has reported. Work you may not commit is reviewed from `git diff --binary <base> -- <owned paths>` saved in the branch directory (`dirname "$(harness review path)"`), with the patch's sha256 as its content identity. Such a review stops after Verify: record confirmed findings as `confirmed` and hand them to the human, because a fix cannot be committed or recorded `fixed`.
+1. Commit owned work where the floor lets you, then record `<base>..<sha>`. Confirm both resolve with `git rev-parse` and that the diff is non-empty before launching anything. Hunters read the repository at `<sha>`; make no edits until every hunter has reported. Work you may not commit is reviewed from `git diff --binary <base> -- <owned paths>` saved in the branch directory (`dirname "$(harness review path)"`), with the patch's sha256 as its content identity. Such a review stops after Verify: record confirmed findings as `confirmed` and hand them to the human, because a fix cannot be committed or recorded `fixed`.
 2. Copy the requirements verbatim from their source: the ticket body and comment thread (latest wins), the spec, the task document's requirements, or the human's exact words. A paraphrase carries your framing into a blind brief. With no source, omit `review-spec` and report requirements coverage unavailable.
 
 When a diff is too large for one hunter, split it into coherent slices (by module or call path); each hunter covers its lens across the slices within the cap. An unreviewed slice stays unverified.
