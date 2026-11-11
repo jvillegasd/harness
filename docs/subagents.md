@@ -15,7 +15,7 @@ Definitions live in [roles/](../roles/) and [the review skill](../skills/workflo
 
 ## Launching a role
 
-Each role is assigned a client, model, and effort; `harness models` shows and changes the assignments. A review lens follows the `reviewer` assignment until you set it on its own. A role assigned to the session's own client runs as a native subagent. A role assigned to another client runs only inside a T3 Code session, as a delegated task with that client's model and effort. A T3 Code child loads no installed role agent, so the role's definition travels in its brief.
+The `delegation` skill is how an agent launches a role. Each role is assigned a client, model, and effort; `harness models` shows and changes the assignments. A review lens follows the `reviewer` assignment until you set it on its own. A role assigned to the session's own client runs as a native subagent. A role assigned to another client runs only inside a T3 Code session, as a delegated task with that client's model and effort. A T3 Code child loads no installed role agent, so the role's definition travels in its brief.
 
 If a role is missing or stale on this machine, `harness install` provisions it; agents never quietly substitute another one. When a review needs an independent reviewer that cannot run, the review is reported as unverified rather than done by the author.
 

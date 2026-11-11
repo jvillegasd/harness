@@ -42,6 +42,10 @@ Archives go under `~/.dotfiles-backups/harness/`. `--no-backup` deletes conflict
 
 An obsolete copy that is already absent needs no removal. Private entries outside the desired paths and recorded copies stay untouched. A managed copy can be a directory, so an edit anywhere inside it changes its hash. Managed-root symlinks are moved aside before installation.
 
+## Permission rules
+
+The floor's command and secret rules are enforced by each client, not only stated in `FLOOR.md`. Claude Code gets them in its tracked settings. Codex gets them as a rules file of its own, `~/.codex/rules/harness.rules`, which is a managed copy like the ones above. OpenCode gets them merged into `opencode.json` after your own rules, because OpenCode applies the last rule that matches; where you set a pattern stricter than the harness's, your setting stays, and uninstall takes out only the harness's rules. Codex rules cover commands only, so in Codex the agent keeps secrets unread by instruction rather than by a rule.
+
 ## Uninstalling
 
 Run `harness install --uninstall`. Removal asks for confirmation unless you pass `--yes`. Client and component filters narrow the selection.

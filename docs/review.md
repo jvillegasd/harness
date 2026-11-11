@@ -14,7 +14,7 @@ Your review level decides when reviews start on their own and how many agents th
 | `medium` | Every PR beyond docs or tests, and local work that is critical or names a security, data-loss, compatibility, or concurrency risk | One general reviewer | 2 |
 | `high` | Every PR or local change that is structural or riskier | The general reviewer plus one or two specialists | 6 |
 
-Asking for a review always runs one, at your configured level (Medium when the level is `off`). It never silently upgrades to High.
+Asking for a review always runs one, at your configured level (Medium when the level is `off`). It never silently upgrades to High. Under `/work`, every playbook that changes code calls review before handing off, so you need not ask; the table above still decides whether it runs and how deep.
 
 The general reviewer covers correctness, requirements, error handling, compatibility, relevant security, project conventions, and missing tests. A specialist digs deeper into one area where the change needs it:
 
