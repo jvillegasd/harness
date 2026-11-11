@@ -11,9 +11,9 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-// mustGuard are the local skills only a human may start. Some act with authority or at budget scale: merging, discarding work, provisioning a repository, and unattended building. The rest are workflow entry points whose Matt Pocock or pstack equivalent is explicit-only (specifying, triage, and targeted E2E runs), and local-tracker, which every caller reads by path. Helpers that other skills or the policy call stay model-invoked, because nothing can invoke a guarded skill.
+// mustGuard are the local skills only a human may start. Some act with authority or at budget scale: merging, discarding work, provisioning a repository, unattended building, and work mode, whose start is the human's opt-in to its rigor and its autopilot grant. The rest are workflow entry points whose Matt Pocock or pstack equivalent is explicit-only (specifying, triage, and targeted E2E runs), and local-tracker, which every caller reads by path. Helpers that other skills or the policy call stay model-invoked, because nothing can invoke a guarded skill.
 var mustGuard = map[string]bool{
-	"land": true, "setup-harness": true, "build": true,
+	"land": true, "setup-harness": true, "build": true, "work": true,
 	"spec": true, "triage": true, "e2e-verification": true, "local-tracker": true,
 }
 
