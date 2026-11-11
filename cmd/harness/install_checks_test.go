@@ -315,7 +315,7 @@ func TestInstallInstallsTheEmbeddedHarnessFromAnywhere(t *testing.T) {
 		t.Errorf("the installed harness does not run: %v %s", err, help)
 	}
 	if got, want := readFileOr(filepath.Join(home, ".claude", "CLAUDE.md")), readFile(t, filepath.Join("..", "..", "FLOOR.md")); got != want {
-		t.Error("install did not install the embedded policy at ~/.claude/CLAUDE.md")
+		t.Error("install did not install the embedded floor at ~/.claude/CLAUDE.md")
 	}
 }
 
@@ -483,7 +483,7 @@ func TestSkipPackagesCallsNoPackageManager(t *testing.T) {
 	}
 	link := filepath.Join(base, "home", ".claude", "CLAUDE.md")
 	if got, want := readFileOr(link), readFile(t, filepath.Join(base, "checkout", "FLOOR.md")); got != want {
-		t.Errorf("--skip-packages did not install the policy at %s", link)
+		t.Errorf("--skip-packages did not install the floor at %s", link)
 	}
 }
 
