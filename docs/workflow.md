@@ -31,7 +31,7 @@ Use `/implement <task or ticket>` for everyday implementation with TDD in the cu
 
 ## Work mode
 
-`/work <task>` matches the task to one playbook (bug fix, feature, investigate, refactor, perf, design, or large) and copies its steps into the agent's todo list. A step the agent decides not to take stays in the list as `skip: <reason>`. A code change ends with `change-map` and `review` at your review level, and goes on to `open-pr` when you already asked for delivery. An investigation hands its answer back to you instead, and a design picks a shape, then continues as a feature or a refactor. Requests that belong to another skill go there: an open PR's feedback to `address-review`, "open a PR" to `open-pr`, a merge to you or `/land`, and a settled spec to `/build`. Work mode lasts the conversation, and the playbook and step are recorded in the task document so a compaction resumes at the same step.
+`/work <task>` matches the task to one playbook (bug fix, feature, investigate, refactor, perf, design, plan, or large) and copies its steps into the agent's todo list. A step the agent decides not to take stays in the list as `skip: <reason>`. A code change ends with `change-map` and `review` at your review level, and goes on to `open-pr` when you already asked for delivery. An investigation or a plan hands its result back to you instead, and a design picks a shape, then continues as a feature or a refactor. A plan settles open questions with prototypes, then writes one section per pull request into the task document, and waits for your go. Requests that belong to another skill go there: an open PR's feedback to `address-review`, "open a PR" to `open-pr`, a merge to you or `/land`, and a settled spec to `/build`. Work mode lasts the conversation, and the playbook and step are recorded in the task document so a compaction resumes at the same step.
 
 ```mermaid
 stateDiagram-v2
@@ -39,7 +39,7 @@ stateDiagram-v2
     state "Steps in the todo list" as Steps
     state "Working through the steps" as Working
     state "Mapped and reviewed" as Reviewed
-    state "Answer handed back" as Answered
+    state "Answer or plan handed back" as Answered
     state "PR opened" as Opened
     state "Ready locally" as Ready
     state "Handed to another skill" as Routed
@@ -49,13 +49,13 @@ stateDiagram-v2
     Matched --> Steps: Agent copies every step, with skip lines for the ones it leaves out
     Steps --> Working
     Working --> Reviewed: Code change runs change-map, then review at your level
-    Working --> Answered: Investigation
+    Working --> Answered: Investigation or plan
     Working --> Matched: Design picks a shape, then matches feature or refactor
     Reviewed --> Ready
     Reviewed --> Opened: Delivery already authorized, so the agent runs open-pr
     Opened --> [*]
     Ready --> [*]: You ask to publish, or keep it local
-    Answered --> [*]: You start the change as a new task
+    Answered --> [*]: You start the change, or say go
     Routed --> [*]
 ```
 

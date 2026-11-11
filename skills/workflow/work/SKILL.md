@@ -37,6 +37,7 @@ Work mode lasts the conversation. "New task" means match again from step 1, and 
 | Merge, or "it merged, clean up" | Reply "run `/land` in this worktree" and stop. Merging and cleanup belong to the human through `land` |
 | A settled spec or a set of tickets | Reply "run `/build`" and stop. Under autopilot, read `build` from its path and run it |
 | Resume or pick up earlier work | `continuity`'s Resume, then continue the playbook and step it recorded, or match what is left |
+| A plan for a multi-phase or multi-PR change, before anything is built | [plan](playbooks/plan.md) |
 | Large, multi-part, or none of the above | [large](playbooks/large.md) |
 
 A bug that is a slowdown with a number is perf. When the task fits two rows, take the narrower one, and the large playbook only when no narrower row covers it.
