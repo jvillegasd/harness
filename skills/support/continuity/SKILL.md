@@ -24,7 +24,7 @@ Reuse an existing task or spec document; otherwise use `docs/agents/tasks/<featu
 - The `## Decisions` table (see Decisions).
 - `## State and next action`: what is in progress, what comes next, the key files, and gotchas. Keep that heading: after a compaction, the client's hook restores this section. Under work mode (`/work`), its first line is `Playbook: <name>, step <n>`, kept current as steps finish, and under autopilot the next line is `Grant: "<the human's step-away words>", until <time the ceiling ends>`.
 
-Name branches and commits, never an absolute path or a worktree location, since the document outlives the machine. Update it at meaningful changes and commit it with the work where POLICY lets you. When the pull request is about to open, `open-pr` sets the status to shipped for review with the final evidence and open decisions, so the default branch never receives a document that still reads in progress.
+Name branches and commits, never an absolute path or a worktree location, since the document outlives the machine. Update it at meaningful changes and commit it with the work where the floor lets you. When the pull request is about to open, `open-pr` sets the status to shipped for review with the final evidence and open decisions, so the default branch never receives a document that still reads in progress.
 
 ## Pause
 

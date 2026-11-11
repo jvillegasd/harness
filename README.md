@@ -1,6 +1,6 @@
 # Harness AI
 
-Shared policy, skills, and tools for Claude Code, Codex, and OpenCode.
+Shared floor rules, skills, and tools for Claude Code, Codex, and OpenCode.
 
 Ask the agent to do the work. It inspects the code, makes changes on a task branch, runs checks, and reports the result. Skills help with specific jobs; they are not a required sequence.
 
@@ -12,7 +12,7 @@ Requires macOS or Linux, zsh, Homebrew, and Go 1.26 or newer.
 go run ./cmd/harness install
 ```
 
-The installer installs missing tools, copies the policy, skills, and role agents into the clients, configures Engram and agent-browser, and adds shell aliases. Sign in to each client yourself; installation does not authenticate accounts.
+The installer installs missing tools, copies the floor, skills, and role agents into the clients, configures Engram and agent-browser, and adds shell aliases. Sign in to each client yourself; installation does not authenticate accounts.
 
 To apply checkout changes without installing packages:
 
@@ -109,7 +109,7 @@ harness update skills     # Locked upstream skills and lockfile
 
 A bare update runs packages, clients, MCPs, then skills. It discovers ownership before upgrading and inventories Homebrew once. Upgrades name individual formulae or casks and preserve the installation and release channels. Orca-managed clients stay owned by Orca. Recognized native Claude Code and OpenCode installations use vendor updaters. Stable npm Codex installations update through their owning prefix; prerelease or ambiguous installations need manual updates.
 
-MCP updates refresh agent-browser's browser runtime and client registrations without reinstalling Harness policy, settings, skills, or roles. See the [CLI reference](docs/cli.md#update-installed-tools) for update behavior and failure handling.
+MCP updates refresh agent-browser's browser runtime and client registrations without reinstalling the Harness floor, settings, skills, or roles. See the [CLI reference](docs/cli.md#update-installed-tools) for update behavior and failure handling.
 
 ## Maintain skills
 
@@ -128,7 +128,7 @@ Review upstream changes before committing. Locked third-party skills change thro
 
 | Path | Purpose |
 | --- | --- |
-| `POLICY.md` | Authority and safety rules shared by clients |
+| `FLOOR.md` | The rules every client holds on every turn: authority, preservation, secrets, untrusted text, and prose |
 | `cmd/harness/`, `internal/` | CLI and implementation |
 | `skills/` | Skills, grouped by purpose |
 | `clients/`, `roles/` | Client settings and role definitions |

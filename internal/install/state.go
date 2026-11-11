@@ -200,9 +200,9 @@ func (in *installer) desired() []entry {
 		add(skill.Dir, filepath.Join(in.home, ".agents", "skills", skill.Name), "skills", "claude", "codex", "opencode")
 		add(skill.Dir, filepath.Join(in.home, ".claude", "skills", skill.Name), "skills", "claude")
 	}
-	add(in.dir.Policy(), filepath.Join(in.home, ".claude", "CLAUDE.md"), "policy", "claude")
-	add(in.dir.Policy(), filepath.Join(in.codexHome(), "AGENTS.md"), "policy", "codex")
-	add(in.dir.Policy(), filepath.Join(in.config, "opencode", "AGENTS.md"), "policy", "opencode")
+	add(in.dir.Floor(), filepath.Join(in.home, ".claude", "CLAUDE.md"), "policy", "claude")
+	add(in.dir.Floor(), filepath.Join(in.codexHome(), "AGENTS.md"), "policy", "codex")
+	add(in.dir.Floor(), filepath.Join(in.config, "opencode", "AGENTS.md"), "policy", "opencode")
 	for _, pair := range in.agentRoots() {
 		for _, definition := range entries(filepath.Join(in.agentOut(), pair[0])) {
 			add(definition, filepath.Join(pair[1], filepath.Base(definition)), "agents", pair[0])

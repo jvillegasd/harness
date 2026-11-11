@@ -43,7 +43,7 @@ The [README state diagram](../README.md#everyday-use) shows the delivery path:
 - **Ready to merge:** required checks and review are satisfied, and the readiness report says so. You merge, or run `/land merge` to have the agent recheck the gates and merge.
 - **Needs your input:** a consequential decision or unavailable required check or reviewer blocks progress. Once resolved, work returns to the blocked stage. A failed check the agent can repair stays in the normal work loop.
 
-These describe the intended workflow, not a centrally enforced task status. Live agent compliance is separate from the written policy.
+These describe the intended workflow, not a centrally enforced task status. Live agent compliance is separate from the written floor and skills.
 
 See [what happens to a finding](review.md#what-happens-to-a-finding) for how review concerns are proven or dropped, repaired, and rechecked.
 

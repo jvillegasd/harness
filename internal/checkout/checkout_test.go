@@ -22,7 +22,7 @@ func write(t *testing.T, path, body string) {
 // checkoutAt lays out a checkout: the root policy marker beside the Harness module.
 func checkoutAt(t *testing.T, root string) string {
 	t.Helper()
-	write(t, filepath.Join(root, "POLICY.md"), "# policy\n")
+	write(t, filepath.Join(root, "FLOOR.md"), "# floor\n")
 	write(t, filepath.Join(root, "go.mod"), "module github.com/jvillegasd/harness\n\ngo 1.26.0\n")
 	return root
 }
@@ -68,7 +68,7 @@ func TestFindResolvesTheNearestCheckout(t *testing.T) {
 func TestFindRejectsADifferentModule(t *testing.T) {
 	outer := checkoutAt(t, t.TempDir())
 	inner := filepath.Join(outer, "fork")
-	write(t, filepath.Join(inner, "POLICY.md"), "# policy\n")
+	write(t, filepath.Join(inner, "FLOOR.md"), "# floor\n")
 	write(t, filepath.Join(inner, "go.mod"), "module example.com/other\n")
 	nested := filepath.Join(inner, "sub")
 	if err := os.MkdirAll(nested, 0o755); err != nil {
@@ -89,7 +89,7 @@ func TestFindRejectsADifferentModule(t *testing.T) {
 // TestFindRejectsAMarkerWithoutTheModule pins the contract that a checkout is the marker together with the module, so a marker-only tree is not one.
 func TestFindRejectsAMarkerWithoutTheModule(t *testing.T) {
 	dir := t.TempDir()
-	write(t, filepath.Join(dir, "POLICY.md"), "# policy\n")
+	write(t, filepath.Join(dir, "FLOOR.md"), "# floor\n")
 
 	_, err := Find(dir)
 	if !errors.Is(err, ErrNotFound) {
@@ -114,7 +114,7 @@ func TestAssetLocations(t *testing.T) {
 	root := "/repo"
 	c := Checkout{Root: root}
 	cases := map[string]string{
-		c.Policy():       filepath.Join(root, "POLICY.md"),
+		c.Floor():        filepath.Join(root, "FLOOR.md"),
 		c.Skills():       filepath.Join(root, "skills"),
 		c.Aliases():      filepath.Join(root, "aliases.sh"),
 		c.Clients():      filepath.Join(root, "clients"),
@@ -136,7 +136,7 @@ func TestManagedIsExplicitNamespaces(t *testing.T) {
 	managed := []string{
 		"/repo/skills",
 		"/repo/skills/tdd/SKILL.md",
-		"/repo/POLICY.md",
+		"/repo/FLOOR.md",
 		"/repo/.generated/agents/claude/executor.md",
 	}
 	unmanaged := []string{
@@ -146,7 +146,7 @@ func TestManagedIsExplicitNamespaces(t *testing.T) {
 		"/repo/README.md",
 		"/repo/docs/agents/harness.json",
 		"/repo/skills-lock.json",
-		"/repo/elsewhere/POLICY.md",
+		"/repo/elsewhere/FLOOR.md",
 	}
 	for _, path := range managed {
 		if !c.Manages(path) {
