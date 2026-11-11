@@ -62,10 +62,10 @@ stateDiagram-v2
     state "Ready to merge" as MergeReady
     state "Needs your input" as Waiting
 
-    [*] --> Local: Plain request or /implement
+    [*] --> Local: Plain request, /implement, or /work
     Local --> Local: Agent fixes failed checks
     Local --> LocalReady: Agent completes work and local checks
-    LocalReady --> Preparing: You request publication
+    LocalReady --> Preparing: You request publication, or your /work autopilot grant covers it
     Preparing --> PR: Agent satisfies local checks and applicable review, then publishes
     PR --> PR: Agent fixes failed checks or addresses feedback
     PR --> MergeReady: Required checks and review satisfied

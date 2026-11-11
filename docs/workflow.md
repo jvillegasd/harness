@@ -2,7 +2,7 @@
 
 Start with a plain request. The agent inspects the repository, implements the agreed scope, checks it, and reports. You do not need a ticket, specification, or ceremony for ordinary work.
 
-When you want the work run to a fixed set of steps, start it with `/work <task>`. The agent matches the task to a playbook, puts every step in its todo list (a skipped step stays visible with its reason), and maps and reviews the change before handing off. Add "autopilot" with a goal to let it run unattended up to verified, open pull requests; see [Work mode](../README.md#work-mode).
+When you want the work run to a fixed set of steps, start it with `/work <task>`; see [Work mode](#work-mode).
 
 ## Choose help when you need it
 
@@ -28,6 +28,61 @@ When you want the work run to a fixed set of steps, start it with `/work <task>`
 These are independent tools. Outside `/work`, using one does not require or automatically start another; inside it, the playbook decides which run and in what order. A slash marks an explicit invocation here; consult each skill for its inputs.
 
 Use `/implement <task or ticket>` for everyday implementation with TDD in the current session. It accepts a plain request, reuses agreed test seams or settles them with you, and finishes with local checks. It uses one task branch; `/build` adds unattended orchestration across slices and workers.
+
+## Work mode
+
+`/work <task>` matches the task to one playbook (bug fix, feature, investigate, refactor, perf, design, or large) and copies its steps into the agent's todo list. A step the agent decides not to take stays in the list as `skip: <reason>`. A code change ends with `change-map` and `review` at your review level; an investigation or a design hands its answer back to you instead. Requests that belong to another skill go there: an open PR's feedback to `address-review`, "open a PR" to `open-pr`, a merge to you or `/land`, and a settled spec to `/build`. Work mode lasts the conversation, and the playbook and step are recorded in the task document so a compaction resumes at the same step.
+
+```mermaid
+stateDiagram-v2
+    state "Playbook matched" as Matched
+    state "Steps in the todo list" as Steps
+    state "Working through the steps" as Working
+    state "Mapped and reviewed" as Reviewed
+    state "Answer or decision handed back" as Answered
+    state "Ready locally" as Ready
+    state "Handed to another skill" as Routed
+
+    [*] --> Matched: You run /work with a task
+    [*] --> Routed: The task is PR feedback, delivery, a merge, or a settled spec
+    Matched --> Steps: Agent copies every step, with skip lines for the ones it leaves out
+    Steps --> Working
+    Working --> Reviewed: Code change runs change-map, then review at your level
+    Working --> Answered: Investigation or design
+    Reviewed --> Ready
+    Ready --> [*]: You ask to publish, or keep it local
+    Answered --> [*]: You start the change as a new task
+    Routed --> [*]
+```
+
+### Autopilot
+
+Add "autopilot" or "I'm stepping away" and a goal to the `/work` request. The agent states a pass/fail definition of done (proposing one if you gave none), records your words and the time ceiling (2 hours unless you set one) in the task document, and works without checkpoints. It may commit, push, and open ready pull requests, including separate pull requests for fixes it finds along the way. It never merges, writes to the tracker, or messages anyone. Decisions only you could make get the simplest safe default and lead its report, each with what to tell it to switch. It counts as stuck when two fixes resting on one assumption fail, or one piece fails twice: it then tests the assumption directly or drops that piece and plans around it.
+
+```mermaid
+stateDiagram-v2
+    state "Run framed" as Framed
+    state "Iterating" as Iterating
+    state "Replanning" as Replanning
+    state "Verified, open PRs" as Done
+    state "Paused" as Paused
+    state "Goal ruled out" as RuledOut
+    state "Not started" as NoGoal
+
+    [*] --> Framed: You give a goal and step away
+    [*] --> NoGoal: You give no goal
+    NoGoal --> [*]: Agent asks for one
+    Framed --> Iterating: Definition of done, ceiling, and your words recorded
+    Iterating --> Iterating: Keep a change that advanced, revert one that did not
+    Iterating --> Replanning: Stuck
+    Replanning --> Iterating
+    Iterating --> Done: Definition of done met and every PR green
+    Iterating --> Paused: Time ceiling reached, so a wip commit and next action
+    Iterating --> RuledOut: Evidence rules out the goal itself
+    Done --> [*]: You read the report and merge
+    Paused --> [*]: You resume or stop it
+    RuledOut --> [*]: You read the evidence
+```
 
 ## Local work and delivery
 
@@ -115,7 +170,7 @@ stateDiagram-v2
     Retained --> Inspected: Main agent reads context and inspects branch and working changes
     Inspected --> Waiting: Consequential context is missing or conflicting
     Waiting --> Inspected: You resolve the gap
-    Inspected --> Next: Main agent reconciles requirements with current Git state
+    Inspected --> Next: Main agent reconciles requirements with current Git state and any recorded playbook step
     Next --> Checked: Main agent rechecks stale evidence needed for the next action
     Checked --> Resumed: Main agent continues within existing authorization
 ```
