@@ -144,7 +144,7 @@ Review upstream changes before committing. Locked third-party skills change thro
 | `cmd/harness/`, `internal/` | CLI and implementation |
 | `skills/` | Skills, grouped by purpose |
 | `clients/`, `roles/` | Client settings and role definitions |
-| `docs/agents/` | This repository's tracker configuration |
+| `docs/agents/` | This repository's tracker configuration, task documents (`tasks/`), and ticket drafts (`tickets/`) |
 | `bench/` | Real-session cost and friction measurement |
 
 Run all local checks before handing off a change:

@@ -33,7 +33,7 @@ The Harness AI installation that serves Claude Code, Codex, and OpenCode. `READM
 | `roles/` | Canonical roles no skill owns, the executor and code-search |
 | `aliases.sh` | The managed yolo-mode shell aliases |
 | `bench/` | Cohort config and the manual for `harness bench` |
-| `docs/agents/` | This repository's tracker and lifecycle configuration |
+| `docs/agents/` | This repository's tracker and lifecycle configuration, the task documents `continuity` keeps in `tasks/`, and the ticket drafts `tickets` writes to `tickets/` |
 | `.github/workflows/`, `.github/scripts/` | The agent-lifecycle workflow and reconciler |
 | `skills-lock.json` | Reviewed third-party skill locks |
 | `.agents/skills`, `.claude/skills` | One link per skill by bare name: `.agents/skills/<name>` points at the grouped body, `.claude/skills/<name>` at that link. Add a skill with `harness skills add` or link it by hand; `TestShippedSkillLinksResolve` fails on a missing or stale link |
