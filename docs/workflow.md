@@ -2,6 +2,8 @@
 
 Start with a plain request. The agent inspects the repository, implements the agreed scope, checks it, and reports. You do not need a ticket, specification, or ceremony for ordinary work.
 
+When you want the work run to a fixed set of steps, start it with `/work <task>`. The agent matches the task to a playbook, puts every step in its todo list (a skipped step stays visible with its reason), and maps and reviews the change before handing off. Add "autopilot" with a goal to let it run unattended up to verified, open pull requests; see [Work mode](../README.md#work-mode).
+
 ## Choose help when you need it
 
 | Situation | Skill |
@@ -23,7 +25,7 @@ Start with a plain request. The agent inspects the repository, implements the ag
 | A feature, bugfix, PR, or path needs a real end-to-end run | `/e2e-verification` |
 | A session needs a retrospective | `/retro` |
 
-These are independent tools. Using one does not require or automatically start another. A slash marks an explicit invocation here; consult each skill for its inputs.
+These are independent tools. Outside `/work`, using one does not require or automatically start another; inside it, the playbook decides which run and in what order. A slash marks an explicit invocation here; consult each skill for its inputs.
 
 Use `/implement <task or ticket>` for everyday implementation with TDD in the current session. It accepts a plain request, reuses agreed test seams or settles them with you, and finishes with local checks. It uses one task branch; `/build` adds unattended orchestration across slices and workers.
 
@@ -53,7 +55,7 @@ For longer work, the agent keeps requirements, decisions, evidence, and the next
 
 Invoke `/build` to implement a specification's slices or a set of tickets unattended. It uses one integration branch and bounded workers in separate worktrees. The parent verifies and commits their results, then checks and reviews the combined change. Publication still requires a delivery request; merging still requires `/land`.
 
-Use this when the work is settled enough to delegate. Missing acceptance criteria, disputed test seams, or shared assumptions need resolving first.
+Use this when the work is settled enough to delegate. Missing acceptance criteria, disputed test seams, or shared assumptions need resolving first. A `/work` autopilot run on a settled spec or set of tickets starts `/build` for you, and your step-away request counts as its delivery request.
 
 ## Optional tracking
 
@@ -92,7 +94,7 @@ A parent issue is a container, not an actionable ticket in this diagram. It clos
 
 ## When work stops
 
-The agent reports contradictory evidence, scope changes, or repeated failed attempts instead of guessing indefinitely. The report should say what failed and what decision or evidence is needed next.
+The agent reports contradictory evidence, scope changes, or two failed fixes that rest on the same assumption instead of guessing indefinitely. The report should say what failed and what decision or evidence is needed next. Under autopilot it does not stop there: it tests the assumption directly, retries a failed piece at most twice, and replans around it, parking only a dead end that survives the replan.
 
 An explicit request naming the commits, files, branches, or task worktrees to discard counts as approval of that scope. The agent inspects first and asks again only if the scope is ambiguous or additional work would be lost. Unrelated work and user worktrees must survive.
 
