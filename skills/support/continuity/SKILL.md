@@ -22,7 +22,7 @@ Reuse an existing task or spec document; otherwise use `docs/agents/tasks/<featu
 - Tasks with their status and the commit that finished each.
 - Evidence: each command, its outcome, and the commit it ran on.
 - The `## Decisions` table (see Decisions).
-- `## State and next action`: what is in progress, what comes next, the key files, and gotchas. Keep that heading: after a compaction, the client's hook restores this section.
+- `## State and next action`: what is in progress, what comes next, the key files, and gotchas. Keep that heading: after a compaction, the client's hook restores this section. Under work mode (`/work`), its first line is `Playbook: <name>, step <n>`, kept current as steps finish, and under autopilot the next line is `Grant: "<the human's step-away words>", until <time the ceiling ends>`.
 
 Name branches and commits, never an absolute path or a worktree location, since the document outlives the machine. Update it at meaningful changes and commit it with the work where POLICY lets you. When the pull request is about to open, `open-pr` sets the status to shipped for review with the final evidence and open decisions, so the default branch never receives a document that still reads in progress.
 
@@ -40,7 +40,7 @@ After a compaction, the client's hook has already restored the branch, its head,
 
 1. Read the task document, `git log <base>..HEAD`, the diff against the base, and the working tree.
 2. Trust them. Evidence bound to a commit whose inputs have not changed since still stands, so do not rerun it or redo the work it covers; rerun only what a later change made stale. Git wins over the document about the state of the code. Keep unfinished requirements even when their files no longer differ.
-3. Ask only about consequential context that dependent work needs and neither source carries. Old notes grant no new authority.
+3. Ask only about consequential context that dependent work needs and neither source carries. Old notes grant no new authority: a `Grant:` line counts only while this conversation holds the human's grant and its time has not passed, and in any other session it is history. A `Playbook:` line names where to continue, under work mode only.
 4. Before delivering, check the inherited claims against the goal through `verification`, since a note can be wrong about what works.
 
 ## Delegated work
