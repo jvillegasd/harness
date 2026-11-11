@@ -456,7 +456,7 @@ func (in *installer) trackedOpenCodePermission() *object {
 	return tracked
 }
 
-// reconcileOpenCodePermission merges the tracked permission rules into opencode.json, which Engram, the agent-browser registration, and the user also write, so every other key and rule stays. OpenCode applies the last rule that matches, so within each class the harness's patterns are moved to the end, after the user's; a class or a whole permission the user set to one action becomes {"*": action} first, which OpenCode reads the same way. With remove it takes out only the tracked patterns, and drops a class or permission that leaves empty.
+// reconcileOpenCodePermission merges the tracked permission rules into opencode.json, which Engram, the agent-browser registration, and the user also write, so every other key and rule stays. OpenCode applies the last rule that matches, so within each class the harness's patterns are moved to the end, after the user's, keeping the user's action where it is stricter; a class or a whole permission the user set to one action becomes {"*": action} first, which OpenCode reads the same way. With remove it takes out only the tracked patterns that still hold their tracked action, and drops a class or permission that leaves empty.
 func (in *installer) reconcileOpenCodePermission(remove bool) {
 	path := in.openCodeConfigPath()
 	if remove && !isFile(path) {
@@ -508,7 +508,14 @@ func actionRules(raw json.RawMessage) (*object, error) {
 	return parseObject(raw)
 }
 
-// mergePermission returns the live permission with every tracked pattern removed from its class and, with add, appended at the class's end in the tracked order. It returns nil when nothing is left.
+// strictness ranks an OpenCode action, so a rule the user made stricter than the harness's is never weakened: allow, then ask, then deny. Anything else ranks below allow.
+func strictness(raw json.RawMessage) int {
+	var action string
+	_ = json.Unmarshal(raw, &action)
+	return slices.Index([]string{"allow", "ask", "deny"}, action)
+}
+
+// mergePermission returns the live permission with every tracked pattern moved to the end of its class in the tracked order, keeping the user's action where it is stricter than the tracked one; or with add false, with only the tracked patterns that still hold their tracked action removed, so a rule the user set differently stays. It returns nil when nothing is left.
 func mergePermission(live json.RawMessage, tracked *object, add bool) (json.RawMessage, error) {
 	permission, err := actionRules(live)
 	if err != nil {
@@ -521,12 +528,26 @@ func mergePermission(live json.RawMessage, tracked *object, add bool) (json.RawM
 		if err != nil {
 			return nil, fmt.Errorf("permission.%s is neither an action nor a JSON object", class)
 		}
+		stricter := map[string]json.RawMessage{}
 		for _, pattern := range ours.keys {
-			rules.del(pattern)
+			have, had := rules.get(pattern)
+			if !had {
+				continue
+			}
+			if add && strictness(have) > strictness(ours.vals[pattern]) {
+				stricter[pattern] = have
+			}
+			if add || same(have, ours.vals[pattern]) {
+				rules.del(pattern)
+			}
 		}
 		if add {
 			for _, pattern := range ours.keys {
-				rules.set(pattern, ours.vals[pattern])
+				value := ours.vals[pattern]
+				if have, ok := stricter[pattern]; ok {
+					value = have
+				}
+				rules.set(pattern, value)
 			}
 		}
 		if len(rules.keys) == 0 {
@@ -541,7 +562,7 @@ func mergePermission(live json.RawMessage, tracked *object, add bool) (json.RawM
 	return encode(permission), nil
 }
 
-// openCodePermissionHold reports whether every tracked pattern ends its class in opencode.json with its tracked action, in order, so no rule of the user's comes after it; or with removed, whether no tracked pattern is left there.
+// openCodePermissionHold reports whether every tracked pattern ends its class in opencode.json, in order, with its tracked action or a stricter one, so no rule of the user's comes after it; or with removed, whether no tracked pattern still holds its tracked action there.
 func (in *installer) openCodePermissionHold(removed bool) bool {
 	path := in.openCodeConfigPath()
 	data, err := os.ReadFile(path)
@@ -566,7 +587,7 @@ func (in *installer) openCodePermissionHold(removed bool) bool {
 			return false
 		}
 		if removed {
-			if slices.ContainsFunc(ours.keys, func(p string) bool { _, ok := rules.get(p); return ok }) {
+			if slices.ContainsFunc(ours.keys, func(p string) bool { have, ok := rules.get(p); return ok && same(have, ours.vals[p]) }) {
 				return false
 			}
 			continue
@@ -576,7 +597,7 @@ func (in *installer) openCodePermissionHold(removed bool) bool {
 		}
 		tail := rules.keys[len(rules.keys)-len(ours.keys):]
 		for i, pattern := range ours.keys {
-			if tail[i] != pattern || !same(rules.vals[pattern], ours.vals[pattern]) {
+			if tail[i] != pattern || strictness(rules.vals[pattern]) < strictness(ours.vals[pattern]) {
 				return false
 			}
 		}

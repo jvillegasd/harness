@@ -800,3 +800,18 @@ func TestFloorRulesReachCodexAndOpenCode(t *testing.T) {
 		t.Errorf("the uninstall kept %s", rules)
 	}
 }
+
+// A rule the user made stricter than the harness's stays as strict: the install keeps the user's deny where the harness would ask, and the uninstall leaves a rule whose action differs from the harness's.
+func TestOpenCodeKeepsAStricterUserRule(t *testing.T) {
+	base := sandbox(t)
+	config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
+	writeMode(t, config, `{"permission": {"bash": {"gh pr merge *": "deny"}}}`+"\n", 0o644)
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	if text := readFile(t, config); !strings.Contains(text, `"gh pr merge *": "deny"`) {
+		t.Errorf("the install weakened the user's deny:\n%s", text)
+	}
+	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	if text := readFile(t, config); !strings.Contains(text, `"gh pr merge *": "deny"`) || strings.Contains(text, "git push") {
+		t.Errorf("the uninstall should leave only the user's deny:\n%s", text)
+	}
+}
