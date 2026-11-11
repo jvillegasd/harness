@@ -31,7 +31,7 @@ Use `/implement <task or ticket>` for everyday implementation with TDD in the cu
 
 ## Work mode
 
-`/work <task>` matches the task to one playbook (bug fix, feature, investigate, refactor, perf, design, or large) and copies its steps into the agent's todo list. A step the agent decides not to take stays in the list as `skip: <reason>`. A code change ends with `change-map` and `review` at your review level; an investigation or a design hands its answer back to you instead. Requests that belong to another skill go there: an open PR's feedback to `address-review`, "open a PR" to `open-pr`, a merge to you or `/land`, and a settled spec to `/build`. Work mode lasts the conversation, and the playbook and step are recorded in the task document so a compaction resumes at the same step.
+`/work <task>` matches the task to one playbook (bug fix, feature, investigate, refactor, perf, design, or large) and copies its steps into the agent's todo list. A step the agent decides not to take stays in the list as `skip: <reason>`. A code change ends with `change-map` and `review` at your review level, and goes on to `open-pr` when you already asked for delivery. An investigation hands its answer back to you instead, and a design picks a shape, then continues as a feature or a refactor. Requests that belong to another skill go there: an open PR's feedback to `address-review`, "open a PR" to `open-pr`, a merge to you or `/land`, and a settled spec to `/build`. Work mode lasts the conversation, and the playbook and step are recorded in the task document so a compaction resumes at the same step.
 
 ```mermaid
 stateDiagram-v2
@@ -39,17 +39,21 @@ stateDiagram-v2
     state "Steps in the todo list" as Steps
     state "Working through the steps" as Working
     state "Mapped and reviewed" as Reviewed
-    state "Answer or decision handed back" as Answered
+    state "Answer handed back" as Answered
+    state "PR opened" as Opened
     state "Ready locally" as Ready
     state "Handed to another skill" as Routed
 
     [*] --> Matched: You run /work with a task
-    [*] --> Routed: The task is PR feedback, delivery, a merge, or a settled spec
+    [*] --> Routed: The task is a prototype, PR feedback, delivery, a merge, or a settled spec
     Matched --> Steps: Agent copies every step, with skip lines for the ones it leaves out
     Steps --> Working
     Working --> Reviewed: Code change runs change-map, then review at your level
-    Working --> Answered: Investigation or design
+    Working --> Answered: Investigation
+    Working --> Matched: Design picks a shape, then matches feature or refactor
     Reviewed --> Ready
+    Reviewed --> Opened: Delivery already authorized, so the agent runs open-pr
+    Opened --> [*]
     Ready --> [*]: You ask to publish, or keep it local
     Answered --> [*]: You start the change as a new task
     Routed --> [*]
@@ -57,7 +61,7 @@ stateDiagram-v2
 
 ### Autopilot
 
-Add "autopilot" or "I'm stepping away" and a goal to the `/work` request. The agent states a pass/fail definition of done (proposing one if you gave none), records your words and the time ceiling (2 hours unless you set one) in the task document, and works without checkpoints. It may commit, push, and open ready pull requests, including separate pull requests for fixes it finds along the way. It never merges, writes to the tracker, or messages anyone. Decisions only you could make get the simplest safe default and lead its report, each with what to tell it to switch. It counts as stuck when two fixes resting on one assumption fail, or one piece fails twice: it then tests the assumption directly or drops that piece and plans around it.
+Add "autopilot" or "I'm stepping away" and a goal to the `/work` request. The agent states a pass/fail definition of done (proposing one if you gave none), records your words and the time ceiling (2 hours unless you set one) in the task document, and works without checkpoints. It may commit, push, and open ready pull requests, including separate pull requests for fixes it finds along the way. It never merges, writes to the tracker, or messages anyone. Decisions only you could make get the simplest safe default and lead its report, each with what to tell it to switch. When two fixes resting on one assumption fail, it tests the assumption directly. When a piece fails, it retries by the cause (a smaller scope, the same start, or a different model), and after two retries drops that piece and plans around it.
 
 ```mermaid
 stateDiagram-v2

@@ -163,6 +163,6 @@ git diff --cached --check
 
 This harness takes inspiration from these projects:
 
-- [Matt Pocock's skills](https://github.com/mattpocock/skills), the source of several locked skills and of the explicit-only entry points such as `/spec` and `/triage`.
+- [Matt Pocock's skills](https://github.com/mattpocock/skills), the source of several locked skills, among them `tdd`, `diagnosing-bugs`, `grill-with-docs`, and `domain-modeling`.
 - [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai), which configures several coding agents from one setup, as this installer does.
-- [pstack](https://github.com/backnotprop/pstack), the source of the principle skills and the model for work mode's playbooks and autopilot.
+- [pstack](https://github.com/backnotprop/pstack), the source of the principle skills and the verification skills, and the model for work mode's playbooks and autopilot.
