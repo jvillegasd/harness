@@ -239,6 +239,7 @@ func (in *installer) install() {
 	in.registerEngramClaudeMCP()
 	in.reconcileClaudeSettings()
 	in.reconcileCodexHooks(false)
+	in.reconcileOpenCodePermission(false)
 	in.checkInstall()
 	if !in.skipPackages {
 		in.checkTools()
@@ -360,6 +361,9 @@ func (in *installer) checkInstall() {
 	}
 	if !in.codexHooksHold(false) {
 		die("The harness compaction hook is not reconciled in %s.", in.codexHooksPath())
+	}
+	if !in.openCodePermissionHold(false) {
+		die("The harness permission rules are not reconciled in %s.", in.openCodeConfigPath())
 	}
 	in.checkStatusline()
 }

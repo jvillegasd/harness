@@ -438,6 +438,173 @@ func (in *installer) codexHooksHold(removed bool) bool {
 	return hooksHold(live["hooks"], tracked["hooks"], removed)
 }
 
+func (in *installer) openCodeConfigPath() string {
+	return filepath.Join(in.config, "opencode", "opencode.json")
+}
+
+// trackedOpenCodePermission reads clients/opencode/permission.json: one object per permission class (read, edit, bash), each mapping a pattern to its action.
+func (in *installer) trackedOpenCodePermission() *object {
+	path := filepath.Join(in.dir.Clients(), "opencode", "permission.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		die("Reading %s failed: %v", path, err)
+	}
+	tracked, err := parseObject(data)
+	if err != nil {
+		die("%s is not a JSON object: %v", path, err)
+	}
+	return tracked
+}
+
+// reconcileOpenCodePermission merges the tracked permission rules into opencode.json, which Engram, the agent-browser registration, and the user also write, so every other key and rule stays. OpenCode applies the last rule that matches, so within each class the harness's patterns are moved to the end, after the user's, keeping the user's action where it is stricter; a class or a whole permission the user set to one action becomes {"*": action} first, which OpenCode reads the same way. With remove it takes out only the tracked patterns that still hold their tracked action, and drops a class or permission that leaves empty.
+func (in *installer) reconcileOpenCodePermission(remove bool) {
+	path := in.openCodeConfigPath()
+	if remove && !isFile(path) {
+		return
+	}
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		data = []byte("{}\n")
+	} else if err != nil {
+		die("Reading %s failed: %v", path, err)
+	}
+	live, err := parseObject(data)
+	if err != nil {
+		die("%s is not a JSON object, so the harness permission rules cannot be merged into it: %v", path, err)
+	}
+	current, _ := live.get("permission")
+	merged, err := mergePermission(current, in.trackedOpenCodePermission(), !remove)
+	if err != nil {
+		die("%s: %v; fix it and re-run.", path, err)
+	}
+	if merged == nil {
+		live.del("permission")
+	} else {
+		live.set("permission", merged)
+	}
+	// Compared in key order, not with writeIfChanged's same: moving the harness's rules behind a rule the user added later changes only the order, and in OpenCode the order decides which rule applies.
+	before, _ := parseObject(data)
+	after := render(live)
+	if before != nil && bytes.Equal(render(before), after) {
+		return
+	}
+	must(os.MkdirAll(filepath.Dir(path), 0o755))
+	in.backupCopy(path)
+	must(os.WriteFile(path, after, 0o644))
+	in.log("Reconciled the harness permission rules in %s", path)
+}
+
+// actionRules reads a permission value as pattern rules: an object as it is, a single action string as {"*": action}, and an absent or null value as no rules.
+func actionRules(raw json.RawMessage) (*object, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return newObject(), nil
+	}
+	var action string
+	if json.Unmarshal(raw, &action) == nil {
+		rules := newObject()
+		rules.set("*", encode(action))
+		return rules, nil
+	}
+	return parseObject(raw)
+}
+
+// strictness ranks an OpenCode action, so a rule the user made stricter than the harness's is never weakened: allow, then ask, then deny. Anything else ranks below allow.
+func strictness(raw json.RawMessage) int {
+	var action string
+	_ = json.Unmarshal(raw, &action)
+	return slices.Index([]string{"allow", "ask", "deny"}, action)
+}
+
+// mergePermission returns the live permission with every tracked pattern moved to the end of its class in the tracked order, keeping the user's action where it is stricter than the tracked one; or with add false, with only the tracked patterns that still hold their tracked action removed, so a rule the user set differently stays. It returns nil when nothing is left.
+func mergePermission(live json.RawMessage, tracked *object, add bool) (json.RawMessage, error) {
+	permission, err := actionRules(live)
+	if err != nil {
+		return nil, errors.New("permission is neither an action nor a JSON object")
+	}
+	for _, class := range tracked.keys {
+		ours, err := parseObject(tracked.vals[class])
+		must(err)
+		rules, err := actionRules(permission.vals[class])
+		if err != nil {
+			return nil, fmt.Errorf("permission.%s is neither an action nor a JSON object", class)
+		}
+		stricter := map[string]json.RawMessage{}
+		for _, pattern := range ours.keys {
+			have, had := rules.get(pattern)
+			if !had {
+				continue
+			}
+			if add && strictness(have) > strictness(ours.vals[pattern]) {
+				stricter[pattern] = have
+			}
+			if add || same(have, ours.vals[pattern]) {
+				rules.del(pattern)
+			}
+		}
+		if add {
+			for _, pattern := range ours.keys {
+				value := ours.vals[pattern]
+				if have, ok := stricter[pattern]; ok {
+					value = have
+				}
+				rules.set(pattern, value)
+			}
+		}
+		if len(rules.keys) == 0 {
+			permission.del(class)
+		} else {
+			permission.set(class, encode(rules))
+		}
+	}
+	if len(permission.keys) == 0 {
+		return nil, nil
+	}
+	return encode(permission), nil
+}
+
+// openCodePermissionHold reports whether every tracked pattern ends its class in opencode.json, in order, with its tracked action or a stricter one, so no rule of the user's comes after it; or with removed, whether no tracked pattern still holds its tracked action there.
+func (in *installer) openCodePermissionHold(removed bool) bool {
+	path := in.openCodeConfigPath()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return removed && errors.Is(err, fs.ErrNotExist)
+	}
+	live, err := parseObject(data)
+	if err != nil {
+		return false
+	}
+	current, _ := live.get("permission")
+	permission, err := actionRules(current)
+	if err != nil {
+		return false
+	}
+	tracked := in.trackedOpenCodePermission()
+	for _, class := range tracked.keys {
+		ours, err := parseObject(tracked.vals[class])
+		must(err)
+		rules, err := actionRules(permission.vals[class])
+		if err != nil {
+			return false
+		}
+		if removed {
+			if slices.ContainsFunc(ours.keys, func(p string) bool { have, ok := rules.get(p); return ok && same(have, ours.vals[p]) }) {
+				return false
+			}
+			continue
+		}
+		if len(rules.keys) < len(ours.keys) {
+			return false
+		}
+		tail := rules.keys[len(rules.keys)-len(ours.keys):]
+		for i, pattern := range ours.keys {
+			if tail[i] != pattern || strictness(rules.vals[pattern]) < strictness(ours.vals[pattern]) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 const aliasMarker = "# portable-harness aliases"
 
 var (

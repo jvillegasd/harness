@@ -721,3 +721,97 @@ func TestClaudeAllowKeepsTheUsersRules(t *testing.T) {
 		t.Errorf("allow after uninstall = %q, want %q", got, want)
 	}
 }
+
+// The floor's command and secret rules reach Codex and OpenCode. Codex gets its own rules file. OpenCode's rules join the user's in opencode.json after them, because OpenCode applies the last rule that matches, and a reinstall moves them back behind a rule the user added later. The uninstall takes out only the harness's rules.
+func TestFloorRulesReachCodexAndOpenCode(t *testing.T) {
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	rules := filepath.Join(home, ".codex", "rules", "harness.rules")
+	config := filepath.Join(home, ".config", "opencode", "opencode.json")
+	writeMode(t, config, `{"theme": "mine", "permission": {"bash": "ask", "read": {"*.md": "allow"}, "webfetch": "deny"}}`+"\n", 0o644)
+	type permission struct {
+		Bash, Read, Edit map[string]string
+		Webfetch         string
+	}
+	read := func() (permission, map[string][]string) {
+		data := []byte(readFile(t, config))
+		var doc struct {
+			Theme      string     `json:"theme"`
+			Permission permission `json:"permission"`
+		}
+		if err := json.Unmarshal(data, &doc); err != nil || doc.Theme != "mine" {
+			t.Fatalf("opencode.json lost the user's keys (%v):\n%s", err, data)
+		}
+		var raw struct {
+			Permission map[string]json.RawMessage `json:"permission"`
+		}
+		if err := json.Unmarshal(data, &raw); err != nil {
+			t.Fatal(err)
+		}
+		order := map[string][]string{}
+		for class, value := range raw.Permission {
+			dec := json.NewDecoder(strings.NewReader(string(value)))
+			if tok, _ := dec.Token(); tok != json.Delim('{') {
+				continue
+			}
+			for dec.More() {
+				key, _ := dec.Token()
+				var skip json.RawMessage
+				if err := dec.Decode(&skip); err != nil {
+					t.Fatal(err)
+				}
+				order[class] = append(order[class], key.(string))
+			}
+		}
+		return doc.Permission, order
+	}
+
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	if text := readFileOr(rules); !strings.Contains(text, `"git", "push", ["--force", "-f"]`) {
+		t.Errorf("the Codex rules file is missing or lacks the force-push rule:\n%s", text)
+	}
+	got, order := read()
+	if got.Bash["*"] != "ask" || order["bash"][0] != "*" || got.Bash["git push --force *"] != "deny" || got.Bash["gh pr merge *"] != "ask" {
+		t.Errorf("bash after install = %v in order %q, want the user's action first and the harness's rules after it", got.Bash, order["bash"])
+	}
+	if order["read"][0] != "*.md" || got.Read["*/.env*"] != "deny" || got.Edit["*/.ssh/*"] != "deny" || got.Webfetch != "deny" {
+		t.Errorf("read, edit, or webfetch after install = %v, %v, %q", order["read"], got.Edit, got.Webfetch)
+	}
+	tracked := len(order["bash"])
+
+	text := readFile(t, config)
+	last := `"git worktree remove -f *": "ask"`
+	if !strings.Contains(text, last) {
+		t.Fatalf("opencode.json lacks the last harness rule %s:\n%s", last, text)
+	}
+	writeMode(t, config, strings.Replace(text, last, last+`, "git *": "allow"`, 1), 0o644)
+	ok(t, runInstaller(t, base, "--skip-packages"), "reinstall")
+	_, order = read()
+	if len(order["bash"]) != tracked+1 || order["bash"][1] != "git *" || order["bash"][len(order["bash"])-1] != "git worktree remove -f *" {
+		t.Errorf("bash after reinstall = %q, want the user's rules first and each harness rule once, last", order["bash"])
+	}
+
+	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	got, _ = read()
+	if len(got.Bash) != 2 || got.Bash["git *"] != "allow" || len(got.Read) != 1 || got.Edit != nil || got.Webfetch != "deny" {
+		t.Errorf("permission after uninstall = %+v, want only the user's rules", got)
+	}
+	if _, err := os.Stat(rules); err == nil {
+		t.Errorf("the uninstall kept %s", rules)
+	}
+}
+
+// A rule the user made stricter than the harness's stays as strict: the install keeps the user's deny where the harness would ask, and the uninstall leaves a rule whose action differs from the harness's.
+func TestOpenCodeKeepsAStricterUserRule(t *testing.T) {
+	base := sandbox(t)
+	config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
+	writeMode(t, config, `{"permission": {"bash": {"gh pr merge *": "deny"}}}`+"\n", 0o644)
+	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	if text := readFile(t, config); !strings.Contains(text, `"gh pr merge *": "deny"`) {
+		t.Errorf("the install weakened the user's deny:\n%s", text)
+	}
+	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	if text := readFile(t, config); !strings.Contains(text, `"gh pr merge *": "deny"`) || strings.Contains(text, "git push") {
+		t.Errorf("the uninstall should leave only the user's deny:\n%s", text)
+	}
+}

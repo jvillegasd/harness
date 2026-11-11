@@ -1,0 +1,16 @@
+# Harness floor rules for Codex, mirrored from Claude Code's deny and ask lists in clients/claude.json.
+
+# Discarding unmerged work needs an explicit human request naming it.
+prefix_rule(pattern = ["git", "reset", ["--hard", "--keep"]], decision = "forbidden", justification = "Discards unmerged work; the human runs it.")
+prefix_rule(pattern = ["git", "clean"], decision = "forbidden", justification = "Discards untracked work; the human runs it.")
+prefix_rule(pattern = ["git", "checkout", ["--", "-f"]], decision = "forbidden", justification = "Discards working-tree changes; the human runs it.")
+prefix_rule(pattern = ["git", "restore"], decision = "forbidden", justification = "Discards working-tree changes; the human runs it.")
+
+# Shared history is never rewritten, and user worktrees are never removed.
+prefix_rule(pattern = ["git", "push", ["--force", "-f"]], decision = "forbidden", justification = "Rewrites shared history.")
+prefix_rule(pattern = ["git", "worktree", "prune"], decision = "forbidden", justification = "Can drop worktree records the human depends on.")
+prefix_rule(pattern = ["git", "worktree", "remove", ["--force", "-f"]], decision = "prompt", justification = "Removes a worktree with changes in it.")
+
+# Only a human merges and sets the review level.
+prefix_rule(pattern = ["gh", "pr", "merge"], decision = "prompt", justification = "Only a human merges, or /land when asked.")
+prefix_rule(pattern = ["harness", "review", "level", ["off", "medium", "high"]], decision = "forbidden", justification = "Only the human sets the review level.")
