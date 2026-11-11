@@ -32,15 +32,19 @@ Work mode lasts the conversation. "New task" means match again from step 1, and 
 | Slow, with a number to move | [perf](playbooks/perf.md) |
 | A shape or interface to choose, with no precedent | [design](playbooks/design.md) |
 | A prototype, spike, or mock-up | `proto`'s steps |
+| A spec or plan for a change, before anything is built | `spec`'s steps. When product decisions are still open, reply that `/grill-with-docs` settles them first, and stop |
+| Tickets from a spec, a triage brief, research findings, or a request | `tickets`' steps |
+| A settled spec or set of tickets to build | `build`'s steps |
+| Review a diff, a branch, or a PR | `review`'s steps, at the depth the human asked |
 | An existing PR: review comments, red checks, conflicts | `address-review`'s steps, with its mode declared |
 | Open a PR, ship this | `open-pr`'s steps |
 | Merge, or "it merged, clean up" | Reply "run `/land` in this worktree" and stop. Merging and cleanup belong to the human through `land` |
-| A settled spec or a set of tickets | Reply "run `/build`" and stop. Under autopilot, read `build` from its path and run it |
 | Resume or pick up earlier work | `continuity`'s Resume, then continue the playbook and step it recorded, or match what is left |
-| A plan for a multi-phase or multi-PR change, before anything is built | [plan](playbooks/plan.md) |
 | Large, multi-part, or none of the above | [large](playbooks/large.md) |
 
-A bug that is a slowdown with a number is perf. When the task fits two rows, take the narrower one, and the large playbook only when no narrower row covers it.
+A bug that is a slowdown with a number is perf. A settled spec or ticket small enough for one slice matches the row for its kind, since `implement` reuses its agreed seams. When the task fits two rows, take the narrower one, and the large playbook only when no narrower row covers it.
+
+A row that names a skill runs that skill's steps as the playbook: they go into the todo list like any playbook's, and work mode adds only its triggers and reply. `spec`, `tickets`, and `build` are guarded so the model never starts them on its own; read each from its path in the installed skills, because the human's `/work` request is what starts it. A spec hands back for the human's go, and the go is a new task: a settled spec, matched again.
 
 ## Triggers
 

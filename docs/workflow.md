@@ -14,6 +14,7 @@ When you want the work run to a fixed set of steps, start it with `/work <task>`
 | A question needs evidence | `research` |
 | An experiment would settle an uncertainty | `proto` |
 | A design needs a durable specification | `/spec` |
+| A spec, a triage brief, findings, or a request needs tickets | `/tickets` |
 | A bug needs reproduction and diagnosis | `diagnosing-bugs` |
 | You want test-first implementation | `tdd` |
 | A frontend needs design work | `impeccable` |
@@ -31,7 +32,7 @@ Use `/implement <task or ticket>` for everyday implementation with TDD in the cu
 
 ## Work mode
 
-`/work <task>` matches the task to one playbook (bug fix, feature, investigate, refactor, perf, design, plan, or large) and copies its steps into the agent's todo list. A step the agent decides not to take stays in the list as `skip: <reason>`. A code change ends with `change-map` and `review` at your review level, and goes on to `open-pr` when you already asked for delivery. An investigation or a plan hands its result back to you instead, and a design picks a shape, then continues as a feature or a refactor. A plan settles open questions with prototypes, then writes one section per pull request into the task document, and waits for your go. Requests that belong to another skill go there: an open PR's feedback to `address-review`, "open a PR" to `open-pr`, a merge to you or `/land`, and a settled spec to `/build`. Work mode lasts the conversation, and the playbook and step are recorded in the task document so a compaction resumes at the same step.
+`/work <task>` matches the task to one playbook and copies its steps into the agent's todo list. A playbook is either work mode's own (bug fix, feature, investigate, refactor, perf, design, or large) or an existing skill's steps: a prototype runs `proto`, a plan `spec`, tickets `tickets`, a settled spec or tickets `build`, a review `review`, an open PR's feedback `address-review`, and "open a PR" `open-pr`. Work mode adds its principle triggers, the todo list, and its reply, never a second copy of a skill's procedure. A step the agent decides not to take stays in the list as `skip: <reason>`. A code change ends with `change-map` and `review` at your review level, and goes on to `open-pr` when you already asked for delivery. An investigation, a review, a spec, or tickets hand the result back to you, and a design picks a shape, then continues as a feature or a refactor. A spec waits for your go; the go is a new task, so it matches again as a settled spec and runs `build`. Open decisions get settled with `/grill-with-docs` first. A merge goes to you or `/land`. Work mode lasts the conversation, and the playbook and step are recorded in the task document so a compaction resumes at the same step.
 
 ```mermaid
 stateDiagram-v2
@@ -39,24 +40,24 @@ stateDiagram-v2
     state "Steps in the todo list" as Steps
     state "Working through the steps" as Working
     state "Mapped and reviewed" as Reviewed
-    state "Answer or plan handed back" as Answered
+    state "Result handed back" as Answered
     state "PR opened" as Opened
     state "Ready locally" as Ready
-    state "Handed to another skill" as Routed
+    state "Handed to /land" as Routed
 
-    [*] --> Matched: You run /work with a task
-    [*] --> Routed: The task is a prototype, PR feedback, delivery, a merge, or a settled spec
+    [*] --> Matched: You run /work with a task, and it matches a playbook or a skill's steps
+    [*] --> Routed: The task is a merge
     Matched --> Steps: Agent copies every step, with skip lines for the ones it leaves out
     Steps --> Working
     Working --> Reviewed: Code change runs change-map, then review at your level
-    Working --> Answered: Investigation or plan
+    Working --> Answered: Investigation, review, spec, or tickets
     Working --> Matched: Design picks a shape, then matches feature or refactor
     Reviewed --> Ready
     Reviewed --> Opened: Delivery already authorized, so the agent runs open-pr
     Opened --> [*]
     Ready --> [*]: You ask to publish, or keep it local
     Answered --> [*]: You start the change as a new task
-    Answered --> Matched: You say go on a plan, so it runs as large
+    Answered --> Matched: You say go on a spec, so it matches as a build
     Routed --> [*]
 ```
 
@@ -113,9 +114,9 @@ For longer work, the agent keeps requirements, decisions, evidence, and the next
 
 ## Larger builds
 
-Invoke `/build` to implement a specification's slices or a set of tickets unattended. It uses one integration branch and bounded workers in separate worktrees. The parent verifies and commits their results, then checks and reviews the combined change. Publication still requires a delivery request; merging still requires `/land`.
+Invoke `/build` to implement a set of tickets, or a specification cut into tickets, unattended. It uses one integration branch and bounded workers in separate worktrees. The parent verifies and commits their results, then checks and reviews the combined change. Publication still requires a delivery request; merging still requires `/land`.
 
-Use this when the work is settled enough to delegate. Missing acceptance criteria, disputed test seams, or shared assumptions need resolving first. A `/work` autopilot run on a settled spec or set of tickets starts `/build` for you, and your step-away request counts as its delivery request.
+Use this when the work is settled enough to delegate. Missing acceptance criteria, disputed test seams, or shared assumptions need resolving first. `/work` on a settled spec or set of tickets starts `/build` for you, and a spec without tickets is cut into them with `tickets` first, drafted locally. Under `/work` autopilot, your step-away request also counts as its delivery request.
 
 ## Optional tracking
 

@@ -44,6 +44,7 @@ See [installation and your files](docs/installation.md) for how installation and
 | Fix something broken or slow | Diagnosis and a fix |
 | Settle an unclear idea | `/grill-with-docs` |
 | Write a specification | `/spec` |
+| Break a spec, findings, or a request into tickets | `/tickets` |
 | Build test-first | `tdd` |
 | Keep frontend or backend journey tests | `journey-verification` |
 | Review changes | `review` |
@@ -89,7 +90,7 @@ Read [the workflow guide](docs/workflow.md) for optional planning, builds, and t
 
 ## Work mode
 
-Without `/work`, the agent follows the floor and reaches for skills on its own. With `/work <task>`, it matches the task to one playbook (bug fix, feature, investigate, refactor, perf, design, plan, or large), copies the playbook's steps into its todo list, and works through them. A step it decides not to take stays in the list with `skip: <reason>`, so you see what was left out and why. For a code change, it maps the change with `change-map` and runs `review` at your review level before handing off. A plan request gets a written plan in the task document, one section per pull request, and nothing is implemented until you say go. Merging still goes through you or `/land`, and a settled spec still goes through `/build`. Work mode lasts the conversation; say "new task" to match again or "stop work mode" to end it. Only you can start it.
+Without `/work`, the agent follows the floor and reaches for skills on its own. With `/work <task>`, it matches the task to one playbook and copies its steps into its todo list. A playbook is either work mode's own (bug fix, feature, investigate, refactor, perf, design, or large) or an existing skill's steps (`proto`, `spec`, `tickets`, `build`, `review`, `address-review`, or `open-pr`), so the workflow reuses the same skills you can call directly. A step it decides not to take stays in the list with `skip: <reason>`, so you see what was left out and why. For a code change, it maps the change with `change-map` and runs `review` at your review level before handing off. A plan request runs `spec` and waits for your go; on go, `/work` builds the settled spec with `build`, cutting it into tickets first when it has none. Open decisions get settled with `/grill-with-docs` before `/work`. Merging still goes through you or `/land`. Work mode lasts the conversation; say "new task" to match again or "stop work mode" to end it. Only you can start it.
 
 **Autopilot.** Add "autopilot" or "I'm stepping away" with a goal, such as `/work autopilot, max 3h: make the export job finish under a minute`. The agent states a pass/fail definition of done (or proposes one), then works without checkpoints until it is met or the time ceiling (2 hours unless you set one) runs out. It may commit, push, and open ready pull requests, including separate ones for fixes it finds along the way, but it never merges, writes to the tracker, or messages anyone. Decisions only you could make are taken with the simplest safe default and listed at the top of its report, each with what to tell it to switch. Without a goal it does not start.
 
