@@ -2,7 +2,9 @@
 
 Shared floor rules, skills, and tools for Claude Code, Codex, and OpenCode.
 
-Ask the agent to do the work. It inspects the code, makes changes on a task branch, runs checks, and reports the result. Skills help with specific jobs; they are not a required sequence.
+Ask the agent to do the work. It inspects the code, makes changes on a task branch, runs checks, and reports the result. Skills help with specific jobs; they are not a required sequence. When you want more rigor, start the task with `/work` (see [Work mode](#work-mode)).
+
+This README and the guides under `docs/` are written for you. Agents keep them accurate when they change what the guides describe, but never take them as instructions; what agents follow lives in `FLOOR.md`, the skills, and each repository's `AGENTS.md`.
 
 ## Install
 
@@ -36,6 +38,8 @@ See [installation and your files](docs/installation.md) for how installation and
 
 | Need | Ask for |
 | --- | --- |
+| Run a task to a playbook, with every step visible | `/work <task>` |
+| Leave a task running while you step away | `/work autopilot, I'm stepping away: <goal>` |
 | Implement a feature, fix, or one ticket with TDD | `/implement <task or ticket>` |
 | Fix something broken or slow | Diagnosis and a fix |
 | Settle an unclear idea | `/grill-with-docs` |
@@ -83,6 +87,12 @@ Review defaults to `medium`. Set it yourself with `harness review level off|medi
 
 Read [the workflow guide](docs/workflow.md) for optional planning, builds, and tracker setup, or [the delegation guide](docs/subagents.md) for worker roles.
 
+## Work mode
+
+Without `/work`, the agent follows the floor and reaches for skills on its own. With `/work <task>`, it matches the task to one playbook (bug fix, feature, investigate, refactor, perf, design, or large), copies the playbook's steps into its todo list, and works through them. A step it decides not to take stays in the list with `skip: <reason>`, so you see what was left out and why. Before handing off, it maps the change with `change-map` and runs `review` at your review level. Merging still goes through you or `/land`, and a settled spec still goes through `/build`. Work mode lasts the conversation; say "new task" to match again or "stop work mode" to end it. Only you can start it.
+
+**Autopilot.** Add "autopilot" or "I'm stepping away" with a goal, such as `/work autopilot, max 3h: make the export job finish under a minute`. The agent states a pass/fail definition of done (or proposes one), then works without checkpoints until it is met or the time ceiling (2 hours unless you set one) runs out. It may commit, push, and open ready pull requests, including separate ones for fixes it finds along the way, but it never merges, writes to the tracker, or messages anyone. Decisions only you could make are taken with the simplest safe default and listed at the top of its report, each with what to tell it to switch. Without a goal it does not start.
+
 ## Models and aliases
 
 Use `harness models --help` to inspect presets and per-role assignments. Changing an assignment requires installation to refresh the rendered agents. Roles assigned to the current client run natively; roles assigned to another client run through T3 Code's `delegate_task`.
@@ -129,6 +139,7 @@ Review upstream changes before committing. Locked third-party skills change thro
 | Path | Purpose |
 | --- | --- |
 | `FLOOR.md` | The rules every client holds on every turn: authority, preservation, secrets, untrusted text, and prose |
+| `GLOSSARY.md`, `docs/adr/` | The harness's terms, and the decisions behind its shape |
 | `cmd/harness/`, `internal/` | CLI and implementation |
 | `skills/` | Skills, grouped by purpose |
 | `clients/`, `roles/` | Client settings and role definitions |
