@@ -29,7 +29,7 @@ Accept a tracker item, pasted ticket, or production error signal for a bug, feat
 
 4. Investigate the code to ground the analysis, citing `path:line`. Search the repository directly by default. Delegate only when a worker earns its launch: independent searches that can run in parallel, or context isolation that keeps a large search's file contents out of this context. Name that purpose in one line, launch each track as the `code-search` role through `delegation`, and give each worker one bounded repository question. Handle its citations as `research` describes under Code-search citations. Then confirm or refute the root-cause hypothesis with at most two further evidence queries.
 
-5. For remaining load-bearing ambiguity, rank the assumptions behind it by consequence, resolve each through repository precedent, history, and that evidence protocol, and stop if the premise is refuted. Batch only the surviving questions into one stop, as the floor's Working rules describe.
+5. For remaining load-bearing ambiguity, rank the assumptions behind it by consequence, resolve each through repository precedent, history, and that evidence protocol, and stop if the premise is refuted. Batch only the surviving questions into one stop.
 
 ## Output
 
