@@ -247,7 +247,7 @@ func TestCodexInstallsIntoHomeCodexAndUninstallsAlone(t *testing.T) {
 	ok(t, runHarness(t, base, extra, "install", "--skip-packages"), "install under another CODEX_HOME")
 	codexHome := filepath.Join(base, "home", ".codex")
 	if readFile(t, filepath.Join(codexHome, "AGENTS.md")) != readFile(t, filepath.Join(base, "checkout", "FLOOR.md")) {
-		t.Error("~/.codex/AGENTS.md is not the policy")
+		t.Error("~/.codex/AGENTS.md is not the floor")
 	}
 	if !strings.Contains(readFile(t, filepath.Join(codexHome, "agents", "executor.toml")), "\nmodel = \"gpt-6-luna\"\n") {
 		t.Error("the Codex executor lacks the balanced model")
