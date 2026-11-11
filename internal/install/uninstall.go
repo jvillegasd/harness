@@ -89,6 +89,9 @@ func (in *installer) uninstallSelected() {
 	if selected("codex", "settings") {
 		in.reconcileCodexHooks(true)
 	}
+	if selected("opencode", "settings") {
+		in.reconcileOpenCodePermission(true)
+	}
 	if selected("claude", "mcp") {
 		in.removeClaudeMCP()
 	}
@@ -381,6 +384,9 @@ func (in *installer) checkRemoved(removed []entry, selected func(client, compone
 	}
 	if selected("codex", "settings") && !in.codexHooksHold(true) {
 		die("The harness compaction hook survived the uninstall in %s.", in.codexHooksPath())
+	}
+	if selected("opencode", "settings") && !in.openCodePermissionHold(true) {
+		die("The harness permission rules survived the uninstall in %s.", in.openCodeConfigPath())
 	}
 	if selected("claude", "mcp") {
 		in.checkClaudeMCPRemoved()

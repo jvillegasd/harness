@@ -211,6 +211,8 @@ func (in *installer) desired() []entry {
 	add(in.dir.Aliases(), in.aliasesPath(), "aliases", allClients...)
 	// Claude Code's and Codex's compaction hooks are merged into files the user shares (reconcileClaudeSettings, reconcileCodexHooks); OpenCode's is a plugin file of its own.
 	add(filepath.Join(in.dir.Clients(), "opencode", "plugins", "harness-resume.ts"), filepath.Join(in.config, "opencode", "plugins", "harness-resume.ts"), "settings", "opencode")
+	// Codex loads every *.rules file under its rules directory, so the harness's command rules are a file of their own; OpenCode's live in opencode.json beside the user's (reconcileOpenCodePermission).
+	add(filepath.Join(in.dir.Clients(), "codex", "rules", "harness.rules"), filepath.Join(in.codexHome(), "rules", "harness.rules"), "settings", "codex")
 	return out
 }
 
