@@ -246,8 +246,8 @@ func TestCodexInstallsIntoHomeCodexAndUninstallsAlone(t *testing.T) {
 	extra := []string{"TMPDIR=" + filepath.Join(base, "tmp"), "HARNESS_ASSETS=" + filepath.Join(base, "checkout"), "CODEX_HOME=" + elsewhere}
 	ok(t, runHarness(t, base, extra, "install", "--skip-packages"), "install under another CODEX_HOME")
 	codexHome := filepath.Join(base, "home", ".codex")
-	if readFile(t, filepath.Join(codexHome, "AGENTS.md")) != readFile(t, filepath.Join(base, "checkout", "POLICY.md")) {
-		t.Error("~/.codex/AGENTS.md is not the policy")
+	if readFile(t, filepath.Join(codexHome, "AGENTS.md")) != readFile(t, filepath.Join(base, "checkout", "FLOOR.md")) {
+		t.Error("~/.codex/AGENTS.md is not the floor")
 	}
 	if !strings.Contains(readFile(t, filepath.Join(codexHome, "agents", "executor.toml")), "\nmodel = \"gpt-6-luna\"\n") {
 		t.Error("the Codex executor lacks the balanced model")
@@ -314,8 +314,8 @@ func TestInstallInstallsTheEmbeddedHarnessFromAnywhere(t *testing.T) {
 	if help, err := exec.Command(filepath.Join(home, ".local", "bin", "harness"), "--help").Output(); err != nil || !strings.Contains(string(help), "install") {
 		t.Errorf("the installed harness does not run: %v %s", err, help)
 	}
-	if got, want := readFileOr(filepath.Join(home, ".claude", "CLAUDE.md")), readFile(t, filepath.Join("..", "..", "POLICY.md")); got != want {
-		t.Error("install did not install the embedded policy at ~/.claude/CLAUDE.md")
+	if got, want := readFileOr(filepath.Join(home, ".claude", "CLAUDE.md")), readFile(t, filepath.Join("..", "..", "FLOOR.md")); got != want {
+		t.Error("install did not install the embedded floor at ~/.claude/CLAUDE.md")
 	}
 }
 
@@ -482,8 +482,8 @@ func TestSkipPackagesCallsNoPackageManager(t *testing.T) {
 		}
 	}
 	link := filepath.Join(base, "home", ".claude", "CLAUDE.md")
-	if got, want := readFileOr(link), readFile(t, filepath.Join(base, "checkout", "POLICY.md")); got != want {
-		t.Errorf("--skip-packages did not install the policy at %s", link)
+	if got, want := readFileOr(link), readFile(t, filepath.Join(base, "checkout", "FLOOR.md")); got != want {
+		t.Errorf("--skip-packages did not install the floor at %s", link)
 	}
 }
 

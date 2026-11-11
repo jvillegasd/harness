@@ -16,7 +16,7 @@ func benchDir(t *testing.T) string {
 	if err := os.MkdirAll(filepath.Join(dir, "bench"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "POLICY.md"), []byte("x\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "FLOOR.md"), []byte("x\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module github.com/jvillegasd/harness\n"), 0o644); err != nil {

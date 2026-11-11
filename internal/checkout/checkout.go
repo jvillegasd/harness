@@ -10,11 +10,11 @@ import (
 	"strings"
 )
 
-// module is the Go module path that identifies a Harness checkout, so a directory holding a file at the root policy marker's path is not mistaken for this checkout.
+// module is the Go module path that identifies a Harness checkout, so a directory holding a file at the root floor marker's path is not mistaken for this checkout.
 const module = "github.com/jvillegasd/harness"
 
-// policyMarker is the checkout-relative root policy file that marks a Harness checkout: the product assets live at the repository root, so the marker sits beside the module.
-const policyMarker = "POLICY.md"
+// floorMarker is the checkout-relative root floor file that marks a Harness checkout: the product assets live at the repository root, so the marker sits beside the module.
+const floorMarker = "FLOOR.md"
 
 // ErrNotFound names the requirement when no Harness checkout encloses the invocation directory.
 var ErrNotFound = errors.New("run harness from inside a Harness checkout")
@@ -24,16 +24,16 @@ type Checkout struct {
 	Root string
 }
 
-// Find returns the checkout whose root policy marker is nearest at or above dir.
+// Find returns the checkout whose root floor marker is nearest at or above dir.
 //
-// A Harness checkout is the root policy marker together with the Harness Go module, so the first directory holding the marker decides the answer: it is returned when it declares module github.com/jvillegasd/harness, and a marker with no module or beside a different one stops the walk with ErrNotFound rather than resolving an enclosing checkout. A partial tree or a different module is therefore never silently substituted. The walk starts at dir and stops at the filesystem root, so it never falls back to an installed binary's checkout or a historical location.
+// A Harness checkout is the root floor marker together with the Harness Go module, so the first directory holding the marker decides the answer: it is returned when it declares module github.com/jvillegasd/harness, and a marker with no module or beside a different one stops the walk with ErrNotFound rather than resolving an enclosing checkout. A partial tree or a different module is therefore never silently substituted. The walk starts at dir and stops at the filesystem root, so it never falls back to an installed binary's checkout or a historical location.
 func Find(dir string) (Checkout, error) {
 	abs, err := filepath.Abs(dir)
 	if err != nil {
 		return Checkout{}, err
 	}
 	for {
-		_, err := os.Stat(filepath.Join(abs, policyMarker))
+		_, err := os.Stat(filepath.Join(abs, floorMarker))
 		if err == nil {
 			return findRoot(abs)
 		}
@@ -86,8 +86,8 @@ func moduleOf(gomod []byte) string {
 	return ""
 }
 
-// Policy is the root policy marker that links into each client's global instruction path.
-func (c Checkout) Policy() string { return filepath.Join(c.Root, policyMarker) }
+// Floor is the root floor marker, which installs as each client's global instruction file.
+func (c Checkout) Floor() string { return filepath.Join(c.Root, floorMarker) }
 
 // Skills is the directory of harness skills.
 func (c Checkout) Skills() string { return filepath.Join(c.Root, "skills") }
@@ -174,7 +174,7 @@ func (c Checkout) ClaudeSkills() string { return filepath.Join(c.Root, ".claude"
 
 // Managed names the assets the installer owns as link sources. Ownership is these namespaces alone, never everything beneath the checkout, so promoting the assets to the repository root does not make an unrelated repository file, a private skill, or private data installer-owned.
 func (c Checkout) Managed() []string {
-	return []string{c.Skills(), c.Policy(), c.Generated()}
+	return []string{c.Skills(), c.Floor(), c.Generated()}
 }
 
 // Manages reports whether path is a managed asset or sits beneath one, which is the only predicate an install or uninstall may use to claim a link.

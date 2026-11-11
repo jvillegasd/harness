@@ -30,7 +30,7 @@ const usage = `Usage: harness install [--skip-packages] [--no-backup]
        harness install --clear-backups
 
   --skip-packages
-                 Reconcile the policy, skill, and role agent copies, tracked
+                 Reconcile the floor, skill, and role agent copies, tracked
                  client settings, and Engram and agent-browser registrations.
                  Packages are not installed, so Engram, agent-browser, and
                  Claude Code must already be installed.
@@ -46,7 +46,7 @@ const usage = `Usage: harness install [--skip-packages] [--no-backup]
   --client       With --uninstall, limit it to claude, codex, or opencode;
                  repeatable.
   --component    With --uninstall, limit it to agents, aliases, mcp,
-                 policy, settings, or skills; repeatable. A copy another
+                 policy (the floor), settings, or skills; repeatable. A copy another
                  installed client still uses stays.
   --yes          With --uninstall, skip the confirmation.
   --clear-backups
