@@ -9,6 +9,6 @@
 5. Name how the plan runs: interactive `/work` on the large playbook, or `/work` autopilot when the human will step away. When the human wants tickets and an unattended worker build, say that `/spec` turns the plan into a durable spec for `/build`.
 6. Read `unslop` from its path and apply it to the plan.
 7. Commit the task document on the task branch: reuse the existing one, or create one as `implement` names it, since a plan commit on the default branch needs an explicit request. Then hand back. Under autopilot, the written plan is the definition of done, so the run ends here without building.
-8. Execution starts only on the human's explicit go. On go, match again as large, or as autopilot when the human steps away, carrying the plan, and update the task document's `Playbook:` line.
+8. Execution starts only on the human's explicit go. On go, run the large playbook on this plan, under an autopilot grant when the human steps away, without matching the plan row again, and update the task document's `Playbook:` line.
 
 **Reply:** the plan path, the pull requests in order with their dependencies, what the prototypes proved and what stays unproven, and how the plan runs.

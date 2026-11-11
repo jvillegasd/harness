@@ -29,8 +29,9 @@ Everything up to verified, open pull requests: commits, pushes of the run's own 
 
 - **Done:** each pull request is verified and green at its current head, with `open-pr`'s readiness report. After the handoff, nothing is pushed without the human's go.
 - **Ceiling reached:** pause with `continuity`'s Pause (a `wip:` commit and the next action), then report.
+- **Plan written:** when the goal is a plan, the committed plan is done, and the run ends without building it.
 - **Goal ruled out:** when the evidence rules out the goal itself, as work mode's Start step 1 describes, stop and report that evidence, since there is nothing left to drive toward.
 
-"Keep going" and "going to bed" never trigger a pause; only done, the ceiling, or a ruled-out goal ends the run.
+"Keep going" and "going to bed" never trigger a pause; only done, a written plan, the ceiling, or a ruled-out goal ends the run.
 
 **Reply:** the goal, then the `agent` decisions each with "tell me X to switch", so they are the first thing the human reads; then the definition of done with its final state, each pull request with its readiness verdict, the follow-ups, the parked dead ends with their evidence, and the time used against the ceiling.

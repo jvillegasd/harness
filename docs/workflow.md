@@ -55,7 +55,8 @@ stateDiagram-v2
     Reviewed --> Opened: Delivery already authorized, so the agent runs open-pr
     Opened --> [*]
     Ready --> [*]: You ask to publish, or keep it local
-    Answered --> [*]: You start the change, or say go
+    Answered --> [*]: You start the change as a new task
+    Answered --> Matched: You say go on a plan, so it runs as large
     Routed --> [*]
 ```
 
