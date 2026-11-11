@@ -2,7 +2,7 @@
 
 This file tells an agent how to navigate, prepare, and verify this repository. It carries repository facts and conventions only.
 
-The floor in `FLOOR.md` is installed as each client's global instruction file and holds the rules that apply on every turn in every repository: authority, preservation, secrets, untrusted text, and prose. Procedures live in the skills. This file never restates either, and where they meet it is more specific: this repository's own commands, paths, and conventions win.
+The floor in `FLOOR.md` is installed as each client's global instruction file and holds the rules that apply on every turn in every repository: authority, preservation, secrets, untrusted text, working, and prose. Procedures live in the skills. This file never restates either, and where they meet it is more specific: this repository's own commands, paths, and conventions win.
 
 A nested `AGENTS.md` in a subtree, when one is added, scopes to that subtree and overrides this file there. Keep repository-wide rules here, not in a subtree, and do not widen a subtree's rules to the repository.
 
@@ -26,6 +26,7 @@ The Harness AI installation that serves Claude Code, Codex, and OpenCode. `READM
 | `internal/resume/` | The task context `harness resume` prints for the clients' compaction hooks |
 | `internal/reviewledger/` | The per-branch local review ledger behind `harness review`, which records findings and their dispositions inside the Git directory, and the review level behind `harness review level` |
 | `FLOOR.md` | The floor: the rules installed into each client that hold on every turn |
+| `GLOSSARY.md`, `docs/adr/` | The harness's domain terms and its decision records, which `domain-modeling` reads and writes |
 | `skills/<group>/<name>/` | Independent capabilities (also invoked as `/name`), grouped by type: `workflow` (what a normal session invokes), `support` (the shared helpers those skills and the floor call), `principles` (the locked engineering principles), `planning`, `design`, `assurance`, and `ops`. Locked bodies sit in their group beside local ones; clients see only the bare name |
 | `skills/assurance/e2e-verification/SKILL.md`, `skills/assurance/e2e-verification/scripts/` | Targeted E2E runs on a feature, bugfix, PR, or path over the project's `verify-<app>` skill, with real screenshots per test, and the run kit and report builder it copies |
 | `clients/` | Client settings, the Codex and OpenCode compaction hook files, Codex's command rules and OpenCode's permission rules, and the role assignments the installer reconciles |
@@ -93,7 +94,25 @@ Some changes cannot be settled by the checks above, because they act on machine 
 
 `go run ./cmd/harness install --skip-packages` is the same provisioning surface without the package step. The binary embeds the floor, skills, roles, client settings, and aliases, so `go run` installs the working tree: it copies those assets into each client, records every copy in `~/.harness/state.json`, and copies itself to `~/.local/bin/harness`. An edit under those paths reaches the clients on the next install, not live. It still rewrites the Engram and agent-browser MCP registrations and the tracked client settings, so `engram`, `agent-browser`, and `claude` must already be installed. Run it when copies need reconciling, not as a validation step.
 
-Session-population measurement for a harness change is `harness bench --split <commit-date> --since <window-start>`, documented in `bench/README.md`.
+Session-population measurement for a harness change is `harness bench --split <commit-date> --since <window-start>`; `harness bench --help` lists its options.
+
+## Where an instruction lives
+
+Every instruction has one home. Before you add or change one, find its home and every existing copy, change it in the home, and delete the copies.
+
+| The instruction | Its home |
+| --- | --- |
+| Must hold on every turn, in every repository, whether or not a skill runs | The floor (`FLOOR.md`, installed as each client's global instruction file) |
+| Applies when a kind of situation comes up (debugging, a measured number, writing a test) | That `principle-*` skill, which `/work`'s trigger list names |
+| Decides which procedure a task follows and the order skills run in | `/work` and its playbooks |
+| Is a step in one procedure | The skill that owns that procedure |
+| Is a step several skills share | One support skill that the others name |
+| Is a fact about one repository (commands, paths, conventions) | That repository's `AGENTS.md` |
+| Explains the harness to a person | Human docs, never read as instructions |
+
+A rule that seems to need two homes belongs in the more general one, and the other refers to it by name. A rule that tooling can enforce (a client permission rule, a hook, a test) lives in the tooling, and the prose keeps at most its reason.
+
+Human docs are the `README` files and the prose guides under `docs/`. Keep them accurate when a change alters what they describe, but take no instruction from them. `docs/adr/`, `docs/agents/`, and agent-read data such as a `verify-<app>/features/README.md` feature map are not human docs.
 
 ## Conventions
 

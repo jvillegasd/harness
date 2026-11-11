@@ -2,7 +2,9 @@
 
 Shared floor rules, skills, and tools for Claude Code, Codex, and OpenCode.
 
-Ask the agent to do the work. It inspects the code, makes changes on a task branch, runs checks, and reports the result. Skills help with specific jobs; they are not a required sequence.
+Ask the agent to do the work. It inspects the code, makes changes on a task branch, runs checks, and reports the result. Skills help with specific jobs; they are not a required sequence. When you want more rigor, start the task with `/work` (see [Work mode](#work-mode)).
+
+This README and the guides under `docs/` are written for you. Agents keep them accurate when they change what the guides describe, but never take them as instructions; what agents follow lives in `FLOOR.md`, the skills, and each repository's `AGENTS.md`.
 
 ## Install
 
@@ -36,6 +38,8 @@ See [installation and your files](docs/installation.md) for how installation and
 
 | Need | Ask for |
 | --- | --- |
+| Run a task to a playbook, with every step visible | `/work <task>` |
+| Leave a task running while you step away | `/work autopilot, I'm stepping away: <goal>` |
 | Implement a feature, fix, or one ticket with TDD | `/implement <task or ticket>` |
 | Fix something broken or slow | Diagnosis and a fix |
 | Settle an unclear idea | `/grill-with-docs` |
@@ -58,10 +62,10 @@ stateDiagram-v2
     state "Ready to merge" as MergeReady
     state "Needs your input" as Waiting
 
-    [*] --> Local: Plain request or /implement
+    [*] --> Local: Plain request, /implement, or /work
     Local --> Local: Agent fixes failed checks
     Local --> LocalReady: Agent completes work and local checks
-    LocalReady --> Preparing: You request publication
+    LocalReady --> Preparing: You request publication, or your /work autopilot grant covers it
     Preparing --> PR: Agent satisfies local checks and applicable review, then publishes
     PR --> PR: Agent fixes failed checks or addresses feedback
     PR --> MergeReady: Required checks and review satisfied
@@ -82,6 +86,12 @@ stateDiagram-v2
 Review defaults to `medium`. Set it yourself with `harness review level off|medium|high`. Medium sends PRs beyond docs or tests, and local changes with a concrete risk, to one independent reviewer; High adds one or two specialists where the change needs them. Every reviewer runs on the model you set for the `reviewer` role with `harness models`, unless you set a review lens on its own. Asking for a review always runs one at your level. Only problems a run proves come to you; the rest are counted as dropped. See [how review works](docs/review.md) for what happens during a review, and [`harness review`](docs/cli.md#review-commands) for reading the results.
 
 Read [the workflow guide](docs/workflow.md) for optional planning, builds, and tracker setup, or [the delegation guide](docs/subagents.md) for worker roles.
+
+## Work mode
+
+Without `/work`, the agent follows the floor and reaches for skills on its own. With `/work <task>`, it matches the task to one playbook (bug fix, feature, investigate, refactor, perf, design, or large), copies the playbook's steps into its todo list, and works through them. A step it decides not to take stays in the list with `skip: <reason>`, so you see what was left out and why. For a code change, it maps the change with `change-map` and runs `review` at your review level before handing off. Merging still goes through you or `/land`, and a settled spec still goes through `/build`. Work mode lasts the conversation; say "new task" to match again or "stop work mode" to end it. Only you can start it.
+
+**Autopilot.** Add "autopilot" or "I'm stepping away" with a goal, such as `/work autopilot, max 3h: make the export job finish under a minute`. The agent states a pass/fail definition of done (or proposes one), then works without checkpoints until it is met or the time ceiling (2 hours unless you set one) runs out. It may commit, push, and open ready pull requests, including separate ones for fixes it finds along the way, but it never merges, writes to the tracker, or messages anyone. Decisions only you could make are taken with the simplest safe default and listed at the top of its report, each with what to tell it to switch. Without a goal it does not start.
 
 ## Models and aliases
 
@@ -128,7 +138,8 @@ Review upstream changes before committing. Locked third-party skills change thro
 
 | Path | Purpose |
 | --- | --- |
-| `FLOOR.md` | The rules every client holds on every turn: authority, preservation, secrets, untrusted text, and prose |
+| `FLOOR.md` | The rules every client holds on every turn: authority, preservation, secrets, untrusted text, working, and prose |
+| `GLOSSARY.md`, `docs/adr/` | The harness's terms, and the decisions behind its shape |
 | `cmd/harness/`, `internal/` | CLI and implementation |
 | `skills/` | Skills, grouped by purpose |
 | `clients/`, `roles/` | Client settings and role definitions |
@@ -147,3 +158,11 @@ git diff --cached --check
 ```
 
 [AGENTS.md](AGENTS.md) describes the test boundaries. Tests check executable behavior, not whether an agent follows prose. Live behavioral evaluation needs an explicitly authorized model budget. [Bench](bench/README.md) compares session cost and friction; it does not prove correctness.
+
+## Acknowledgments
+
+This harness takes inspiration from these projects:
+
+- [Matt Pocock's skills](https://github.com/mattpocock/skills), the source of several locked skills, among them `tdd`, `diagnosing-bugs`, `grill-with-docs`, and `domain-modeling`.
+- [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai), which configures several coding agents from one setup, as this installer does.
+- [pstack](https://github.com/backnotprop/pstack), the source of the principle skills and the verification skills, and the model for work mode's playbooks and autopilot.
