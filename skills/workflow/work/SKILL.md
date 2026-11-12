@@ -33,7 +33,7 @@ Work mode lasts the conversation. "New task" means match again from step 1, and 
 | A shape or interface to choose, with no precedent | [design](playbooks/design.md) |
 | A prototype, spike, or mock-up | `proto`'s steps |
 | A spec or plan for a change, before anything is built | `spec`'s steps. When product decisions are still open, reply that `/grill-with-docs` settles them first, and stop; under autopilot they are `agent` decisions instead |
-| A ticket or a production error to turn into a plan brief, before any fix | `triage`'s steps |
+| A ticket or a production error to turn into a plan brief, with no fix requested | `triage`'s steps |
 | Tickets from a spec, a triage brief, research findings, or a request | `tickets`' steps |
 | A settled spec or set of tickets to build | `build`'s steps |
 | Review a diff, a branch, or a PR | `review`'s steps, at the depth the human asked |
