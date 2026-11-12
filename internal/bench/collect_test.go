@@ -294,15 +294,18 @@ func TestCompactionSummaryIsNotATurn(t *testing.T) {
 	}
 }
 
-// `/work fix the flaky test` carries the request in the command's arguments.
-// It is one command and no turn, like every slash-command entry, in both the
-// message-first form a skill writes and the name-first form a built-in writes.
-func TestSlashCommandWithArgumentsIsACommandNotATurn(t *testing.T) {
+// `/work fix the flaky test` carries the request in the command's arguments,
+// so it is a command and a turn, in both the message-first form a skill writes
+// and the name-first form a built-in writes. A bare command stays no turn:
+// counted otherwise, moving a request behind `/work` would lower turns by itself.
+func TestSlashCommandWithArgumentsIsAlsoATurn(t *testing.T) {
 	home := t.TempDir()
 	body := strings.Join([]string{
 		`{"type":"user","timestamp":"2026-01-01T09:00:00Z","message":{"content":"<command-message>work</command-message>\n<command-name>/work</command-name>\n<command-args>fix the flaky login test</command-args>"}}`,
 		`{"type":"user","timestamp":"2026-01-01T09:00:01Z","isMeta":true,"message":{"content":[{"type":"text","text":"Base directory for this skill: /tmp/skills/work"}]}}`,
 		`{"type":"user","timestamp":"2026-01-01T09:05:00Z","message":{"content":"<command-name>/compact</command-name>\n<command-message>compact</command-message>\n<command-args>keep the plan</command-args>"}}`,
+		`{"type":"user","timestamp":"2026-01-01T09:06:00Z","message":{"content":"<command-name>/clear</command-name>\n<command-message>clear</command-message>\n<command-args></command-args>"}}`,
+		`{"type":"user","timestamp":"2026-01-01T09:07:00Z","message":{"content":"<command-message>land</command-message>\n<command-name>/land</command-name>"}}`,
 	}, "\n") + "\n"
 	writeTranscript(t, filepath.Join(home, ".claude", "projects", "-tmp-acme-app", "work.jsonl"), body)
 	got, err := collect(home, []string{"claude"}, nil, nil)
@@ -312,7 +315,7 @@ func TestSlashCommandWithArgumentsIsACommandNotATurn(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("collected %d sessions, want 1", len(got))
 	}
-	for metric, want := range map[string]float64{"turns": 0, "commands": 2} {
+	for metric, want := range map[string]float64{"turns": 2, "commands": 4} {
 		if v, ok := got[0].metric(metric); !ok || v != want {
 			t.Fatalf("%s = %v, want %v", metric, v, want)
 		}

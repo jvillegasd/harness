@@ -32,7 +32,7 @@ Bench counts eight things per session and reports the median across all sessions
 
 | Metric | Kind | What it counts |
 | --- | --- | --- |
-| `turns` | Cost | Messages a person typed. Anything the client writes into its own transcript is not a turn (see below). |
+| `turns` | Cost | Messages a person typed, including a slash command that carries arguments, such as `/work fix the flaky test`. Anything the client writes into its own transcript is not a turn (see below). |
 | `tool_calls` | Cost | Tool calls the agent made. |
 | `minutes` | Cost | Time from the first timestamped entry to the last. |
 | `commands` | What the harness aims to move | Slash commands, including skills called as `/name`, so you can see whether people use explicit commands. |
@@ -41,7 +41,7 @@ Bench counts eight things per session and reports the median across all sessions
 | `denials` | Friction | Times a person refused a tool call. |
 | `errors` | Friction | Tool calls that failed. A refusal counts as a denial, never also as an error. |
 
-**What does not count as a turn:** tool results, slash-command entries (in either form), `<task-notification>` messages, local-command output, `isMeta` notices, compaction summaries (`isCompactSummary`), injected `<system-reminder>` blocks, and interrupt markers. The client writes all of these, not the person.
+**What does not count as a turn:** tool results, slash-command entries with no arguments (in either form), `<task-notification>` messages, local-command output, `isMeta` notices, compaction summaries (`isCompactSummary`), injected `<system-reminder>` blocks, and interrupt markers. The client writes all of these, not the person.
 
 **A note on `delegation`:** a role delegated through T3 Code's `delegate_task` runs as its own session, not as a subagent. It never shows up in `delegation`. Instead it joins the set of sessions that every median is taken over.
 
