@@ -158,6 +158,15 @@ func TestReviewRemoveCommand(t *testing.T) {
 		t.Errorf("a second remove exited %d with %q, want 0 and nothing", r.code, r.stdout)
 	}
 
+	for _, name := range []string{".", ".."} {
+		if r := reviewRun(t, dir, data, "remove", "--branch", name); r.code != 2 || r.stderr == "" {
+			t.Errorf("remove --branch %s exited %d with %q, want 2 and a diagnostic", name, r.code, r.stderr)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(kept, "ledger.jsonl")); err != nil {
+		t.Fatalf("a dot-segment branch name deleted another branch's ledger: %v", err)
+	}
+
 	if err := os.WriteFile(filepath.Join(kept, "worktree.txt"), []byte("/tmp/wt\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

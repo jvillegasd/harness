@@ -150,7 +150,7 @@ func TestReadTranslatesEarlierDepthNames(t *testing.T) {
 // branchDir writes a branch directory holding a ledger and a saved patch, as a review leaves it.
 func branchDir(t *testing.T, branches, name string) string {
 	t.Helper()
-	dir := filepath.Join(branches, name)
+	dir := filepath.Join(branches, "branches", name)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestRemoveBranchDeletesOnlyItsDirectory(t *testing.T) {
 }
 
 func TestRemoveBranchWithNoDirectoryIsDone(t *testing.T) {
-	removed, err := RemoveBranch(filepath.Join(t.TempDir(), "never-reviewed", "ledger.jsonl"))
+	removed, err := RemoveBranch(filepath.Join(t.TempDir(), "branches", "never-reviewed", "ledger.jsonl"))
 	if err != nil || removed {
 		t.Fatalf("RemoveBranch = %v, %v; want nothing removed and no error", removed, err)
 	}
@@ -200,5 +200,27 @@ func TestRemoveBranchRefusesARecordedWorktree(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			t.Fatalf("%s was deleted by a refused removal: %v", f, err)
 		}
+	}
+}
+
+// A dot segment is the one name path-escaping leaves alone, and it would point the ledger, and a removal, at a parent directory.
+func TestFileRejectsDotSegments(t *testing.T) {
+	for _, branch := range []string{".", ".."} {
+		if _, err := File(t.TempDir(), branch); !errors.Is(err, ErrInvalid) {
+			t.Errorf("File(%q) = %v, want ErrInvalid", branch, err)
+		}
+	}
+}
+
+func TestRemoveBranchRefusesOutsideTheBranchesDirectory(t *testing.T) {
+	root := t.TempDir()
+	file := branchDir(t, root, "feat")
+	// The path a ".." branch would have resolved to: the directory holding every branch.
+	removed, err := RemoveBranch(filepath.Join(root, "branches", "ledger.jsonl"))
+	if !errors.Is(err, ErrInvalid) || removed {
+		t.Fatalf("RemoveBranch = %v, %v; want ErrInvalid and nothing removed", removed, err)
+	}
+	if _, err := os.Stat(file); err != nil {
+		t.Fatalf("a branch's ledger was deleted: %v", err)
 	}
 }

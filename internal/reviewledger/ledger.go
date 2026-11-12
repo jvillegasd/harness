@@ -118,6 +118,10 @@ func File(root, branch string) (string, error) {
 	if branch == "" {
 		return "", fmt.Errorf("%w: no branch is checked out; pass --branch", ErrInvalid)
 	}
+	// Escaping leaves a dot segment as it is, and it would resolve to a parent of the branch directories.
+	if branch == "." || branch == ".." {
+		return "", fmt.Errorf("%w: %q is not a branch name", ErrInvalid, branch)
+	}
 	common, err := git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
 		return "", err
@@ -128,6 +132,10 @@ func File(root, branch string) (string, error) {
 // RemoveBranch deletes the branch directory that holds the ledger file, with its patches, and reports whether there was one. It refuses while worktree.txt is there: that file is the only record of an executor worktree review could not retire, and of where its work was saved.
 func RemoveBranch(file string) (bool, error) {
 	dir := filepath.Dir(file)
+	// Only a directory directly under branches/ is one branch's; anything else holds more than this removal owns.
+	if filepath.Base(filepath.Dir(dir)) != "branches" {
+		return false, fmt.Errorf("%w: %s is not a branch's review directory", ErrInvalid, dir)
+	}
 	if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	} else if err != nil {
