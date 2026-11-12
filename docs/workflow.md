@@ -108,19 +108,19 @@ stateDiagram-v2
     state "Ready locally" as Ready
     state "Handed to /land" as Routed
 
-    [*] --> Matched: You run /work with a task, and it matches a playbook or a skill's steps
+    [*] --> Matched: You run /work
     [*] --> Routed: The task is a merge
-    Matched --> Steps: Agent copies every step, with skip lines for the ones it leaves out
+    Matched --> Steps: Steps copied, skips marked
     Steps --> Working
-    Working --> Reviewed: Code change runs change-map, then review at your level
+    Working --> Reviewed: Code change
     Working --> Answered: Investigation, review, spec, or tickets
-    Working --> Matched: Design picks a shape, then matches feature or refactor
+    Working --> Matched: Design chose a shape
     Reviewed --> Ready
-    Reviewed --> Opened: Delivery already authorized, so the agent runs open-pr
+    Reviewed --> Opened: You already asked for a PR
     Opened --> [*]
-    Ready --> [*]: You ask to publish, or keep it local
-    Answered --> [*]: You start the change as a new task
-    Answered --> Matched: You say go on a spec, so it matches as a build
+    Ready --> [*]: Publish it, or keep it local
+    Answered --> [*]: You start a new task
+    Answered --> Matched: You say go on a spec
     Routed --> [*]
 ```
 
@@ -157,13 +157,13 @@ stateDiagram-v2
     [*] --> Framed: You give a goal and step away
     [*] --> NoGoal: You give no goal
     NoGoal --> [*]: Agent asks for one
-    Framed --> Iterating: Definition of done, ceiling, and your words recorded
-    Iterating --> Iterating: Keep a change that advanced, revert one that did not
+    Framed --> Iterating: Goal and time limit written down
+    Iterating --> Iterating: Keep what helps, revert what does not
     Iterating --> Replanning: Stuck
     Replanning --> Iterating
-    Iterating --> Done: Definition of done met and every PR green
-    Iterating --> Paused: Time ceiling reached, so a wip commit and next action
-    Iterating --> RuledOut: Evidence rules out the goal itself
+    Iterating --> Done: Goal met, every PR green
+    Iterating --> Paused: Time is up
+    Iterating --> RuledOut: The goal turns out impossible
     Done --> [*]: You read the report and merge
     Paused --> [*]: You resume or stop it
     RuledOut --> [*]: You read the evidence
@@ -242,13 +242,13 @@ stateDiagram-v2
     state "ready-for-human" as Handoff
     state "Closed with merge evidence" as Closed
 
-    Blocked --> Ready: Reconciler confirms all blockers have merge evidence
-    Ready --> Active: Main agent claims ticket with your authorization
-    Active --> Handoff: Main agent hands off PR with authorized tracker write
-    Handoff --> Closed: You merge, invoke /land, and main agent confirms merge and ticket closure
-    Ready --> Blocked: Reconciler finds an unsatisfied dependency
-    Active --> Blocked: Reconciler finds an unsatisfied dependency
-    Handoff --> Blocked: Reconciler finds an unsatisfied dependency
+    Blocked --> Ready: Every blocker merged
+    Ready --> Active: Agent claims it, with your OK
+    Active --> Handoff: Agent opens the PR
+    Handoff --> Closed: You merge and run /land
+    Ready --> Blocked: A blocker is not merged
+    Active --> Blocked: A blocker is not merged
+    Handoff --> Blocked: A blocker is not merged
     Closed --> [*]
 ```
 
@@ -290,20 +290,20 @@ A small task needs no recovery document.
 
 ```mermaid
 stateDiagram-v2
-    state "Retained work" as Retained
-    state "Context and Git inspected" as Inspected
+    state "Earlier work" as Retained
+    state "Notes and branch read" as Inspected
     state "Needs your input" as Waiting
-    state "Next action established" as Next
-    state "Current evidence checked" as Checked
+    state "Next step found" as Next
+    state "Stale checks rerun" as Checked
     state "Work resumed" as Resumed
 
     [*] --> Retained: You ask to resume
-    Retained --> Inspected: Main agent reads context and inspects branch and working changes
-    Inspected --> Waiting: Consequential context is missing or conflicting
-    Waiting --> Inspected: You resolve the gap
-    Inspected --> Next: Main agent reconciles requirements with current Git state and any recorded playbook step
-    Next --> Checked: Main agent rechecks stale evidence needed for the next action
-    Checked --> Resumed: Main agent continues within existing authorization
+    Retained --> Inspected: Agent reads the task document and the branch
+    Inspected --> Waiting: Something important is missing or conflicts
+    Waiting --> Inspected: You fill the gap
+    Inspected --> Next: Agent matches the plan to the code
+    Next --> Checked: Agent reruns checks the next step needs
+    Checked --> Resumed: Agent continues with the permission it had
 ```
 
 The [continuity skill](../skills/support/continuity/SKILL.md) has the full recovery details.

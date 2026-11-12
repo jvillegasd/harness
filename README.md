@@ -61,23 +61,23 @@ stateDiagram-v2
     state "Ready to merge" as MergeReady
     state "Needs your input" as Waiting
 
-    [*] --> Local: Plain request, /implement, or /work
-    Local --> Local: Agent fixes failed checks
-    Local --> LocalReady: Agent completes work and local checks
-    LocalReady --> Preparing: You request publication, or your /work autopilot grant covers it
-    Preparing --> PR: Agent satisfies local checks and applicable review, then publishes
-    PR --> PR: Agent fixes failed checks or addresses feedback
-    PR --> MergeReady: Required checks and review satisfied
-    MergeReady --> PR: New changes require checks or review
-    MergeReady --> Merged: You merge, or invoke /land merge and the agent rechecks the gates and merges
-    Merged --> [*]: You invoke /land and the agent cleans up
+    [*] --> Local: You ask for work
+    Local --> Local: A check fails, agent fixes it
+    Local --> LocalReady: Work done, checks pass
+    LocalReady --> Preparing: You ask for a PR, or autopilot opens one
+    Preparing --> PR: Checks and review pass, PR opens
+    PR --> PR: Agent fixes checks or feedback
+    PR --> MergeReady: Checks and review pass
+    MergeReady --> PR: New changes need checks
+    MergeReady --> Merged: You merge, or run /land merge
+    Merged --> [*]: You run /land to clean up
 
-    Local --> Waiting: Agent needs a decision or required check is unavailable
-    Preparing --> Waiting: Agent needs a decision or required check or review is unavailable
-    PR --> Waiting: Agent needs a decision or required check or review is unavailable
-    Waiting --> Local: You resolve blocker and agent resumes local work
-    Waiting --> Preparing: You resolve blocker and agent resumes PR preparation
-    Waiting --> PR: You resolve blocker and agent resumes PR work
+    Local --> Waiting: Agent is blocked
+    Preparing --> Waiting: Agent is blocked
+    PR --> Waiting: Agent is blocked
+    Waiting --> Local: You unblock it
+    Waiting --> Preparing: You unblock it
+    Waiting --> PR: You unblock it
 ```
 
 **"Ready locally" is a finished result.** If you do not want a pull request, stop there. You can ask for one with the original task or at any time later. When work is waiting on you, it picks up again at the stage that was blocked. The [workflow guide](docs/workflow.md#local-work-and-delivery) describes each stage.

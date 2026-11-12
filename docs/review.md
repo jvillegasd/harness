@@ -28,9 +28,9 @@ stateDiagram-v2
   state "Medium: one general reviewer" as Medium
   state "High: general reviewer + specialists" as High
 
-  [*] --> Skipped: level is off, or the change is too small to trigger one
-  [*] --> Medium: level is medium, or you ask while it is off
-  [*] --> High: level is high
+  [*] --> Skipped: Level off, or change too small
+  [*] --> Medium: Level medium, or you ask while off
+  [*] --> High: Level high
   Medium --> Reviewed
   High --> Reviewed
   Skipped --> [*]
@@ -74,13 +74,13 @@ stateDiagram-v2
   state "Noted only" as Advisory
 
   [*] --> Reported
-  Reported --> Advisory: style nit, or a problem that existed before this change
-  Reported --> Confirmed: a test reproduces it, or two instructions contradict each other
-  Reported --> Dropped: no run proved it, counted in the report
-  Confirmed --> Fixed: fix committed, its test now passes
-  Fixed --> [*]: Medium, the passing test is the proof
-  Fixed --> Rechecked: High, a reviewer confirms the fix holds
-  Fixed --> Decision: the recheck's concern reproduces on the fixed code
+  Reported --> Advisory: Style nit, or an older problem
+  Reported --> Confirmed: A test reproduces it, or two rules conflict
+  Reported --> Dropped: Nothing proved it
+  Confirmed --> Fixed: Fix passes its test
+  Fixed --> [*]: Medium, the test is the proof
+  Fixed --> Rechecked: High, a reviewer checks the fix
+  Fixed --> Decision: The recheck finds a real problem
   Rechecked --> [*]
   Dropped --> [*]
   Advisory --> [*]
