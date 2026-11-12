@@ -14,23 +14,25 @@ Requires macOS or Linux, zsh, Homebrew, and Go 1.26 or newer.
 go run ./cmd/harness install
 ```
 
-The installer installs missing tools, copies the floor, skills, and role agents into the clients, configures Engram and agent-browser, and adds shell aliases. Sign in to each client yourself; installation does not authenticate accounts.
+The installer installs missing tools, copies the floor, skills, and role agents into the clients, configures Engram and agent-browser, and adds shell aliases. A tool already on `PATH` is left as it is, so Homebrew and the network are used only for a missing one. Sign in to each client yourself; installation does not authenticate accounts.
 
-To apply checkout changes without installing packages:
-
-```sh
-go run ./cmd/harness install --skip-packages
-```
-
-This still changes live client settings and MCP registrations. Engram, agent-browser, and Claude Code must already be installed. Editing this repository alone does not update installed clients.
-
-The installed binary is `~/.local/bin/harness`. It carries the assets it was built from. Managed files are recorded in `~/.harness/state.json`; collisions are archived under `~/.dotfiles-backups/harness/`. Private entries are left alone. Tracked settings are reapplied on installation, so some in-app preferences may be overwritten.
+To install only some components, or only into some clients, name them:
 
 ```sh
-harness install --uninstall
+go run ./cmd/harness install skills agents
+go run ./cmd/harness install --client claude
 ```
 
-Uninstall asks first, preserves edited copies, and leaves installed packages and user data. Use `--help` for client and component filters. `--no-backup` deletes installation collisions; `--clear-backups` deletes archives. Both are destructive.
+The components are `clients`, `packages`, `mcps`, `skills`, `agents`, `floor`, `settings`, and `aliases`, and `harness update` and `harness uninstall` take the same names. Each run still changes live client configuration, and editing this repository alone does not update installed clients.
+
+The installed binary is `~/.local/bin/harness`. It carries the assets it was built from. Managed config is recorded in `~/.harness/state.json`, along with each tool the installer added; collisions are archived under `~/.dotfiles-backups/harness/`. Private entries are left alone. Tracked settings are reapplied on installation, so some in-app preferences may be overwritten.
+
+```sh
+harness uninstall          # managed config only; tools stay
+harness uninstall --all    # also the tools the harness installed, then the harness itself
+```
+
+Uninstall asks first, preserves edited copies, removes only the tools the harness recorded installing, and never deletes a tool's data. `--no-backup` on install deletes collisions; `harness uninstall --clear-backups` deletes archives. Both are destructive. The [CLI reference](docs/cli.md#install-and-uninstall) covers components and clients in full.
 
 See [installation and your files](docs/installation.md) for how installation and removal handle existing copies.
 
@@ -111,14 +113,15 @@ The installer sources `aliases.sh` from `~/.zshrc`. These launchers grant broad 
 `harness install` installs missing tools and reconciles Harness assets. It leaves installed package versions alone. To upgrade installed tools explicitly:
 
 ```sh
-harness update            # All groups
+harness update            # Every component with a tool or upstream source
 harness update clients    # Claude Code, Codex, OpenCode
 harness update packages   # Node, gh, uv
 harness update mcps       # Engram, agent-browser, registrations
 harness update skills     # Locked upstream skills and lockfile
+harness update clients --client codex   # Codex only
 ```
 
-A bare update runs packages, clients, MCPs, then skills. It discovers ownership before upgrading and inventories Homebrew once. Upgrades name individual formulae or casks and preserve the installation and release channels. Orca-managed clients stay owned by Orca. Recognized native Claude Code and OpenCode installations use vendor updaters. Stable npm Codex installations update through their owning prefix; prerelease or ambiguous installations need manual updates.
+Name several components to update them together. A bare update runs packages, clients, MCPs, then skills. It discovers ownership before upgrading and inventories Homebrew once. Upgrades name individual formulae or casks and preserve the installation and release channels. Orca-managed clients stay owned by Orca. Recognized native Claude Code and OpenCode installations use vendor updaters. Stable npm Codex installations update through their owning prefix; prerelease or ambiguous installations need manual updates.
 
 MCP updates refresh agent-browser's browser runtime and client registrations without reinstalling the Harness floor, settings, skills, or roles. See the [CLI reference](docs/cli.md#update-installed-tools) for update behavior and failure handling.
 

@@ -25,9 +25,14 @@ const assetsEnv = "HARNESS_ASSETS"
 const stateVersion = 1
 
 var (
-	allClients    = []string{"claude", "codex", "opencode"}
-	allComponents = []string{"agents", "aliases", "mcp", "policy", "settings", "skills"}
+	allClients = []string{"claude", "codex", "opencode"}
+	// allComponents is every name install, update, and uninstall select by; configComponents are the ones that write managed config into a client. The tools table names the components that put tools on the machine, and mcps is both.
+	allComponents    = []string{"clients", "packages", "mcps", "skills", "agents", "floor", "settings", "aliases"}
+	configComponents = []string{"agents", "aliases", "floor", "mcps", "settings", "skills"}
 )
+
+// renamed maps a component name an older install recorded to its current one.
+var renamed = map[string]string{"policy": "floor", "mcp": "mcps"}
 
 // entry is one managed copy: where it was written, what it belongs to, and the digest it had when written, which is how a later run tells the harness's copy from a user's edit.
 type entry struct {
@@ -43,16 +48,23 @@ type state struct {
 	Version   int                 `json:"version"`
 	Installed map[string][]string `json:"installed"`
 	Files     []entry             `json:"files"`
+	// Tools maps each tool this harness installed to how it installed it, which is the only record an uninstall removes a tool by. A tool present before the harness has no entry.
+	Tools map[string]string `json:"tools,omitempty"`
 	// Models is `harness models`' choice and Review is `harness review level`'s, both carried through untouched so an install never drops them.
 	Models json.RawMessage `json:"models,omitempty"`
 	Review json.RawMessage `json:"review,omitempty"`
 }
 
-// keepChoices copies the human's stored choices from the state on disk into s, so a choice made while this run worked is kept.
-func (in *installer) keepChoices(s state) state {
-	now := in.loadState()
-	s.Models, s.Review = now.Models, now.Review
-	return s
+// updateState applies change to the state on disk and writes it back at once, so the human's choices and every record another step wrote this run are kept.
+func (in *installer) updateState(change func(*state)) {
+	s := in.loadState()
+	change(&s)
+	in.saveState(s)
+}
+
+// empty reports whether the state records nothing the harness would still remove: no client keeps a component and no tool is recorded.
+func (s state) empty() bool {
+	return len(s.Installed) == 0 && len(s.Tools) == 0
 }
 
 // codexHome is ~/.codex whatever CODEX_HOME says, because a launcher may point CODEX_HOME at a home of its own in the terminals it opens.
@@ -73,7 +85,7 @@ func (in *installer) statePath() string { return filepath.Join(in.stateDir(), "s
 func (in *installer) aliasesPath() string { return filepath.Join(in.stateDir(), "aliases.sh") }
 
 func (in *installer) loadState() state {
-	s := state{Version: stateVersion, Installed: map[string][]string{}}
+	s := state{Version: stateVersion, Installed: map[string][]string{}, Tools: map[string]string{}}
 	data, err := os.ReadFile(in.statePath())
 	if errors.Is(err, fs.ErrNotExist) {
 		return s
@@ -85,7 +97,30 @@ func (in *installer) loadState() state {
 	if s.Installed == nil {
 		s.Installed = map[string][]string{}
 	}
+	if s.Tools == nil {
+		s.Tools = map[string]string{}
+	}
+	// Older installs recorded policy and mcp; reading them under the current names migrates the file on its next write.
+	for client, components := range s.Installed {
+		for i, c := range components {
+			if now, ok := renamed[c]; ok {
+				components[i] = now
+			}
+		}
+		s.Installed[client] = slices.Compact(sorted(components))
+	}
+	for i := range s.Files {
+		if now, ok := renamed[s.Files[i].Component]; ok {
+			s.Files[i].Component = now
+		}
+	}
 	return s
+}
+
+func sorted(list []string) []string {
+	out := slices.Clone(list)
+	slices.Sort(out)
+	return out
 }
 
 func (in *installer) saveState(s state) {
@@ -200,9 +235,9 @@ func (in *installer) desired() []entry {
 		add(skill.Dir, filepath.Join(in.home, ".agents", "skills", skill.Name), "skills", "claude", "codex", "opencode")
 		add(skill.Dir, filepath.Join(in.home, ".claude", "skills", skill.Name), "skills", "claude")
 	}
-	add(in.dir.Floor(), filepath.Join(in.home, ".claude", "CLAUDE.md"), "policy", "claude")
-	add(in.dir.Floor(), filepath.Join(in.codexHome(), "AGENTS.md"), "policy", "codex")
-	add(in.dir.Floor(), filepath.Join(in.config, "opencode", "AGENTS.md"), "policy", "opencode")
+	add(in.dir.Floor(), filepath.Join(in.home, ".claude", "CLAUDE.md"), "floor", "claude")
+	add(in.dir.Floor(), filepath.Join(in.codexHome(), "AGENTS.md"), "floor", "codex")
+	add(in.dir.Floor(), filepath.Join(in.config, "opencode", "AGENTS.md"), "floor", "opencode")
 	for _, pair := range in.agentRoots() {
 		for _, definition := range entries(filepath.Join(in.agentOut(), pair[0])) {
 			add(definition, filepath.Join(pair[1], filepath.Base(definition)), "agents", pair[0])

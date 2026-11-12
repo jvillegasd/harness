@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"runtime"
 	"slices"
 	"strings"
 
@@ -25,42 +24,68 @@ const (
 	agentBrowserFormula = "agent-browser"
 )
 
-const usage = `Usage: harness install [--skip-packages] [--no-backup]
-       harness install --uninstall [--client <name>]... [--component <name>]... [--yes]
-       harness install --clear-backups
+const usage = `Usage: harness install [<component>...] [--client <name>]... [--no-backup]
 
-  --skip-packages
-                 Reconcile the floor, skill, and role agent copies, tracked
-                 client settings, and Engram and agent-browser registrations.
-                 Packages are not installed, so Engram, agent-browser, and
-                 Claude Code must already be installed.
-  --no-backup    Delete files at managed paths instead of archiving them in
-                 ~/.dotfiles-backups. Private skills and hand-edited configs
-                 at those paths will be lost.
-  --uninstall    Remove the harness-managed configuration recorded in
-                 ~/.harness/state.json, including copied files, tracked Claude
-                 settings, the ~/.zshrc alias block, and Engram and
-                 agent-browser registrations. Edited copies stay. Binaries,
-                 packages, ~/.engram, ~/.agent-browser, and ~/.dotfiles-backups
-                 are left alone. Prompts before removing anything.
-  --client       With --uninstall, limit it to claude, codex, or opencode;
-                 repeatable.
-  --component    With --uninstall, limit it to agents, aliases, mcp,
-                 policy (the floor), settings, or skills; repeatable. A copy another
-                 installed client still uses stays.
-  --yes          With --uninstall, skip the confirmation.
-  --clear-backups
-                 Delete every archive under ~/.dotfiles-backups/harness/.
-                 These archives hold files displaced from managed paths.
-                 Nothing else in ~/.dotfiles-backups is touched. Runs alone.
+Install the named components, or every component when none is named. Each
+choice applies to this run only.
 
-Install and uninstall run from any directory. An install copies this binary
-to ~/.local/bin/harness, where the Claude Code status line runs it, copies the
-assets it was built with into each client, and records every copy in
+Components:
+  clients   Claude Code, Codex, and OpenCode, when missing
+  packages  node, gh, and uv, when missing
+  mcps      Engram and agent-browser when missing, and their registration in
+            each client; also reconciles settings, which Engram's setup rewrites
+  skills    The skills, copied into each client
+  agents    The role agents, rendered for each client
+  floor     The floor, as each client's global instructions
+  settings  Tracked client settings, compaction hooks, and command rules
+  aliases   The yolo aliases and their ~/.zshrc line
+
+  --client     Limit the run to claude, codex, or opencode; repeatable.
+               Without it, the run configures every client that is installed
+               or that this run installs.
+  --no-backup  Delete files at managed paths instead of archiving them in
+               ~/.dotfiles-backups. Private skills and hand-edited configs at
+               those paths will be lost.
+
+A tool counts as installed when it is on PATH, however it got there, and is
+never reinstalled or upgraded; Homebrew and the network are used only for a
+missing one. The install records each tool it adds, which is what
+harness uninstall removes. It also copies this binary to ~/.local/bin/harness,
+where the Claude Code status line runs it, and records every managed copy in
 ~/.harness/state.json. Codex is always configured in ~/.codex, whatever
 CODEX_HOME is set to. Set HARNESS_ASSETS to a directory to install that tree
 instead; it must carry skills-lock.json, which tells an install which skills
-are locally authored and so checked for invocation guards.
+are locally authored and so checked for invocation guards. Install runs from
+any directory.
+
+Details: docs/cli.md#install-and-uninstall
+`
+
+const uninstallUsage = `Usage: harness uninstall [<component>...] [--client <name>]... [--all] [--yes]
+       harness uninstall --clear-backups
+
+Remove the named components. With none named, remove the managed config of
+every component (skills, agents, floor, settings, aliases, and the MCP
+registrations) and leave every tool installed.
+
+  --client     Limit it to claude, codex, or opencode; repeatable. A copy or
+               tool another client still uses stays.
+  --all        Remove every component, the tools included, and then
+               ~/.local/bin/harness. Not combined with component names.
+  --yes        Skip the confirmation.
+  --clear-backups
+               Delete every archive under ~/.dotfiles-backups/harness/.
+               These archives hold files displaced from managed paths.
+               Nothing else in ~/.dotfiles-backups is touched. Runs alone.
+
+Naming clients, packages, or mcps removes the tools the harness recorded
+installing, the way it installed them. A tool that was on the machine before
+the harness stays. No uninstall deletes a tool's data (~/.engram,
+~/.agent-browser, ~/.claude, ~/.codex) or ~/.dotfiles-backups. Edited copies
+stay. ~/.harness, with the harness models and review level choices, goes only
+when nothing recorded remains. Prompts before removing anything.
+
+Details: docs/cli.md#install-and-uninstall
 `
 
 const summaryText = `Next steps (interactive; not run by this installer):
@@ -100,15 +125,15 @@ func must(err error) {
 }
 
 type installer struct {
-	home, config                      string
-	dir                               checkout.Checkout
-	skipPackages, noBackup, uninstall bool
-	yes                               bool
-	clients, components               []string
-	installed                         []entry
-	backupRoot                        string
-	assignments                       map[string]agents.Assigned
-	stdout, stderr                    io.Writer
+	home, config        string
+	dir                 checkout.Checkout
+	verb                string
+	noBackup, yes, all  bool
+	clients, components []string
+	installed           []entry
+	backupRoot          string
+	assignments         map[string]agents.Assigned
+	stdout, stderr      io.Writer
 }
 
 func (in *installer) log(format string, args ...any) {
@@ -116,17 +141,17 @@ func (in *installer) log(format string, args ...any) {
 }
 
 func (in *installer) warn(format string, args ...any) {
-	fmt.Fprintf(in.stderr, "\033[1;33mharness install:\033[0m "+format+"\n", args...)
+	fmt.Fprintf(in.stderr, "\033[1;33mharness %s:\033[0m "+format+"\n", append([]any{in.verb}, args...)...)
 }
 
 // recoverFatal turns a die into one red error line and exit 1. It works only when deferred directly.
-func recoverFatal(stderr io.Writer, code *int) {
+func recoverFatal(verb string, stderr io.Writer, code *int) {
 	if r := recover(); r != nil {
 		msg, ok := r.(fatal)
 		if !ok {
 			panic(r)
 		}
-		fmt.Fprintf(stderr, "\033[1;31mharness install:\033[0m %s\n", msg)
+		fmt.Fprintf(stderr, "\033[1;31mharness %s:\033[0m %s\n", verb, msg)
 		*code = 1
 	}
 }
@@ -143,60 +168,111 @@ func (in *installer) resolveLocations() {
 	}
 }
 
+// selectArg reads one selection argument at args[i], a component name or --client and its value, and returns the index of the last argument it consumed, or false after printing the diagnostic for an invalid one.
+func (in *installer) selectArg(args []string, i int, stderr io.Writer) (int, bool) {
+	arg := args[i]
+	switch {
+	case arg == "--client":
+		if i+1 == len(args) || !slices.Contains(allClients, args[i+1]) {
+			fmt.Fprintf(stderr, "harness %s: --client takes one of %s; run harness %s --help\n", in.verb, strings.Join(allClients, ", "), in.verb)
+			return i, false
+		}
+		if !slices.Contains(in.clients, args[i+1]) {
+			in.clients = append(in.clients, args[i+1])
+		}
+		return i + 1, true
+	case arg == "--component":
+		fmt.Fprintf(stderr, "harness %s: components are named without a flag now, as in harness %s skills agents\n", in.verb, in.verb)
+		return i, false
+	case slices.Contains(allComponents, arg):
+		if !slices.Contains(in.components, arg) {
+			in.components = append(in.components, arg)
+		}
+		return i, true
+	case strings.HasPrefix(arg, "-"):
+		fmt.Fprintf(stderr, "harness %s: unknown argument %q; run harness %s --help\n", in.verb, arg, in.verb)
+	default:
+		fmt.Fprintf(stderr, "harness %s: unknown component %q; it takes %s\n", in.verb, arg, strings.Join(allComponents, ", "))
+	}
+	return i, false
+}
+
+// inOrder sorts a selection into its canonical order, so logs and records read the same however it was typed.
+func inOrder(list, order []string) []string {
+	var out []string
+	for _, item := range order {
+		if slices.Contains(list, item) {
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
 // Command runs `harness install` with its arguments and returns the exit code.
 func Command(args []string, stdout, stderr io.Writer) (code int) {
-	defer recoverFatal(stderr, &code)
-	in := &installer{stdout: stdout, stderr: stderr}
-	clearBackups := false
+	defer recoverFatal("install", stderr, &code)
+	in := &installer{verb: "install", stdout: stdout, stderr: stderr}
 	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch arg {
-		case "--skip-packages":
-			in.skipPackages = true
+		switch arg := args[i]; arg {
 		case "--no-backup":
 			in.noBackup = true
-		case "--uninstall":
-			in.uninstall = true
-		case "--clear-backups":
-			clearBackups = true
-		case "--yes":
-			in.yes = true
-		case "--client", "--component":
-			valid := allClients
-			list := &in.clients
-			if arg == "--component" {
-				valid, list = allComponents, &in.components
-			}
-			if i+1 == len(args) || !slices.Contains(valid, args[i+1]) {
-				fmt.Fprintf(stderr, "harness install: %s takes one of %s; run harness install --help\n", arg, strings.Join(valid, ", "))
-				return 2
-			}
-			i++
-			if !slices.Contains(*list, args[i]) {
-				*list = append(*list, args[i])
-			}
 		case "-h", "--help":
 			fmt.Fprint(stdout, usage)
 			return 0
-		default:
-			fmt.Fprintf(stderr, "harness install: unknown argument %q; run harness install --help\n", arg)
+		case "--uninstall", "--yes", "--clear-backups":
+			fmt.Fprintf(stderr, "harness install: %s moved to harness uninstall; run harness uninstall --help\n", arg)
 			return 2
+		case "--skip-packages":
+			fmt.Fprintln(stderr, "harness install: --skip-packages was removed; name the components to install instead, as in harness install skills agents")
+			return 2
+		default:
+			next, ok := in.selectArg(args, i, stderr)
+			if !ok {
+				return 2
+			}
+			i = next
 		}
 	}
-	// Contradictory rather than redundant: --skip-packages names a subset of the install to write, and --uninstall writes none of it. An uninstall deletes rather than archives, so --no-backup beside it is redundant and allowed.
-	if in.uninstall && in.skipPackages {
-		fmt.Fprintln(stderr, "harness install: --uninstall and --skip-packages are contradictory; --uninstall installs nothing.")
+	in.resolveLocations()
+	defer in.extractAssets()()
+	in.install()
+	return 0
+}
+
+// UninstallCommand runs `harness uninstall` with its arguments and returns the exit code.
+func UninstallCommand(args []string, stdout, stderr io.Writer) (code int) {
+	defer recoverFatal("uninstall", stderr, &code)
+	in := &installer{verb: "uninstall", stdout: stdout, stderr: stderr}
+	clearBackups := false
+	for i := 0; i < len(args); i++ {
+		switch arg := args[i]; arg {
+		case "--yes":
+			in.yes = true
+		case "--all":
+			in.all = true
+		case "--clear-backups":
+			clearBackups = true
+		case "-h", "--help":
+			fmt.Fprint(stdout, uninstallUsage)
+			return 0
+		default:
+			next, ok := in.selectArg(args, i, stderr)
+			if !ok {
+				return 2
+			}
+			i = next
+		}
+	}
+	if clearBackups && len(args) > 1 {
+		fmt.Fprintln(stderr, "harness uninstall: --clear-backups runs on its own; it removes no component.")
 		return 2
 	}
-	if clearBackups && (in.uninstall || in.skipPackages) {
-		fmt.Fprintln(stderr, "harness install: --clear-backups runs on its own; it neither installs nor uninstalls.")
+	if in.all && in.components != nil {
+		fmt.Fprintln(stderr, "harness uninstall: --all already names every component; drop either --all or the names.")
 		return 2
 	}
-	if !in.uninstall && (in.yes || in.clients != nil || in.components != nil) {
-		fmt.Fprintln(stderr, "harness install: --client, --component, and --yes apply only to --uninstall.")
-		return 2
-	}
-	in.noBackup = in.noBackup || in.uninstall
+	// An uninstall deletes rather than archives.
+	in.noBackup = true
 	in.resolveLocations()
 	if clearBackups {
 		// It reads only $HOME, so it runs from anywhere.
@@ -204,12 +280,39 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 		return 0
 	}
 	defer in.extractAssets()()
-	if in.uninstall {
-		in.uninstallSelected()
-	} else {
-		in.install()
-	}
+	in.uninstallSelected()
 	return 0
+}
+
+// has reports whether this run selected a component.
+func (in *installer) has(component string) bool { return slices.Contains(in.components, component) }
+
+// targets reports whether this run configures a client.
+func (in *installer) targets(client string) bool { return slices.Contains(in.clients, client) }
+
+// clientNames are the clients' product names, for messages.
+var clientNames = map[string]string{"claude": "Claude Code", "codex": "Codex", "opencode": "OpenCode"}
+
+// resolveTargets settles which clients this run configures before any write: the named ones, each of which must be installed or be installed by this run; otherwise every client this run installs or that is already on PATH.
+func (in *installer) resolveTargets() {
+	installing := in.has("clients")
+	if in.clients != nil {
+		in.clients = inOrder(in.clients, allClients)
+		for _, client := range in.clients {
+			if !installing && !present(client) {
+				die("%s is not installed; run harness install clients --client %s first.", clientNames[client], client)
+			}
+		}
+		return
+	}
+	for _, client := range allClients {
+		if installing || present(client) {
+			in.clients = append(in.clients, client)
+		}
+	}
+	if len(in.clients) == 0 && slices.ContainsFunc(in.components, func(c string) bool { return slices.Contains(configComponents, c) }) {
+		die("No client is installed; run harness install clients first.")
+	}
 }
 
 func (in *installer) install() {
@@ -221,29 +324,63 @@ func (in *installer) install() {
 	if len(unguarded) > 0 {
 		die("Local skill missing an invocation guard: %s", strings.Join(unguarded, "; "))
 	}
-	in.openCodeConfig()
-	in.warnUnlessZsh()
+	if in.components == nil {
+		in.components = slices.Clone(allComponents)
+	}
+	// Engram's setup rewrites settings.json and opencode.json from its own template, so the harness reconciles settings after it and stays the last writer.
+	if in.has("mcps") && !in.has("settings") {
+		in.log("mcps: also reconciling settings, which engram setup rewrites")
+		in.components = append(in.components, "settings")
+	}
+	in.components = inOrder(in.components, allComponents)
+	in.usePATH()
+	in.resolveTargets()
+	// A config this run could not rewrite is refused before any client is touched, so every registration, Engram's included, stays as it was.
+	if in.targets("opencode") && in.has("settings") {
+		in.openCodeConfig()
+	}
+	if in.has("aliases") {
+		in.warnUnlessZsh()
+	}
 	in.installBinary()
-	if !in.skipPackages {
-		in.installPackages()
-		in.installEngram()
+	in.installTools()
+	if slices.ContainsFunc(in.components, func(c string) bool { return c != "mcps" && slices.Contains(configComponents, c) }) {
+		in.installFiles()
 	}
-	in.installFiles()
-	in.reconcileAliases(false)
-	// Engram setup rewrites the absolute binary path each client pins, which a presence probe never checked, so a package-skipping run still runs it.
-	if in.skipPackages {
-		in.installEngram()
+	if in.has("aliases") {
+		in.reconcileAliases(false)
 	}
-	// All three after Engram, whose setup rewrites settings.json and opencode.json from its own template: the harness is the last writer, which is what makes the tracked values the ones a client reads. OpenCode's config was validated before any of this, and installAgentBrowser reads it again after Engram rewrote it.
-	in.installAgentBrowser()
-	in.registerEngramClaudeMCP()
-	in.reconcileClaudeSettings()
-	in.reconcileCodexHooks(false)
-	in.reconcileOpenCodePermission(false)
+	if in.has("mcps") {
+		in.installEngram()
+		in.installAgentBrowser()
+		if in.targets("claude") {
+			in.registerEngramClaudeMCP()
+		}
+	}
+	if in.has("settings") {
+		if in.targets("claude") {
+			in.reconcileClaudeSettings()
+		}
+		if in.targets("codex") {
+			in.reconcileCodexHooks(false)
+		}
+		if in.targets("opencode") {
+			in.reconcileOpenCodePermission(false)
+		}
+	}
+	in.updateState(func(s *state) {
+		for _, client := range in.clients {
+			for _, c := range in.components {
+				if slices.Contains(configComponents, c) && !slices.Contains(s.Installed[client], c) {
+					s.Installed[client] = append(s.Installed[client], c)
+				}
+			}
+			if len(s.Installed[client]) > 0 {
+				s.Installed[client] = sorted(s.Installed[client])
+			}
+		}
+	})
 	in.checkInstall()
-	if !in.skipPackages {
-		in.checkTools()
-	}
 	in.summary()
 }
 
@@ -254,76 +391,6 @@ func (in *installer) run(stdin io.Reader, name string, args ...string) {
 	if err := cmd.Run(); err != nil {
 		die("%s %s failed: %v", name, strings.Join(args, " "), err)
 	}
-}
-
-// installPackages installs every tool through Homebrew on both platforms, because two of them (opencode, engram) ship only as taps. It inventories the installed formulae once and installs only what is missing: an already-installed dependency keeps whatever version it has, never upgraded behind the user's back.
-func (in *installer) installPackages() {
-	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
-		die("The harness installer supports macOS and Linux, not %s.", runtime.GOOS)
-	}
-	if _, err := exec.LookPath("brew"); err != nil {
-		die("Homebrew is required; run the root ./macos.sh or ./linux.sh first.")
-	}
-	// ~/.local/bin joins PATH first, because that is where this installer and a prior run's Claude Code put their binaries, and the presence check below has to see them.
-	must(os.Setenv("PATH", filepath.Join(in.home, ".local", "bin")+string(os.PathListSeparator)+os.Getenv("PATH")))
-	in.log("Installing missing AI clients and harness tools")
-	in.run(nil, "brew", "tap", "anomalyco/tap")
-	in.run(nil, "brew", "tap", "gentleman-programming/tap")
-	installed := in.installedFormulae()
-	for _, formula := range []string{"node", "gh", "uv", agentBrowserFormula, "anomalyco/tap/opencode", engramFormula} {
-		if !installed[shortName(formula)] {
-			in.run(nil, "brew", "install", formula)
-		}
-	}
-	// The formula's caveat, run rather than printed: without the browser every call through the MCP fails mid-session. Linux needs its system libraries too.
-	in.log("Downloading Chrome for Testing for agent-browser")
-	if runtime.GOOS == "darwin" {
-		in.run(nil, "agent-browser", "install")
-	} else {
-		in.run(nil, "agent-browser", "install", "--with-deps")
-	}
-	// Only when absent: Anthropic's installer would put a newer channel over whatever the user already runs, the same implicit upgrade the formulae no longer get.
-	if _, err := exec.LookPath("claude"); err != nil {
-		in.log("Installing Claude Code from Anthropic's latest native channel")
-		in.run(nil, "bash", "-c", "set -o pipefail; curl -fsSL https://claude.ai/install.sh | bash")
-	}
-	// Only when absent too: Codex may come from the cask, npm, or an Orca-managed copy, and any of them is the one the user runs. Homebrew on Linux takes no casks, and Codex has no formula, so Linux gets OpenAI's npm package.
-	if _, err := exec.LookPath("codex"); err != nil {
-		in.log("Installing Codex")
-		if runtime.GOOS == "darwin" {
-			in.run(nil, "brew", "install", "--cask", "codex")
-		} else {
-			in.run(nil, "npm", "install", "--global", "@openai/codex")
-		}
-	}
-}
-
-// installedFormulae inventories Homebrew once, so a full install decides what to add without probing per formula. It returns the short names `brew list` reports, which is what a tap formula is known by there.
-func (in *installer) installedFormulae() map[string]bool {
-	cmd := exec.Command("brew", "list", "--formula")
-	var stderr strings.Builder
-	cmd.Stderr = &stderr
-	out, err := cmd.Output()
-	if err != nil {
-		// Without a readable inventory the run cannot tell missing from present, so it stops with brew's own diagnostic rather than reinstalling everything, which would upgrade what the contract says to leave alone.
-		detail := strings.TrimSpace(stderr.String())
-		if detail == "" {
-			detail = "no diagnostic"
-		}
-		die("Could not inventory the installed Homebrew formulae: %v: %s", err, detail)
-	}
-	installed := map[string]bool{}
-	for _, name := range strings.Fields(string(out)) {
-		// Both forms: brew prints the bare name unless an ambiguity makes it qualify the tap.
-		installed[name] = true
-		installed[shortName(name)] = true
-	}
-	return installed
-}
-
-// shortName is the name `brew list` reports a formula by, dropping a tap prefix the list never carries.
-func shortName(formula string) string {
-	return formula[strings.LastIndex(formula, "/")+1:]
 }
 
 // warnUnlessZsh tells a user on another shell where to source the aliases.
@@ -340,32 +407,37 @@ func (in *installer) warnUnlessZsh() {
 
 var description = regexp.MustCompile(`(?m)^description:`)
 
-// checkInstall verifies what every run installs, so the mode that exists for reconciling confirms each copy landed.
+// checkInstall verifies what this run installed, so each copy, setting, and tool it reconciled is confirmed in place.
 func (in *installer) checkInstall() {
-	ponytail := false
-	for _, skill := range in.skills() {
-		if !isFile(filepath.Join(skill.Dir, "SKILL.md")) {
-			die("Missing SKILL.md: %s", skill.Dir)
+	if in.has("skills") {
+		ponytail := false
+		for _, skill := range in.skills() {
+			if !isFile(filepath.Join(skill.Dir, "SKILL.md")) {
+				die("Missing SKILL.md: %s", skill.Dir)
+			}
+			if exists(filepath.Join(in.config, "opencode", "skills", skill.Name)) {
+				die("Duplicate OpenCode skill path: %s", skill.Dir)
+			}
+			ponytail = ponytail || skill.Name == "ponytail"
 		}
-		if exists(filepath.Join(in.config, "opencode", "skills", skill.Name)) {
-			die("Duplicate OpenCode skill path: %s", skill.Dir)
+		if !ponytail {
+			die("Missing the ponytail skill body.")
 		}
-		ponytail = ponytail || skill.Name == "ponytail"
-	}
-	if !ponytail {
-		die("Missing the ponytail skill body.")
 	}
 	in.checkFiles()
-	if !in.trackedSettingsHold(false) {
-		die("Tracked Claude settings are not reconciled in %s.", in.settingsPath())
-	}
-	if !in.codexHooksHold(false) {
-		die("The harness compaction hook is not reconciled in %s.", in.codexHooksPath())
-	}
-	if !in.openCodePermissionHold(false) {
-		die("The harness permission rules are not reconciled in %s.", in.openCodeConfigPath())
+	if in.has("settings") {
+		if in.targets("claude") && !in.trackedSettingsHold(false) {
+			die("Tracked Claude settings are not reconciled in %s.", in.settingsPath())
+		}
+		if in.targets("codex") && !in.codexHooksHold(false) {
+			die("The harness compaction hook is not reconciled in %s.", in.codexHooksPath())
+		}
+		if in.targets("opencode") && !in.openCodePermissionHold(false) {
+			die("The harness permission rules are not reconciled in %s.", in.openCodeConfigPath())
+		}
 	}
 	in.checkStatusline()
+	in.checkTools()
 }
 
 // checkStatusline probes the binary the tracked statusLine runs on every draw, in every mode, because every mode writes that setting. A missing file, a lost mode bit, or a binary predating the subcommand all fail here rather than as a silently empty status line.
@@ -379,49 +451,55 @@ func (in *installer) checkStatusline() {
 	}
 }
 
-// checkTools verifies what only a full run installs, since each assertion needs a client or a package on PATH.
+// checkTools verifies the tools this run selected are on PATH, and asks each targeted client whether it loads the registrations and skills this run reconciled.
 func (in *installer) checkTools() {
-	for _, name := range []string{"claude", "codex", "opencode", "gh", "engram", "agent-browser"} {
-		if _, err := exec.LookPath(name); err != nil {
-			die("Missing required command: %s", name)
+	for _, t := range in.selectedTools() {
+		if !present(t.name) {
+			die("Missing required command: %s", t.name)
 		}
 	}
-	in.assertPluginCount("engram", 1)
-	// The scope too: a leftover project-scoped entry would satisfy a bare get while the user scope stayed empty. Engram reaches Claude Code as a plugin for its hooks and skill, plus this mcp entry for its tools.
-	for _, server := range []string{"agent-browser", "engram"} {
-		get := exec.Command("claude", "mcp", "get", server)
-		get.Stderr = in.stderr
-		if scope, err := get.Output(); err != nil || !strings.Contains(string(scope), "Scope: User config") {
-			die("%s is not registered in the Claude Code user scope.", server)
+	if in.has("mcps") && in.targets("claude") {
+		in.assertPluginCount("engram", 1)
+		// The scope too: a leftover project-scoped entry would satisfy a bare get while the user scope stayed empty. Engram reaches Claude Code as a plugin for its hooks and skill, plus this mcp entry for its tools.
+		for _, server := range []string{"agent-browser", "engram"} {
+			get := exec.Command("claude", "mcp", "get", server)
+			get.Stderr = in.stderr
+			if scope, err := get.Output(); err != nil || !strings.Contains(string(scope), "Scope: User config") {
+				die("%s is not registered in the Claude Code user scope.", server)
+			}
 		}
 	}
-	if in.codex("mcp", "get", "agent-browser").Run() != nil {
+	if in.has("mcps") && in.targets("codex") && in.codex("mcp", "get", "agent-browser").Run() != nil {
 		die("agent-browser is not registered in Codex's %s.", in.codexHome())
 	}
-	// Through a file: `opencode debug config` stops at the 64 KiB pipe capacity whenever stdout is not a regular file, and this config is past it.
-	resolved, err := os.CreateTemp("", "harness-opencode-*")
-	must(err)
-	defer os.Remove(resolved.Name())
-	debug := exec.Command("opencode", "debug", "config")
-	debug.Stdout, debug.Stderr = resolved, in.stderr
-	if err := debug.Run(); err != nil {
-		die("opencode debug config failed: %v", err)
+	if in.has("mcps") && in.targets("opencode") {
+		// Through a file: `opencode debug config` stops at the 64 KiB pipe capacity whenever stdout is not a regular file, and this config is past it.
+		resolved, err := os.CreateTemp("", "harness-opencode-*")
+		must(err)
+		defer os.Remove(resolved.Name())
+		debug := exec.Command("opencode", "debug", "config")
+		debug.Stdout, debug.Stderr = resolved, in.stderr
+		if err := debug.Run(); err != nil {
+			die("opencode debug config failed: %v", err)
+		}
+		must(resolved.Close())
+		if !in.opencodeRegistered(resolved.Name()) {
+			die("OpenCode is missing an expected plugin or MCP server.")
+		}
 	}
-	must(resolved.Close())
-	if !in.opencodeRegistered(resolved.Name()) {
-		die("OpenCode is missing an expected plugin or MCP server.")
-	}
-	// The validator reads only skills/<name>/SKILL.md one level down and follows no symlink, so it gets a flat copy of the grouped tree.
-	flat, err := os.MkdirTemp("", "harness-skills-*")
-	must(err)
-	defer os.RemoveAll(flat)
-	for _, skill := range in.skills() {
-		must(os.CopyFS(filepath.Join(flat, "skills", skill.Name), os.DirFS(skill.Dir)))
-	}
-	validate := exec.Command("claude", "plugin", "validate", filepath.Join(flat, "skills"))
-	validate.Stderr = in.stderr
-	if err := validate.Run(); err != nil {
-		die("claude plugin validate failed: %v", err)
+	if in.has("skills") && in.targets("claude") {
+		// The validator reads only skills/<name>/SKILL.md one level down and follows no symlink, so it gets a flat copy of the grouped tree.
+		flat, err := os.MkdirTemp("", "harness-skills-*")
+		must(err)
+		defer os.RemoveAll(flat)
+		for _, skill := range in.skills() {
+			must(os.CopyFS(filepath.Join(flat, "skills", skill.Name), os.DirFS(skill.Dir)))
+		}
+		validate := exec.Command("claude", "plugin", "validate", filepath.Join(flat, "skills"))
+		validate.Stderr = in.stderr
+		if err := validate.Run(); err != nil {
+			die("claude plugin validate failed: %v", err)
+		}
 	}
 }
 
@@ -478,8 +556,13 @@ func (in *installer) opencodeRegistered(resolvedPath string) bool {
 	return ok && reflect.DeepEqual(globalServer["command"], command)
 }
 
+// summary prints the next steps after a full install, and after a narrowed one only what it installed and where.
 func (in *installer) summary() {
-	fmt.Fprint(in.stdout, "\n\033[1;32m✓ Harness AI installed.\033[0m\n\n"+summaryText)
+	if len(in.components) < len(allComponents) {
+		fmt.Fprintf(in.stdout, "\n\033[1;32m✓ Harness AI installed: %s for %s.\033[0m\n", strings.Join(in.components, ", "), strings.Join(in.clients, ", "))
+	} else {
+		fmt.Fprint(in.stdout, "\n\033[1;32m✓ Harness AI installed.\033[0m\n\n"+summaryText)
+	}
 	if in.backupRoot != "" {
 		fmt.Fprintf(in.stdout, "\nBackups: %s\n", in.backupRoot)
 	}
@@ -512,6 +595,9 @@ func (in *installer) clearBackups() {
 	_ = os.Remove(root)
 	in.log("Deleted %d harness backup(s), %s reclaimed.", count, reclaimed)
 }
+
+// binaryPath is where an install copies this binary and the status line runs it.
+func (in *installer) binaryPath() string { return filepath.Join(in.home, ".local", "bin", "harness") }
 
 // installBinary copies the running binary to ~/.local/bin/harness, where the status line runs it, unless it already is that file.
 func (in *installer) installBinary() {

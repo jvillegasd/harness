@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -57,7 +58,7 @@ func readDir(dir string) []string {
 // Every guarded skill is installed in the shared namespace used by both clients.
 func TestGuardedSkillsAreInstalled(t *testing.T) {
 	base := sandbox(t)
-	ok(t, runInstaller(t, base, "--skip-packages"), "skip-packages install")
+	ok(t, runInstaller(t, base), "skip-packages install")
 	bodies, err := filepath.Glob(filepath.Join(base, "checkout", "skills", "*", "*", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -84,7 +85,7 @@ func TestInstallRefusesAnUnguardedLocalSkill(t *testing.T) {
 	writeMode(t, filepath.Join(base, "checkout", "skills", "workflow", "zz-bare", "SKILL.md"), "---\nname: zz-bare\ndisable-model-invocation: true\n---\nbody\n", 0o644)
 	var before strings.Builder
 	tree(t, &before, filepath.Join(base, "home"), true)
-	r := runInstaller(t, base, "--skip-packages")
+	r := runInstaller(t, base)
 	if r.code == 0 || !strings.Contains(r.stderr, "zz-bare") || !strings.Contains(r.stderr, "opencode/autoinvoke") {
 		t.Errorf("exit %d, stderr %q; want a refusal naming the skill and the key", r.code, r.stderr)
 	}
@@ -101,7 +102,7 @@ func TestInstallExplainsAMissingLock(t *testing.T) {
 	if err := os.Remove(filepath.Join(base, "checkout", "skills-lock.json")); err != nil {
 		t.Fatal(err)
 	}
-	if r := runInstaller(t, base, "--skip-packages"); r.code == 0 || !strings.Contains(r.stderr, "separates local skills from locked ones") {
+	if r := runInstaller(t, base); r.code == 0 || !strings.Contains(r.stderr, "separates local skills from locked ones") {
 		t.Errorf("exit %d, stderr %q; want the lock's purpose named", r.code, r.stderr)
 	}
 }
@@ -142,7 +143,7 @@ func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
 		}
 	}
 
-	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	ok(t, runInstaller(t, base), "install")
 	for _, rel := range agentOutputs {
 		client, name, _ := strings.Cut(rel, "/")
 		path := filepath.Join(roots[client], name)
@@ -152,7 +153,7 @@ func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
 	}
 	untouched("the install")
 
-	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
 	for _, root := range roots {
 		for _, entry := range readDir(root) {
 			if entry != "mine.md" && entry != "foreign.md" {
@@ -180,7 +181,7 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 			case "root-link":
 				symlink(t, filepath.Dir(private), root)
 			}
-			ok(t, runInstaller(t, base, "--skip-packages"), "install")
+			ok(t, runInstaller(t, base), "install")
 			if got := readFile(t, private); got != "private agent\n" {
 				t.Errorf("the install wrote through to %s: %q", private, got)
 			}
@@ -198,10 +199,10 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 // A copy edited after the install is the user's: the uninstall keeps it and says so.
 func TestUninstallKeepsAnEditedCopy(t *testing.T) {
 	base := sandbox(t)
-	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	ok(t, runInstaller(t, base), "install")
 	edited := filepath.Join(base, "home", ".claude", "skills", "open-pr", "SKILL.md")
 	writeMode(t, edited, "my open-pr\n", 0o644)
-	r := runInstaller(t, base, "--uninstall", "--yes")
+	r := runUninstaller(t, base, "--yes")
 	ok(t, r, "uninstall")
 	if got := readFileOr(edited); got != "my open-pr\n" {
 		t.Errorf("the uninstall removed or changed the edited copy: %q", got)
@@ -216,10 +217,10 @@ func TestUninstallKeepsAnEditedCopy(t *testing.T) {
 
 func TestUninstallDeclinePreservesInstallation(t *testing.T) {
 	base := sandbox(t)
-	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	ok(t, runInstaller(t, base), "install")
 	copy := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
 	before := readFile(t, copy)
-	r := runInstallerInput(t, base, "n\n", "--uninstall")
+	r := runUninstallerInput(t, base, "n\n")
 	ok(t, r, "declined uninstall")
 	if got := readFileOr(copy); got != before {
 		t.Errorf("declined uninstall changed the installed copy: %q", got)
@@ -228,9 +229,9 @@ func TestUninstallDeclinePreservesInstallation(t *testing.T) {
 
 func TestUninstallOpenCodeLeavesClaudeCopies(t *testing.T) {
 	base := sandbox(t)
-	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	ok(t, runInstaller(t, base), "install")
 	claude := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
-	ok(t, runInstaller(t, base, "--uninstall", "--client", "opencode", "--yes"), "OpenCode uninstall")
+	ok(t, runUninstaller(t, base, "--client", "opencode", "--yes"), "OpenCode uninstall")
 	if readFileOr(claude) == "" {
 		t.Error("OpenCode uninstall removed the Claude role copy")
 	}
@@ -244,7 +245,7 @@ func TestCodexInstallsIntoHomeCodexAndUninstallsAlone(t *testing.T) {
 	base := sandbox(t)
 	elsewhere := filepath.Join(base, "launcher-codex-home")
 	extra := []string{"TMPDIR=" + filepath.Join(base, "tmp"), "HARNESS_ASSETS=" + filepath.Join(base, "checkout"), "CODEX_HOME=" + elsewhere}
-	ok(t, runHarness(t, base, extra, "install", "--skip-packages"), "install under another CODEX_HOME")
+	ok(t, runHarness(t, base, extra, "install"), "install under another CODEX_HOME")
 	codexHome := filepath.Join(base, "home", ".codex")
 	if readFile(t, filepath.Join(codexHome, "AGENTS.md")) != readFile(t, filepath.Join(base, "checkout", "FLOOR.md")) {
 		t.Error("~/.codex/AGENTS.md is not the floor")
@@ -268,7 +269,7 @@ func TestCodexInstallsIntoHomeCodexAndUninstallsAlone(t *testing.T) {
 	for _, name := range []string{"engram-instructions.md", "engram-compact-prompt.md"} {
 		writeMode(t, filepath.Join(codexHome, name), "engram\n", 0o644)
 	}
-	ok(t, runHarness(t, base, extra, "install", "--uninstall", "--client", "codex", "--yes"), "Codex uninstall")
+	ok(t, runHarness(t, base, extra, "uninstall", "--client", "codex", "--yes"), "Codex uninstall")
 	for _, gone := range []string{filepath.Join(codexHome, "AGENTS.md"), filepath.Join(codexHome, "agents", "executor.toml"), filepath.Join(codexHome, "engram-instructions.md")} {
 		if _, err := os.Stat(gone); err == nil {
 			t.Errorf("Codex uninstall kept %s", gone)
@@ -291,7 +292,7 @@ func TestNoBackupReplacesCollisionWithoutArchiving(t *testing.T) {
 	base := sandbox(t)
 	path := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
 	writeMode(t, path, "private agent\n", 0o644)
-	ok(t, runInstaller(t, base, "--skip-packages", "--no-backup"), "no-backup install")
+	ok(t, runInstaller(t, base, "--no-backup"), "no-backup install")
 	if got := readFile(t, path); got == "private agent\n" {
 		t.Error("no-backup left the colliding file in place")
 	}
@@ -324,7 +325,7 @@ func TestClearBackupsRunsOutsideTheCheckout(t *testing.T) {
 	base := sandbox(t)
 	seedBackups(t, base)
 	home := filepath.Join(base, "home")
-	cmd := exec.Command(binary, "install", "--clear-backups")
+	cmd := exec.Command(binary, "uninstall", "--clear-backups")
 	cmd.Dir, cmd.Env = home, []string{"HOME=" + home, "PATH=/usr/bin:/bin"}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("clear-backups outside the checkout: %v\n%s", err, out)
@@ -359,7 +360,7 @@ func TestInstallReplacesAnUnusableStatuslineBinary(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			base := sandbox(t)
 			c.seed(t, base)
-			ok(t, runInstaller(t, base, "--skip-packages"), "install")
+			ok(t, runInstaller(t, base), "install")
 			if err := exec.Command(installed(base), "statusline", "--help").Run(); err != nil {
 				t.Fatalf("the installed harness has no working statusline: %v", err)
 			}
@@ -373,7 +374,7 @@ func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
 	config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
 	const text = `{"mcp": ["x"]}` + "\n"
 	writeMode(t, config, text, 0o644)
-	r := runInstaller(t, base, "--skip-packages")
+	r := runInstaller(t, base)
 	if r.code == 0 || !strings.Contains(r.stderr, "mcp is not a JSON object") {
 		t.Fatalf("exit %d, stderr %q; want the mcp refusal", r.code, r.stderr)
 	}
@@ -391,7 +392,7 @@ func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
 // With Codex gone, its uninstall still removes Engram's files beside config.toml and succeeds, leaving the config entries with a warning.
 func TestCodexUninstallWithoutCodex(t *testing.T) {
 	base := sandbox(t)
-	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	ok(t, runInstaller(t, base), "install")
 	codexHome := filepath.Join(base, "home", ".codex")
 	for _, name := range []string{"engram-instructions.md", "engram-compact-prompt.md"} {
 		writeMode(t, filepath.Join(codexHome, name), "engram\n", 0o644)
@@ -399,7 +400,7 @@ func TestCodexUninstallWithoutCodex(t *testing.T) {
 	if err := os.Remove(filepath.Join(base, "shims", "codex")); err != nil {
 		t.Fatal(err)
 	}
-	r := ok(t, runInstaller(t, base, "--uninstall", "--client", "codex", "--yes"), "Codex uninstall without Codex")
+	r := ok(t, runUninstaller(t, base, "--client", "codex", "--yes"), "Codex uninstall without Codex")
 	if !strings.Contains(r.stderr, "Codex is not installed") {
 		t.Errorf("no warning about the entries left behind:\n%s", r.stderr)
 	}
@@ -427,63 +428,328 @@ esac`)
 func TestUninstallRefusesASurvivingEngramMCP(t *testing.T) {
 	base := sandbox(t)
 	seedLived(t, base)
-	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	ok(t, runInstaller(t, base), "install")
 	writeMode(t, filepath.Join(base, "home", ".claude.json"), `{"mcpServers": {"engram": {}}}`+"\n", 0o644)
-	r := runInstaller(t, base, "--uninstall", "--yes")
+	r := runUninstaller(t, base, "--yes")
 	if r.code == 0 || !strings.Contains(r.stderr, "The engram MCP survived the uninstall") {
 		t.Fatalf("exit %d, stderr %q; want the engram survivor refusal", r.code, r.stderr)
 	}
 }
 
-// TestFullInstallProvisionsMissingOnly locks the provisioning contract: one inventory per full run, no upgrade command, an install only for a formula the inventory lacks, and MCP reconciliation that still runs though the executables already exist.
+// missingTools takes tools off PATH and makes the brew and npm shims put each back when asked to install it, so a run sees them missing, installs them, and finds them after.
+func missingTools(t *testing.T, base string, names ...string) {
+	t.Helper()
+	shims, saved := filepath.Join(base, "shims"), filepath.Join(base, "saved")
+	for _, name := range names {
+		writeMode(t, filepath.Join(saved, name), readFile(t, filepath.Join(shims, name)), 0o755)
+		if err := os.Remove(filepath.Join(shims, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	restore := `for arg in "$@"; do n=$(basename "$arg"); [ -e '` + saved + `'/"$n" ] && cp '` + saved + `'/"$n" '` + shims + `'/"$n"; done`
+	writeShim(t, base, "brew", `if [ "$1" = install ]; then `+restore+`; fi`)
+	writeShim(t, base, "npm", `if [ "$1" = install ]; then `+restore+`; fi`)
+}
+
+// recordedTools reads the tool records the install left in state.json.
+func recordedTools(t *testing.T, base string) map[string]string {
+	t.Helper()
+	var s struct {
+		Tools     map[string]string   `json:"tools"`
+		Installed map[string][]string `json:"installed"`
+	}
+	if err := json.Unmarshal([]byte(readFile(t, stateFile(base))), &s); err != nil {
+		t.Fatal(err)
+	}
+	return s.Tools
+}
+
+// TestFullInstallProvisionsMissingOnly locks the provisioning contract: presence is read from PATH, no inventory or upgrade runs, only a missing tool is installed and recorded, its tap is added only then, and MCP reconciliation still runs for the tools already present.
 func TestFullInstallProvisionsMissingOnly(t *testing.T) {
 	base := sandbox(t)
 	seedFull(t, base)
+	missingTools(t, base, "uv", "agent-browser", "engram")
 	ok(t, runInstaller(t, base), "full install")
 	log := readFile(t, filepath.Join(base, "shims.log"))
-	if got := strings.Count(log, "brew list --formula"); got != 1 {
-		t.Errorf("full install inventoried formulae %d times, want 1:\n%s", got, log)
-	}
-	if strings.Contains(log, "brew upgrade") {
-		t.Errorf("full install issued an upgrade:\n%s", log)
-	}
-	for _, absent := range []string{"brew install worktrunk", "wt ", "brew install node", "brew install gh", "brew install anomalyco/tap/opencode"} {
+	for _, absent := range []string{"brew list", "brew upgrade", "brew install node", "brew install gh", "brew install anomalyco/tap/opencode", "brew tap anomalyco/tap", "brew install --cask codex", "npm install"} {
 		if strings.Contains(log, absent) {
 			t.Errorf("full install unexpectedly invoked %q:\n%s", absent, log)
 		}
 	}
-	for _, want := range []string{"brew install uv", "brew install agent-browser", "brew install gentleman-programming/tap/engram"} {
+	for _, want := range []string{"brew install uv", "brew install agent-browser", "brew tap gentleman-programming/tap", "brew install gentleman-programming/tap/engram", "agent-browser install"} {
 		if !strings.Contains(log, want) {
 			t.Errorf("full install skipped the missing %q:\n%s", want, log)
 		}
-	}
-	if strings.Contains(log, "brew install --cask codex") {
-		t.Errorf("full install reinstalled Codex, which is on PATH:\n%s", log)
 	}
 	for _, want := range []string{"engram setup claude-code", "engram setup codex", "engram setup opencode", "claude mcp add --scope user agent-browser", "claude mcp add --scope user engram", "codex mcp add agent-browser"} {
 		if !strings.Contains(log, want) {
 			t.Errorf("full install skipped reconciliation though the tools exist, missing %q", want)
 		}
 	}
+	want := map[string]string{"uv": "brew:uv", "agent-browser": "brew:agent-browser", "engram": "brew:gentleman-programming/tap/engram"}
+	if got := recordedTools(t, base); !reflect.DeepEqual(got, want) {
+		t.Errorf("recorded tools %v, want %v", got, want)
+	}
 }
 
-// TestSkipPackagesCallsNoPackageManager locks that the option named for skipping packages makes no package-manager call while still reconciling the links and the MCP registrations.
-func TestSkipPackagesCallsNoPackageManager(t *testing.T) {
+// With every tool on PATH, an install calls no package manager and downloads no browser, while still reconciling the copies and the MCP registrations.
+func TestInstallWithEveryToolPresentCallsNoPackageManager(t *testing.T) {
 	base := sandbox(t)
 	seedLived(t, base)
-	ok(t, runInstaller(t, base, "--skip-packages"), "skip-packages install")
+	ok(t, runInstaller(t, base), "install")
 	log := readFile(t, filepath.Join(base, "shims.log"))
-	if strings.Contains(log, "brew ") {
-		t.Errorf("--skip-packages called the package manager:\n%s", log)
+	for _, absent := range []string{"brew ", "agent-browser install", "npm "} {
+		if strings.Contains(log, absent) {
+			t.Errorf("an install with every tool present ran %q:\n%s", absent, log)
+		}
 	}
 	for _, want := range []string{"engram setup claude-code", "claude mcp add --scope user agent-browser", "claude mcp add --scope user engram"} {
 		if !strings.Contains(log, want) {
-			t.Errorf("--skip-packages skipped reconciliation, missing %q", want)
+			t.Errorf("the install skipped reconciliation, missing %q", want)
 		}
 	}
-	link := filepath.Join(base, "home", ".claude", "CLAUDE.md")
-	if got, want := readFileOr(link), readFile(t, filepath.Join(base, "checkout", "FLOOR.md")); got != want {
-		t.Errorf("--skip-packages did not install the floor at %s", link)
+	if got, want := readFileOr(filepath.Join(base, "home", ".claude", "CLAUDE.md")), readFile(t, filepath.Join(base, "checkout", "FLOOR.md")); got != want {
+		t.Error("the install did not install the floor")
+	}
+	if got := recordedTools(t, base); len(got) != 0 {
+		t.Errorf("tools present before the install were recorded as its own: %v", got)
+	}
+}
+
+// A named component installs only itself: no other copy, registration, or setting is written, and the record names only it.
+func TestNamedComponentInstallsOnlyItself(t *testing.T) {
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	r := ok(t, runInstaller(t, base, "skills"), "skills install")
+	if readFileOr(filepath.Join(home, ".claude", "skills", "open-pr", "SKILL.md")) == "" {
+		t.Error("the skills install did not copy the skills")
+	}
+	for _, absent := range []string{".claude/CLAUDE.md", ".claude/agents/reviewer.md", ".claude/settings.json", ".harness/aliases.sh", ".zshrc"} {
+		if _, err := os.Stat(filepath.Join(home, absent)); err == nil {
+			t.Errorf("the skills install wrote %s", absent)
+		}
+	}
+	if log := readFileOr(filepath.Join(base, "shims.log")); strings.Contains(log, "engram setup") || strings.Contains(log, "mcp add") {
+		t.Errorf("the skills install reconciled the MCPs:\n%s", log)
+	}
+	if !strings.Contains(r.stdout, "installed: skills for claude, codex, opencode") {
+		t.Errorf("the summary does not name what was installed:\n%s", r.stdout)
+	}
+	if got := readFile(t, stateFile(base)); !strings.Contains(got, `"claude": [
+      "skills"
+    ]`) {
+		t.Errorf("the record does not hold skills alone:\n%s", got)
+	}
+	// A later run of another component keeps the skills' records.
+	ok(t, runInstaller(t, base, "floor"), "floor install")
+	ok(t, runUninstaller(t, base, "skills", "--yes"), "skills uninstall")
+	if _, err := os.Stat(filepath.Join(home, ".claude", "skills", "open-pr")); err == nil {
+		t.Error("the skills uninstall left a skill copy, so the floor install dropped its record")
+	}
+	if readFileOr(filepath.Join(home, ".claude", "CLAUDE.md")) == "" {
+		t.Error("the skills uninstall removed the floor")
+	}
+}
+
+// --client limits a run to the named clients; the others get nothing.
+func TestClientFlagLimitsTheInstall(t *testing.T) {
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	ok(t, runInstaller(t, base, "--client", "claude"), "Claude Code install")
+	if readFileOr(filepath.Join(home, ".claude", "CLAUDE.md")) == "" {
+		t.Error("the Claude Code install did not install its floor")
+	}
+	for _, absent := range []string{".codex/AGENTS.md", ".codex/agents/executor.toml", ".config/opencode/AGENTS.md", ".config/opencode/agents/executor.md"} {
+		if _, err := os.Stat(filepath.Join(home, absent)); err == nil {
+			t.Errorf("the Claude Code install wrote %s", absent)
+		}
+	}
+	log := readFile(t, filepath.Join(base, "shims.log"))
+	for _, absent := range []string{"codex mcp add", "engram setup codex", "engram setup opencode"} {
+		if strings.Contains(log, absent) {
+			t.Errorf("the Claude Code install ran %q:\n%s", absent, log)
+		}
+	}
+}
+
+// A named client that is not installed stops the run before any write; without --client, a missing client is simply not configured.
+func TestMissingClientIsRefusedOnlyWhenNamed(t *testing.T) {
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	if err := os.Remove(filepath.Join(base, "shims", "opencode")); err != nil {
+		t.Fatal(err)
+	}
+	before := homeTree(t, home)
+	r := runInstaller(t, base, "skills", "--client", "opencode")
+	if r.code == 0 || !strings.Contains(r.stderr, "harness install clients --client opencode") {
+		t.Fatalf("exit %d, stderr %q; want the refusal naming the client install", r.code, r.stderr)
+	}
+	if got := homeTree(t, home); got != before {
+		t.Errorf("the refused run wrote into the home tree:\n%s", got)
+	}
+	ok(t, runInstaller(t, base, "floor"), "floor install without OpenCode")
+	if _, err := os.Stat(filepath.Join(home, ".config", "opencode", "AGENTS.md")); err == nil {
+		t.Error("the install configured OpenCode, which is not installed")
+	}
+	if readFileOr(filepath.Join(home, ".codex", "AGENTS.md")) == "" {
+		t.Error("the install skipped Codex, which is installed")
+	}
+}
+
+// Installing mcps alone also reconciles settings, which Engram's setup rewrites, and says so.
+func TestMCPInstallReconcilesSettings(t *testing.T) {
+	base := sandbox(t)
+	r := ok(t, runInstaller(t, base, "mcps"), "mcps install")
+	if !strings.Contains(r.stdout, "also reconciling settings") {
+		t.Errorf("the mcps install did not say it reconciles settings:\n%s", r.stdout)
+	}
+	if !strings.Contains(readFileOr(filepath.Join(base, "home", ".claude", "settings.json")), "harness") {
+		t.Error("the mcps install left the tracked settings unreconciled")
+	}
+}
+
+// A bare uninstall removes managed config only: recorded tools stay, and so does the state that records them.
+func TestBareUninstallKeepsToolsAndTheirRecord(t *testing.T) {
+	base := sandbox(t)
+	seedFull(t, base)
+	missingTools(t, base, "uv", "engram")
+	ok(t, runInstaller(t, base), "install")
+	r := ok(t, runUninstaller(t, base, "--yes"), "bare uninstall")
+	if log := readFile(t, filepath.Join(base, "shims.log")); strings.Contains(log, "brew uninstall") {
+		t.Errorf("a bare uninstall removed a tool:\n%s", log)
+	}
+	if _, err := os.Stat(filepath.Join(base, "home", ".claude", "CLAUDE.md")); err == nil {
+		t.Error("a bare uninstall left the floor")
+	}
+	if got := recordedTools(t, base); got["uv"] == "" || got["engram"] == "" {
+		t.Errorf("a bare uninstall dropped the tool records: %v", got)
+	}
+	if strings.Contains(r.stdout, "This also removes ~/.harness") {
+		t.Error("a bare uninstall that keeps tool records announced removing ~/.harness")
+	}
+}
+
+// --all removes only the tools the harness recorded installing, the way it installed them, keeps their data and the ones present before, and then removes ~/.harness and the binary.
+func TestUninstallAllRemovesOnlyRecordedTools(t *testing.T) {
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	seedFull(t, base)
+	writeMode(t, filepath.Join(home, ".engram", "engram.db"), "memories\n", 0o644)
+	missingTools(t, base, "uv", "engram")
+	ok(t, runInstaller(t, base), "install")
+	r := ok(t, runUninstaller(t, base, "--all", "--yes"), "uninstall --all")
+	log := readFile(t, filepath.Join(base, "shims.log"))
+	for _, want := range []string{"brew uninstall uv", "brew uninstall gentleman-programming/tap/engram"} {
+		if !strings.Contains(log, want) {
+			t.Errorf("uninstall --all skipped %q:\n%s", want, log)
+		}
+	}
+	for _, absent := range []string{"brew uninstall node", "brew uninstall gh", "brew uninstall agent-browser", "brew uninstall --cask", "npm uninstall"} {
+		if strings.Contains(log, absent) {
+			t.Errorf("uninstall --all removed a tool present before the harness: %q", absent)
+		}
+	}
+	if !strings.Contains(r.stdout, "node: present before the harness, left installed") {
+		t.Errorf("the tools left installed are not named:\n%s", r.stdout)
+	}
+	if got := readFileOr(filepath.Join(home, ".engram", "engram.db")); got != "memories\n" {
+		t.Error("uninstall --all deleted Engram's data")
+	}
+	for _, gone := range []string{".harness", ".local/bin/harness"} {
+		if _, err := os.Stat(filepath.Join(home, gone)); err == nil {
+			t.Errorf("uninstall --all left %s", gone)
+		}
+	}
+}
+
+// A shared tool stays while a client still has harness config, Codex included while its other components remain, and a client's own tool goes with that client.
+func TestNamedToolUninstallKeepsSharedTools(t *testing.T) {
+	base := sandbox(t)
+	seedFull(t, base)
+	missingTools(t, base, "codex", "engram")
+	ok(t, runInstaller(t, base), "install")
+	r := ok(t, runUninstaller(t, base, "mcps", "clients", "--client", "codex", "--yes"), "Codex mcps and client uninstall")
+	log := readFile(t, filepath.Join(base, "shims.log"))
+	if !strings.Contains(log, "npm uninstall --global @openai/codex") && !strings.Contains(log, "brew uninstall --cask codex") {
+		t.Errorf("the Codex uninstall kept the Codex the harness installed:\n%s", log)
+	}
+	if strings.Contains(log, "brew uninstall gentleman-programming/tap/engram") {
+		t.Errorf("the Codex uninstall removed Engram, which other clients still use:\n%s", log)
+	}
+	if !strings.Contains(r.stdout, "engram: still used by claude, codex, opencode, left installed") {
+		t.Errorf("the kept shared tool is not named:\n%s", r.stdout)
+	}
+}
+
+// The uninstall sees ~/.local/bin as the install does, so a Claude Code the native installer put there is removed rather than taken for gone.
+func TestUninstallFindsANativeClaudeInLocalBin(t *testing.T) {
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	if err := os.Remove(filepath.Join(base, "shims", "claude")); err != nil {
+		t.Fatal(err)
+	}
+	writeMode(t, stateFile(base), `{"version":1,"installed":{},"files":[],"tools":{"claude":"native:claude"}}`+"\n", 0o644)
+	writeMode(t, filepath.Join(home, ".local", "bin", "claude"), "#!/bin/sh\n", 0o755)
+	writeMode(t, filepath.Join(home, ".local", "share", "claude", "versions", "1"), "binary\n", 0o755)
+	r := ok(t, runUninstaller(t, base, "clients", "--client", "claude", "--yes"), "Claude Code client uninstall")
+	if strings.Contains(r.stdout, "already gone") {
+		t.Errorf("the uninstall took the Claude Code in ~/.local/bin for gone:\n%s", r.stdout)
+	}
+	for _, gone := range []string{".local/bin/claude", ".local/share/claude", ".harness"} {
+		if _, err := os.Stat(filepath.Join(home, gone)); err == nil {
+			t.Errorf("the Claude Code uninstall left %s", gone)
+		}
+	}
+}
+
+// A package outlives every recorded tool installed through it: node stays while the Codex npm installed is recorded, so a later client uninstall can still reach npm, and goes once Codex has.
+func TestPackageStaysWhileAToolInstalledThroughItIsRecorded(t *testing.T) {
+	base := sandbox(t)
+	shims := filepath.Join(base, "shims")
+	writeMode(t, stateFile(base), `{"version":1,"installed":{},"files":[],"tools":{"node":"brew:node","codex":"npm:@openai/codex"}}`+"\n", 0o644)
+	writeShim(t, base, "brew", `if [ "$*" = "uninstall node" ]; then rm -f '`+shims+`/node' '`+shims+`/npm'; fi`)
+	writeShim(t, base, "npm", `if [ "$*" = "uninstall --global @openai/codex" ]; then rm -f '`+shims+`/codex'; fi`)
+
+	r := ok(t, runUninstaller(t, base, "packages", "--yes"), "packages uninstall with Codex recorded")
+	if log := readFileOr(filepath.Join(base, "shims.log")); strings.Contains(log, "brew uninstall node") {
+		t.Fatalf("the packages uninstall removed node while the Codex installed through npm is recorded:\n%s", log)
+	}
+	if !strings.Contains(r.stdout, "node: codex was installed through it, left installed") {
+		t.Errorf("the kept package does not say why:\n%s", r.stdout)
+	}
+	if got := recordedTools(t, base); got["node"] == "" {
+		t.Errorf("the packages uninstall dropped node's record: %v", got)
+	}
+
+	ok(t, runUninstaller(t, base, "clients", "--yes"), "clients uninstall")
+	if log := readFile(t, filepath.Join(base, "shims.log")); !strings.Contains(log, "npm uninstall --global @openai/codex") {
+		t.Fatalf("the clients uninstall did not remove Codex through npm:\n%s", log)
+	}
+	if got := recordedTools(t, base); got["codex"] != "" {
+		t.Errorf("the clients uninstall kept Codex's record: %v", got)
+	}
+
+	ok(t, runUninstaller(t, base, "packages", "--yes"), "packages uninstall after Codex")
+	if log := readFile(t, filepath.Join(base, "shims.log")); !strings.Contains(log, "brew uninstall node") {
+		t.Errorf("node stayed after the Codex installed through it was removed:\n%s", log)
+	}
+	if _, err := os.Stat(filepath.Join(base, "home", ".harness")); err == nil {
+		t.Error("the last tool removal left ~/.harness")
+	}
+}
+
+// An older install recorded the floor as policy and the MCPs as mcp; reading them under the new names lets an uninstall act on them.
+func TestOldComponentNamesAreMigrated(t *testing.T) {
+	base := sandbox(t)
+	ok(t, runInstaller(t, base), "install")
+	old := strings.NewReplacer(`"floor"`, `"policy"`, `"mcps"`, `"mcp"`).Replace(readFile(t, stateFile(base)))
+	writeMode(t, stateFile(base), old, 0o644)
+	ok(t, runUninstaller(t, base, "floor", "--client", "claude", "--yes"), "floor uninstall over old names")
+	if _, err := os.Stat(filepath.Join(base, "home", ".claude", "CLAUDE.md")); err == nil {
+		t.Error("the floor recorded as policy survived its uninstall")
+	}
+	if got := readFile(t, stateFile(base)); strings.Contains(got, `"policy"`) || strings.Contains(got, `"mcp"`) {
+		t.Errorf("the state kept the old names:\n%s", got)
 	}
 }
 
@@ -526,7 +792,7 @@ func TestInstallRefusesMissingOrRelativeLocations(t *testing.T) {
 			base := sandbox(t)
 			home := filepath.Join(base, "home")
 			before := homeTree(t, home)
-			r := runHarness(t, base, c.env, "install", "--skip-packages")
+			r := runHarness(t, base, c.env, "install")
 			if r.code == 0 || !strings.Contains(r.stderr, "must be absolute") {
 				t.Fatalf("exit %d, stderr %q; want a refusal naming the absolute-path requirement", r.code, r.stderr)
 			}
@@ -551,8 +817,8 @@ func homeTree(t *testing.T, home string) string {
 // A second install over unchanged copies rewrites and archives nothing.
 func TestReinstallRewritesNothingUnchanged(t *testing.T) {
 	base := sandbox(t)
-	ok(t, runInstaller(t, base, "--skip-packages"), "install")
-	r := runInstaller(t, base, "--skip-packages")
+	ok(t, runInstaller(t, base), "install")
+	r := runInstaller(t, base)
 	ok(t, r, "reinstall")
 	for _, noise := range []string{"Installed ", "Backed up ", "Removed "} {
 		if strings.Contains(r.stdout, noise) {
@@ -566,7 +832,7 @@ func TestInstallWithSymlinkedTmpdir(t *testing.T) {
 	base := sandbox(t)
 	link := filepath.Join(base, "tmp-link")
 	symlink(t, filepath.Join(base, "tmp"), link)
-	r := runHarnessInput(t, base, "", []string{"TMPDIR=" + link, "HARNESS_ASSETS=" + filepath.Join(base, "checkout")}, "install", "--skip-packages")
+	r := runHarnessInput(t, base, "", []string{"TMPDIR=" + link, "HARNESS_ASSETS=" + filepath.Join(base, "checkout")}, "install")
 	ok(t, r, "install")
 }
 
@@ -577,7 +843,7 @@ func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
 	writeMode(t, filepath.Join(source, "SKILL.md"), "---\ndescription: retired\n---\n", 0o644)
 	linkedSource := filepath.Join(base, "checkout", "skills", "ops", "retired-linked")
 	writeMode(t, filepath.Join(linkedSource, "SKILL.md"), "---\ndescription: retired too\n---\n", 0o644)
-	ok(t, runInstaller(t, base, "--skip-packages"), "install asset")
+	ok(t, runInstaller(t, base), "install asset")
 	edited := filepath.Join(home, ".claude", "skills", "retired", "SKILL.md")
 	writeMode(t, edited, "my edited skill\n", 0o644)
 	main := filepath.Join(home, "repositories", "main")
@@ -602,7 +868,7 @@ func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
 	if err := os.RemoveAll(linkedSource); err != nil {
 		t.Fatal(err)
 	}
-	ok(t, runInstaller(t, base, "--skip-packages"), "retire asset")
+	ok(t, runInstaller(t, base), "retire asset")
 	if _, err := os.Lstat(filepath.Join(home, ".agents", "skills", "retired")); !os.IsNotExist(err) {
 		t.Fatalf("unchanged retired copy remains: %v", err)
 	}
@@ -630,7 +896,7 @@ func TestCompactionHooksKeepTheUsersOwn(t *testing.T) {
 	settings := filepath.Join(home, ".claude", "settings.json")
 	user := `{"matcher": "startup", "hooks": [{"type": "command", "command": "echo mine"}]}`
 	writeMode(t, settings, `{"hooks": {"SessionStart": [`+user+`, {"matcher": "compact", "hooks": [{"type": "command", "command": "\"$HOME/.local/bin/harness\" retired"}]}], "Stop": [`+user+`]}}`+"\n", 0o644)
-	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	ok(t, runInstaller(t, base), "install")
 
 	var got struct {
 		Hooks map[string][]struct {
@@ -663,7 +929,7 @@ func TestCompactionHooksKeepTheUsersOwn(t *testing.T) {
 		}
 	}
 
-	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
 	decode()
 	if groups := got.Hooks["SessionStart"]; len(groups) != 1 || groups[0].Matcher != "startup" || len(got.Hooks["Stop"]) != 1 {
 		t.Errorf("the uninstall did not leave exactly the user's hooks: %+v", got.Hooks)
@@ -680,12 +946,12 @@ func TestCodexHooksKeepTheUsersOwn(t *testing.T) {
 	base := sandbox(t)
 	path := filepath.Join(base, "home", ".codex", "hooks.json")
 	writeMode(t, path, `{"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "echo mine"}]}]}}`+"\n", 0o644)
-	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	ok(t, runInstaller(t, base), "install")
 	text := readFileOr(path)
 	if !strings.Contains(text, "echo mine") || !strings.Contains(text, `harness\" resume`) {
 		t.Fatalf("after install, hooks.json lacks the user's hook or the harness hook:\n%s", text)
 	}
-	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
 	text = readFileOr(path)
 	if !strings.Contains(text, "echo mine") || strings.Contains(text, "resume") {
 		t.Errorf("after uninstall, hooks.json should hold only the user's hook:\n%s", text)
@@ -708,15 +974,15 @@ func TestClaudeAllowKeepsTheUsersRules(t *testing.T) {
 		}
 		return got.Permissions.Allow
 	}
-	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	ok(t, runInstaller(t, base), "install")
 	if got, want := allow(), []string{"Bash(make test)", "Read(~/.claude/skills/**)"}; !slices.Equal(got, want) {
 		t.Errorf("allow after install = %q, want %q", got, want)
 	}
-	ok(t, runInstaller(t, base, "--skip-packages"), "reinstall")
+	ok(t, runInstaller(t, base), "reinstall")
 	if got := allow(); len(got) != 2 {
 		t.Errorf("a reinstall duplicated the tracked rule: %q", got)
 	}
-	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
 	if got, want := allow(), []string{"Bash(make test)"}; !slices.Equal(got, want) {
 		t.Errorf("allow after uninstall = %q, want %q", got, want)
 	}
@@ -766,7 +1032,7 @@ func TestFloorRulesReachCodexAndOpenCode(t *testing.T) {
 		return doc.Permission, order
 	}
 
-	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	ok(t, runInstaller(t, base), "install")
 	if text := readFileOr(rules); !strings.Contains(text, `"git", "push", ["--force", "-f"]`) {
 		t.Errorf("the Codex rules file is missing or lacks the force-push rule:\n%s", text)
 	}
@@ -785,13 +1051,13 @@ func TestFloorRulesReachCodexAndOpenCode(t *testing.T) {
 		t.Fatalf("opencode.json lacks the last harness rule %s:\n%s", last, text)
 	}
 	writeMode(t, config, strings.Replace(text, last, last+`, "git *": "allow"`, 1), 0o644)
-	ok(t, runInstaller(t, base, "--skip-packages"), "reinstall")
+	ok(t, runInstaller(t, base), "reinstall")
 	_, order = read()
 	if len(order["bash"]) != tracked+1 || order["bash"][1] != "git *" || order["bash"][len(order["bash"])-1] != "git worktree remove -f *" {
 		t.Errorf("bash after reinstall = %q, want the user's rules first and each harness rule once, last", order["bash"])
 	}
 
-	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
 	got, _ = read()
 	if len(got.Bash) != 2 || got.Bash["git *"] != "allow" || len(got.Read) != 1 || got.Edit != nil || got.Webfetch != "deny" {
 		t.Errorf("permission after uninstall = %+v, want only the user's rules", got)
@@ -806,11 +1072,11 @@ func TestOpenCodeKeepsAStricterUserRule(t *testing.T) {
 	base := sandbox(t)
 	config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
 	writeMode(t, config, `{"permission": {"bash": {"gh pr merge *": "deny"}}}`+"\n", 0o644)
-	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	ok(t, runInstaller(t, base), "install")
 	if text := readFile(t, config); !strings.Contains(text, `"gh pr merge *": "deny"`) {
 		t.Errorf("the install weakened the user's deny:\n%s", text)
 	}
-	ok(t, runInstaller(t, base, "--uninstall", "--yes"), "uninstall")
+	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
 	if text := readFile(t, config); !strings.Contains(text, `"gh pr merge *": "deny"`) || strings.Contains(text, "git push") {
 		t.Errorf("the uninstall should leave only the user's deny:\n%s", text)
 	}

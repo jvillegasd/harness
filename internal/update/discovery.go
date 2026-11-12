@@ -140,7 +140,7 @@ func (r *runner) discover(selected []string) []target {
 		inv = r.inventory()
 	}
 	if slices.Contains(selected, "mcps") {
-		for _, client := range []string{"claude", "codex", "opencode"} {
+		for _, client := range r.only {
 			if _, err := exec.LookPath(client); err == nil {
 				r.clients = append(r.clients, client)
 			}
@@ -150,6 +150,9 @@ func (r *runner) discover(selected []string) []target {
 	for _, group := range selected {
 		names := map[string][]string{"packages": {"node", "gh", "uv"}, "clients": {"claude", "codex", "opencode"}, "mcps": {"engram", "agent-browser"}}[group]
 		for _, name := range names {
+			if group == "clients" && !slices.Contains(r.only, name) {
+				continue
+			}
 			t := target{group: group, name: name, status: "skipped", notice: "not installed"}
 			path, err := exec.LookPath(name)
 			if err == nil {

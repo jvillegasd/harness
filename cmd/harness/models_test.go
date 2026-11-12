@@ -140,7 +140,7 @@ func TestModelsResolveReportsTheAssignment(t *testing.T) {
 
 func TestInstallRendersTheResolvedAssignments(t *testing.T) {
 	base := modelsBase(t)
-	r := ok(t, runInstaller(t, base, "--skip-packages"), "install with the default preset")
+	r := ok(t, runInstaller(t, base, "agents"), "install with the default preset")
 	if !strings.Contains(r.stdout, "assignment: codex executor model=gpt-6-luna (preset:balanced)") {
 		t.Errorf("install did not report the preset source:\n%s", r.stdout)
 	}
@@ -163,7 +163,7 @@ func TestInstallRendersTheResolvedAssignments(t *testing.T) {
 		t.Error("the OpenCode executor, assigned to Codex, carries a model instead of the client default")
 	}
 	ok(t, runModels(t, base, "set", "--preset", "performance"), "set performance")
-	ok(t, runInstaller(t, base, "--skip-packages"), "install with performance")
+	ok(t, runInstaller(t, base, "agents"), "install with performance")
 	if r := ok(t, runModels(t, base, "show"), "show after install"); !strings.Contains(r.stdout, "(preset:performance)") {
 		t.Errorf("install dropped the model choice:\n%s", r.stdout)
 	}
@@ -179,23 +179,23 @@ func TestInstallRendersTheResolvedAssignments(t *testing.T) {
 func TestModelsSetBeforeTheFirstInstall(t *testing.T) {
 	base := modelsBase(t)
 	ok(t, runModels(t, base, "set", "--preset", "performance"), "set before install")
-	ok(t, runInstaller(t, base, "--skip-packages"), "first install over a models-only state")
+	ok(t, runInstaller(t, base, "agents"), "first install over a models-only state")
 	if r := ok(t, runModels(t, base, "show"), "show"); !strings.Contains(r.stdout, "(preset:performance)") {
 		t.Errorf("the first install dropped the choice:\n%s", r.stdout)
 	}
 	ok(t, runModels(t, base, "reset"), "reset all")
-	ok(t, runInstaller(t, base, "--skip-packages"), "install over a reset state")
+	ok(t, runInstaller(t, base, "agents"), "install over a reset state")
 }
 
 // TestModelsRejectsAStaleChoice keeps the installer refusing a stored choice it cannot resolve, and naming the reset that clears it. Which stored blocks are stale is settled in internal/models.
 func TestModelsRejectsAStaleChoice(t *testing.T) {
 	base := modelsBase(t)
 	writeMode(t, stateFile(base), `{"version": 1, "installed": {}, "files": [], "models": {"preset": "lavish"}}`+"\n", 0o644)
-	if r := runInstaller(t, base, "--skip-packages"); r.code == 0 || !strings.Contains(r.stderr, "harness models reset") {
+	if r := runInstaller(t, base, "agents"); r.code == 0 || !strings.Contains(r.stderr, "harness models reset") {
 		t.Errorf("install over a stale choice: exit %d, stderr %q", r.code, r.stderr)
 	}
 	ok(t, runModels(t, base, "reset"), "the recommended reset")
-	ok(t, runInstaller(t, base, "--skip-packages"), "install after reset")
+	ok(t, runInstaller(t, base, "agents"), "install after reset")
 
 	// A per-role reset drops only that role, leaving the preset to answer for it.
 	writeMode(t, stateFile(base), `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy", "roles": {"executor": {"client": "claude", "model": "claudius"}}}}`+"\n", 0o644)
@@ -213,7 +213,7 @@ func TestModelsPresetNeedsNoCatalog(t *testing.T) {
 	if r := ok(t, runModels(t, base, "show"), "show"); !strings.Contains(r.stdout, "executor client=codex model=gpt-6-luna effort=inherit (preset:balanced) [unverified:") {
 		t.Errorf("show does not mark the unverifiable Codex model:\n%s", r.stdout)
 	}
-	r := ok(t, runInstaller(t, base, "--skip-packages"), "install without a Codex catalog")
+	r := ok(t, runInstaller(t, base, "agents"), "install without a Codex catalog")
 	if got := strings.Count(r.stderr+r.stdout, "listing Codex models failed"); got != 1 {
 		t.Errorf("want one listing-failure warning, got %d:\n%s%s", got, r.stdout, r.stderr)
 	}
@@ -225,7 +225,7 @@ func TestInstallFallsBackForAnUnlistedModel(t *testing.T) {
 	ok(t, runModels(t, base, "set", "reviewer", "--client", "opencode", "--model", "openai/gpt-5.6-sol"), "assign the reviewer to OpenCode")
 	writeShim(t, base, "opencode", `case "$1" in models) echo 'opencode-go/glm-5.3' ;; esac`)
 	writeShim(t, base, "codex", `case "$*" in "debug models") echo '{"models":[{"slug":"gpt-6.1-sol","visibility":"list"}]}' ;; esac`)
-	r := ok(t, runInstaller(t, base, "--skip-packages"), "install without the assigned models")
+	r := ok(t, runInstaller(t, base, "agents"), "install without the assigned models")
 	for _, want := range []string{"executor is assigned codex model gpt-6-luna, which this machine does not list", "reviewer is assigned opencode model openai/gpt-5.6-sol, which this machine does not list"} {
 		if !strings.Contains(r.stderr+r.stdout, want) {
 			t.Errorf("no fallback warning %q:\n%s%s", want, r.stdout, r.stderr)
@@ -260,7 +260,7 @@ func TestInstallRefusesATrackedPerRoleAssignment(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeMode(t, path, string(data)+"\n", 0o644)
-	if r := runInstaller(t, base, "--skip-packages"); r.code == 0 || !strings.Contains(r.stdout+r.stderr, "chosen with `harness models`") {
+	if r := runInstaller(t, base, "agents"); r.code == 0 || !strings.Contains(r.stdout+r.stderr, "chosen with `harness models`") {
 		t.Errorf("exit %d, output %q%q", r.code, r.stdout, r.stderr)
 	}
 }

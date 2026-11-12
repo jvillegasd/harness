@@ -25,37 +25,29 @@ const subagentStatusline = "opencode-subagent-statusline"
 var yoloAlias = regexp.MustCompile(`(?m)^[ \t]*alias (ccyolo|cxyolo|oyolo|ocyolo)=`)
 
 const uninstallLeft = `
-Not touched: the harness binary, Engram, agent-browser, and every other
-package, ~/.engram, ~/.agent-browser, ~/.dotfiles-backups, and every untracked
-key in the client configs.
-
-Open a new shell to drop the aliases from the one you are in.
+Not touched: every tool's data (~/.engram, ~/.agent-browser, ~/.claude,
+~/.codex), ~/.dotfiles-backups, and every untracked key in the client configs.
 Reinstall with: harness install
 `
 
-// uninstallSelected removes the selected components from the selected clients: the copies no installed client still needs, then the configuration each component wrote outside them. It acts on the recorded state, so a path the harness never wrote is never touched.
+// uninstallSelected removes the selected components from the selected clients: the copies no client still needs, then the configuration each component wrote outside them, then the recorded tools of the named tool components. It acts on the recorded state, so a path or tool the harness never installed is never touched.
 func (in *installer) uninstallSelected() {
-	clients, components := in.clients, in.components
+	// The install's PATH, so a tool it found or put in ~/.local/bin is found here too.
+	in.usePATH()
+	clients := in.clients
 	if clients == nil {
 		clients = allClients
 	}
-	if components == nil {
+	clients = inOrder(clients, allClients)
+	components := in.components
+	switch {
+	case in.all:
 		components = allComponents
+	case components == nil:
+		components = configComponents
 	}
-	if len(clients) == len(allClients) && len(components) == len(allComponents) && (len(in.loadState().Models) > 0 || len(in.loadState().Review) > 0) {
-		fmt.Fprintln(in.stdout, "This also removes ~/.harness, which discards the `harness models` and `harness review level` choices.")
-	}
-	fmt.Fprintf(in.stdout, "Remove the harness %s from %s? [y/N] ", strings.Join(components, ", "), strings.Join(clients, ", "))
-	if in.yes {
-		fmt.Fprintln(in.stdout, "yes")
-	} else {
-		answer, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-		fmt.Fprintln(in.stdout)
-		if a := strings.ToLower(strings.TrimSpace(answer)); a != "y" && a != "yes" {
-			in.log("Nothing removed.")
-			return
-		}
-	}
+	components = inOrder(components, allComponents)
+	configs := slices.DeleteFunc(slices.Clone(components), func(c string) bool { return !slices.Contains(configComponents, c) })
 
 	s := in.loadState()
 	aliasesBefore := slices.ContainsFunc(allClients, func(c string) bool { return slices.Contains(s.Installed[c], "aliases") })
@@ -69,6 +61,67 @@ func (in *installer) uninstallSelected() {
 			s.Installed[client] = kept
 		}
 	}
+	// The tools to remove, last installed first: only of a component named or under --all, never by a bare uninstall's default; only recorded ones; a client's own only for a selected client; a shared one only once no client keeps any harness config; and a package only once no recorded tool that stays was installed through it.
+	var removals []tool
+	var notes []string
+	for i := len(tools) - 1; i >= 0; i-- {
+		t := tools[i]
+		if !in.all && !slices.Contains(in.components, t.component) || t.client != "" && !slices.Contains(clients, t.client) {
+			continue
+		}
+		_, recorded := s.Tools[t.name]
+		dependents := installedThrough(t.name, s.Tools, removals)
+		switch {
+		case !recorded:
+			if present(t.name) {
+				notes = append(notes, t.name+": present before the harness, left installed")
+			}
+		case t.client == "" && len(s.Installed) > 0:
+			notes = append(notes, fmt.Sprintf("%s: still used by %s, left installed", t.name, strings.Join(inOrder(slices.Collect(maps.Keys(s.Installed)), allClients), ", ")))
+		case len(dependents) > 0:
+			notes = append(notes, fmt.Sprintf("%s: %s was installed through it, left installed", t.name, strings.Join(dependents, ", ")))
+		default:
+			removals = append(removals, t)
+		}
+	}
+	var names []string
+	for _, t := range removals {
+		names = append(names, t.name)
+	}
+	if len(configs) == 0 && len(removals) == 0 {
+		for _, note := range notes {
+			fmt.Fprintln(in.stdout, note)
+		}
+		in.log("Nothing to remove.")
+		return
+	}
+	emptied := len(s.Installed) == 0 && len(s.Tools) == len(removals)
+	if emptied && (len(s.Models) > 0 || len(s.Review) > 0) {
+		fmt.Fprintln(in.stdout, "This also removes ~/.harness, which discards the `harness models` and `harness review level` choices.")
+	}
+	var parts []string
+	if len(configs) > 0 {
+		parts = append(parts, fmt.Sprintf("Remove the harness %s from %s", strings.Join(configs, ", "), strings.Join(clients, ", ")))
+	}
+	if len(removals) > 0 {
+		parts = append(parts, "uninstall "+strings.Join(names, ", "))
+	}
+	if in.all && emptied {
+		parts = append(parts, "delete "+in.binaryPath())
+	}
+	question := strings.Join(parts, ", and ")
+	fmt.Fprintf(in.stdout, "%s%s? [y/N] ", strings.ToUpper(question[:1]), question[1:])
+	if in.yes {
+		fmt.Fprintln(in.stdout, "yes")
+	} else {
+		answer, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+		fmt.Fprintln(in.stdout)
+		if a := strings.ToLower(strings.TrimSpace(answer)); a != "y" && a != "yes" {
+			in.log("Nothing removed.")
+			return
+		}
+	}
+
 	var kept, removed []entry
 	for _, e := range s.Files {
 		if s.needed(e) {
@@ -81,7 +134,7 @@ func (in *installer) uninstallSelected() {
 	s.Files = kept
 
 	selected := func(client, component string) bool {
-		return slices.Contains(clients, client) && slices.Contains(components, component)
+		return slices.Contains(clients, client) && slices.Contains(configs, component)
 	}
 	if selected("claude", "settings") {
 		in.removeClaudeSettings()
@@ -92,29 +145,49 @@ func (in *installer) uninstallSelected() {
 	if selected("opencode", "settings") {
 		in.reconcileOpenCodePermission(true)
 	}
-	if selected("claude", "mcp") {
+	if selected("claude", "mcps") {
 		in.removeClaudeMCP()
 	}
-	if selected("codex", "mcp") {
+	if selected("codex", "mcps") {
 		in.removeCodexMCP()
 	}
-	if selected("opencode", "mcp") {
+	if selected("opencode", "mcps") {
 		in.removeOpenCodeMCP()
 	}
 	aliasesGone := !slices.ContainsFunc(allClients, func(c string) bool { return slices.Contains(s.Installed[c], "aliases") })
 	// The block goes once no client keeps aliases; an uninstall of every client's aliases removes it even without a recorded install.
-	aliasesRemoved := aliasesGone && slices.Contains(components, "aliases") && (aliasesBefore || len(clients) == len(allClients))
+	aliasesRemoved := aliasesGone && slices.Contains(configs, "aliases") && (aliasesBefore || len(clients) == len(allClients))
 	if aliasesRemoved {
 		in.reconcileAliases(true)
 	}
-	if len(s.Installed) == 0 {
-		must(os.RemoveAll(in.stateDir()))
-	} else {
-		in.saveState(in.keepChoices(s))
-	}
+	in.updateState(func(now *state) { now.Installed, now.Files = s.Installed, s.Files })
 	in.checkRemoved(removed, selected, aliasesRemoved)
 
-	fmt.Fprint(in.stdout, "\n\033[1;32m✓ Harness AI removed.\033[0m\n"+uninstallLeft)
+	// After the config, which a client's own CLI removes, and clients before the packages they were installed through.
+	for _, t := range removals {
+		in.removeTool(t, s.Tools[t.name])
+	}
+	if in.loadState().empty() {
+		must(os.RemoveAll(in.stateDir()))
+		if in.all {
+			removeFile(in.binaryPath())
+			in.log("Removed %s", in.binaryPath())
+		}
+	}
+
+	fmt.Fprint(in.stdout, "\n\033[1;32m✓ Harness AI removed.\033[0m\n")
+	for _, note := range notes {
+		fmt.Fprintln(in.stdout, note)
+	}
+	for _, t := range removals {
+		if path := filepath.Join(in.home, t.data); t.data != "" && exists(path) {
+			fmt.Fprintf(in.stdout, "%s: its data stays in %s\n", t.name, path)
+		}
+	}
+	if aliasesRemoved {
+		fmt.Fprintln(in.stdout, "Open a new shell to drop the aliases from the one you are in.")
+	}
+	fmt.Fprint(in.stdout, uninstallLeft)
 }
 
 func removeFile(path string) {
@@ -247,7 +320,7 @@ func (in *installer) removeAgentBrowserConfig() {
 		doc, err = parseObject(data)
 	}
 	if err != nil {
-		die("Could not edit %s; fix it and re-run --uninstall.", path)
+		die("Could not edit %s; fix it and re-run harness uninstall.", path)
 	}
 	current, ok := doc.get("mcp")
 	servers, err := parseObject(current)
@@ -336,7 +409,7 @@ func (in *installer) pruneTUI(path string) {
 	doc, err := parseObject(data)
 	if err != nil {
 		if !json.Valid(data) {
-			fmt.Fprintf(in.stderr, "harness install: could not parse it, so its %s entry was left\n", subagentStatusline)
+			in.warn("%s: could not parse it, so its %s entry was left", path, subagentStatusline)
 		}
 		return
 	}
@@ -388,13 +461,13 @@ func (in *installer) checkRemoved(removed []entry, selected func(client, compone
 	if selected("opencode", "settings") && !in.openCodePermissionHold(true) {
 		die("The harness permission rules survived the uninstall in %s.", in.openCodeConfigPath())
 	}
-	if selected("claude", "mcp") {
+	if selected("claude", "mcps") {
 		in.checkClaudeMCPRemoved()
 	}
-	if selected("codex", "mcp") {
+	if selected("codex", "mcps") {
 		in.checkCodexMCPRemoved()
 	}
-	if selected("opencode", "mcp") {
+	if selected("opencode", "mcps") {
 		in.checkOpenCodeMCPRemoved()
 	}
 }

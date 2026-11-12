@@ -13,36 +13,69 @@ import (
 	"github.com/jvillegasd/harness/internal/skills"
 )
 
-var groups = []string{"packages", "clients", "mcps", "skills"}
+// components are the ones that carry a tool or an upstream source to update, in the order a bare update runs them.
+var components = []string{"packages", "clients", "mcps", "skills"}
 
-const usage = `Usage: harness update [clients|packages|mcps|skills]
+// configOnly are the install components with nothing to update: managed config a harness install reconciles.
+var configOnly = []string{"agents", "floor", "settings", "aliases"}
 
-Update installed tools. Omit the group to update all groups.
+var allClients = []string{"claude", "codex", "opencode"}
 
+const usage = `Usage: harness update [<component>...] [--client <name>]...
+
+Update installed tools. Omit the components to update all of them.
+
+Components:
   clients   Update Claude Code, Codex, and OpenCode
   packages  Update Node, gh, and uv
   mcps      Update Engram, agent-browser, and client registrations
   skills    Update locked skills in this checkout
+
+  --client  Limit clients and mcps registrations to claude, codex, or
+            opencode; repeatable. packages and skills serve every client.
 
 Details: docs/cli.md#update-installed-tools
 `
 
 // Command validates the entire invocation before discovery or mutation.
 func Command(args []string, stdout, stderr io.Writer) int {
-	selected := groups
-	if len(args) == 1 && slices.Contains([]string{"help", "--help", "-h"}, args[0]) || len(args) == 2 && slices.Contains(groups, args[0]) && slices.Contains([]string{"--help", "-h"}, args[1]) {
+	if len(args) == 1 && args[0] == "help" {
 		fmt.Fprint(stdout, usage)
 		return 0
 	}
-	if len(args) > 1 || len(args) == 1 && !slices.Contains(groups, args[0]) {
-		fmt.Fprintln(stderr, "harness update: expected zero or one group; run harness update --help")
-		return 2
+	var selected, only []string
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case (arg == "--help" || arg == "-h") && i == len(args)-1:
+			fmt.Fprint(stdout, usage)
+			return 0
+		case arg == "--client":
+			if i+1 == len(args) || !slices.Contains(allClients, args[i+1]) {
+				fmt.Fprintf(stderr, "harness update: --client takes one of %s; run harness update --help\n", strings.Join(allClients, ", "))
+				return 2
+			}
+			i++
+			only = append(only, args[i])
+		case slices.Contains(components, arg):
+			selected = append(selected, arg)
+		case slices.Contains(configOnly, arg):
+			fmt.Fprintf(stderr, "harness update: %s has no tool to update; run harness install %s to reconcile it\n", arg, arg)
+			return 2
+		default:
+			fmt.Fprintf(stderr, "harness update: unknown component %q; run harness update --help\n", arg)
+			return 2
+		}
 	}
-	if len(args) == 1 {
-		selected = args
+	if selected == nil {
+		selected = components
+	}
+	selected = slices.DeleteFunc(slices.Clone(components), func(c string) bool { return !slices.Contains(selected, c) })
+	if only == nil {
+		only = allClients
 	}
 	c, checkoutErr := checkout.Find(".")
-	if len(args) == 1 && args[0] == "skills" && checkoutErr != nil {
+	if len(selected) == 1 && selected[0] == "skills" && checkoutErr != nil {
 		fmt.Fprintln(stderr, "harness update:", checkoutErr)
 		return 1
 	}
@@ -50,7 +83,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	if slices.Contains(selected, "skills") && checkoutErr == nil {
 		skillsErr = skills.CheckUpdate(c)
 	}
-	r := &runner{out: stdout, err: stderr}
+	r := &runner{out: stdout, err: stderr, only: only}
 	defer r.summary()
 	// Finish discovery for every selected target before the first upgrade.
 	targets := r.discover(selected)
@@ -108,8 +141,10 @@ type target struct {
 type runner struct {
 	out, err io.Writer
 	failed   bool
-	clients  []string
-	results  []string
+	// only are the clients --client names, or every client.
+	only    []string
+	clients []string
+	results []string
 }
 
 func (r *runner) report(status, name, detail string) {
@@ -187,7 +222,7 @@ func (r *runner) reconcile(t target, ready bool, outcomes map[string]bool) {
 		r.report("failed", t.name+" registrations", "updated executable missing")
 		return
 	}
-	for _, client := range []string{"claude", "codex", "opencode"} {
+	for _, client := range r.only {
 		item := t.name + " registration in " + client
 		if !slices.Contains(r.clients, client) {
 			r.report("skipped", item, "client not installed at discovery")

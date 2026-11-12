@@ -25,6 +25,17 @@ func runInstallerInput(t *testing.T, base, stdin string, args ...string) result 
 	return runHarnessInput(t, base, stdin, []string{"TMPDIR=" + filepath.Join(base, "tmp"), "HARNESS_ASSETS=" + filepath.Join(base, "checkout")}, append([]string{"install"}, args...)...)
 }
 
+// runUninstaller runs `harness uninstall` from the sandbox checkout.
+func runUninstaller(t *testing.T, base string, args ...string) result {
+	t.Helper()
+	return runUninstallerInput(t, base, "", args...)
+}
+
+func runUninstallerInput(t *testing.T, base, stdin string, args ...string) result {
+	t.Helper()
+	return runHarnessInput(t, base, stdin, []string{"TMPDIR=" + filepath.Join(base, "tmp"), "HARNESS_ASSETS=" + filepath.Join(base, "checkout")}, append([]string{"uninstall"}, args...)...)
+}
+
 // runHarness runs the built binary from the sandbox checkout, with only the shims and the system directories on PATH, plus any extra environment.
 func runHarness(t *testing.T, base string, extra []string, args ...string) result {
 	t.Helper()
@@ -101,6 +112,9 @@ func writeShim(t *testing.T, base, name, body string) {
 func shimScripts(shims string) map[string]string {
 	return map[string]string{
 		"agent-browser": "",
+		// node and uv stand in for the packages, so an install finds every tool present and calls no package manager unless a test removes one.
+		"node": "",
+		"uv":   "",
 		// The formulae `brew list --formula` reports as installed let the full run add only what this leaves out, without a per-formula probe.
 		"brew":   `if [ "$1" = "list" ]; then printf '%s\n' node gh opencode; fi`,
 		"curl":   "",

@@ -279,3 +279,29 @@ func TestUpgradePreservesHomebrewRefreshPolicy(t *testing.T) {
 		t.Fatalf("refresh policy overridden: %d %s %s", code, &out, &err)
 	}
 }
+
+// --client narrows the clients component to the named clients, so the others are neither discovered nor updated.
+func TestClientFlagNarrowsClients(t *testing.T) {
+	root := t.TempDir()
+	bin := filepath.Join(root, "bin")
+	log := filepath.Join(root, "calls")
+	t.Setenv("HOME", root)
+	t.Setenv("PATH", bin)
+	t.Chdir(root)
+	native := filepath.Join(root, ".local/share/claude/versions/1")
+	shim(t, native, `echo "claude $*" >> '`+log+`'; echo 1`)
+	os.MkdirAll(bin, 0755)
+	os.Symlink(native, filepath.Join(bin, "claude"))
+	var out, err bytes.Buffer
+	if code := Command([]string{"clients", "--client", "claude"}, &out, &err); code != 0 {
+		t.Fatalf("%d %s %s", code, &out, &err)
+	}
+	if calls, _ := os.ReadFile(log); !strings.Contains(string(calls), "claude update") {
+		t.Errorf("the named client was not updated: %s", calls)
+	}
+	for _, name := range []string{"codex", "opencode"} {
+		if strings.Contains(out.String(), ": "+name+":") {
+			t.Errorf("%s was reported though --client named only claude: %s", name, &out)
+		}
+	}
+}

@@ -152,7 +152,7 @@ func TestReviewLevelCommand(t *testing.T) {
 	if readFile(t, stateFile(base)) != before {
 		t.Error("a rejected level rewrote state.json")
 	}
-	ok(t, runInstaller(t, base, "--skip-packages"), "install")
+	ok(t, runInstaller(t, base, "agents"), "install")
 	if r := ok(t, level(), "level"); strings.TrimSpace(r.stdout) != "high (global)" {
 		t.Errorf("after install the level is %q, want high (global)", r.stdout)
 	}
