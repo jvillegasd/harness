@@ -1,4 +1,4 @@
-// Package install copies the harness the binary carries into the home directory and records each copy: the managed files, the zsh alias block, the tracked Claude settings, and the Engram and agent-browser registrations.
+// Package install copies the harness the binary carries into the home directory and records each copy: the managed files, the shell alias line, the tracked Claude settings, and the Engram and agent-browser registrations.
 package install
 
 import (
@@ -39,7 +39,8 @@ Components:
   floor     The floor, as each client's global instructions
   settings  Tracked client settings, compaction hooks, and command rules
   aliases   The yolo aliases and the line that loads them from your login
-            shell's startup file (~/.zshrc, or ~/.bashrc for bash)
+            shell's startup file (~/.zshrc for zsh, ~/.bashrc for bash on
+            Linux, the bash login profile on macOS)
 
   --client     Limit the run to claude, codex, or opencode; repeatable.
                Without it, the run configures every client that is installed
