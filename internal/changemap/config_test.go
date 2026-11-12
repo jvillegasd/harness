@@ -123,13 +123,13 @@ func TestLoadLocksReadsSkillFolders(t *testing.T) {
 	if err != nil || len(locks) != 2 || locks[0].Dir != "skills/a" || !locks[0].Verified || !locks[0].Hashed["SKILL.md"] || locks[1].Dir != "skills/b" || locks[1].Verified {
 		t.Fatalf("LoadLocks = %+v, %v; want a verified, b unverified (no body), c outside skills/ ignored", locks, err)
 	}
-	if err := os.MkdirAll(filepath.Join(body, "node_modules"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(body, "__pycache__"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(body, "node_modules", "x.js"), []byte("added\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(body, "__pycache__", "x.pyc"), []byte("added\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if locks, _ := LoadLocks(root); !locks[0].Verified || locks[0].Hashed["node_modules/x.js"] {
+	if locks, _ := LoadLocks(root); !locks[0].Verified || locks[0].Hashed["__pycache__/x.pyc"] {
 		t.Fatalf("a file the hash skips changed verification or was listed as covered: %+v", locks[0])
 	}
 	if err := os.WriteFile(filepath.Join(body, "SKILL.md"), []byte("edited\n"), 0o644); err != nil {

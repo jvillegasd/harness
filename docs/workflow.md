@@ -18,6 +18,7 @@ When you want the work run to a fixed set of steps, start it with `/work <task>`
 | A bug needs reproduction and diagnosis | `diagnosing-bugs` |
 | You want test-first implementation | `tdd` |
 | A frontend needs design work | `impeccable` |
+| Frontend code needs current web platform APIs and their fallbacks | `modern-web-guidance` |
 | A state machine needs model checking | `/statechart` |
 | Code needs a durable formal check of a model or proof | `/create-formal-verification-skill` |
 | A formal check may be stale after merges or refactors | `/maintain-formal-verification-skill` |

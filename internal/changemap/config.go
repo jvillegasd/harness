@@ -33,7 +33,7 @@ const SkillLockPath = "skills-lock.json"
 type Lock struct {
 	Dir, Name, Source string
 	Verified          bool
-	// Hashed holds the folder-relative paths the hash covered; only these may collapse, because a skipped file (under node_modules or .git, or a symlink) would otherwise ride along unverified.
+	// Hashed holds the folder-relative paths the hash covered; only these may collapse, because a skipped file (a metadata.json, a file under .git, __pycache__, or __pypackages__, or a symlink leading out of the folder) would otherwise ride along unverified.
 	Hashed map[string]bool
 }
 

@@ -14,6 +14,9 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
+// skillsCLI is the exact skills.sh release add and update run. folderHash ports this release's computeSkillFolderHash, so a newer release that hashes differently is a deliberate bump of both, not drift in every lock entry.
+const skillsCLI = "skills@1.8.1"
+
 var (
 	nameRE  = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
 	ownerRE = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$`)
@@ -84,7 +87,7 @@ func add(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	defer os.RemoveAll(scratch)
-	if err := run(scratch, stdout, stderr, "npx", "skills@1", "add", source, "--skill", name, "--agent", "universal", "-y"); err != nil {
+	if err := run(scratch, stdout, stderr, "npx", skillsCLI, "add", source, "--skill", name, "--agent", "universal", "-y"); err != nil {
 		return err
 	}
 	installed := filepath.Join(scratch, ".agents", "skills", name)
@@ -121,7 +124,7 @@ func update(c checkout.Checkout, stdout, stderr io.Writer) error {
 		return err
 	}
 	defer os.RemoveAll(scratch)
-	if err := run(scratch, stdout, stderr, "npx", "skills@1", "update", "--project", "--yes"); err != nil {
+	if err := run(scratch, stdout, stderr, "npx", skillsCLI, "update", "--project", "--yes"); err != nil {
 		return err
 	}
 	updated, err := os.ReadDir(filepath.Join(scratch, ".agents", "skills"))

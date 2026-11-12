@@ -1,18 +1,17 @@
 package skills
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
-
-	"golang.org/x/text/collate"
-	"golang.org/x/text/language"
+	"strconv"
+	"strings"
 
 	"github.com/jvillegasd/harness/internal/checkout"
 )
@@ -100,50 +99,112 @@ func isLocalHash(s string) bool {
 	return err == nil
 }
 
-// FolderHash is the folder hash a lock entry's computedHash records, with the forward-slash paths of the files it covered, for callers outside this package such as change-map. A path the hash skipped (under .git or node_modules, or not a regular file) is not in the list, so no caller can treat it as verified.
+// FolderHash is the folder hash a lock entry's computedHash records, with the forward-slash paths of the files it covered, for callers outside this package such as change-map. A path the hash skipped is not in the list, so no caller can treat it as verified.
 func FolderHash(dir string) (string, []string, error) { return hashFolder(dir) }
 
-// folderHash reimplements skills.sh's computeSkillFolderHash: sha256 over each regular file's forward-slash path then its bytes, files ordered by localeCompare, .git and node_modules skipped.
+// folderHash reimplements the computeSkillFolderHash of skills.sh's version 2 lock: sha256 over each file's forward-slash path, NUL, its length, NUL, and its bytes, files in byte order of path. Text files hash with CRLF folded to LF. metadata.json files and .git, __pycache__, and __pypackages__ directories are skipped, and a symlink is followed only while it resolves inside the folder.
 func folderHash(dir string) (string, error) {
 	hash, _, err := hashFolder(dir)
 	return hash, err
 }
 
+type hashedFile struct {
+	path    string
+	content []byte
+}
+
 func hashFolder(dir string) (string, []string, error) {
-	var rels []string
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			if d.Name() == ".git" || d.Name() == "node_modules" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !d.Type().IsRegular() {
-			return nil
-		}
-		rel, err := filepath.Rel(dir, path)
-		if err != nil {
-			return err
-		}
-		rels = append(rels, filepath.ToSlash(rel))
-		return nil
-	})
+	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return "", nil, err
 	}
-	c := collate.New(language.Und)
-	sort.SliceStable(rels, func(i, j int) bool { return c.CompareString(rels[i], rels[j]) < 0 })
+	root, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return "", nil, err
+	}
+	var files []hashedFile
+	if err := collectHashed(dir, "", root, map[string]bool{}, &files); err != nil {
+		return "", nil, err
+	}
+	for i := range files {
+		files[i].path = strings.ReplaceAll(files[i].path, "\\", "/")
+	}
+	sort.SliceStable(files, func(i, j int) bool { return files[i].path < files[j].path })
 	h := sha256.New()
-	for _, rel := range rels {
-		data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rel)))
-		if err != nil {
-			return "", nil, err
+	rels := make([]string, 0, len(files))
+	for _, f := range files {
+		content := f.content
+		if bytes.IndexByte(content, 0) < 0 && bytes.Contains(content, []byte("\r\n")) {
+			content = bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
 		}
-		h.Write([]byte(rel))
-		h.Write(data)
+		h.Write([]byte(f.path))
+		h.Write([]byte{0})
+		h.Write([]byte(strconv.Itoa(len(content))))
+		h.Write([]byte{0})
+		h.Write(content)
+		rels = append(rels, f.path)
 	}
 	return hex.EncodeToString(h.Sum(nil)), rels, nil
+}
+
+// collectHashed walks dir the way skills.sh's collectFiles does, tracking the real directories above it so a symlink loop ends instead of recursing.
+func collectHashed(dir, prefix, root string, ancestors map[string]bool, files *[]hashedFile) error {
+	real, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return err
+	}
+	if ancestors[real] {
+		return nil
+	}
+	branch := map[string]bool{real: true}
+	for a := range ancestors {
+		branch[a] = true
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		name := e.Name()
+		isDir := e.IsDir()
+		if excludedFromHash(name, isDir) {
+			continue
+		}
+		full := filepath.Join(dir, name)
+		if e.Type()&os.ModeSymlink != 0 {
+			target, err := filepath.EvalSymlinks(full)
+			if err != nil || (target != root && !strings.HasPrefix(target, root+string(filepath.Separator))) {
+				continue
+			}
+			fi, err := os.Stat(target)
+			if err != nil {
+				return err
+			}
+			isDir = fi.IsDir()
+			if isDir && excludedFromHash(name, true) {
+				continue
+			}
+		} else if !isDir && !e.Type().IsRegular() {
+			continue
+		}
+		if isDir {
+			if err := collectHashed(full, prefix+name+"/", root, branch, files); err != nil {
+				return err
+			}
+			continue
+		}
+		content, err := os.ReadFile(full)
+		if err != nil {
+			return err
+		}
+		*files = append(*files, hashedFile{path: prefix + name, content: content})
+	}
+	return nil
+}
+
+func excludedFromHash(name string, isDir bool) bool {
+	if name == "metadata.json" {
+		return true
+	}
+	return isDir && (name == ".git" || name == "__pycache__" || name == "__pypackages__")
 }
