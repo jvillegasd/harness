@@ -321,3 +321,22 @@ func TestSlashCommandWithArgumentsIsAlsoATurn(t *testing.T) {
 		}
 	}
 }
+
+// Only a slash-command entry carries the person's arguments. The same tag
+// quoted inside text the client injected is not a typed request.
+func TestQuotedCommandArgsInInjectedTextIsNotATurn(t *testing.T) {
+	home := t.TempDir()
+	body := `{"type":"user","timestamp":"2026-01-01T09:00:00Z","message":{"content":"<system-reminder>earlier: <command-args>fix it</command-args></system-reminder>"}}` + "\n" +
+		`{"type":"user","timestamp":"2026-01-01T09:00:01Z","message":{"content":"<local-command-stdout><command-args>x</command-args></local-command-stdout>"}}` + "\n"
+	writeTranscript(t, filepath.Join(home, ".claude", "projects", "-tmp-acme-app", "quoted.jsonl"), body)
+	got, err := collect(home, []string{"claude"}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("collected %d sessions, want 1", len(got))
+	}
+	if v, ok := got[0].metric("turns"); !ok || v != 0 {
+		t.Fatalf("turns = %v, want 0", v)
+	}
+}
