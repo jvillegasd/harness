@@ -59,6 +59,8 @@ var (
 	linesRe      = regexp.MustCompile(`^[0-9]+(-[0-9]+)?$`)
 	// ErrInvalid marks a rejected entry; tests use it to tell a rejection from an I/O failure.
 	ErrInvalid = errors.New("invalid entry")
+	// ErrHeld marks a branch directory that still records a review worktree, so removing it is refused.
+	ErrHeld = errors.New("a review worktree is still recorded")
 )
 
 func oneOf(field, value string, allowed []string) error {
@@ -116,11 +118,35 @@ func File(root, branch string) (string, error) {
 	if branch == "" {
 		return "", fmt.Errorf("%w: no branch is checked out; pass --branch", ErrInvalid)
 	}
+	// Escaping leaves a dot segment as it is, and it would resolve to a parent of the branch directories.
+	if branch == "." || branch == ".." {
+		return "", fmt.Errorf("%w: %q is not a branch name", ErrInvalid, branch)
+	}
 	common, err := git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(common, "harness-review", "branches", url.PathEscape(branch), "ledger.jsonl"), nil
+}
+
+// RemoveBranch deletes the branch directory that holds the ledger file, with its patches, and reports whether there was one. It refuses while worktree.txt is there: that file is the only record of an executor worktree review could not retire, and of where its work was saved.
+func RemoveBranch(file string) (bool, error) {
+	dir := filepath.Dir(file)
+	// Only a directory directly under branches/ is one branch's; anything else holds more than this removal owns.
+	if filepath.Base(filepath.Dir(dir)) != "branches" {
+		return false, fmt.Errorf("%w: %s is not a branch's review directory", ErrInvalid, dir)
+	}
+	if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	if _, err := os.Stat(filepath.Join(dir, "worktree.txt")); err == nil {
+		return false, fmt.Errorf("%w in %s; retire it as review's Verify step describes, then remove again", ErrHeld, filepath.Join(dir, "worktree.txt"))
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return false, err
+	}
+	return true, os.RemoveAll(dir)
 }
 
 // Append writes one line to the ledger file, creating its directory. A single O_APPEND write keeps concurrent records from interleaving.

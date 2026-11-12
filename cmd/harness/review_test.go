@@ -133,6 +133,51 @@ func TestReviewLedgerCommand(t *testing.T) {
 	}
 }
 
+// TestReviewRemoveCommand proves the CLI is wired to the removal rule: the named branch's directory goes, another branch's stays, a second run is a no-op, and a recorded worktree is refused. The rule itself is settled in internal/reviewledger.
+func TestReviewRemoveCommand(t *testing.T) {
+	dir, data := repo(t), t.TempDir()
+	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
+	record := func(branch string) string {
+		if r := reviewRun(t, dir, data, "record", "--branch", branch, "--depth", "medium", "--disposition", "clean", "--summary", "s"); r.code != 0 {
+			t.Fatalf("record exited %d: %s", r.code, r.stderr)
+		}
+		return filepath.Dir(strings.TrimSpace(reviewRun(t, dir, data, "path", "--branch", branch).stdout))
+	}
+	merged, kept := record("feat/x"), record("feat/y")
+
+	if r := reviewRun(t, dir, data, "remove", "--branch", "feat/x"); r.code != 0 || strings.TrimSpace(r.stdout) != merged {
+		t.Fatalf("remove exited %d with %q: %s", r.code, r.stdout, r.stderr)
+	}
+	if _, err := os.Stat(merged); !os.IsNotExist(err) {
+		t.Errorf("the removed branch's directory is still there: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(kept, "ledger.jsonl")); err != nil {
+		t.Errorf("another branch's ledger was touched: %v", err)
+	}
+	if r := reviewRun(t, dir, data, "remove", "--branch", "feat/x"); r.code != 0 || r.stdout != "" {
+		t.Errorf("a second remove exited %d with %q, want 0 and nothing", r.code, r.stdout)
+	}
+
+	for _, name := range []string{".", ".."} {
+		if r := reviewRun(t, dir, data, "remove", "--branch", name); r.code != 2 || r.stderr == "" {
+			t.Errorf("remove --branch %s exited %d with %q, want 2 and a diagnostic", name, r.code, r.stderr)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(kept, "ledger.jsonl")); err != nil {
+		t.Fatalf("a dot-segment branch name deleted another branch's ledger: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(kept, "worktree.txt"), []byte("/tmp/wt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if r := reviewRun(t, dir, data, "remove", "--branch", "feat/y"); r.code != 1 || r.stderr == "" {
+		t.Errorf("remove with a recorded worktree exited %d with %q, want 1 and a diagnostic", r.code, r.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(kept, "ledger.jsonl")); err != nil {
+		t.Errorf("a refused remove deleted the ledger: %v", err)
+	}
+}
+
 // TestReviewLevelCommand proves the CLI is wired to the level rules, and that an install keeps the stored level. Which values are accepted is settled in internal/reviewledger.
 func TestReviewLevelCommand(t *testing.T) {
 	base := modelsBase(t)
