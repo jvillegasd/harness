@@ -47,7 +47,7 @@ func (lr lockRun) setNpx(t *testing.T, install bool) {
 root="$PWD"
 echo "npx $*" >> "` + lr.root + `/npx.log"
 echo "$PWD" >> "` + lr.root + `/npx.dirs"
-[ "$1" = "skills@1" ] || exit 0
+[ "$1" = "skills@1.8.1" ] || exit 0
 [ "$2" = "add" ] || exit 0
 [ "` + boolFlag(install) + `" = "yes" ] || exit 0
 shift 2
@@ -129,7 +129,7 @@ func TestSkillsAddDrivesNpxAndLinks(t *testing.T) {
 	lr := newLockRun(t)
 	lr.setNpx(t, true)
 	r := ok(t, lr.harness(t, "skills", "add", "owner/repo", "myskill", "g"), "skills add")
-	if got := lr.npxLog(t); !strings.Contains(got, "npx skills@1 add owner/repo --skill myskill --agent universal -y") {
+	if got := lr.npxLog(t); !strings.Contains(got, "npx skills@1.8.1 add owner/repo --skill myskill --agent universal -y") {
 		t.Fatalf("npx log = %q", got)
 	}
 	lr.ranOutsideCheckout(t)
@@ -214,7 +214,7 @@ func TestSkillsUpdateDrivesNpx(t *testing.T) {
 	}
 	commitLockFixture(t, lr)
 	ok(t, lr.harness(t, "skills", "update"), "skills update")
-	if got := lr.npxLog(t); !strings.Contains(got, "npx skills@1 update --project --yes") {
+	if got := lr.npxLog(t); !strings.Contains(got, "npx skills@1.8.1 update --project --yes") {
 		t.Fatalf("npx log = %q", got)
 	}
 	lr.ranOutsideCheckout(t)
