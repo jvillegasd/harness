@@ -36,6 +36,22 @@ const (
 	viaNative = "native:" // native:claude, Anthropic's installer
 )
 
+// through names the package each install method runs through, which an uninstall keeps while a tool installed by that method is recorded.
+var through = map[string]string{viaNPM: "node"}
+
+// installedThrough lists, in install order, the recorded tools outside removing that were installed through the package named pkg.
+func installedThrough(pkg string, recorded map[string]string, removing []tool) []string {
+	var out []string
+	for _, t := range tools {
+		method, ok := recorded[t.name]
+		kind, _, _ := strings.Cut(method, ":")
+		if ok && through[kind+":"] == pkg && !slices.ContainsFunc(removing, func(r tool) bool { return r.name == t.name }) {
+			out = append(out, t.name)
+		}
+	}
+	return out
+}
+
 // method is how this machine installs a missing tool.
 func (t tool) method() string {
 	switch t.name {

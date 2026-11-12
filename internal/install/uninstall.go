@@ -32,6 +32,8 @@ Reinstall with: harness install
 
 // uninstallSelected removes the selected components from the selected clients: the copies no client still needs, then the configuration each component wrote outside them, then the recorded tools of the named tool components. It acts on the recorded state, so a path or tool the harness never installed is never touched.
 func (in *installer) uninstallSelected() {
+	// The install's PATH, so a tool it found or put in ~/.local/bin is found here too.
+	in.usePATH()
 	clients := in.clients
 	if clients == nil {
 		clients = allClients
@@ -59,7 +61,7 @@ func (in *installer) uninstallSelected() {
 			s.Installed[client] = kept
 		}
 	}
-	// The tools to remove, last installed first: only of a component named or under --all, never by a bare uninstall's default; only recorded ones; a client's own only for a selected client; and a shared one only once no client keeps any harness config.
+	// The tools to remove, last installed first: only of a component named or under --all, never by a bare uninstall's default; only recorded ones; a client's own only for a selected client; a shared one only once no client keeps any harness config; and a package only once no recorded tool that stays was installed through it.
 	var removals []tool
 	var notes []string
 	for i := len(tools) - 1; i >= 0; i-- {
@@ -68,6 +70,7 @@ func (in *installer) uninstallSelected() {
 			continue
 		}
 		_, recorded := s.Tools[t.name]
+		dependents := installedThrough(t.name, s.Tools, removals)
 		switch {
 		case !recorded:
 			if present(t.name) {
@@ -75,6 +78,8 @@ func (in *installer) uninstallSelected() {
 			}
 		case t.client == "" && len(s.Installed) > 0:
 			notes = append(notes, fmt.Sprintf("%s: still used by %s, left installed", t.name, strings.Join(inOrder(slices.Collect(maps.Keys(s.Installed)), allClients), ", ")))
+		case len(dependents) > 0:
+			notes = append(notes, fmt.Sprintf("%s: %s was installed through it, left installed", t.name, strings.Join(dependents, ", ")))
 		default:
 			removals = append(removals, t)
 		}

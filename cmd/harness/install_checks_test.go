@@ -681,6 +681,63 @@ func TestNamedToolUninstallKeepsSharedTools(t *testing.T) {
 	}
 }
 
+// The uninstall sees ~/.local/bin as the install does, so a Claude Code the native installer put there is removed rather than taken for gone.
+func TestUninstallFindsANativeClaudeInLocalBin(t *testing.T) {
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	if err := os.Remove(filepath.Join(base, "shims", "claude")); err != nil {
+		t.Fatal(err)
+	}
+	writeMode(t, stateFile(base), `{"version":1,"installed":{},"files":[],"tools":{"claude":"native:claude"}}`+"\n", 0o644)
+	writeMode(t, filepath.Join(home, ".local", "bin", "claude"), "#!/bin/sh\n", 0o755)
+	writeMode(t, filepath.Join(home, ".local", "share", "claude", "versions", "1"), "binary\n", 0o755)
+	r := ok(t, runUninstaller(t, base, "clients", "--client", "claude", "--yes"), "Claude Code client uninstall")
+	if strings.Contains(r.stdout, "already gone") {
+		t.Errorf("the uninstall took the Claude Code in ~/.local/bin for gone:\n%s", r.stdout)
+	}
+	for _, gone := range []string{".local/bin/claude", ".local/share/claude", ".harness"} {
+		if _, err := os.Stat(filepath.Join(home, gone)); err == nil {
+			t.Errorf("the Claude Code uninstall left %s", gone)
+		}
+	}
+}
+
+// A package outlives every recorded tool installed through it: node stays while the Codex npm installed is recorded, so a later client uninstall can still reach npm, and goes once Codex has.
+func TestPackageStaysWhileAToolInstalledThroughItIsRecorded(t *testing.T) {
+	base := sandbox(t)
+	shims := filepath.Join(base, "shims")
+	writeMode(t, stateFile(base), `{"version":1,"installed":{},"files":[],"tools":{"node":"brew:node","codex":"npm:@openai/codex"}}`+"\n", 0o644)
+	writeShim(t, base, "brew", `if [ "$*" = "uninstall node" ]; then rm -f '`+shims+`/node' '`+shims+`/npm'; fi`)
+	writeShim(t, base, "npm", `if [ "$*" = "uninstall --global @openai/codex" ]; then rm -f '`+shims+`/codex'; fi`)
+
+	r := ok(t, runUninstaller(t, base, "packages", "--yes"), "packages uninstall with Codex recorded")
+	if log := readFileOr(filepath.Join(base, "shims.log")); strings.Contains(log, "brew uninstall node") {
+		t.Fatalf("the packages uninstall removed node while the Codex installed through npm is recorded:\n%s", log)
+	}
+	if !strings.Contains(r.stdout, "node: codex was installed through it, left installed") {
+		t.Errorf("the kept package does not say why:\n%s", r.stdout)
+	}
+	if got := recordedTools(t, base); got["node"] == "" {
+		t.Errorf("the packages uninstall dropped node's record: %v", got)
+	}
+
+	ok(t, runUninstaller(t, base, "clients", "--yes"), "clients uninstall")
+	if log := readFile(t, filepath.Join(base, "shims.log")); !strings.Contains(log, "npm uninstall --global @openai/codex") {
+		t.Fatalf("the clients uninstall did not remove Codex through npm:\n%s", log)
+	}
+	if got := recordedTools(t, base); got["codex"] != "" {
+		t.Errorf("the clients uninstall kept Codex's record: %v", got)
+	}
+
+	ok(t, runUninstaller(t, base, "packages", "--yes"), "packages uninstall after Codex")
+	if log := readFile(t, filepath.Join(base, "shims.log")); !strings.Contains(log, "brew uninstall node") {
+		t.Errorf("node stayed after the Codex installed through it was removed:\n%s", log)
+	}
+	if _, err := os.Stat(filepath.Join(base, "home", ".harness")); err == nil {
+		t.Error("the last tool removal left ~/.harness")
+	}
+}
+
 // An older install recorded the floor as policy and the MCPs as mcp; reading them under the new names lets an uninstall act on them.
 func TestOldComponentNamesAreMigrated(t *testing.T) {
 	base := sandbox(t)
