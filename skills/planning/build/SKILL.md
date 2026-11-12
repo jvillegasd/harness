@@ -1,25 +1,25 @@
 ---
 name: build
-description: "Build a set of tickets or a spec's slices unattended on one integration branch, then verify, map, review, and optionally open a pull request. Invoke only by name: \"/build the spec\", \"/build tickets 12-18\"."
+description: "Build a set of tickets, or a spec cut into tickets, unattended on one integration branch, then verify, map, review, and optionally open a pull request. Invoke only by name: \"/build the spec\", \"/build tickets 12-18\"."
 argument-hint: "[spec path, ticket ids, or tracker query; add \"and open a PR\" to authorize delivery]"
 disable-model-invocation: true
 metadata:
   opencode/autoinvoke: "false"
 ---
 
-Build a set of tickets or a spec's slices unattended on one integration branch: fan the unblocked slices out to executors, merge each finished slice locally, and finish with the branch verified, mapped, and reviewed, ready for a human to read and merge.
+Build a set of tickets, or a spec cut into tickets, unattended on one integration branch: fan the unblocked slices out to executors, merge each finished slice locally, and finish with the branch verified, mapped, and reviewed, ready for a human to read and merge.
 
 Spec, tickets, or query: $ARGUMENTS
 
 ## Why
 
-This runs many workers without supervision and spends model budget at that scale, so only a human starts it: by typing `/build`, or through a `/work` autopilot grant, which counts as both the invocation and the delivery request. The invocation authorizes local work: the integration branch, worker worktrees, local merges of slice branches into the integration branch, and local commits on branches this run creates. It does not authorize a push, a pull request, a tracker write, or a merge into the default branch or of a pull request; a pull request needs the delivery request in the arguments or a later one from the human, and merging stays with the human. If this skill is reached any other way, stop and tell the human to invoke `/build`. Under an autopilot grant, `/work`'s autopilot rules (its decision defaults, stuck rule, and ceiling) replace this skill's asks and stops, such as step 1's questions and step 8's stop rule.
+This runs many workers without supervision and spends model budget at that scale, so only a human starts it: by typing `/build`, by typing `/work` on a settled spec or set of tickets, by answering go when `/work` hands back a spec and asks whether to build it, or through a `/work` autopilot grant, which counts as both the invocation and the delivery request. The invocation authorizes local work: the integration branch, worker worktrees, local merges of slice branches into the integration branch, and local commits on branches this run creates. It does not authorize a push, a pull request, a tracker write, or a merge into the default branch or of a pull request; a pull request needs the delivery request in the arguments or a later one from the human, and merging stays with the human. If this skill is reached any other way, stop and tell the human to invoke `/build`. Under an autopilot grant, `/work`'s autopilot rules (its decision defaults, stuck rule, and ceiling) replace this skill's asks and stops, such as step 1's questions and step 8's stop rule.
 
 Computing the frontier from merged work, rather than from tracker counts, keeps the run correct when a ticket is closed by hand or a label goes stale mid-run. Running one slice end to end before fanning out means a broken brief fails once instead of N times.
 
 ## Steps
 
-1. Read the spec and the tickets in full, with their threads, and the agreed test seams (see `spec`). Stop and ask when the seams were never agreed, a slice has no acceptance criteria that fail on the base, or the blocking edges contain a cycle, because workers cannot repair those.
+1. Read the spec and the tickets in full, with their threads, and the agreed test seams (see `spec`). A spec without tickets is cut into them first: read `tickets` from its path and draft them locally, without publishing. Stop and ask when the seams were never agreed, a slice has no acceptance criteria that fail on the base, or the blocking edges contain a cycle, because workers cannot repair those.
 2. Create one integration branch for the run, named `<type>/<slug>` from the default branch, as an agent-created task branch. Record its base SHA, and keep a task document (`continuity`) with the slice list, status, and a `## Decisions` table when the run is long.
 3. Compute the frontier: the tickets whose blockers are all integrated on the integration branch. Use the merged work on that branch as the source of truth, and read tracker state only to find the edges.
 4. Run the first slice alone, end to end: brief it, build it, check it, integrate it. Fan out only after it succeeds, and revise the brief template if it failed.

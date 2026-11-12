@@ -13,7 +13,7 @@ Work mode under the human's step-away grant and stated goal: the work runs witho
 _Avoid_: yolo, unattended mode, full autonomy
 
 **Playbook**:
-An ordered list of steps for one kind of task, copied into the session's todo list when work mode matches it, where a step not taken stays visible with its reason.
+An ordered list of steps for one kind of task, copied into the session's todo list when work mode matches it, where a step not taken stays visible with its reason. Either work mode's own or an existing skill's steps, never a second copy of a skill's procedure.
 _Avoid_: recipe, route, pipeline
 
 **Human docs**:

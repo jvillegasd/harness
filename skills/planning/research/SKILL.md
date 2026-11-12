@@ -41,7 +41,7 @@ Drop a citation whose path is missing or outside the repository, whose line does
 ## Output
 
 - **Conclusion**: the answer or verdict first, with its confidence.
-- **Findings**: a numbered ledger. Each finding is atomic and independently actionable, because `/spec` consumes these by id when the human asks for tickets:
+- **Findings**: a numbered ledger. Each finding is atomic and independently actionable, because `/tickets` consumes these by id when the human asks for tickets:
 
   ```
   F1. <one-sentence claim, falsifiable>
@@ -57,7 +57,7 @@ Drop a citation whose path is missing or outside the repository, whose line does
 
 ## Handoff
 
-Recommend `/spec tickets from findings F2,F4` with the actual finding ids when warranted, then stop; publishing tickets and implementing are separate requests.
+Recommend `/tickets from findings F2,F4` with the actual finding ids when warranted, then stop; publishing tickets and implementing are separate requests.
 
 ## Skills this loads
 
