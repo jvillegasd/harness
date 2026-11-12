@@ -12,4 +12,4 @@ Investigate the rationale behind the target. Code establishes what exists, not a
 3. Cite the evidence for each material claim. Surface contradictions and alternative readings, show the inference chain, and identify what remains unknown and where you looked. Treat a premise in the question as a hypothesis to check. Calibrate conclusions to the evidence, including retention, access, and correlation limits.
 4. If the answer informs a change, identify the constraints the evidence suggests preserving, changing, or investigating further.
 
-Work inline by default. Delegate a bounded question through a configured Harness role when it has a named benefit and the role can access the source. Verify returned citations before relying on them.
+Work inline by default. Delegate a bounded question through `delegation` when it has a named benefit and the role can access the source. Verify returned citations before relying on them.

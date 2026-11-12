@@ -75,6 +75,7 @@ The agent picks the playbook from the task:
 | A shape or interface to choose, with no precedent | Design playbook |
 | A prototype, spike, or mock-up | `proto`'s steps |
 | A spec or plan, before anything is built | `spec`'s steps |
+| A ticket or production error to analyze before any fix | `triage`'s steps |
 | Tickets from a spec, a brief, findings, or a request | `tickets`' steps |
 | A settled spec or set of tickets to build | `build`'s steps |
 | Review a diff, a branch, or a PR | `review`'s steps |

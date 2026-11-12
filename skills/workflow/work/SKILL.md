@@ -33,6 +33,7 @@ Work mode lasts the conversation. "New task" means match again from step 1, and 
 | A shape or interface to choose, with no precedent | [design](playbooks/design.md) |
 | A prototype, spike, or mock-up | `proto`'s steps |
 | A spec or plan for a change, before anything is built | `spec`'s steps. When product decisions are still open, reply that `/grill-with-docs` settles them first, and stop; under autopilot they are `agent` decisions instead |
+| A ticket or a production error to turn into a plan brief, before any fix | `triage`'s steps |
 | Tickets from a spec, a triage brief, research findings, or a request | `tickets`' steps |
 | A settled spec or set of tickets to build | `build`'s steps |
 | Review a diff, a branch, or a PR | `review`'s steps, at the depth the human asked |
@@ -44,7 +45,7 @@ Work mode lasts the conversation. "New task" means match again from step 1, and 
 
 A bug that is a slowdown with a number is perf. A settled spec or ticket small enough for one slice matches the row for its kind, since `implement` reuses its agreed seams. When the task fits two rows, take the narrower one, and the large playbook only when no narrower row covers it.
 
-A row that names a skill runs that skill's steps as the playbook: they go into the todo list like any playbook's, and work mode adds only its triggers and reply. `spec`, `tickets`, and `build` are guarded so the model never starts them on its own; read each from its path in the installed skills, because the human's `/work` request is what starts it. A spec hands back asking "go to build it?". Only an explicit go answers it, since approving a spec authorizes local implementation alone; the go is a new task, a settled spec matched again.
+A row that names a skill runs that skill's steps as the playbook: they go into the todo list like any playbook's, and work mode adds only its triggers and reply. `spec`, `tickets`, `build`, and `triage` are guarded so the model never starts them on its own; read each from its path in the installed skills, because the human's `/work` request is what starts it. A spec hands back asking "go to build it?". Only an explicit go answers it, since approving a spec authorizes local implementation alone; the go is a new task, a settled spec matched again.
 
 ## Triggers
 
