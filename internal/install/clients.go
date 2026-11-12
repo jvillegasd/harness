@@ -626,7 +626,10 @@ func (in *installer) aliasRCs() []string {
 func (in *installer) aliasRC() string {
 	shell := filepath.Base(os.Getenv("SHELL"))
 	if os.Getenv("SHELL") == "" {
-		shell = map[bool]string{true: "zsh", false: "bash"}[runtime.GOOS == "darwin"]
+		shell = "bash"
+		if runtime.GOOS == "darwin" {
+			shell = "zsh"
+		}
 	}
 	switch shell {
 	case "zsh":
