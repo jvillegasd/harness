@@ -40,19 +40,19 @@ const defaultPreset = "balanced"
 func claude(model, effort string) Assignment { return Assignment{"claude", model, effort} }
 func codex(model, effort string) Assignment  { return Assignment{"codex", model, effort} }
 
-// Presets are the named assignment tables. balanced sends implementation to a cheaper Codex model and code search to Sonnet, whose citations the parent re-reads, and pins review to Opus, because inheriting the session would tie review strength to whatever the session runs. Every frontier reviewer runs at low effort to keep review cheap, leaving the model to carry its strength. OpenCode stays available through `harness models set`.
+// Presets are the named assignment tables. Code search runs on Haiku or Sonnet at the model's default, since the parent re-reads every citation and a wrong one is cheap to spot. Review runs on Sonnet at medium in balanced, because blind defect hunting is a repeated, well-defined task whose findings the parent must prove by a run, so a cheaper model that raises a wrong finding costs only the run that drops it. A role that edits code keeps a model that holds the judgment calls. Review is pinned rather than inherited, because inheriting would tie review strength to whatever the session runs. Codex assignments are chosen separately. OpenCode stays available through `harness models set`.
 var Presets = map[string]map[string]Assignment{
 	"balanced": {
-		"executor": codex("gpt-6-luna", ""), "code-search": claude("sonnet", ""), "reviewer": claude("opus", "low"),
+		"executor": codex("gpt-6-luna", ""), "code-search": claude("haiku", ""), "reviewer": claude("sonnet", "medium"),
 	},
 	"performance": {
-		"executor": claude("opus", "high"), "code-search": claude("fable", "high"), "reviewer": claude("fable", "low"),
+		"executor": claude("opus", "medium"), "code-search": claude("sonnet", ""), "reviewer": claude("fable", "medium"),
 	},
 	"economy": {
-		"executor": codex("gpt-5.6-luna", ""), "code-search": claude("haiku", ""), "reviewer": claude("sonnet", ""),
+		"executor": codex("gpt-5.6-luna", ""), "code-search": claude("haiku", ""), "reviewer": claude("sonnet", "low"),
 	},
 	"diversity": {
-		"executor": claude("sonnet", ""), "code-search": claude("inherit", ""), "reviewer": codex("gpt-6.1-sol", "low"),
+		"executor": claude("sonnet", "medium"), "code-search": claude("haiku", ""), "reviewer": codex("gpt-6.1-sol", "low"),
 	},
 }
 
