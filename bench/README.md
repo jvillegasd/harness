@@ -1,63 +1,92 @@
 # bench
 
-`harness bench` answers one question: did a change to the harness move cost and friction in the sessions it actually produced? This repository's `AGENTS.md` makes this the measurement for a harness change, because re-reading prose and judging it plausible proves nothing. Quality stays a human read of the transcripts.
+`harness bench` answers one question: **did a change to the harness move cost and friction in the sessions people actually ran?**
 
-Deliberately not a synthetic task battery. Synthetic control tasks can swing between identical runs and contaminate their own fixture. Real sessions cost something else, arriving slowly and mixing variables no experiment controls, which is what `THIN` and the caveats below are for.
+It compares real sessions from before a change with real sessions after it. Rereading the harness's prose and judging that it sounds better proves nothing, so this repository's `AGENTS.md` makes bench the measurement for a harness change. Bench does not judge quality. For that, a person still reads the transcripts.
 
-## Usage
+### Why real sessions and not test tasks
+
+Bench deliberately does not run a fixed set of synthetic tasks. Synthetic tasks can swing between identical runs, and they tend to leak into the fixture they are meant to test. Real sessions have their own problems: they arrive slowly and mix in variables no experiment controls. The `THIN` warning and the caveats below exist to handle those.
+
+## Run it
 
 ```sh
 harness bench --split <commit-date> --since <window-start>
 ```
 
-A friction fix to the harness, such as one `retro` suggests, is measured here: note its expected metric and landing date, then compare. Run it from inside the checkout; the work patterns come from `bench/cohorts.json` there. That file is gitignored, so a fresh worktree carries only the committed empty `cohorts.example.json` until you copy it in, and the report splits nothing until a pattern matches.
+A typical use: you fix a friction point in the harness, for example one that `retro` suggested. Write down which metric you expect to move and the date the fix landed. Later, run bench with `--split` set to that date.
+
+Run it from inside the checkout. It reads work patterns from `bench/cohorts.json` there. That file is gitignored, so a fresh worktree has only the committed, empty `cohorts.example.json` until you copy your own in. Until a pattern matches, the report does not split sessions into work and personal.
 
 | Flag | Meaning |
 | --- | --- |
-| `--split` | Commit date of the change under test, `YYYY-MM-DD`. Sessions before it are `before`, on or after it `after`. Required for the report, not for `--rows`. |
-| `--since` | Ignore sessions older than this. Cuts off a period whose harness bears no resemblance to today's. Sessions outside the window are dropped before their metrics are aggregated. |
-| `--client` | Limit to `claude`, `codex`, or `opencode`. Repeatable; a repeat adds nothing, so a client is never counted twice. |
-| `--home` | Session-store root. Defaults to the current home; point it at any directory laid out like a home to read a captured or another machine's session stores. |
-| `--rows` | One JSON object per session instead of the report, honouring `--since`, for the distribution behind a median. Needs no `--split`. |
+| `--split` | The commit date of the change, as `YYYY-MM-DD`. Sessions before it count as `before`, sessions on or after it as `after`. Required for the report, not for `--rows`. |
+| `--since` | Ignore sessions older than this date. Use it to leave out a period when the harness looked nothing like today's. Sessions outside the window are dropped before anything is counted. |
+| `--client` | Limit to `claude`, `codex`, or `opencode`. Repeatable. Repeating a client adds nothing, so no client is counted twice. |
+| `--home` | Where to find session stores. Defaults to your home directory. Point it at any directory laid out like a home to read sessions captured from another machine. |
+| `--rows` | Print one JSON object per session instead of the report, so you can see the spread behind a median. Honors `--since` and needs no `--split`. |
 
-## Metrics
+## What it measures
 
-Eight per session, each a median across the cohort. The first three are cost, the last three friction, the middle two what the harness claims to move.
+Bench counts eight things per session and reports the median across all sessions in a group.
 
-| Metric | What it counts |
-| --- | --- |
-| `turns` | Human turns. A tool result, either shape of slash-command entry, a `<task-notification>`, local-command stdout, an `isMeta` caveat, an injected `<system-reminder>` and an interrupt marker are all the client writing to its own transcript, and none is a turn. |
-| `tool_calls` | Tool invocations the assistant made. |
-| `minutes` | First stamped entry to last. |
-| `commands` | Slash-command invocations, including workflow skills invoked as `/name`, so explicit routing adoption is visible. |
-| `delegation` | Messages the session's subagents produced. `delegation` launches a subagent only for a named benefit, so overspawn shows up here. A role delegated through T3 Code's `delegate_task` runs as a session of its own rather than a subagent, so it never reaches this metric and instead joins the population every median is taken over. |
-| `interrupts` | Times a human stopped a run. |
-| `denials` | Times a human refused a tool call. |
-| `errors` | Tool results that failed. A refusal is a denial, never also an error. |
+| Metric | Kind | What it counts |
+| --- | --- | --- |
+| `turns` | Cost | Messages a person typed. Anything the client writes into its own transcript is not a turn (see below). |
+| `tool_calls` | Cost | Tool calls the agent made. |
+| `minutes` | Cost | Time from the first timestamped entry to the last. |
+| `commands` | What the harness aims to move | Slash commands, including skills called as `/name`, so you can see whether people use explicit commands. |
+| `delegation` | What the harness aims to move | Messages produced by the session's subagents. Agents should delegate only for a stated reason, so too much delegation shows up here. |
+| `interrupts` | Friction | Times a person stopped a run. |
+| `denials` | Friction | Times a person refused a tool call. |
+| `errors` | Friction | Tool calls that failed. A refusal counts as a denial, never also as an error. |
 
-## Cohorts
+**What does not count as a turn:** tool results, slash-command entries (in either form), `<task-notification>` messages, local-command output, `isMeta` notices, injected `<system-reminder>` blocks, and interrupt markers. The client writes all of these, not the person.
 
-A hard week at work moves every metric without the harness changing. Copy `cohorts.example.json` to `cohorts.json` and name the projects that mean work:
+**A note on `delegation`:** a role delegated through T3 Code's `delegate_task` runs as its own session, not as a subagent. It never shows up in `delegation`. Instead it joins the set of sessions that every median is taken over.
+
+## Split work from personal sessions
+
+A hard week at work moves every metric even when the harness has not changed. To keep that separate, copy `cohorts.example.json` to `cohorts.json` and list the projects that count as work:
 
 ```json
 { "work": ["acme", "some-client-repo"] }
 ```
 
-Case-insensitive substrings, anything unmatched is personal, and the report splits only once a pattern matches something. `cohorts.json` is gitignored, since naming a client is the whole job of it.
+- Each entry is a case-insensitive substring. Any project that matches no entry counts as personal.
+- The report splits into work and personal only once a pattern matches something.
+- `cohorts.json` is gitignored, because its whole job is to name clients or employers.
 
-Each client records a project differently: a dashed slug or a `directory` column. Pattern and project are both folded by running every `-` and `/` into one separator, so one `acme` reaches both. Name a path segment, not a span across one.
+Clients record a project in different ways: as a slug with dashes, or as a `directory` column. Bench folds both the pattern and the project name by turning every run of `-` and `/` into one separator, so a single `acme` matches both forms. Name a single path segment, not a span that crosses a `/`.
 
 ## Where the sessions come from
 
-- **Claude Code**, `~/.claude/projects/<slug>/<session>.jsonl`. The only client recording all eight metrics. Interrupts and denials come from matching `claudeInterrupt` and `claudeDenials` in `internal/bench/collect.go`.
-- **Codex**, `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` and `~/.codex/archived_sessions/`, read from `~/.codex` whatever `CODEX_HOME` says, as the installer does. Turns are `user_message` events, interrupts are turns aborted as `interrupted`, and denials are tool outputs that are exactly one of the sentences in `codexDenials`. Codex persists neither a tool call's success nor a slash command, so `errors` and `commands` are absent. Only legacy JSONL rollouts, Codex's default, are read: a rollout compressed to `.jsonl.zst` or migrated to paginated history, both off-by-default Codex features, is not. A thread forked with full history, by `/fork` or a subagent spawned with its parent's context, copies that history into its own rollout, so the copied turns or items are counted again.
-- **OpenCode**, `~/.local/share/opencode/opencode.db`, opened read-only and immutable because a client may be running. No interrupt, denial, failed result, or slash command, so those four are absent.
+**Claude Code** stores sessions in `~/.claude/projects/<slug>/<session>.jsonl`. It is the only client that records all eight metrics. Interrupts and denials come from matching `claudeInterrupt` and `claudeDenials` in `internal/bench/collect.go`.
 
-**A subagent is delegation, not a session.** Claude Code writes `<session-id>/subagents/*.jsonl` beside the session file, and OpenCode gives a subagent a `session` row carrying the parent's id, so a recursive glob or an unfiltered query would count them as sessions. Codex writes each spawned subagent a rollout of its own whose metadata names its parent thread; it is followed up to the top-level session, and its messages, calls, and outputs count as that session's `delegation`, while an internal rollout with no parent, such as a guardian review, is dropped. All three are excluded from the population and counted as the parent's `delegation`. The inline `isSidechain` flag on Claude Code entries is always false, so it cannot identify a subagent. A role delegated through T3 Code is the other direction: it runs as a top-level session of its own, counted as a session and not as delegation, so it both empties `delegation` of role dispatch and pulls every median toward a worker's shorter transcript.
+**Codex** stores sessions in `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` and `~/.codex/archived_sessions/`. Bench reads them from `~/.codex`, whatever `CODEX_HOME` says, just as the installer does.
 
-## Reading the output
+- Turns are `user_message` events. Interrupts are turns aborted as `interrupted`. Denials are tool outputs that exactly match one of the sentences in `codexDenials`.
+- Codex saves neither whether a tool call succeeded nor slash commands, so `errors` and `commands` are missing.
+- Bench reads only plain JSONL rollouts, which is Codex's default. It cannot read a rollout compressed to `.jsonl.zst` or moved to paginated history. Both are optional Codex features that are off by default.
+- A thread forked with its full history, by `/fork` or by a subagent started with its parent's context, copies that history into its own rollout. Those copied turns or items are counted again.
 
-```
+**OpenCode** stores sessions in `~/.local/share/opencode/opencode.db`. Bench opens it read-only and immutable, because a client may be running. OpenCode records no interrupts, denials, failed results, or slash commands, so those four are missing.
+
+### Subagents count as delegation, not as sessions
+
+Each client stores subagents next to their parent session:
+
+- Claude Code writes `<session-id>/subagents/*.jsonl` beside the session file.
+- OpenCode gives a subagent its own `session` row that carries the parent's id.
+- Codex writes each subagent its own rollout, whose metadata names its parent thread.
+
+A naive search would count all of these as sessions. Bench excludes them and counts their activity as the parent's `delegation` instead. For Codex, bench follows each subagent up to its top-level session. A Codex internal rollout with no parent, such as a guardian review, is dropped. Claude Code's inline `isSidechain` flag is always false, so bench cannot use it to spot a subagent.
+
+A role delegated through T3 Code works the other way. It runs as a top-level session of its own, so it counts as a session and not as delegation. That has two effects: role work disappears from `delegation`, and every median shifts toward a worker's shorter transcript.
+
+## Read the report
+
+```text
 split 2026-09-02  since 2026-08-01
 
 claude  work
@@ -73,13 +102,19 @@ claude  work
   errors             2.0       2.0      +0.0
 ```
 
-Headings are bare client names until a work pattern matches a session in the window. Two rules matter more than the numbers:
+Each heading is the client name, followed by `work` or `personal` once a work pattern matches a session in the window.
 
-- **A metric a client does not record prints `-`, never `0`.** An absent measurement and a measured zero are different claims, and collapsing them would invent evidence.
-- **`THIN = 20`.** Below that the report warns, and a difference in medians is not a finding.
+Two rules matter more than the numbers:
 
-Populations, not pairs, and require a real gap rather than a nudge: a `--split` compares two populations that differ in more than the split.
+- **A metric a client does not record prints `-`, never `0`.** "Not measured" and "measured zero" are different claims. Mixing them up would invent evidence.
+- **Below 20 sessions (`THIN = 20`), the report warns you.** With that few sessions, a difference in medians is not a finding.
 
-## Sharing
+Bench compares two groups of sessions, not matched pairs, and the groups differ in more than the change you are testing. Look for a real gap, not a small nudge.
 
-`harness bench` writes no files. The aggregate report names nothing and is fine to paste anywhere. `--rows` is not: each row carries the project the session ran in, which on a work machine is a client or an employer. `cohorts.json` is gitignored for the same reason.
+## Share results safely
+
+`harness bench` writes no files.
+
+- **The report** names nothing and is safe to paste anywhere.
+- **`--rows` output is not.** Each row includes the project the session ran in, which on a work machine names a client or employer.
+- **`cohorts.json`** is gitignored for the same reason.

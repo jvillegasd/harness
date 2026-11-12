@@ -1,59 +1,55 @@
 # Harness AI
 
-Shared floor rules, skills, and tools for Claude Code, Codex, and OpenCode.
+One shared setup for three coding agents: Claude Code, Codex, and OpenCode. The harness installs the same rules, skills, and helper roles into all three, so every agent works the same way on your machine.
 
-Ask the agent to do the work. It inspects the code, makes changes on a task branch, runs checks, and reports the result. Skills help with specific jobs; they are not a required sequence. When you want more rigor, start the task with `/work` (see [Work mode](#work-mode)).
+You keep working the way you already do. Ask the agent for something in plain words, and it reads the code, makes the change on a task branch, runs the checks, and tells you what it did. Skills help with specific jobs, but you never have to run them in any order. When you want a stricter, step-by-step run, start the task with `/work`.
 
-This README and the guides under `docs/` are written for you. Agents keep them accurate when they change what the guides describe, but never take them as instructions; what agents follow lives in `FLOOR.md`, the skills, and each repository's `AGENTS.md`.
+## Quick start
 
-## Install
+You need macOS or Linux, zsh or bash, Homebrew, and Go 1.26 or newer.
 
-Requires macOS or Linux, zsh or bash, Homebrew, and Go 1.26 or newer.
+1. From this checkout, run the installer:
 
-```sh
-go run ./cmd/harness install
-```
+   ```sh
+   go run ./cmd/harness install
+   ```
 
-The installer installs missing tools, copies the floor, skills, and role agents into the clients, configures Engram and agent-browser, and adds shell aliases. A tool already on `PATH` is left as it is, so Homebrew and the network are used only for a missing one. Sign in to each client yourself; installation does not authenticate accounts.
+2. Sign in to each client (Claude Code, Codex, OpenCode) yourself. The installer does not log in for you.
+3. Open a client in any repository and ask for what you need.
 
-To install only some components, or only into some clients, name them:
+The installer adds any missing tools, copies the rules, skills, and roles into each client, sets up the Engram memory server and agent-browser, and adds a few shell aliases. A tool you already have on your `PATH` is left exactly as it is.
 
-```sh
-go run ./cmd/harness install skills agents
-go run ./cmd/harness install --client claude
-```
+After the first install, the `harness` command lives at `~/.local/bin/harness`. The [installation guide](docs/installation.md) explains what happens to files that are already there.
 
-The components are `clients`, `packages`, `mcps`, `skills`, `agents`, `floor`, `settings`, and `aliases`, and `harness update` and `harness uninstall` take the same names. Each run still changes live client configuration, and editing this repository alone does not update installed clients.
+## Ask for what you need
 
-The installed binary is `~/.local/bin/harness`. It carries the assets it was built from. Managed config is recorded in `~/.harness/state.json`, along with each tool the installer added; collisions are archived under `~/.dotfiles-backups/harness/`. Private entries are left alone. Tracked settings are reapplied on installation, so some in-app preferences may be overwritten.
+Most of the time a plain request is enough. These are the shortcuts worth knowing:
 
-```sh
-harness uninstall          # managed config only; tools stay
-harness uninstall --all    # also the tools the harness installed, then the harness itself
-```
-
-Uninstall asks first, preserves edited copies, removes only the tools the harness recorded installing, and never deletes a tool's data. `--no-backup` on install deletes collisions; `harness uninstall --clear-backups` deletes archives. Both are destructive. The [CLI reference](docs/cli.md#install-and-uninstall) covers components and clients in full.
-
-See [installation and your files](docs/installation.md) for how installation and removal handle existing copies.
-
-## Everyday use
-
-| Need | Ask for |
+| You want to | Ask for |
 | --- | --- |
-| Run a task to a playbook, with every step visible | `/work <task>` |
+| Run a task step by step, with every step visible | `/work <task>` |
 | Leave a task running while you step away | `/work autopilot, I'm stepping away: <goal>` |
-| Implement a feature, fix, or one ticket with TDD | `/implement <task or ticket>` |
-| Fix something broken or slow | Diagnosis and a fix |
-| Settle an unclear idea | `/grill-with-docs` |
+| Build a feature, a fix, or one ticket, test-first | `/implement <task or ticket>` |
+| Fix something broken or slow | Describe the problem, and the agent diagnoses and fixes it |
+| Think an unclear idea through | `/grill-with-docs` |
 | Write a specification | `/spec` |
-| Break a spec, findings, or a request into tickets | `/tickets` |
-| Build test-first | `tdd` |
+| Turn a spec, findings, or a request into tickets | `/tickets` |
+| Write tests before code | `tdd` |
 | Keep frontend or backend journey tests | `journey-verification` |
-| Review changes | `review` |
-| Publish the work | “Open a PR” or “ship this” |
-| Clean up after you merge a PR | `/land` (or `/land merge` to have it merge) |
+| Get a review of your changes | `review` |
+| Publish the work as a pull request | "Open a PR" or "ship this" |
+| Clean up after you merge a PR | `/land`, or `/land merge` to have the agent merge for you |
 
-Local work stays local until you request publication. You merge PRs yourself, after reading the readiness report the PR ends with; an agent merges only when you run `/land merge`. An explicit request naming work to discard authorizes that scope; ambiguity or additional work requires clarification.
+The [workflow guide](docs/workflow.md) lists every skill and when to reach for it.
+
+## What the agent does on its own, and what waits for you
+
+- **Local work stays local.** The agent edits and commits on its own task branch, but nothing is pushed or published until you ask.
+- **You merge.** Every pull request ends with a readiness report. You read it and merge. The agent merges only when you run `/land merge`.
+- **Nothing is thrown away without your say.** The agent discards work only when you name it. If the scope is unclear, it asks.
+- **It stops and asks** when it needs a decision only you can make, or when a required check cannot run.
+
+This diagram shows the full path from a request to a merged change:
 
 ```mermaid
 stateDiagram-v2
@@ -84,50 +80,128 @@ stateDiagram-v2
     Waiting --> PR: You resolve blocker and agent resumes PR work
 ```
 
-**Ready locally is a complete outcome.** Stop there if you do not want a PR. A publication request can come with the original task or later. From **Needs your input**, work resumes at the stage that was blocked. See [the workflow guide](docs/workflow.md#local-work-and-delivery) for details.
+**"Ready locally" is a finished result.** If you do not want a pull request, stop there. You can ask for one with the original task or at any time later. When work is waiting on you, it picks up again at the stage that was blocked. The [workflow guide](docs/workflow.md#local-work-and-delivery) describes each stage.
 
-Review defaults to `medium`. Set it yourself with `harness review level off|medium|high`. Medium sends PRs beyond docs or tests, and local changes with a concrete risk, to one independent reviewer; High adds one or two specialists where the change needs them. Every reviewer runs on the model you set for the `reviewer` role with `harness models`, unless you set a review lens on its own. Asking for a review always runs one at your level. Only problems a run proves come to you; the rest are counted as dropped. See [how review works](docs/review.md) for what happens during a review, and [`harness review`](docs/cli.md#review-commands) for reading the results.
+## Review
 
-Read [the workflow guide](docs/workflow.md) for optional planning, builds, and tracker setup, or [the delegation guide](docs/subagents.md) for worker roles.
+Before work reaches you, other agents can review it without hearing the author's reasoning, so they judge the code and not the explanation. Only problems that a test or script actually proved reach you. Everything else is dropped and counted.
+
+You choose how much review happens on its own:
+
+```sh
+harness review level medium    # off, medium (the default), or high
+```
+
+- **`off`:** no automatic review.
+- **`medium`:** one independent reviewer for every PR beyond docs or tests, and for local changes with a concrete risk.
+- **`high`:** adds one or two specialist reviewers where the change needs them.
+
+Asking for a review always runs one at your level. [How review works](docs/review.md) walks through a review from start to finish, and the [`harness review` commands](docs/cli.md#review-commands) show you how to read the results.
 
 ## Work mode
 
-Without `/work`, the agent follows the floor and reaches for skills on its own. With `/work <task>`, it matches the task to one playbook and copies its steps into its todo list. A playbook is either work mode's own (bug fix, feature, investigate, refactor, perf, design, or large) or an existing skill's steps (`proto`, `spec`, `tickets`, `build`, `review`, `address-review`, or `open-pr`), so the workflow reuses the same skills you can call directly. A step it decides not to take stays in the list with `skip: <reason>`, so you see what was left out and why. For a code change, it maps the change with `change-map` and runs `review` at your review level before handing off. A plan request runs `spec` and asks whether to build it; when you answer go, `/work` builds the settled spec with `build`, cutting it into tickets first when it has none. Open decisions get settled with `/grill-with-docs` before `/work`. Merging still goes through you or `/land`. Work mode lasts the conversation; say "new task" to match again or "stop work mode" to end it. Only you can start it.
+`/work <task>` makes the agent follow a fixed playbook instead of choosing skills on its own. The agent picks the playbook that fits (bug fix, feature, investigation, refactor, performance, design, large change, or one of the existing skills), then copies every step into its todo list. A step it skips stays in the list as `skip: <reason>`, so you can see what was left out and why.
 
-**Autopilot.** Add "autopilot" or "I'm stepping away" with a goal, such as `/work autopilot, max 3h: make the export job finish under a minute`. The agent states a pass/fail definition of done (or proposes one), then works without checkpoints until it is met or the time ceiling (2 hours unless you set one) runs out. It may commit, push, and open ready pull requests, including separate ones for fixes it finds along the way, but it never merges, writes to the tracker, or messages anyone. Decisions only you could make are taken with the simplest safe default and listed at the top of its report, each with what to tell it to switch. Without a goal it does not start.
+For a code change, work mode always ends with a change summary (`change-map`) and a review at your level. A plan request writes a spec and asks whether to build it. Merging still goes through you or `/land`.
 
-## Models and aliases
+Work mode lasts for the whole conversation. Say "new task" to start another playbook, or "stop work mode" to end it. Only you can start it.
 
-Use `harness models --help` to inspect presets and per-role assignments. Changing an assignment requires installation to refresh the rendered agents. Roles assigned to the current client run natively; roles assigned to another client run through T3 Code's `delegate_task`.
+### Autopilot
+
+Add "autopilot" or "I'm stepping away", plus a goal:
+
+```text
+/work autopilot, max 3h: make the export job finish under a minute
+```
+
+The agent writes down a pass or fail definition of done (or proposes one), then works without checking in until the goal is met or time runs out. The default time limit is 2 hours.
+
+On autopilot the agent **may** commit, push, and open pull requests, including separate PRs for problems it finds along the way. It **never** merges, writes to the issue tracker, or messages anyone. When it hits a decision only you could make, it takes the simplest safe option and lists it at the top of its report, with what to tell it if you want something else. Without a goal, autopilot does not start.
+
+## Models
+
+Each helper role (such as the executor or the reviewer) runs on a client, model, and effort level that you choose.
+
+```sh
+harness models                      # pick interactively
+harness models show                 # see the current assignments
+harness models set --preset economy # balanced (default), performance, economy, or diversity
+```
+
+Run `harness install agents` after a change so the clients pick it up. A role assigned to the client you are in runs as a normal subagent. A role assigned to another client runs through T3 Code. The [delegation guide](docs/subagents.md) explains the roles.
+
+## Shell aliases
 
 | Alias | Starts |
 | --- | --- |
-| `ccyolo` | Claude Code with permission checks bypassed |
-| `cxyolo` | Codex with approvals and sandbox bypassed |
+| `ccyolo` | Claude Code with permission checks turned off |
+| `cxyolo` | Codex with approvals and the sandbox turned off |
 | `ocyolo` | OpenCode with edit, shell, and web access allowed |
 
-The installer sources `aliases.sh` from your login shell's startup file: `~/.zshrc` for zsh, `~/.bashrc` for bash on Linux, and on macOS whichever of `~/.bash_profile`, `~/.bash_login`, or `~/.profile` already exists (a new `~/.bash_profile` otherwise), since a macOS bash login shell reads only the first. Another shell, such as fish, gets no line and a warning naming `~/.harness/aliases.sh`. Uninstall removes the line only from files that carry the harness marker. These launchers grant broad access. Claude Code also gets a harness status line; Codex uses its own footer. Each client also gets a compaction hook that runs `harness resume`, so after a long session is compacted the agent gets back the branch, its latest commit, and the task document's next action. Codex runs it only after you trust it once in its `/hooks` screen.
+These aliases give the agent broad access to your machine. Use them with care.
 
-## Update installed tools
+The installer loads them from your login shell's startup file:
 
-`harness install` installs missing tools and reconciles Harness assets. It leaves installed package versions alone. To upgrade installed tools explicitly:
+- **zsh:** `~/.zshrc`
+- **bash on Linux:** `~/.bashrc`
+- **bash on macOS:** the first of `~/.bash_profile`, `~/.bash_login`, or `~/.profile` that exists, or a new `~/.bash_profile`. A macOS bash login shell reads only the first one it finds.
+- **Any other shell, such as fish:** no line is added, and the installer prints a warning that names `~/.harness/aliases.sh` so you can load it yourself.
+
+Uninstall removes the line only from files that carry the harness marker.
+
+## Other things the installer sets up
+
+- **A status line for Claude Code.** Codex keeps its own footer.
+- **A compaction hook in every client.** When a long session is compacted, the hook runs `harness resume`, so the agent gets back the branch, its latest commit, and the next step from the task document. Codex runs the hook only after you trust it once in its `/hooks` screen.
+- **Tracked client settings.** These are reapplied on every install, so some preferences you changed inside a client can be overwritten.
+
+## Install only part of it
+
+Name the components or clients you want:
 
 ```sh
-harness update            # Every component with a tool or upstream source
-harness update clients    # Claude Code, Codex, OpenCode
-harness update packages   # Node, gh, uv
-harness update mcps       # Engram, agent-browser, registrations
-harness update skills     # Locked upstream skills and lockfile
-harness update clients --client codex   # Codex only
+harness install skills agents       # only these components
+harness install --client claude     # only Claude Code
 ```
 
-Name several components to update them together. A bare update runs packages, clients, MCPs, then skills. It discovers ownership before upgrading and inventories Homebrew once. Upgrades name individual formulae or casks and preserve the installation and release channels. Orca-managed clients stay owned by Orca. Recognized native Claude Code and OpenCode installations use vendor updaters. Stable npm Codex installations update through their owning prefix; prerelease or ambiguous installations need manual updates.
+The components are `clients`, `packages`, `mcps`, `skills`, `agents`, `floor`, `settings`, and `aliases`. `harness update` and `harness uninstall` accept the same names. The [command-line reference](docs/cli.md#components) explains each one.
 
-MCP updates refresh agent-browser's browser runtime and client registrations without reinstalling the Harness floor, settings, skills, or roles. See the [CLI reference](docs/cli.md#update-installed-tools) for update behavior and failure handling.
+Editing this repository does not change installed clients. Run an install to apply your edits.
 
-## Maintain skills
+## Keep tools up to date
 
-Skills live in `skills/<group>/<name>/`; clients invoke them by name. Groups organize the repository, not the workflow.
+`harness install` never upgrades a tool you already have. To upgrade, ask for it:
+
+```sh
+harness update                         # everything below, in this order
+harness update packages                # Node, gh, uv
+harness update clients                 # Claude Code, Codex, OpenCode
+harness update mcps                    # Engram, agent-browser, and their registrations
+harness update skills                  # locked upstream skills and the lockfile
+harness update clients --client codex  # Codex only
+```
+
+The updater uses each tool's own release channel. If it cannot tell how a tool was installed, it tells you to update that tool by hand. The [command-line reference](docs/cli.md#update-installed-tools) covers the details and what happens when an update fails.
+
+## Uninstall
+
+```sh
+harness uninstall          # remove the managed config; your tools stay
+harness uninstall --all    # also remove the tools the harness installed, then the harness itself
+```
+
+Uninstall asks before it removes anything. It keeps any copy you edited, removes only tools it recorded installing, and never deletes a tool's data.
+
+Two options delete things for good:
+
+- `harness install --no-backup` deletes files in the way instead of archiving them.
+- `harness uninstall --clear-backups` deletes the archives.
+
+## Manage third-party skills
+
+Skills live in `skills/<group>/<name>/`. The group only organizes this repository. Clients call a skill by its name alone.
+
+Skills taken from other projects are locked: `skills-lock.json` records a hash of each one, and you change them only through these commands, never by editing them.
 
 ```sh
 harness skills add <owner/repo> <name> <group>
@@ -136,21 +210,21 @@ harness skills remove <name>
 harness skills verify
 ```
 
-Review upstream changes before committing. Locked third-party skills change through these commands, never by editing their bodies. `skills-lock.json` records their hashes. Installation does not update them.
+Read the upstream changes before you commit them. An install does not update locked skills.
 
-## Develop
+## Contribute to the harness
 
-| Path | Purpose |
+| Path | What it holds |
 | --- | --- |
-| `FLOOR.md` | The rules every client holds on every turn: authority, preservation, secrets, untrusted text, working, and prose |
-| `GLOSSARY.md`, `docs/adr/` | The harness's terms, and the decisions behind its shape |
-| `cmd/harness/`, `internal/` | CLI and implementation |
-| `skills/` | Skills, grouped by purpose |
+| `FLOOR.md` | The rules every client follows on every turn |
+| `GLOSSARY.md`, `docs/adr/` | The harness's terms, and the decisions behind its design |
+| `cmd/harness/`, `internal/` | The `harness` command and its code |
+| `skills/` | The skills, grouped by purpose |
 | `clients/`, `roles/` | Client settings and role definitions |
-| `docs/agents/` | This repository's tracker configuration, task documents (`tasks/`), and ticket drafts (`tickets/`) |
-| `bench/` | Real-session cost and friction measurement |
+| `docs/agents/` | Tracker settings, task documents (`tasks/`), and ticket drafts (`tickets/`) |
+| `bench/` | Measurement of cost and friction in real sessions |
 
-Run all local checks before handing off a change:
+Run every check before you hand off a change:
 
 ```sh
 go vet ./...
@@ -161,7 +235,20 @@ git diff --check
 git diff --cached --check
 ```
 
-[AGENTS.md](AGENTS.md) describes the test boundaries. Tests check executable behavior, not whether an agent follows prose. Live behavioral evaluation needs an explicitly authorized model budget. [Bench](bench/README.md) compares session cost and friction; it does not prove correctness.
+[AGENTS.md](AGENTS.md) describes what the tests cover. The tests check the code's behavior, not whether an agent follows the written rules. Testing live agent behavior needs a model budget that you approve. [Bench](bench/README.md) compares session cost and friction before and after a change, but it does not prove the change is correct.
+
+## Guides
+
+These pages are written for people. Agents keep them accurate but never take instructions from them. What agents follow lives in `FLOOR.md`, the skills, and each repository's `AGENTS.md`.
+
+| Guide | Read it to |
+| --- | --- |
+| [Working with the harness](docs/workflow.md) | Pick a skill, understand work mode, and follow work from request to merge |
+| [How review works](docs/review.md) | See what reviewers do and which findings reach you |
+| [Delegation](docs/subagents.md) | Learn the helper roles and their limits |
+| [Installation and your files](docs/installation.md) | See how install and uninstall treat files already on your machine |
+| [Command-line reference](docs/cli.md) | Look up `harness` command behavior beyond `--help` |
+| [Bench](bench/README.md) | Measure whether a harness change helped |
 
 ## Acknowledgments
 

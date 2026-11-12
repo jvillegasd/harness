@@ -1,39 +1,101 @@
 # Working with the harness
 
-Start with a plain request. The agent inspects the repository, implements the agreed scope, checks it, and reports. You do not need a ticket, specification, or ceremony for ordinary work.
+Start with a plain request. The agent reads the repository, does the agreed work, checks it, and reports back. Ordinary work needs no ticket, no specification, and no ceremony.
 
-When you want the work run to a fixed set of steps, start it with `/work <task>`; see [Work mode](#work-mode).
+This guide covers what to reach for when a plain request is not enough:
 
-## Choose help when you need it
+- [Skills for specific jobs](#pick-a-skill-for-the-job)
+- [Work mode](#work-mode), which runs a task to a fixed set of steps
+- [Autopilot](#autopilot), for work that runs while you are away
+- [The path from local work to a merged PR](#local-work-and-delivery)
+- [Larger builds](#larger-builds) across several tickets
+- [Issue tracking](#optional-tracking), if you want it
+- [What happens when work stops](#when-work-stops), and how it resumes
+
+## Pick a skill for the job
+
+Each skill is a separate tool. Outside work mode, using one never starts another. A leading slash, as in `/spec`, means you call the skill by name. Each skill describes its own inputs.
+
+### Plan
 
 | Situation | Skill |
 | --- | --- |
-| An everyday task or one ticket needs implementation with TDD | `implement` |
 | A fuzzy idea needs decisions | `/grill-with-docs` |
-| A ticket needs investigation before implementation | `/triage` |
+| A ticket needs investigation before anyone builds it | `/triage` |
 | A question needs evidence | `research` |
-| An experiment would settle an uncertainty | `proto` |
-| A design needs a durable specification | `/spec` |
+| An experiment would settle an open question | `proto` |
+| A design needs a lasting specification | `/spec` |
 | A spec, a triage brief, findings, or a request needs tickets | `/tickets` |
-| A bug needs reproduction and diagnosis | `diagnosing-bugs` |
-| You want test-first implementation | `tdd` |
+
+### Build
+
+| Situation | Skill |
+| --- | --- |
+| An everyday task or one ticket needs building, test-first | `implement` |
+| You want to write the tests before the code | `tdd` |
+| A bug needs reproducing and diagnosing | `diagnosing-bugs` |
 | A frontend needs design work | `impeccable` |
 | Frontend code needs current web platform APIs and their fallbacks | `modern-web-guidance` |
+
+### Verify
+
+| Situation | Skill |
+| --- | --- |
 | A state machine needs model checking | `/statechart` |
-| Code needs a durable formal check of a model or proof | `/create-formal-verification-skill` |
-| A formal check may be stale after merges or refactors | `/maintain-formal-verification-skill` |
+| Code needs a lasting formal check of a model or proof | `/create-formal-verification-skill` |
+| A formal check may be out of date after merges or refactors | `/maintain-formal-verification-skill` |
 | The project needs a scripted way to drive the real app | `/create-verification-skill` |
-| A project verify skill or its feature map may have drifted | `/maintain-verification-skill` |
+| A project's verify skill or its feature map may have drifted | `/maintain-verification-skill` |
 | A feature, bugfix, PR, or path needs a real end-to-end run | `/e2e-verification` |
+
+### Reflect
+
+| Situation | Skill |
+| --- | --- |
 | A session needs a retrospective | `/retro` |
 
-These are independent tools. Outside `/work`, using one does not require or automatically start another; inside it, the playbook decides which run and in what order. A slash marks an explicit invocation here; consult each skill for its inputs.
+### `/implement` or `/build`?
 
-Use `/implement <task or ticket>` for everyday implementation with TDD in the current session. It accepts a plain request, reuses agreed test seams or settles them with you, and finishes with local checks. It uses one task branch; `/build` adds unattended orchestration across slices and workers.
+- **`/implement <task or ticket>`** builds one thing, test-first, in your current session, on one task branch. It takes a plain request, reuses test seams you already agreed on (or settles them with you), and finishes with the local checks.
+- **`/build`** runs many tickets unattended, with several workers. See [larger builds](#larger-builds).
 
 ## Work mode
 
-`/work <task>` matches the task to one playbook and copies its steps into the agent's todo list. A playbook is either work mode's own (bug fix, feature, investigate, refactor, perf, design, or large) or an existing skill's steps: a prototype runs `proto`, a plan `spec`, tickets `tickets`, a settled spec or tickets `build`, a review `review`, an open PR's feedback `address-review`, and "open a PR" `open-pr`. Work mode adds its principle triggers, the todo list, and its reply, never a second copy of a skill's procedure. A step the agent decides not to take stays in the list as `skip: <reason>`. A code change ends with `change-map` and `review` at your review level, and goes on to `open-pr` when you already asked for delivery. An investigation, a review, a spec, or tickets hand the result back to you, and a design picks a shape, then continues as a feature or a refactor. A spec asks whether to build it, and only an explicit go answers; the go is a new task, so it matches again as a settled spec and runs `build`. Open decisions get settled with `/grill-with-docs` first. A merge goes to you or `/land`. Work mode lasts the conversation, and the playbook and step are recorded in the task document so a compaction resumes at the same step.
+`/work <task>` makes the agent follow a playbook: a fixed list of steps for that kind of task. The agent copies every step into its todo list. A step it decides to skip stays in the list as `skip: <reason>`, so you see what was left out and why.
+
+The agent picks the playbook from the task:
+
+| The task | What runs |
+| --- | --- |
+| Something is broken, throwing, or failing | Bug fix playbook |
+| New or changed behavior | Feature playbook |
+| A question: how, why, are we sure, should we | Investigate playbook (read-only) |
+| The structure changes, the behavior does not | Refactor playbook |
+| Something is slow, with a number to move | Perf playbook |
+| A shape or interface to choose, with no precedent | Design playbook |
+| A prototype, spike, or mock-up | `proto`'s steps |
+| A spec or plan, before anything is built | `spec`'s steps |
+| Tickets from a spec, a brief, findings, or a request | `tickets`' steps |
+| A settled spec or set of tickets to build | `build`'s steps |
+| Review a diff, a branch, or a PR | `review`'s steps |
+| Feedback or red checks on an open PR | `address-review`'s steps |
+| "Open a PR" or "ship this" | `open-pr`'s steps |
+| A merge, or "it merged, clean up" | Nothing. The agent tells you to run `/land` |
+| Pick up earlier work | `continuity`'s resume steps, then the recorded playbook |
+| Large, multi-part, or none of the above | Large playbook |
+
+When a row names a skill, work mode runs that skill's own steps. It adds its checklist and its reply, never a second copy of the skill.
+
+How each kind of task ends:
+
+- **A code change** ends with a change summary (`change-map`) and a review at your review level. If you already asked for delivery, it goes on to `open-pr`.
+- **An investigation, a review, a spec, or tickets** hand the result back to you.
+- **A design** picks a shape, then continues as a feature or a refactor.
+- **A spec** asks whether to build it. Only an explicit "go" answers. That go is a new task, so it matches again as a settled spec and runs `build`.
+
+If product decisions are still open, settle them with `/grill-with-docs` before you start. A merge always goes to you or `/land`.
+
+Work mode lasts for the whole conversation. The agent records the playbook and the current step in the task document, so after a compaction it resumes at the same step.
 
 ```mermaid
 stateDiagram-v2
@@ -64,7 +126,23 @@ stateDiagram-v2
 
 ### Autopilot
 
-Add "autopilot" or "I'm stepping away" and a goal to the `/work` request. The agent states a pass/fail definition of done (proposing one if you gave none), records your words and the time ceiling (2 hours unless you set one) in the task document, and works without checkpoints. It may commit, push, and open ready pull requests, including separate pull requests for fixes it finds along the way. It never merges, writes to the tracker, or messages anyone. Decisions only you could make get the simplest safe default and lead its report, each with what to tell it to switch. When two fixes resting on one assumption fail, it tests the assumption directly. When a piece fails, it retries by the cause (a smaller scope, the same start, or a different model), and after two retries drops that piece and plans around it.
+To let work run while you are away, add "autopilot" or "I'm stepping away" and a goal to the `/work` request:
+
+```text
+/work autopilot, max 3h: make the export job finish under a minute
+```
+
+Here is what the agent does:
+
+1. **Frames the run.** It states a pass or fail definition of done, or proposes one if you gave none. It records your words and the time limit (2 hours unless you set one) in the task document.
+2. **Works without checking in.** It keeps each change that moves toward the goal and reverts each one that does not.
+3. **Decides for you where it must.** A decision only you could make gets the simplest safe option. Each one is listed at the top of its report, with what to tell it if you want something else.
+4. **Handles getting stuck.** When two fixes that rest on one assumption both fail, it tests the assumption directly. When a piece fails, it retries based on the cause (a smaller scope, the same start, or a different model). After two retries it drops that piece and plans around it.
+
+What it may and may not do:
+
+- **May:** commit, push, and open ready pull requests, including separate PRs for problems it finds along the way.
+- **Never:** merge, write to the issue tracker, or message anyone.
 
 ```mermaid
 stateDiagram-v2
@@ -93,41 +171,68 @@ stateDiagram-v2
 
 ## Local work and delivery
 
-An implementation request authorizes local edits and commits on a task branch the agent creates. Consequential decisions come back to you; routine reversible choices do not need repeated approval.
+### What each request allows
 
-“Open a PR” or “ship this” authorizes commits, push, PR creation or updates, and required-check repairs. Feedback stays on the same branch. Publication does not authorize merging. The agent ends with a readiness report: required checks, mergeability, review coverage, the run-as-user verdict, and open findings. You merge; then `/land` cleans up. `/land merge` has the agent recheck the gates and merge for you.
+| You say | The agent may |
+| --- | --- |
+| Any request to build something | Edit files and commit on a task branch it creates |
+| "Open a PR" or "ship this" | Also push, open or update the PR, and fix required checks. Feedback on that PR stays on the same branch |
+| `/land merge` | Recheck the gates and merge for you |
 
-Before handoff, the agent runs the repository checks and explains what changed, what to review, and any gaps. When the project has a verify skill (made with `/create-verification-skill`), a separate agent that never saw the implementation drives the changed features the way a user would and returns PASS, PASS+NOTES, or FAIL; for a bugfix it shows the bug on the old code and its absence on the new. [Review coverage](review.md) follows your `harness review level` setting. At `medium` and `high`, a PR above `tests-docs` needs a review of its current patch: the readiness report shows whether it has one, and `/land merge` refuses to merge without it.
+Publishing a PR never allows merging. You merge, then run `/land` to clean up.
 
-The [README state diagram](../README.md#everyday-use) shows the delivery path:
+The agent brings important decisions back to you. Small choices that are easy to undo do not need your approval each time.
 
-- **Ready locally:** the requested local work and applicable checks are complete. No publication is required.
-- **Preparing PR:** publication is authorized. The agent completes local checks and applicable review before publishing.
-- **PR open:** remote checks and feedback may require more changes on the same branch. Changed code needs fresh checks and any applicable review.
-- **Ready to merge:** required checks and review are satisfied, and the readiness report says so. You merge, or run `/land merge` to have the agent recheck the gates and merge.
-- **Needs your input:** a consequential decision or unavailable required check or reviewer blocks progress. Once resolved, work returns to the blocked stage. A failed check the agent can repair stays in the normal work loop.
+### Before the agent hands off
 
-These describe the intended workflow, not a centrally enforced task status. Live agent compliance is separate from the written floor and skills.
+- It runs the repository's checks and explains what changed, what to review, and any gaps.
+- If the project has a verify skill (made with `/create-verification-skill`), a separate agent that never saw the code drives the changed features the way a user would. It returns PASS, PASS+NOTES, or FAIL. For a bugfix, it shows the bug on the old code and its absence on the new code.
+- [Review](review.md) runs according to your `harness review level`. At `medium` and `high`, a PR beyond docs or tests needs a review of its current changes. The readiness report shows whether it has one, and `/land merge` refuses to merge without it.
 
-See [what happens to a finding](review.md#what-happens-to-a-finding) for how review concerns are proven or dropped, repaired, and rechecked.
+A PR ends with a readiness report: required checks, whether it can merge, review coverage, the run-as-user verdict, and open findings.
 
-For longer work, the agent keeps requirements, decisions, evidence, and the next action in `docs/agents/tasks/<feature>.md`, committed on the task branch. It merges with the work and stays in the repository as the record of what was done and why. Small tasks need no extra document.
+### The stages
+
+The [diagram in the README](../README.md#what-the-agent-does-on-its-own-and-what-waits-for-you) shows the whole path. Each stage means:
+
+- **Ready locally:** the local work and its checks are done. You do not have to publish it.
+- **Preparing PR:** you asked to publish. The agent finishes the local checks and any review before it publishes.
+- **PR open:** remote checks and feedback may need more changes on the same branch. Changed code needs fresh checks and any applicable review.
+- **Ready to merge:** required checks and review pass, and the readiness report says so. You merge, or run `/land merge` to have the agent recheck the gates and merge.
+- **Needs your input:** an important decision, or a required check or reviewer that cannot run, blocks progress. Once you resolve it, work returns to the stage that was blocked. A failed check the agent can fix is not a blocker. It stays in the normal work loop.
+
+These stages describe the intended workflow. Nothing enforces them centrally, and the written rules are not proof of how a live agent behaves. For how review concerns are proven, dropped, fixed, and rechecked, see [what happens to a finding](review.md#what-happens-to-a-finding).
+
+### Task documents
+
+For longer work, the agent keeps the requirements, decisions, evidence, and next step in `docs/agents/tasks/<feature>.md`, committed on the task branch. It merges with the work and stays in the repository as a record of what was done and why. Small tasks do not need one.
 
 ## Larger builds
 
-Invoke `/build` to implement a set of tickets, or a specification cut into tickets, unattended. It uses one integration branch and bounded workers in separate worktrees. The parent verifies and commits their results, then checks and reviews the combined change. Publication still requires a delivery request; merging still requires `/land`.
+`/build` implements a set of tickets, or a specification cut into tickets, without you watching:
 
-Use this when the work is settled enough to delegate. Missing acceptance criteria, disputed test seams, or shared assumptions need resolving first. `/work` on a settled spec or set of tickets starts `/build` for you, and a spec without tickets is cut into them with `tickets` first, drafted locally. Under `/work` autopilot, your step-away request also counts as its delivery request.
+- It works on one integration branch.
+- Workers each take a bounded piece, in their own worktrees.
+- The main agent checks and commits each worker's result, then checks and reviews the combined change.
+
+Use it when the work is settled enough to hand off. Resolve missing acceptance criteria, disputed test seams, or shared assumptions first.
+
+`/work` on a settled spec or set of tickets starts `/build` for you. A spec without tickets is first cut into them with `tickets`, as local drafts. Publishing still needs your request, and merging still needs `/land`. Under `/work` autopilot, your step-away request also counts as the request to publish.
 
 ## Optional tracking
 
-Invoke `setup-harness` to configure a repository's tracker. GitHub mode installs labels and a lifecycle workflow; local mode stores status in Markdown. Ordinary coding needs neither.
+Ordinary coding needs no tracker. To set one up for a repository, run `setup-harness`. It offers two modes:
 
-GitHub dependencies become ready only when their blockers were closed by merged PRs. Closing an issue manually does not count. A parent closes when all required children have merge evidence. Tracker writes and ticket publication require an explicit request.
+- **GitHub mode** installs labels and a workflow that moves tickets through their lifecycle.
+- **Local mode** keeps ticket status in Markdown files.
 
-### GitHub ticket lifecycle
+Tracker writes and publishing tickets always need your explicit request.
 
-This tracks one actionable ticket enrolled in the lifecycle workflow, using the default label names. Repositories can configure different names. **Main agent** means your primary session. **Reconciler** means the installed GitHub workflow, not a subagent. A ready label does not authorize work to start.
+### How GitHub tickets move
+
+A ticket becomes ready only when every ticket blocking it was closed by a merged PR. Closing an issue by hand does not count. A parent issue closes when all its required children have merge evidence.
+
+The diagram follows one ticket through the default labels (a repository can rename them). **Main agent** means your primary session. **Reconciler** means the installed GitHub workflow, not a subagent. A ready label does not by itself allow work to start.
 
 ```mermaid
 stateDiagram-v2
@@ -147,22 +252,41 @@ stateDiagram-v2
     Closed --> [*]
 ```
 
-- **ready-for-agent:** all blockers have merge evidence, or there are no blockers. The main agent rechecks the claim before taking it and must not overwrite another run's claim.
-- **ready-for-human:** the PR is ready for human review, with required checks and applicable review satisfied. PR feedback stays on the existing branch. The label does not mean a human must implement the ticket.
-- **blocked:** a blocker lacks merge evidence, including when its repository cannot be read. Reconciliation can replace an active label with this label. Otherwise it preserves active claims and handoffs.
-- **Closed with merge evidence:** a merged PR closed the ticket. Manual closure alone does not release dependents. `/land` checks tracker reconciliation and applies scoped repairs if the workflow did not run.
+What each label means:
 
-A parent issue is a container, not an actionable ticket in this diagram. It closes only after every required child has merge evidence. Reopening and explicitly authorized ticket release are outside this delivery view. The diagram describes the written workflow and reconciler rules, not proof of live agent compliance.
+- **`ready-for-agent`:** every blocker has merge evidence, or there are no blockers. The main agent rechecks before it claims the ticket, and never overwrites another run's claim.
+- **`in-progress`:** the main agent has claimed the ticket, with your authorization.
+- **`ready-for-human`:** the PR is ready for your review, with required checks and any applicable review passing. PR feedback stays on the same branch. The label does not mean a person has to build the ticket.
+- **`blocked`:** a blocker has no merge evidence, including when its repository cannot be read. The reconciler can replace an active label with this one. Otherwise it keeps active claims and handoffs.
+- **Closed with merge evidence:** a merged PR closed the ticket. Closing it by hand does not release the tickets that depend on it. `/land` checks the tracker and makes scoped repairs if the workflow did not run.
+
+A parent issue is a container, not a ticket in this diagram. It closes only after every required child has merge evidence. Reopening a ticket and explicitly authorized releases are outside this view. The diagram describes the written workflow and the reconciler's rules, not proof of how a live agent behaves.
 
 ## When work stops
 
-The agent reports contradictory evidence, scope changes, or two failed fixes that rest on the same assumption instead of guessing indefinitely. The report should say what failed and what decision or evidence is needed next. Under autopilot it does not stop there: it tests the assumption directly, retries a failed piece at most twice, and replans around it, parking only a dead end that survives the replan.
+The agent stops and reports instead of guessing when:
 
-An explicit request naming the commits, files, branches, or task worktrees to discard counts as approval of that scope. The agent inspects first and asks again only if the scope is ambiguous or additional work would be lost. Unrelated work and user worktrees must survive.
+- the evidence contradicts what the task assumed,
+- the next step would go beyond what you asked for, or
+- two fixes that rest on the same assumption both fail.
 
-### Resume retained work
+The report says what failed and what decision or evidence it needs next. Autopilot works differently: it tests the assumption directly, retries a failed piece at most twice, and plans around it. It parks only a dead end that survives the replan.
 
-Resuming assumes the implementation still exists. The main agent uses the request, the task document, and the branch's commits and diff. A paused session leaves a `wip:` commit and an updated task document, so the next one picks up from there. Work already verified at an unchanged commit is trusted, not redone. A small task needs no recovery document.
+### Discarding work
+
+When you name specific commits, files, branches, or task worktrees to discard, that counts as approval for exactly that scope. The agent looks first, and asks again only if the scope is unclear or more work would be lost. Unrelated work and your own worktrees always survive.
+
+### Resume earlier work
+
+To resume, the work must still exist. The agent rebuilds the picture from your request, the task document, and the branch's commits and diff:
+
+- A paused session leaves a `wip:` commit and an updated task document, so the next session starts from there.
+- Work that was already verified at an unchanged commit is trusted, not redone.
+- A check run against a commit that has since changed is stale and runs again.
+- Missing context blocks only the work that depends on it.
+- Old notes never grant new permission.
+
+A small task needs no recovery document.
 
 ```mermaid
 stateDiagram-v2
@@ -182,4 +306,4 @@ stateDiagram-v2
     Checked --> Resumed: Main agent continues within existing authorization
 ```
 
-Missing context blocks only dependent work. Old notes grant no new authority, and checks against a changed commit are stale. See [continuity](../skills/support/continuity/SKILL.md) for recovery details.
+The [continuity skill](../skills/support/continuity/SKILL.md) has the full recovery details.
