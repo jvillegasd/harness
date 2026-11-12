@@ -1,30 +1,56 @@
 # Delegation
 
-Work stays inline unless a worker offers independent inspection, useful parallel work, or context isolation. More files alone are not a reason to delegate.
+Sometimes the main agent hands a piece of work to a helper agent, called a role. This page explains which roles exist, how they are launched, and what limits them.
 
-## Roles
+## When the agent delegates
+
+By default the agent does the work itself. It hands work to a role only for one of three reasons:
+
+- **Independent inspection:** a fresh agent that has not seen the author's reasoning, such as a reviewer.
+- **Useful parallel work:** separate pieces that can run at the same time.
+- **Context isolation:** a large search or task that would crowd the main conversation.
+
+Touching many files is not, on its own, a reason to delegate.
+
+## The roles
 
 | Role | Job | Limits |
 | --- | --- | --- |
-| `executor` | Implement one bounded slice | No commits, publication, tracker writes, merges, worktree removal, or further delegation |
-| `code-search` | Answer one repository question with file and line citations | Read and search only |
-| `reviewer` | Check that review fixes hold | Read and search only; does not receive the author's rationale |
-| `review-bugs`, `review-spec`, `review-risk` | Hunt defects through one lens: general bugs, requirements, or consequential risk | Same as `reviewer`, whose text each lens extends |
+| `executor` | Implement one bounded piece of work | No commits, publishing, tracker writes, merges, worktree removal, or further delegation |
+| `code-search` | Answer one question about the repository, with file and line citations | Read and search only |
+| `reviewer` | Check that review fixes hold | Read and search only, and never sees the author's reasoning |
+| `review-bugs`, `review-spec`, `review-risk` | Look for problems through one lens: general bugs, requirements, or risk | The same as `reviewer`, whose definition each lens builds on |
 
-Definitions live in [roles/](../roles/) and [the review skill](../skills/workflow/review/SKILL.md). A worker's completion message is not proof: the parent checks its scope, Git state, and results.
+The definitions live in [roles/](../roles/) and in [the review skill](../skills/workflow/review/SKILL.md).
 
-## Launching a role
+A role saying it finished is not proof. The main agent checks the role's scope, the Git state, and the results itself.
 
-The `delegation` skill is how an agent launches a role. Each role is assigned a client, model, and effort; `harness models` shows and changes the assignments. A review lens follows the `reviewer` assignment until you set it on its own. A role assigned to the session's own client runs as a native subagent. A role assigned to another client runs only inside a T3 Code session, as a delegated task with that client's model and effort. A T3 Code child loads no installed role agent, so the role's definition travels in its brief.
+## How a role is launched
 
-If a role is missing or stale on this machine, `harness install` provisions it; agents never quietly substitute another one. When a review needs an independent reviewer that cannot run, the review is reported as unverified rather than done by the author.
+Agents launch roles through the `delegation` skill. Each role has an assigned client, model, and effort level. To see or change them, run `harness models`. The review lenses use the `reviewer` assignment until you set one of them on its own.
 
-## Reviews
+Where the role runs depends on its client:
 
-The review lenses, `reviewer`, and `executor` carry out reviews. [How review works](review.md) explains what reviewers see, which findings reach you, and how fixes are checked.
+- **Same client as your session:** the role runs as a native subagent.
+- **A different client:** the role runs only inside a T3 Code session, as a delegated task with that client's model and effort. A T3 Code child does not load the installed role agent, so the role's definition is sent along in its brief.
 
-## Enforcement limits
+If a role is missing or out of date on this machine, `harness install` sets it up. Agents never quietly swap in a different role. When a review needs an independent reviewer that cannot run, the review is reported as unverified. The author does not review its own work instead.
 
-Client restrictions differ. Claude Code restricts read-only roles with tool permissions and a shell guard that allows only read commands; OpenCode denies them the shell and allows only its read and search tools. Some executor limits remain instructions. Native Codex subagents inherit the parent's sandbox. A T3 Code delegate runs in the runtime mode it inherits, and T3 Code has no read-only mode, so a delegated role's access limits are instructions in its brief.
+## Roles in a review
 
-These are best-effort controls. Repository tests validate generated configuration, not live compliance. Runtime enforcement remains unverified until an authorized probe runs against the installed client.
+The review lenses, `reviewer`, and `executor` carry out reviews together. [How review works](review.md) explains what reviewers see, which findings reach you, and how fixes are checked.
+
+## How strongly the limits are enforced
+
+Each client enforces role limits differently:
+
+| Client | How read-only roles are limited |
+| --- | --- |
+| Claude Code | Tool permissions, plus a shell guard that allows only read commands |
+| OpenCode | No shell, and only its read and search tools |
+| Codex | Native subagents inherit the parent session's sandbox |
+| T3 Code delegate | Runs in the mode it inherits. T3 Code has no read-only mode, so the limits are instructions in the brief |
+
+Some `executor` limits are instructions only, in every client.
+
+Treat these as best-effort controls. The repository's tests check the generated configuration, not whether a live client obeys it. Runtime enforcement stays unverified until an approved test runs against the installed client.

@@ -1,10 +1,39 @@
 # Installation and your files
 
-These diagrams follow one copied file of managed config, such as a skill, the floor, or a role definition. The installer compares its content hash with the record in `~/.harness/state.json`. They do not describe client settings or MCP registrations, which are reconciled separately, or tools, which the [CLI reference](cli.md#install-and-uninstall) covers. Tracked settings can overwrite in-app preferences.
+This page explains what `harness install` and `harness uninstall` do to files that are already on your machine. The short version: the harness only replaces or removes copies it wrote itself and that you have not changed. Anything else is archived or left alone.
 
-## Installing
+## How the harness tells its files from yours
 
-Run `harness install` to install the binary's embedded assets, or `go run ./cmd/harness install` to apply the checkout's assets. Name components, such as `harness install skills`, to install only those, and only copies of those components are inspected, written, or removed. Both change live client configuration.
+Each time the installer copies a file into a client (a skill, the floor, or a role definition), it records the file's path and a hash of its content in `~/.harness/state.json`. On the next run it compares what is on disk with that record:
+
+- **Same hash as recorded:** the harness wrote it and you have not touched it, so the harness may replace or remove it.
+- **Different hash, or no record:** you edited it, or it was never the harness's. The harness archives it or leaves it alone.
+
+A copy can be a whole directory, so an edit to any file inside it counts as an edit to the copy.
+
+This page covers those copied files. Client settings and MCP registrations follow their own rules, described below. Tools such as `node` or `gh` are covered in the [command-line reference](cli.md#install-and-uninstall).
+
+## Install
+
+Two commands install the same way but from different sources:
+
+- `harness install` installs the files built into the `harness` binary.
+- `go run ./cmd/harness install` installs the files in this checkout, including your uncommitted edits.
+
+Both change your live client configuration. To limit a run, name components, such as `harness install skills`. The run then reads, writes, and removes only copies of those components.
+
+For each file, the installer does one of these things:
+
+| What is on disk | What the installer does |
+| --- | --- |
+| Nothing | Writes the new copy and records it |
+| Already the new content | Leaves it and records it |
+| The harness's own unchanged copy | Replaces it with the new copy |
+| An edited copy, or a file the harness never recorded | Moves it to the backup folder, then writes the new copy |
+| A recorded copy the harness no longer ships, unchanged | Removes it |
+| A recorded copy the harness no longer ships, edited | Keeps it and prints a warning |
+
+The same flow as a diagram:
 
 ```mermaid
 stateDiagram-v2
@@ -38,17 +67,45 @@ stateDiagram-v2
     Obsolete --> Preserved: Existing content differs from recorded hash
 ```
 
-Archives go under `~/.dotfiles-backups/harness/`. `--no-backup` deletes conflicting content instead of archiving it. `--clear-backups` separately deletes those archives. Neither operation is recoverable through the harness.
+A few more details:
 
-An obsolete copy that is already absent needs no removal. Private entries outside the desired paths and recorded copies stay untouched. A copy can be a directory, so an edit anywhere inside it changes its hash. Managed-root symlinks are moved aside before installation.
+- Your own files next to the harness's (for example, a private skill with its own name) are never touched.
+- If a folder the harness manages is a symlink, the installer moves the symlink aside before it installs.
+- Tracked client settings are reapplied on every install, so some preferences you changed inside a client can be overwritten.
+
+### Backups
+
+Files moved out of the way go to `~/.dotfiles-backups/harness/`. Two options delete instead, and the harness cannot bring the files back:
+
+- `harness install --no-backup` deletes conflicting files instead of archiving them.
+- `harness uninstall --clear-backups` deletes the archives.
 
 ## Permission rules
 
-The floor's command and secret rules are enforced by each client, not only stated in `FLOOR.md`. Claude Code gets them in its tracked settings. Codex gets them as a rules file of its own, `~/.codex/rules/harness.rules`, which is copied and recorded like the files above. OpenCode gets them merged into `opencode.json` after your own rules, because OpenCode applies the last rule that matches; where you set a pattern stricter than the harness's, your setting stays, and uninstall takes out only the harness's rules. Codex rules cover commands only, so in Codex the agent keeps secrets unread by instruction rather than by a rule.
+The floor's rules about commands and secrets are not only written in `FLOOR.md`. Each client also enforces them in its own way:
 
-## Uninstalling
+| Client | Where the rules go |
+| --- | --- |
+| Claude Code | Its tracked settings |
+| Codex | A rules file of its own, `~/.codex/rules/harness.rules`, copied and recorded like the files above |
+| OpenCode | Merged into `opencode.json`, after your own rules |
 
-Run `harness uninstall`. Removal asks for confirmation unless you pass `--yes`. Component names and `--client` narrow the selection.
+OpenCode applies the last rule that matches, which is why the harness's rules go after yours. If you set a pattern stricter than the harness's, your setting stays. Uninstall takes out only the harness's rules.
+
+Codex rules can only cover commands. In Codex, the agent keeps secrets unread because its instructions say so, not because a rule blocks it.
+
+## Uninstall
+
+Run `harness uninstall`. It asks you to confirm first. Pass `--yes` to skip the question. Component names and `--client` narrow what it removes.
+
+For each recorded copy:
+
+| Situation | What uninstall does |
+| --- | --- |
+| Another installed client still uses the copy | Keeps it |
+| No client needs it, and it is already gone | Nothing |
+| No client needs it, and it is unchanged | Removes it |
+| No client needs it, and you edited it | Keeps it and prints a warning |
 
 ```mermaid
 stateDiagram-v2
@@ -69,6 +126,8 @@ stateDiagram-v2
     Inspect --> Preserved: No remaining client needs it and content differs from recorded hash
 ```
 
-Uninstall removes ownership records for copies no remaining client needs, including edited copies it preserves. A preserved file is therefore no longer managed. Unrecorded private entries remain untouched.
+Uninstall also forgets the edited copies it keeps. After that, the harness no longer manages them, and they are yours. Files the harness never recorded stay untouched.
 
-Uninstall also removes the selected settings, shell integration, and MCP registrations through their own rules. It leaves backups and every tool's data. It removes a tool only when its component is named or `--all` is given, and only a tool the harness recorded installing. `~/.harness`, including saved model assignments and the review-level choice, goes only when nothing recorded remains.
+Settings, shell integration, and MCP registrations are removed through their own rules. Uninstall never touches backups or any tool's data. It removes a tool only when you name its component or pass `--all`, and only if the harness recorded installing that tool.
+
+`~/.harness`, which holds your model assignments and review level, is deleted only when nothing recorded remains.
