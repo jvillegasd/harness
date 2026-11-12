@@ -10,7 +10,6 @@
 6. Prove the behavior is unchanged on the real artifact (`principle-prove-it-works`, `verification`): the pin, plus an equivalence check for a larger reshape. "It compiles" is not proof.
 7. Check that reader load went down somewhere (`principle-minimize-reader-load`). When it did not, revert.
 8. Commit in order: the subtraction, then the reshape, then follow-on cleanup (`principle-sequence-verifiable-units`).
-9. Run `change-map`, then `review` at the level `harness review level` reports.
-10. When delivery is authorized, run `open-pr`. Otherwise stop with the work ready locally and offer delivery once.
+9. Finish, as work mode's Finish lists.
 
 **Reply:** the structure that changed, the pin it held against, the equivalence proof, the reader-load change, and what was reverted.

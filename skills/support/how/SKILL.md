@@ -11,4 +11,4 @@ Answer the question by tracing the code at the depth it needs. State an interpre
 2. Note non-obvious behavior, failure paths, and open questions. For ownership questions, compare the responsibilities and dependencies of the candidate locations. Cite the files and lines that support the answer.
 3. Synthesize a mental model: start with what the subsystem does, then walk through the relevant flow and where to find its important pieces. Define unfamiliar concepts. Use a diagram when it clarifies relationships; omit sections that do not help the question.
 
-Explore and synthesize inline by default. When a bounded independent search has a named benefit, use the configured `code-search` role under Harness delegation policy and check its citations. Reconcile contradictions against the source and name any gaps that remain.
+Explore and synthesize inline by default. When a bounded independent search has a named benefit, launch the `code-search` role through `delegation` and check its citations. Reconcile contradictions against the source and name any gaps that remain.
