@@ -87,7 +87,7 @@ func Classify(file string, cfg Config) Result {
 		if lock.Hashed[strings.TrimPrefix(file, lock.Dir+"/")] {
 			return Result{Tier: Mechanical, Reason: "locked body " + lock.Name + " from " + lock.Source + ", matching its lock hash", Group: lock.Dir + "/"}
 		}
-		// A path the hash never covered, such as a file under node_modules or a symlink, takes the ordinary rules.
+		// A path the hash never covered, such as a metadata.json or a symlink leading out of the folder, takes the ordinary rules.
 		break
 	}
 
