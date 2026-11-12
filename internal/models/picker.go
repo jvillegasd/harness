@@ -10,10 +10,10 @@ import (
 
 // presetNotes are the one-line descriptions the picker shows beside each preset.
 var presetNotes = map[string]string{
-	"balanced":    "Codex GPT-6 Luna implements; reviews stay on the session's Claude model (default)",
-	"performance": "Opus implements; Fable reviews; all at high effort",
-	"economy":     "Codex GPT-5.6 Luna implements; Sonnet reviews",
-	"diversity":   "Sonnet implements; Codex GPT-6.1 Sol reviews at high effort",
+	"balanced":    "Codex GPT-6 Luna implements; Haiku searches; Sonnet reviews at medium (default)",
+	"performance": "Opus implements at high; Sonnet searches; Fable reviews at medium",
+	"economy":     "Codex GPT-5.6 Luna implements; Haiku searches; Sonnet reviews at low",
+	"diversity":   "Sonnet implements at medium; Haiku searches; Codex GPT-6.1 Sol reviews at low",
 }
 
 // claudeModels is the picker's order for the aliases claudeEfforts supports.

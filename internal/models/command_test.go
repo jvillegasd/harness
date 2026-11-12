@@ -139,7 +139,7 @@ func TestLensFollowsTheReviewerUntilSet(t *testing.T) {
 		}
 		return out.String()
 	}
-	if got := show(); !strings.Contains(got, "review-risk client=claude model=opus effort=low (reviewer)") {
+	if got := show(); !strings.Contains(got, "review-risk client=claude model=sonnet effort=medium (reviewer)") {
 		t.Errorf("an unset lens does not follow the reviewer:\n%s", got)
 	}
 	for _, args := range [][]string{
