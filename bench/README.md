@@ -41,7 +41,7 @@ Bench counts eight things per session and reports the median across all sessions
 | `denials` | Friction | Times a person refused a tool call. |
 | `errors` | Friction | Tool calls that failed. A refusal counts as a denial, never also as an error. |
 
-**What does not count as a turn:** tool results, slash-command entries (in either form), `<task-notification>` messages, local-command output, `isMeta` notices, injected `<system-reminder>` blocks, and interrupt markers. The client writes all of these, not the person.
+**What does not count as a turn:** tool results, slash-command entries (in either form), `<task-notification>` messages, local-command output, `isMeta` notices, compaction summaries (`isCompactSummary`), injected `<system-reminder>` blocks, and interrupt markers. The client writes all of these, not the person.
 
 **A note on `delegation`:** a role delegated through T3 Code's `delegate_task` runs as its own session, not as a subagent. It never shows up in `delegation`. Instead it joins the set of sessions that every median is taken over.
 

@@ -271,3 +271,50 @@ func TestCodexSinceSkipsOldRollout(t *testing.T) {
 		t.Fatalf("collected %d sessions, want the old rollout dropped", len(got))
 	}
 }
+
+// A compaction writes its summary into the transcript as a user entry that is
+// neither meta nor prefixed, so only its own flag tells it from a typed prompt.
+func TestCompactionSummaryIsNotATurn(t *testing.T) {
+	home := t.TempDir()
+	body := strings.Join([]string{
+		`{"type":"user","timestamp":"2026-01-01T09:00:00Z","message":{"content":"fix the login test"}}`,
+		`{"type":"user","timestamp":"2026-01-01T09:30:00Z","isCompactSummary":true,"isVisibleInTranscriptOnly":true,"message":{"content":"This session is being continued from a previous conversation."}}`,
+		`{"type":"user","timestamp":"2026-01-01T09:31:00Z","message":{"content":[{"type":"text","text":"keep going"}]}}`,
+	}, "\n") + "\n"
+	writeTranscript(t, filepath.Join(home, ".claude", "projects", "-tmp-acme-app", "compacted.jsonl"), body)
+	got, err := collect(home, []string{"claude"}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("collected %d sessions, want 1", len(got))
+	}
+	if v, ok := got[0].metric("turns"); !ok || v != 2 {
+		t.Fatalf("turns = %v, want the 2 typed prompts and not the compaction summary", v)
+	}
+}
+
+// `/work fix the flaky test` carries the request in the command's arguments.
+// It is one command and no turn, like every slash-command entry, in both the
+// message-first form a skill writes and the name-first form a built-in writes.
+func TestSlashCommandWithArgumentsIsACommandNotATurn(t *testing.T) {
+	home := t.TempDir()
+	body := strings.Join([]string{
+		`{"type":"user","timestamp":"2026-01-01T09:00:00Z","message":{"content":"<command-message>work</command-message>\n<command-name>/work</command-name>\n<command-args>fix the flaky login test</command-args>"}}`,
+		`{"type":"user","timestamp":"2026-01-01T09:00:01Z","isMeta":true,"message":{"content":[{"type":"text","text":"Base directory for this skill: /tmp/skills/work"}]}}`,
+		`{"type":"user","timestamp":"2026-01-01T09:05:00Z","message":{"content":"<command-name>/compact</command-name>\n<command-message>compact</command-message>\n<command-args>keep the plan</command-args>"}}`,
+	}, "\n") + "\n"
+	writeTranscript(t, filepath.Join(home, ".claude", "projects", "-tmp-acme-app", "work.jsonl"), body)
+	got, err := collect(home, []string{"claude"}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("collected %d sessions, want 1", len(got))
+	}
+	for metric, want := range map[string]float64{"turns": 0, "commands": 2} {
+		if v, ok := got[0].metric(metric); !ok || v != want {
+			t.Fatalf("%s = %v, want %v", metric, v, want)
+		}
+	}
+}

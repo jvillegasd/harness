@@ -229,7 +229,9 @@ func readClaude(path string, since *time.Time) (*session, error) {
 			interrupts += strings.Count(body, claudeInterrupt)
 			typed = typed || (strings.TrimSpace(body) != "" && !hasNonTurnPrefix(strings.TrimLeftFunc(body, unicode.IsSpace)))
 		}
-		if typed && !truthy(entry["isMeta"]) {
+		// A compaction summary is the client's text in a user entry that is
+		// neither meta nor prefixed, so only its own flag excludes it.
+		if typed && !truthy(entry["isMeta"]) && !truthy(entry["isCompactSummary"]) {
 			turns++
 		}
 		return true
