@@ -125,7 +125,7 @@ func TestClassifyPrecedence(t *testing.T) {
 		{"roles/a/tests/case.txt", Structural},            // exception beats tests
 		{"skills/vendored/SKILL.md", Mechanical},          // a locked body beats the skills exception
 		{"skills/vendored/scripts/run.go", Mechanical},    // and beats the structural default
-		{"skills/vendored/node_modules/x.js", Structural}, // a file the hash skipped takes the ordinary rules
+		{"skills/vendored/__pycache__/x.pyc", Structural}, // a file the hash skipped takes the ordinary rules
 		{"skills/land/scripts/a.go", Critical},            // configured beats a locked body
 	}
 	for _, c := range cases {
@@ -141,7 +141,7 @@ func TestMechanicalOnlyFromRules(t *testing.T) {
 		{Dir: "skills/edited", Name: "edited", Source: "o/r"},
 		{Dir: "skills/verified", Name: "verified", Source: "o/r", Verified: true, Hashed: map[string]bool{"SKILL.md": true}},
 	}}
-	for _, path := range []string{"a.go", "a.lock", "lock.json", "go.mod", "gen.go", "a.pb.gox", "x/generated/a.go", "README.md", "a.sum", "skills/edited/SKILL.md", "skills/edited/run.go", "skills/verified/node_modules/x.js", "skills/verified/.git/config", "skills/verified/extra.md"} {
+	for _, path := range []string{"a.go", "a.lock", "lock.json", "go.mod", "gen.go", "a.pb.gox", "x/generated/a.go", "README.md", "a.sum", "skills/edited/SKILL.md", "skills/edited/run.go", "skills/verified/__pycache__/x.pyc", "skills/verified/.git/config", "skills/verified/extra.md"} {
 		if got := Classify(path, cfg).Tier; got == Mechanical {
 			t.Errorf("Classify(%q) = mechanical without a deterministic rule", path)
 		}

@@ -400,7 +400,7 @@ func seedLockedSkill(t *testing.T, lr lockRun, name string) {
 	}
 }
 
-// TestSkillsVerifyMatchesThePinnedLock recomputes the real committed bodies against the lock skills.sh wrote, so a Go collation that diverged from localeCompare would show drift.
+// TestSkillsVerifyMatchesThePinnedLock recomputes the real committed bodies against the lock skills.sh wrote, so a Go hash that diverged from skills.sh's version 2 computeSkillFolderHash would show drift.
 func TestSkillsVerifyMatchesThePinnedLock(t *testing.T) {
 	lr := locksVerifySandbox(t)
 	r := ok(t, lr.harness(t, "skills", "verify"), "skills verify")
