@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"unicode/utf16"
@@ -612,9 +613,61 @@ var (
 	lineBreak = regexp.MustCompile(`\r\n|\r|\n`)
 )
 
-// reconcileAliases writes the one managed line that sources the installed aliases.sh into ~/.zshrc, or with remove strips it, so the committed file stays the only definition. Hand-written copies of the managed aliases go either way, the retired oyolo included. A removal never creates a missing ~/.zshrc, and one that finds nothing writes nothing.
+// aliasRCs are every startup file an install may have written the managed line into, which an uninstall clears.
+func (in *installer) aliasRCs() []string {
+	var out []string
+	for _, name := range []string{".zshrc", ".bashrc", ".bash_profile", ".bash_login", ".profile"} {
+		out = append(out, filepath.Join(in.home, name))
+	}
+	return out
+}
+
+// aliasRC is the startup file the login shell reads, chosen by $SHELL or, when it is unset, by the OS default shell: zsh on macOS, bash on Linux. It is empty for a shell that cannot source aliases.sh, such as fish.
+func (in *installer) aliasRC() string {
+	shell := filepath.Base(os.Getenv("SHELL"))
+	if os.Getenv("SHELL") == "" {
+		shell = map[bool]string{true: "zsh", false: "bash"}[runtime.GOOS == "darwin"]
+	}
+	switch shell {
+	case "zsh":
+		return filepath.Join(in.home, ".zshrc")
+	case "bash":
+		if runtime.GOOS != "darwin" {
+			return filepath.Join(in.home, ".bashrc")
+		}
+		// macOS terminals open login shells, which read only the first of these that exists, so a new ~/.bash_profile would hide an existing ~/.profile.
+		for _, name := range []string{".bash_profile", ".bash_login", ".profile"} {
+			if path := filepath.Join(in.home, name); isFile(path) {
+				return path
+			}
+		}
+		return filepath.Join(in.home, ".bash_profile")
+	}
+	return ""
+}
+
+// reconcileAliases writes the one managed line that sources the installed aliases.sh into the login shell's startup file, or with remove strips it from every startup file that carries it, so the committed file stays the only definition.
 func (in *installer) reconcileAliases(remove bool) {
-	rc := filepath.Join(in.home, ".zshrc")
+	if remove {
+		// Only a file carrying the marker is the harness's to edit; a hand-written alias elsewhere is the user's.
+		for _, rc := range in.aliasRCs() {
+			if text, err := os.ReadFile(rc); err == nil && strings.Contains(string(text), aliasMarker) {
+				in.reconcileAliasesIn(rc, true)
+				in.aliasesStripped = append(in.aliasesStripped, rc)
+			}
+		}
+		return
+	}
+	rc := in.aliasRC()
+	if rc == "" {
+		in.warn("Your login shell is %s, which has no startup file the harness writes. The yolo aliases are in %s, written for bash and zsh.", os.Getenv("SHELL"), in.aliasesPath())
+		return
+	}
+	in.reconcileAliasesIn(rc, false)
+}
+
+// reconcileAliasesIn writes or strips the managed line in one startup file. Hand-written copies of the managed aliases go either way, the retired oyolo included. A removal never creates a missing file, and one that finds nothing writes nothing.
+func (in *installer) reconcileAliasesIn(rc string, remove bool) {
 	if !isFile(rc) {
 		if remove {
 			return
@@ -654,7 +707,8 @@ func (in *installer) reconcileAliases(remove bool) {
 		kept = kept[:len(kept)-1]
 	}
 	if !remove {
-		kept = append(kept, aliasMarker, fmt.Sprintf(`[ -f "%s" ] && source "%s"`, source, source))
+		// The POSIX dot, because ~/.profile is also read by sh, which has no source.
+		kept = append(kept, aliasMarker, fmt.Sprintf(`[ -f "%s" ] && . "%s"`, source, source))
 	}
 	text := strings.Join(append(kept, ""), "\n")
 	if text == current {

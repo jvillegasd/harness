@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -1079,5 +1080,84 @@ func TestOpenCodeKeepsAStricterUserRule(t *testing.T) {
 	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
 	if text := readFile(t, config); !strings.Contains(text, `"gh pr merge *": "deny"`) || strings.Contains(text, "git push") {
 		t.Errorf("the uninstall should leave only the user's deny:\n%s", text)
+	}
+}
+
+// runWithShell runs the harness from the sandbox under a given login shell.
+func runWithShell(t *testing.T, base, shell string, args ...string) result {
+	t.Helper()
+	return runHarness(t, base, []string{"TMPDIR=" + filepath.Join(base, "tmp"), "HARNESS_ASSETS=" + filepath.Join(base, "checkout"), "SHELL=" + shell}, args...)
+}
+
+// The managed line goes into the startup file the login shell reads, uses the POSIX dot so sh can read it too, and an uninstall takes it out again.
+func TestAliasesGoToTheLoginShellsStartupFile(t *testing.T) {
+	bash := ".bashrc"
+	if runtime.GOOS == "darwin" {
+		bash = ".bash_profile"
+	}
+	for shell, rc := range map[string]string{"/bin/bash": bash, "/bin/zsh": ".zshrc"} {
+		t.Run(filepath.Base(shell), func(t *testing.T) {
+			base := sandbox(t)
+			home := filepath.Join(base, "home")
+			ok(t, runWithShell(t, base, shell, "install", "aliases"), "aliases install")
+			line := `[ -f "` + filepath.Join(home, ".harness", "aliases.sh") + `" ] && . "`
+			if got := readFileOr(filepath.Join(home, rc)); !strings.Contains(got, "# portable-harness aliases\n"+line) {
+				t.Errorf("%s lacks the managed line:\n%s", rc, got)
+			}
+			for _, other := range []string{".zshrc", ".bashrc", ".bash_profile", ".profile"} {
+				if _, err := os.Stat(filepath.Join(home, other)); other != rc && err == nil {
+					t.Errorf("the install wrote %s, which a %s login shell does not read", other, filepath.Base(shell))
+				}
+			}
+			ok(t, runWithShell(t, base, shell, "uninstall", "aliases", "--yes"), "aliases uninstall")
+			if strings.Contains(readFileOr(filepath.Join(home, rc)), "portable-harness") {
+				t.Errorf("the uninstall left the managed line in %s", rc)
+			}
+		})
+	}
+}
+
+// A shell that cannot source aliases.sh gets no startup file, and the warning names the installed copy, never the run's temporary directory.
+func TestAliasesWarnForAnotherShell(t *testing.T) {
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	r := ok(t, runWithShell(t, base, "/usr/bin/fish", "install", "aliases"), "aliases install under fish")
+	if !strings.Contains(r.stderr, filepath.Join(home, ".harness", "aliases.sh")) || strings.Contains(r.stderr, "harness-assets") {
+		t.Errorf("the warning does not name the installed aliases:\n%s", r.stderr)
+	}
+	for _, rc := range []string{".zshrc", ".bashrc", ".bash_profile", ".profile"} {
+		if _, err := os.Stat(filepath.Join(home, rc)); err == nil {
+			t.Errorf("the install wrote %s for a fish login shell", rc)
+		}
+	}
+}
+
+// Uninstall edits only a startup file that carries the harness marker, so a hand-written alias elsewhere stays.
+func TestUninstallKeepsAliasesItNeverWrote(t *testing.T) {
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	mine := "alias ccyolo='claude --my-flags'\n"
+	writeMode(t, filepath.Join(home, ".bashrc"), mine, 0o644)
+	ok(t, runWithShell(t, base, "/bin/zsh", "install", "aliases"), "aliases install")
+	ok(t, runWithShell(t, base, "/bin/zsh", "uninstall", "aliases", "--yes"), "aliases uninstall")
+	if got := readFile(t, filepath.Join(home, ".bashrc")); got != mine {
+		t.Errorf("the uninstall changed a startup file the harness never wrote: %q", got)
+	}
+}
+
+// On macOS a bash login shell reads only the first of ~/.bash_profile, ~/.bash_login, and ~/.profile, so the line joins the one that exists rather than a new file that would hide it.
+func TestMacBashUsesTheExistingProfile(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("bash login shells read ~/.bashrc on Linux")
+	}
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	writeMode(t, filepath.Join(home, ".profile"), "export KEEP=1\n", 0o644)
+	ok(t, runWithShell(t, base, "/bin/bash", "install", "aliases"), "aliases install")
+	if !strings.Contains(readFile(t, filepath.Join(home, ".profile")), "portable-harness") {
+		t.Error("the managed line did not join ~/.profile")
+	}
+	if _, err := os.Stat(filepath.Join(home, ".bash_profile")); err == nil {
+		t.Error("the install created ~/.bash_profile, which hides ~/.profile")
 	}
 }
