@@ -23,3 +23,15 @@ _Avoid_: documentation (unqualified), agent docs
 **Floor**:
 The short set of rules that hold on every turn in every repository, loaded into each client whether or not a skill runs: authority, preservation, secrets, untrusted text, working, and prose form.
 _Avoid_: policy, global rules, conventions
+
+**Component**:
+A named part of the installation that install, update, and uninstall select by the same name: `clients`, `packages`, `mcps`, `skills`, `agents`, `floor`, `settings`, or `aliases`.
+_Avoid_: group, piece
+
+**Tool**:
+A program the installation puts on the machine: a client program, node, gh, uv, Engram, or agent-browser. A tool already on the machine before the harness installed it is never the harness's to remove.
+_Avoid_: package (unqualified), binary, dependency
+
+**Managed config**:
+What the harness writes into a client and owns, as opposed to the user's own config: copied skill, agent, and floor files, merged settings and hooks, MCP registrations, and the alias block. A component is a tool, managed config, or both.
+_Avoid_: managed copy, managed files, managed settings, harness config

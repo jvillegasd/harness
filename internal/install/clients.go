@@ -672,17 +672,23 @@ func (in *installer) reconcileAliases(remove bool) {
 // installEngram runs one `engram setup <agent>` per client, exactly as engram's docs/AGENT-SETUP.md documents. The claude-code setup is answered yes to allowlist engram's tools, because declining prompts on every memory call; the codex and opencode setups get a closed stdin, since a blind yes to a future question is not the same answer. Setup registers and pins OpenCode's MCP server and Codex's plugin; Claude Code's MCP is registerEngramClaudeMCP's job.
 func (in *installer) installEngram() {
 	in.log("Reconciling Engram")
-	if _, err := exec.LookPath("engram"); err != nil {
-		die("Engram is missing; run without --skip-packages to install it.")
+	if !present("engram") {
+		die("Engram is missing; run harness install mcps to install it.")
 	}
-	in.run(strings.NewReader("y\n"), "engram", "setup", "claude-code")
-	codex := exec.Command("engram", "setup", "codex")
-	codex.Env = models.CodexEnv(in.home)
-	codex.Stdout, codex.Stderr = in.stdout, in.stderr
-	if err := codex.Run(); err != nil {
-		die("engram setup codex failed: %v", err)
+	if in.targets("claude") {
+		in.run(strings.NewReader("y\n"), "engram", "setup", "claude-code")
 	}
-	in.run(nil, "engram", "setup", "opencode")
+	if in.targets("codex") {
+		codex := exec.Command("engram", "setup", "codex")
+		codex.Env = models.CodexEnv(in.home)
+		codex.Stdout, codex.Stderr = in.stdout, in.stderr
+		if err := codex.Run(); err != nil {
+			die("engram setup codex failed: %v", err)
+		}
+	}
+	if in.targets("opencode") {
+		in.run(nil, "engram", "setup", "opencode")
+	}
 }
 
 // registerEngramClaudeMCP registers Engram's Claude Code MCP server, which engram's own claude-code setup does not leave anywhere Claude Code reads. Remove then add, so a re-run rewrites the pinned path. README's MCP servers section records why setup is not enough.
@@ -690,10 +696,10 @@ func (in *installer) registerEngramClaudeMCP() {
 	in.log("Reconciling Engram's Claude Code MCP")
 	binary, err := exec.LookPath("engram")
 	if err != nil {
-		die("Engram is missing; run without --skip-packages to install it.")
+		die("Engram is missing; run harness install mcps to install it.")
 	}
-	if _, err := exec.LookPath("claude"); err != nil {
-		die("Claude Code is missing; run without --skip-packages to install it.")
+	if !present("claude") {
+		die("Claude Code is missing; run harness install clients --client claude to install it.")
 	}
 	must(in.registerMCP("claude", "engram", binary))
 }
@@ -725,16 +731,15 @@ func (in *installer) installAgentBrowser() {
 	in.log("Reconciling agent-browser")
 	binary, err := exec.LookPath("agent-browser")
 	if err != nil {
-		die("agent-browser is missing; run without --skip-packages to install it.")
+		die("agent-browser is missing; run harness install mcps to install it.")
 	}
-	if _, err := exec.LookPath("claude"); err != nil {
-		die("Claude Code is missing; run without --skip-packages to install it.")
-	}
-	if _, err := exec.LookPath("codex"); err != nil {
-		die("Codex is missing; run without --skip-packages to install it.")
-	}
-	in.openCodeConfig()
 	for _, client := range []string{"codex", "claude", "opencode"} {
+		if !in.targets(client) {
+			continue
+		}
+		if client != "opencode" && !present(client) {
+			die("%s is missing; run harness install clients --client %s to install it.", clientNames[client], client)
+		}
 		must(in.registerMCP(client, "agent-browser", binary))
 	}
 }

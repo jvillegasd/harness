@@ -191,18 +191,29 @@ func (in *installer) ensureManagedDir(dest string, create bool) {
 	}
 }
 
-// installFiles copies every managed asset into the clients and records each copy. A copy recorded by an earlier run and no longer shipped is removed; anything unrecorded or edited in the way is archived first, so neither a private entry nor a user's edit is overwritten unseen.
+// inScope reports whether this run owns a copy: its component is selected and it serves a targeted client.
+func (in *installer) inScope(e entry) bool {
+	return in.has(e.Component) && slices.ContainsFunc(e.Clients, in.targets)
+}
+
+// installFiles copies the selected managed assets into the targeted clients and records each copy. A copy in scope that an earlier run recorded and this one no longer ships is removed; anything unrecorded or edited in the way is archived first, so neither a private entry nor a user's edit is overwritten unseen. Records outside this run's scope stay as they were.
 func (in *installer) installFiles() {
-	for _, root := range []string{filepath.Join(in.home, ".agents", "skills"), filepath.Join(in.home, ".claude", "skills")} {
-		in.ensureManagedDir(root, true)
+	if in.has("skills") {
+		for _, root := range []string{filepath.Join(in.home, ".agents", "skills"), filepath.Join(in.home, ".claude", "skills")} {
+			in.ensureManagedDir(root, true)
+		}
+		// OpenCode reads ~/.agents/skills, so this root exists only to be cleared of duplicates.
+		in.ensureManagedDir(filepath.Join(in.config, "opencode", "skills"), false)
 	}
-	// OpenCode reads ~/.agents/skills, so this root exists only to be cleared of duplicates.
-	in.ensureManagedDir(filepath.Join(in.config, "opencode", "skills"), false)
-	for _, pair := range in.agentRoots() {
-		in.ensureManagedDir(pair[1], true)
-	}
-	if code := agents.Generate(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.assigned(), in.stdout, in.stderr); code != 0 {
-		die("Generating the role agents failed with status %d.", code)
+	if in.has("agents") {
+		for _, pair := range in.agentRoots() {
+			if in.targets(pair[0]) {
+				in.ensureManagedDir(pair[1], true)
+			}
+		}
+		if code := agents.Generate(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.assigned(), in.stdout, in.stderr); code != 0 {
+			die("Generating the role agents failed with status %d.", code)
+		}
 	}
 
 	previous := in.loadState()
@@ -210,14 +221,19 @@ func (in *installer) installFiles() {
 	for _, e := range previous.Files {
 		recorded[e.Path] = e.Digest
 	}
-	want := in.desired()
+	want := slices.DeleteFunc(in.desired(), func(e entry) bool { return !in.inScope(e) })
 	wanted := map[string]bool{}
 	for _, e := range want {
 		wanted[e.Path] = true
 	}
+	var kept []entry
 	for _, e := range previous.Files {
-		if !wanted[e.Path] {
+		switch {
+		case wanted[e.Path]:
+		case in.inScope(e):
 			in.removeManaged(e)
+		default:
+			kept = append(kept, e)
 		}
 	}
 	for i, e := range want {
@@ -238,11 +254,7 @@ func (in *installer) installFiles() {
 	// The SEO group is gone, and its launcher sits outside the managed roots.
 	in.backupExisting(filepath.Join(in.home, ".local", "bin", "claude-seo"), "")
 
-	installed := map[string][]string{}
-	for _, client := range allClients {
-		installed[client] = slices.Clone(allComponents)
-	}
-	in.saveState(in.keepChoices(state{Version: stateVersion, Installed: installed, Files: want}))
+	in.updateState(func(s *state) { s.Files = append(kept, want...) })
 	in.installed = want
 }
 
@@ -252,6 +264,9 @@ func (in *installer) checkFiles() {
 		if digest(e.Path) != e.Digest {
 			die("Managed copy missing or changed: %s", e.Path)
 		}
+	}
+	if !in.has("agents") {
+		return
 	}
 	if code := agents.Check(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.assigned(), in.stdout, in.stderr); code != 0 {
 		die("Role agents in %s are missing, drifted, or widened.", in.agentOut())

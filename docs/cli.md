@@ -2,11 +2,49 @@
 
 This page explains command behavior that does not fit in `--help` output.
 
+## Components
+
+`harness install`, `harness update`, and `harness uninstall` select the same components by name. Name one or more to act on just those, or none to act on the command's default. `--client claude`, `--client codex`, or `--client opencode` (repeatable) limits a run to those clients.
+
+| Component | What it covers | Kind |
+| --- | --- | --- |
+| `clients` | Claude Code, Codex, and OpenCode | Tool |
+| `packages` | node, gh, and uv | Tool |
+| `mcps` | Engram and agent-browser, and their registration in each client | Tool and managed config |
+| `skills` | The skills, copied into each client | Managed config |
+| `agents` | The role agents, rendered for each client | Managed config |
+| `floor` | The floor, as each client's global instructions | Managed config |
+| `settings` | Tracked client settings, compaction hooks, and command rules | Managed config |
+| `aliases` | The yolo aliases and their `~/.zshrc` line | Managed config |
+
+A tool is a program on the machine. Managed config is what the harness writes into a client and owns, recorded in `~/.harness/state.json` so it can tell its own work from your edits.
+
+## Install and uninstall
+
+```sh
+harness install                          # every component, every client
+harness install skills agents            # just those, every installed client
+harness install --client claude          # every component, Claude Code only
+harness uninstall                        # all managed config; tools stay
+harness uninstall mcps --client codex    # Codex's MCP registrations
+harness uninstall --all                  # everything, then the harness binary
+```
+
+A choice of components or clients applies to that run only. A later `harness install` with no names installs everything again, including a client you removed with `harness uninstall --client`.
+
+`harness install` treats a tool as installed when it is on `PATH`, however it got there, and never reinstalls or upgrades it. It uses Homebrew, npm, or Anthropic's installer, and the network, only for a missing tool, and records each tool it adds. Without `--client`, it configures every client that is installed or that the run installs; naming a client that is not installed stops the run before any write. Installing `mcps` also reconciles `settings`, because Engram's setup rewrites `settings.json` and `opencode.json`, and the output says so.
+
+`harness uninstall` with no names removes the managed config of every component and leaves every tool installed. Naming `clients`, `packages`, or `mcps`, or passing `--all`, also removes the tools of those components, but only the ones the harness recorded installing, and through the same method that installed them. A tool that was on the machine before the harness stays, and the summary names it. A tool every client shares (node, gh, uv, Engram, agent-browser) stays while any client still has harness config. No uninstall deletes a tool's data (`~/.engram`, `~/.agent-browser`, `~/.claude`, `~/.codex`) or `~/.dotfiles-backups`.
+
+`~/.harness`, including your `harness models` and review level choices, is deleted only when nothing recorded remains: no client keeps a component and no tool is recorded. `--all` then also deletes `~/.local/bin/harness`. Machines installed before tool records existed have none, so all their tools count as present before the harness. Records written under the old component names `policy` and `mcp` are read as `floor` and `mcps`.
+
+`harness uninstall --clear-backups` deletes the archives installs left under `~/.dotfiles-backups/harness/` and runs on its own.
+
 ## Update installed tools
 
-`harness update` updates packages, clients, MCPs, then locked skills. Pass one group name to update only that group:
+`harness update` updates packages, clients, MCPs, then locked skills. Name one or more of those components to update only them. `--client` limits `clients` and the `mcps` registrations to the named clients; `packages` and `skills` serve every client. The other components carry no tool, so `harness update` refuses them and points to `harness install`.
 
-| Group | Updates |
+| Component | Updates |
 | --- | --- |
 | `clients` | Claude Code, Codex, and OpenCode |
 | `packages` | Node, `gh`, and `uv` |

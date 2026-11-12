@@ -24,8 +24,9 @@ func main() {
 const usage = `Usage: harness <command> [arguments]
 
 Commands:
-  install    Install, reconcile, or remove the harness on this machine
+  install    Install or reconcile the harness components on this machine
   update     Update installed tools or locked upstream skills explicitly
+  uninstall  Remove harness components, and with --all the harness itself
   bench      Compare the session population before and after a harness change
   skills     Manage the reviewed third-party skill locks
   statusline Print the Claude Code status line for the payload on stdin
@@ -44,6 +45,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return install.Command(args[1:], stdout, stderr)
 	case "update":
 		return update.Command(args[1:], stdout, stderr)
+	case "uninstall":
+		return install.UninstallCommand(args[1:], stdout, stderr)
 	case "bench":
 		return bench.Command(args[1:], stdout, stderr)
 	case "skills":

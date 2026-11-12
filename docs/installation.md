@@ -1,17 +1,17 @@
 # Installation and your files
 
-These diagrams follow one managed copy, such as a skill, the floor, or a role definition. The installer compares its content hash with the record in `~/.harness/state.json`. They do not describe client settings or MCP registrations, which are reconciled separately. Tracked settings can overwrite in-app preferences.
+These diagrams follow one copied file of managed config, such as a skill, the floor, or a role definition. The installer compares its content hash with the record in `~/.harness/state.json`. They do not describe client settings or MCP registrations, which are reconciled separately, or tools, which the [CLI reference](cli.md#install-and-uninstall) covers. Tracked settings can overwrite in-app preferences.
 
 ## Installing
 
-Run `harness install` to install the binary's embedded assets, or `go run ./cmd/harness install --skip-packages` to apply checkout assets without installing packages. Both change live client configuration.
+Run `harness install` to install the binary's embedded assets, or `go run ./cmd/harness install` to apply the checkout's assets. Name components, such as `harness install skills`, to install only those, and only copies of those components are inspected, written, or removed. Both change live client configuration.
 
 ```mermaid
 stateDiagram-v2
     state "Inspect destination" as Inspect
     state "Absent" as Absent
     state "Matches desired content" as Matches
-    state "Unchanged managed copy" as Managed
+    state "Unchanged recorded copy" as Managed
     state "Edited or conflicting copy" as Conflict
     state "Previous copy archived" as Archived
     state "Previous copy deleted" as Deleted
@@ -28,7 +28,7 @@ stateDiagram-v2
     Inspect --> Conflict: Content differs from desired and recorded hash or has no record
     Absent --> Installed: Installer writes desired copy
     Matches --> Recorded: Installer leaves content alone and records ownership
-    Managed --> Installed: Installer replaces unchanged managed copy
+    Managed --> Installed: Installer replaces unchanged recorded copy
     Conflict --> Archived: Default moves previous copy to backup
     Conflict --> Deleted: Destructive --no-backup override
     Archived --> Installed: Installer writes desired copy
@@ -40,15 +40,15 @@ stateDiagram-v2
 
 Archives go under `~/.dotfiles-backups/harness/`. `--no-backup` deletes conflicting content instead of archiving it. `--clear-backups` separately deletes those archives. Neither operation is recoverable through the harness.
 
-An obsolete copy that is already absent needs no removal. Private entries outside the desired paths and recorded copies stay untouched. A managed copy can be a directory, so an edit anywhere inside it changes its hash. Managed-root symlinks are moved aside before installation.
+An obsolete copy that is already absent needs no removal. Private entries outside the desired paths and recorded copies stay untouched. A copy can be a directory, so an edit anywhere inside it changes its hash. Managed-root symlinks are moved aside before installation.
 
 ## Permission rules
 
-The floor's command and secret rules are enforced by each client, not only stated in `FLOOR.md`. Claude Code gets them in its tracked settings. Codex gets them as a rules file of its own, `~/.codex/rules/harness.rules`, which is a managed copy like the ones above. OpenCode gets them merged into `opencode.json` after your own rules, because OpenCode applies the last rule that matches; where you set a pattern stricter than the harness's, your setting stays, and uninstall takes out only the harness's rules. Codex rules cover commands only, so in Codex the agent keeps secrets unread by instruction rather than by a rule.
+The floor's command and secret rules are enforced by each client, not only stated in `FLOOR.md`. Claude Code gets them in its tracked settings. Codex gets them as a rules file of its own, `~/.codex/rules/harness.rules`, which is copied and recorded like the files above. OpenCode gets them merged into `opencode.json` after your own rules, because OpenCode applies the last rule that matches; where you set a pattern stricter than the harness's, your setting stays, and uninstall takes out only the harness's rules. Codex rules cover commands only, so in Codex the agent keeps secrets unread by instruction rather than by a rule.
 
 ## Uninstalling
 
-Run `harness install --uninstall`. Removal asks for confirmation unless you pass `--yes`. Client and component filters narrow the selection.
+Run `harness uninstall`. Removal asks for confirmation unless you pass `--yes`. Component names and `--client` narrow the selection.
 
 ```mermaid
 stateDiagram-v2
@@ -71,4 +71,4 @@ stateDiagram-v2
 
 Uninstall removes ownership records for copies no remaining client needs, including edited copies it preserves. A preserved file is therefore no longer managed. Unrecorded private entries remain untouched.
 
-Uninstall also removes selected managed settings, shell integration, and MCP registrations through their own rules. It leaves installed packages, backups, and user data. A full uninstall removes `~/.harness`, including saved model assignments and the review-level choice.
+Uninstall also removes the selected settings, shell integration, and MCP registrations through their own rules. It leaves backups and every tool's data. It removes a tool only when its component is named or `--all` is given, and only a tool the harness recorded installing. `~/.harness`, including saved model assignments and the review-level choice, goes only when nothing recorded remains.
