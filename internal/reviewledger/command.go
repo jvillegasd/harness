@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -16,12 +17,13 @@ const usage = `Usage: harness review <command> [arguments]
 
 Record and read a branch's local review ledger, kept at
 <git-common-dir>/harness-review/branches/<branch>/ledger.jsonl. Git never
-tracks it, and /land deletes the branch directory with the branch.
+tracks it, and /land removes the branch directory with the branch.
 
 Commands:
   record  Append a new finding, or a new disposition for an existing one
   list    Print the latest line of each finding on a branch as JSON
   path    Print the ledger file's path
+  remove  Delete a branch's ledger and patches, once the branch has merged
   level   Print or set the review level: off, medium (default), or high
 `
 
@@ -76,6 +78,14 @@ const pathUsage = `Usage: harness review path [--branch <name>]
 Print the ledger file path for the branch (default: the current branch).
 `
 
+const removeUsage = `Usage: harness review remove [--branch <name>]
+
+Delete the branch's review directory, its ledger and saved patches (default:
+the current branch), and print the directory removed. A branch with nothing
+recorded prints nothing and exits 0. A directory that still holds worktree.txt,
+review's record of a worktree it could not retire, is refused untouched.
+`
+
 // Command runs `harness review` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -92,6 +102,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return list(args[1:], stdout, stderr)
 	case "path":
 		return printPath(args[1:], stdout, stderr)
+	case "remove":
+		return remove(args[1:], stdout, stderr)
 	case "level":
 		return level(args[1:], stdout, stderr)
 	}
@@ -286,6 +298,28 @@ func printPath(args []string, stdout, stderr io.Writer) int {
 		return code
 	}
 	fmt.Fprintln(stdout, file)
+	return 0
+}
+
+func remove(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("remove", flag.ContinueOnError)
+	var branch string
+	flags.StringVar(&branch, "branch", "", "")
+	if code := parse(flags, args, removeUsage, stdout, stderr); code >= 0 {
+		return code
+	}
+	_, _, file, code := ledger("remove", branch, stderr)
+	if code >= 0 {
+		return code
+	}
+	removed, err := RemoveBranch(file)
+	if err != nil {
+		fmt.Fprintf(stderr, "harness review remove: %v\n", err)
+		return 1
+	}
+	if removed {
+		fmt.Fprintln(stdout, filepath.Dir(file))
+	}
 	return 0
 }
 

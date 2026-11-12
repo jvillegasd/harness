@@ -127,6 +127,7 @@ The level is stored in `~/.harness/state.json` and applies to every repository o
 harness review list                     # findings on the current branch, as JSON
 harness review list --branch feat/x     # findings on another branch
 harness review path                     # where the ledger file lives
+harness review remove --branch feat/x   # delete a merged branch's ledger and patches
 ```
 
 `list` shows the latest state of each finding. An empty list, `[]`, means nothing was recorded for that branch on this machine. Two fields matter most:
@@ -134,7 +135,7 @@ harness review path                     # where the ledger file lives
 - **`open: true`:** the finding still needs attention. This covers confirmed findings, unverified findings from older reviews, and fixes whose commit is not in the branch yet.
 - **`rewritten: true`:** the reviewed commit is no longer in the branch history, for example after a rebase. The finding still counts.
 
-The findings live in a ledger file inside the Git directory. Git never tracks it, and every worktree of the repository shares it. `/land` deletes it once the branch merges.
+The findings live in a ledger file inside the Git directory. Git never tracks it, and every worktree of the repository shares it. `/land` deletes it once the branch merges, with `harness review remove`. That command leaves a directory alone while it still records a review worktree.
 
 ### What each disposition means
 

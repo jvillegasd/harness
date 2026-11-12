@@ -146,3 +146,59 @@ func TestReadTranslatesEarlierDepthNames(t *testing.T) {
 		t.Errorf("depths read as %v, want %v", got, want)
 	}
 }
+
+// branchDir writes a branch directory holding a ledger and a saved patch, as a review leaves it.
+func branchDir(t *testing.T, branches, name string) string {
+	t.Helper()
+	dir := filepath.Join(branches, name)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"ledger.jsonl", "review.patch"} {
+		if err := os.WriteFile(filepath.Join(dir, f), []byte("x\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return filepath.Join(dir, "ledger.jsonl")
+}
+
+func TestRemoveBranchDeletesOnlyItsDirectory(t *testing.T) {
+	branches := t.TempDir()
+	file := branchDir(t, branches, "feat%2Fexport")
+	sibling := branchDir(t, branches, "feat%2Fexport-v2")
+	removed, err := RemoveBranch(file)
+	if err != nil || !removed {
+		t.Fatalf("RemoveBranch = %v, %v; want removed", removed, err)
+	}
+	if _, err := os.Stat(filepath.Dir(file)); !os.IsNotExist(err) {
+		t.Fatalf("the branch directory survived: %v", err)
+	}
+	if _, err := os.Stat(sibling); err != nil {
+		t.Fatalf("a sibling branch's ledger was touched: %v", err)
+	}
+}
+
+func TestRemoveBranchWithNoDirectoryIsDone(t *testing.T) {
+	removed, err := RemoveBranch(filepath.Join(t.TempDir(), "never-reviewed", "ledger.jsonl"))
+	if err != nil || removed {
+		t.Fatalf("RemoveBranch = %v, %v; want nothing removed and no error", removed, err)
+	}
+}
+
+// worktree.txt is review's record of an executor worktree it could not retire; deleting it would orphan that worktree and its saved patch.
+func TestRemoveBranchRefusesARecordedWorktree(t *testing.T) {
+	file := branchDir(t, t.TempDir(), "feat")
+	dir := filepath.Dir(file)
+	if err := os.WriteFile(filepath.Join(dir, "worktree.txt"), []byte("/tmp/wt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	removed, err := RemoveBranch(file)
+	if !errors.Is(err, ErrHeld) || removed {
+		t.Fatalf("RemoveBranch = %v, %v; want ErrHeld and nothing removed", removed, err)
+	}
+	for _, f := range []string{"ledger.jsonl", "review.patch", "worktree.txt"} {
+		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
+			t.Fatalf("%s was deleted by a refused removal: %v", f, err)
+		}
+	}
+}
