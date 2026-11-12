@@ -227,9 +227,13 @@ func readClaude(path string, since *time.Time) (*session, error) {
 			}
 			commands += strings.Count(body, "<command-name>")
 			interrupts += strings.Count(body, claudeInterrupt)
-			typed = typed || (strings.TrimSpace(body) != "" && !hasNonTurnPrefix(strings.TrimLeftFunc(body, unicode.IsSpace)))
+			lead := strings.TrimLeftFunc(body, unicode.IsSpace)
+			prompt := lead != "" && !hasNonTurnPrefix(lead)
+			typed = typed || prompt || hasCommandArgs(lead)
 		}
-		if typed && !truthy(entry["isMeta"]) {
+		// A compaction summary is the client's text in a user entry that is
+		// neither meta nor prefixed, so only its own flag excludes it.
+		if typed && !truthy(entry["isMeta"]) && !truthy(entry["isCompactSummary"]) {
 			turns++
 		}
 		return true
@@ -311,6 +315,24 @@ func claudeText(block map[string]any) string {
 		return fmt.Sprint(value)
 	}
 	return string(data)
+}
+
+// hasCommandArgs reports a slash command the person typed a request into, such
+// as `/work fix the flaky test`. The request is theirs, so the entry is a turn
+// as well as a command; a bare command is the client's entry alone. Only an
+// entry that opens as a slash command counts, never the tag quoted elsewhere.
+func hasCommandArgs(body string) bool {
+	if !strings.HasPrefix(body, "<command-name>") && !strings.HasPrefix(body, "<command-message") {
+		return false
+	}
+	_, rest, ok := strings.Cut(body, "<command-args>")
+	if !ok {
+		return false
+	}
+	if end := strings.LastIndex(rest, "</command-args>"); end >= 0 {
+		rest = rest[:end]
+	}
+	return strings.TrimSpace(rest) != ""
 }
 
 func hasNonTurnPrefix(body string) bool {
