@@ -12,9 +12,8 @@
    6. Do it concurrently.
    7. Do it cheaper.
 3. Plan the fix from the trace. When it crosses a function boundary, run [design](design.md)'s step 2 first. Implement inline, since the fix depends on reading the trace, and verify each attempt before the next (`principle-sequence-verifiable-units`).
-4. Capture the post-fix measurement on the same surface and compare the artifacts mechanically. Inconclusive, or measured on another surface, is not a pass.
-5. Run `change-map`, then `review` at the level `harness review level` reports.
-6. When delivery is authorized, run `open-pr`, with the measurement in the PR's evidence. Otherwise stop with the work ready locally and offer delivery once.
+4. Capture the post-fix measurement on the same surface and compare the artifacts mechanically.
+5. Finish, as work mode's Finish lists, with the measurement in the PR's evidence.
 
 Sustained improvement against a metric, rather than a one-off fix, is autopilot with the metric as its definition of done.
 
