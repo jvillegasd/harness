@@ -26,10 +26,9 @@ const stateVersion = 1
 
 var (
 	allClients = []string{"claude", "codex", "opencode"}
-	// allComponents is every name install, update, and uninstall select by; configComponents are the ones that write managed config into a client, and toolComponents the ones that put tools on the machine. mcps is both.
+	// allComponents is every name install, update, and uninstall select by; configComponents are the ones that write managed config into a client. The tools table names the components that put tools on the machine, and mcps is both.
 	allComponents    = []string{"clients", "packages", "mcps", "skills", "agents", "floor", "settings", "aliases"}
 	configComponents = []string{"agents", "aliases", "floor", "mcps", "settings", "skills"}
-	toolComponents   = []string{"clients", "mcps", "packages"}
 )
 
 // renamed maps a component name an older install recorded to its current one.
