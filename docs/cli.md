@@ -15,7 +15,7 @@ This page explains command behavior that does not fit in `--help` output.
 | `agents` | The role agents, rendered for each client | Managed config |
 | `floor` | The floor, as each client's global instructions | Managed config |
 | `settings` | Tracked client settings, compaction hooks, and command rules | Managed config |
-| `aliases` | The yolo aliases and their `~/.zshrc` line | Managed config |
+| `aliases` | The yolo aliases and the line that loads them from your login shell's startup file | Managed config |
 
 A tool is a program on the machine. Managed config is what the harness writes into a client and owns, recorded in `~/.harness/state.json` so it can tell its own work from your edits.
 

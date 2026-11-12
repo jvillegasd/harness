@@ -8,7 +8,7 @@ This README and the guides under `docs/` are written for you. Agents keep them a
 
 ## Install
 
-Requires macOS or Linux, zsh, Homebrew, and Go 1.26 or newer.
+Requires macOS or Linux, zsh or bash, Homebrew, and Go 1.26 or newer.
 
 ```sh
 go run ./cmd/harness install
@@ -106,7 +106,7 @@ Use `harness models --help` to inspect presets and per-role assignments. Changin
 | `cxyolo` | Codex with approvals and sandbox bypassed |
 | `ocyolo` | OpenCode with edit, shell, and web access allowed |
 
-The installer sources `aliases.sh` from `~/.zshrc`. These launchers grant broad access. Claude Code also gets a harness status line; Codex uses its own footer. Each client also gets a compaction hook that runs `harness resume`, so after a long session is compacted the agent gets back the branch, its latest commit, and the task document's next action. Codex runs it only after you trust it once in its `/hooks` screen.
+The installer sources `aliases.sh` from your login shell's startup file: `~/.zshrc` for zsh, `~/.bashrc` for bash on Linux, and on macOS whichever of `~/.bash_profile`, `~/.bash_login`, or `~/.profile` already exists (a new `~/.bash_profile` otherwise), since a macOS bash login shell reads only the first. Another shell, such as fish, gets no line and a warning naming `~/.harness/aliases.sh`. Uninstall removes the line only from files that carry the harness marker. These launchers grant broad access. Claude Code also gets a harness status line; Codex uses its own footer. Each client also gets a compaction hook that runs `harness resume`, so after a long session is compacted the agent gets back the branch, its latest commit, and the task document's next action. Codex runs it only after you trust it once in its `/hooks` screen.
 
 ## Update installed tools
 

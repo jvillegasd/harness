@@ -1,4 +1,4 @@
-// Package install copies the harness the binary carries into the home directory and records each copy: the managed files, the zsh alias block, the tracked Claude settings, and the Engram and agent-browser registrations.
+// Package install copies the harness the binary carries into the home directory and records each copy: the managed files, the shell alias line, the tracked Claude settings, and the Engram and agent-browser registrations.
 package install
 
 import (
@@ -38,7 +38,9 @@ Components:
   agents    The role agents, rendered for each client
   floor     The floor, as each client's global instructions
   settings  Tracked client settings, compaction hooks, and command rules
-  aliases   The yolo aliases and their ~/.zshrc line
+  aliases   The yolo aliases and the line that loads them from your login
+            shell's startup file (~/.zshrc for zsh, ~/.bashrc for bash on
+            Linux, the bash login profile on macOS)
 
   --client     Limit the run to claude, codex, or opencode; repeatable.
                Without it, the run configures every client that is installed
@@ -105,7 +107,7 @@ Codex and OpenCode get none from the harness.
 Workflow skills also answer to /name in Claude Code and OpenCode, and to
 $name in Codex.
 Yolo aliases (ccyolo, cxyolo, ocyolo) are sourced from ~/.harness/aliases.sh;
-open a new shell or run: source ~/.zshrc
+open a new shell to load them.
 
 Standalone third-party skills were not downloaded or updated. Their committed
 bodies and skills-lock.json are the reviewed source of truth.
@@ -131,6 +133,7 @@ type installer struct {
 	noBackup, yes, all  bool
 	clients, components []string
 	installed           []entry
+	aliasesStripped     []string
 	backupRoot          string
 	assignments         map[string]agents.Assigned
 	stdout, stderr      io.Writer
@@ -339,9 +342,6 @@ func (in *installer) install() {
 	if in.targets("opencode") && in.has("settings") {
 		in.openCodeConfig()
 	}
-	if in.has("aliases") {
-		in.warnUnlessZsh()
-	}
 	in.installBinary()
 	in.installTools()
 	if slices.ContainsFunc(in.components, func(c string) bool { return c != "mcps" && slices.Contains(configComponents, c) }) {
@@ -391,18 +391,6 @@ func (in *installer) run(stdin io.Reader, name string, args ...string) {
 	if err := cmd.Run(); err != nil {
 		die("%s %s failed: %v", name, strings.Join(args, " "), err)
 	}
-}
-
-// warnUnlessZsh tells a user on another shell where to source the aliases.
-func (in *installer) warnUnlessZsh() {
-	shell := os.Getenv("SHELL")
-	if shell != "" && filepath.Base(shell) == "zsh" {
-		return
-	}
-	if shell == "" {
-		shell = "unknown"
-	}
-	in.warn("Your login shell is %s, not zsh. The yolo aliases go into\n~/.zshrc. Source %s from your own shell rc.", shell, in.dir.Aliases())
 }
 
 var description = regexp.MustCompile(`(?m)^description:`)

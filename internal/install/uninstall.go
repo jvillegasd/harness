@@ -442,7 +442,7 @@ func (in *installer) checkRemoved(removed []entry, selected func(client, compone
 		}
 	}
 	if aliasesRemoved {
-		if rc := filepath.Join(in.home, ".zshrc"); isFile(rc) {
+		for _, rc := range in.aliasesStripped {
 			text, _ := os.ReadFile(rc)
 			if bytes.Contains(text, []byte(aliasMarker)) {
 				die("Harness aliases survived the uninstall in %s.", rc)

@@ -81,7 +81,7 @@ func (in *installer) stateDir() string { return filepath.Join(in.home, ".harness
 
 func (in *installer) statePath() string { return filepath.Join(in.stateDir(), "state.json") }
 
-// aliasesPath is the installed copy ~/.zshrc sources, outside any checkout.
+// aliasesPath is the installed copy the login shell's startup file sources, outside any checkout.
 func (in *installer) aliasesPath() string { return filepath.Join(in.stateDir(), "aliases.sh") }
 
 func (in *installer) loadState() state {

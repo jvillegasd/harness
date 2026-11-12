@@ -1,4 +1,5 @@
-# Harness AI shell aliases. Sourced from ~/.zshrc by `harness install`.
+# Harness AI shell aliases. Sourced from the login shell's startup file by
+# `harness install`.
 #
 # Yolo mode: no approval prompts, for a client running inside a worktree or a
 # container you are willing to lose. The floor in FLOOR.md and its stop rule
