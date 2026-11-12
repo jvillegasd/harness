@@ -11,7 +11,7 @@ import (
 // presetNotes are the one-line descriptions the picker shows beside each preset.
 var presetNotes = map[string]string{
 	"balanced":    "Codex GPT-6 Luna implements; Haiku searches; Sonnet reviews at medium (default)",
-	"performance": "Opus implements at high; Sonnet searches; Fable reviews at medium",
+	"performance": "Opus implements at medium; Sonnet searches; Fable reviews at medium",
 	"economy":     "Codex GPT-5.6 Luna implements; Haiku searches; Sonnet reviews at low",
 	"diversity":   "Sonnet implements at medium; Haiku searches; Codex GPT-6.1 Sol reviews at low",
 }

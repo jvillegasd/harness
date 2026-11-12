@@ -46,7 +46,7 @@ var Presets = map[string]map[string]Assignment{
 		"executor": codex("gpt-6-luna", ""), "code-search": claude("haiku", ""), "reviewer": claude("sonnet", "medium"),
 	},
 	"performance": {
-		"executor": claude("opus", "high"), "code-search": claude("sonnet", ""), "reviewer": claude("fable", "medium"),
+		"executor": claude("opus", "medium"), "code-search": claude("sonnet", ""), "reviewer": claude("fable", "medium"),
 	},
 	"economy": {
 		"executor": codex("gpt-5.6-luna", ""), "code-search": claude("haiku", ""), "reviewer": claude("sonnet", "low"),
