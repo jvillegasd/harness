@@ -37,34 +37,34 @@ The same flow as a diagram:
 
 ```mermaid
 stateDiagram-v2
-    state "Inspect destination" as Inspect
-    state "Absent" as Absent
-    state "Matches desired content" as Matches
-    state "Unchanged recorded copy" as Managed
-    state "Edited or conflicting copy" as Conflict
-    state "Previous copy archived" as Archived
-    state "Previous copy deleted" as Deleted
-    state "Desired copy installed and recorded" as Installed
-    state "Matching copy recorded" as Recorded
-    state "Obsolete recorded copy" as Obsolete
+    state "Check the file" as Inspect
+    state "Missing" as Absent
+    state "Already up to date" as Matches
+    state "Harness copy, untouched" as Managed
+    state "Edited, or not the harness's" as Conflict
+    state "Old file backed up" as Archived
+    state "Old file deleted" as Deleted
+    state "New copy written" as Installed
+    state "Recorded as is" as Recorded
+    state "No longer shipped" as Obsolete
     state "Removed" as Removed
-    state "Preserved with warning" as Preserved
+    state "Kept, with a warning" as Preserved
 
-    [*] --> Inspect: Installer reads desired assets and previous records
-    Inspect --> Absent: Desired path is missing
-    Inspect --> Matches: Content already matches desired asset
-    Inspect --> Managed: Content differs from desired but matches recorded hash
-    Inspect --> Conflict: Content differs from desired and recorded hash or has no record
-    Absent --> Installed: Installer writes desired copy
-    Matches --> Recorded: Installer leaves content alone and records ownership
-    Managed --> Installed: Installer replaces unchanged recorded copy
-    Conflict --> Archived: Default moves previous copy to backup
-    Conflict --> Deleted: Destructive --no-backup override
-    Archived --> Installed: Installer writes desired copy
-    Deleted --> Installed: Installer writes desired copy
-    Inspect --> Obsolete: Recorded path is no longer shipped
-    Obsolete --> Removed: Existing content matches recorded hash
-    Obsolete --> Preserved: Existing content differs from recorded hash
+    [*] --> Inspect: Install runs
+    Inspect --> Absent: Nothing there
+    Inspect --> Matches: Same as the new copy
+    Inspect --> Managed: Matches the record
+    Inspect --> Conflict: Differs from the record, or no record
+    Absent --> Installed: Write it
+    Matches --> Recorded: Leave it
+    Managed --> Installed: Replace it
+    Conflict --> Archived: Default
+    Conflict --> Deleted: With --no-backup
+    Archived --> Installed: Write it
+    Deleted --> Installed: Write it
+    Inspect --> Obsolete: Harness dropped this file
+    Obsolete --> Removed: Untouched
+    Obsolete --> Preserved: Edited
 ```
 
 A few more details:
@@ -109,21 +109,21 @@ For each recorded copy:
 
 ```mermaid
 stateDiagram-v2
-    state "Removal requested" as Requested
+    state "Asks to confirm" as Requested
     state "Nothing removed" as Cancelled
-    state "Inspect recorded copy" as Inspect
+    state "Check the file" as Inspect
     state "Kept for another client" as Shared
-    state "Already absent" as Absent
+    state "Already gone" as Absent
     state "Removed" as Removed
-    state "Edited copy preserved with warning" as Preserved
+    state "Kept, with a warning" as Preserved
 
-    [*] --> Requested: You request uninstall
-    Requested --> Cancelled: You decline confirmation
-    Requested --> Inspect: You confirm or supplied --yes
-    Inspect --> Shared: Another installed client still needs this copy
-    Inspect --> Absent: No remaining client needs it and path is missing
-    Inspect --> Removed: No remaining client needs it and content matches recorded hash
-    Inspect --> Preserved: No remaining client needs it and content differs from recorded hash
+    [*] --> Requested: You run uninstall
+    Requested --> Cancelled: You say no
+    Requested --> Inspect: You say yes, or passed --yes
+    Inspect --> Shared: Another client uses it
+    Inspect --> Absent: Not there
+    Inspect --> Removed: Untouched
+    Inspect --> Preserved: Edited
 ```
 
 Uninstall also forgets the edited copies it keeps. After that, the harness no longer manages them, and they are yours. Files the harness never recorded stay untouched.
