@@ -272,9 +272,10 @@ A parent issue is a container, not a ticket in this diagram. It closes only afte
 
 The agent stops and reports instead of guessing when:
 
-- the evidence contradicts what the task assumed,
-- the next step would go beyond what you asked for, or
-- two fixes that rest on the same assumption both fail.
+- the evidence contradicts what the task assumed, or
+- the next step would go beyond what you asked for.
+
+When two fixes that rest on the same assumption both fail, it tests that assumption directly before trying another fix. It stops and reports only when the test shows the assumption is wrong and it has no new one.
 
 The report says what failed and what decision or evidence it needs next. Autopilot works differently: it tests the assumption directly, retries a failed piece at most twice, and plans around it. It parks only a dead end that survives the replan.
 
