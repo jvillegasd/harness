@@ -94,7 +94,7 @@ Some changes cannot be settled by the checks above, because they act on machine 
 
 `go run ./cmd/harness install` is the same provisioning surface over the working tree. The binary embeds the floor, skills, roles, client settings, and aliases, so `go run` installs the working tree: it copies those assets into each client, records every copy in `~/.harness/state.json`, and copies itself to `~/.local/bin/harness`. An edit under those paths reaches the clients on the next install, not live. A tool already on `PATH` is never installed over, so with every tool present it calls no package manager; name components (`go run ./cmd/harness install skills agents`) to reconcile only those. Selecting `mcps` or `settings` still rewrites the Engram and agent-browser MCP registrations and the tracked client settings. Run it when copies need reconciling, not as a validation step.
 
-Session-population measurement for a harness change is `harness bench --split <commit-date> --since <window-start>`; `harness bench --help` lists its options.
+Session-population measurement for a harness change is `harness bench --split <commit-date> --since <window-start>`; `harness bench --help` lists its options. It measures cost and friction after a change ships; whether the change makes agents behave as intended, before it ships, is `/work`'s eval playbook.
 
 ## Where an instruction lives
 

@@ -8,6 +8,8 @@ It compares real sessions from before a change with real sessions after it. Rere
 
 Bench deliberately does not run a fixed set of synthetic tasks. Synthetic tasks can swing between identical runs, and they tend to leak into the fixture they are meant to test. Real sessions have their own problems: they arrive slowly and mix in variables no experiment controls. The `THIN` warning and the caveats below exist to handle those.
 
+Whether an instruction change makes agents behave as intended, checked before it ships, is the eval playbook in `/work`: blinded synthetic runs with the controls these problems call for. Bench stays the after-the-fact measure of cost and friction.
+
 ## Run it
 
 ```sh

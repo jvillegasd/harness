@@ -24,7 +24,7 @@ Work inline by default. Delegate for a named benefit: independent inspection, us
 
 ## Launch
 
-A subagent with no role (an eval run or judge, a bulk read of an artifact or transcript) is launched natively, set to the model its method names when the tool takes one; a model family the session's client cannot run goes through T3 Code as step 3 describes. The Brief and Results sections below still apply.
+A subagent with no role (an eval judge, a bulk read of an artifact or transcript) is launched natively, set to the model its method names when the tool takes one; a model family the session's client cannot run goes through T3 Code as step 3 describes. The Brief and Results sections below still apply.
 
 
 1. Run `harness models resolve <role> --json` and use the model and effort it returns.
