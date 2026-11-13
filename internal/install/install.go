@@ -534,7 +534,7 @@ func (in *installer) opencodeRegistered(resolvedPath string) bool {
 	return ok && reflect.DeepEqual(globalServer["command"], command)
 }
 
-// opencodeLoaded reads `opencode debug config` into the plugins and MCP servers OpenCode loads, with each server's state as `enabled`. OpenCode 1.x prints one merged object. 2.x prints one entry per config document, later documents winning, with servers under mcp.servers, `disabled` in place of `enabled`, and file plugins loaded from the plugins directory rather than listed.
+// opencodeLoaded reads `opencode debug config` into the plugins and MCP servers OpenCode loads, with each server's state as `enabled`. OpenCode 1.x prints one merged object. 2.x prints one entry per config document, later documents winning field by field, with servers under mcp.servers, `disabled` in place of `enabled`, and file plugins loaded from the plugins directory rather than listed.
 func (in *installer) opencodeLoaded(path string) (plugins []any, servers map[string]any, ok bool) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -559,13 +559,21 @@ func (in *installer) opencodeLoaded(path string) (plugins []any, servers map[str
 		mcp, _ := document.Info["mcp"].(map[string]any)
 		declared, _ := mcp["servers"].(map[string]any)
 		for name, value := range declared {
-			server, _ := value.(map[string]any)
-			if server != nil {
-				server = maps.Clone(server)
-				server["enabled"] = server["disabled"] != true
+			server, ok := value.(map[string]any)
+			if !ok {
+				continue
 			}
-			servers[name] = server
+			merged, _ := servers[name].(map[string]any)
+			if merged == nil {
+				merged = map[string]any{}
+			}
+			maps.Copy(merged, server)
+			servers[name] = merged
 		}
+	}
+	for _, value := range servers {
+		server := value.(map[string]any)
+		server["enabled"] = server["disabled"] != true && server["enabled"] != false
 	}
 	files, _ := os.ReadDir(filepath.Join(in.config, "opencode", "plugins"))
 	for _, file := range files {
