@@ -53,7 +53,7 @@ A test that fails at the baseline is a bug report first: reproduce it and repair
 
 3. **Approval.** Show the human the ledger grouped by mark, with the `fix`, `merge`, and `cut` rows in full. Edits start once the human approves rows; apply only the approved ones. Done when the human has answered each non-`keep` row.
 
-4. **Prove the owners.** For each `fix`, each owner absorbing a `merge`, and each `keep` whose regression is not plainly visible: make the named regression edit in the production code, run the test, and see it go red. Then restore the file and confirm `git diff --quiet -- <file>`. Done when each of those tests went red on its edit and the tree holds no regression edit.
+4. **Prove the owners.** For each `fix`, each owner absorbing a `merge`, and each `keep` whose regression is not plainly visible: make the named regression edit in a production file that has no uncommitted changes, run the test, and see it go red. Then restore the file and confirm `git diff --quiet -- <file>`. Done when each of those tests went red on its edit and the tree holds no regression edit.
 
 5. **Apply.** Make the approved repairs, merges, and cuts. With each cut, delete what only it used: production seams, test helpers, and fixture files. A fixture can be loaded by a glob or a directory walk, so search for its directory as well as its name before deleting it. Update any document that states a contract you cut, such as the `AGENTS.md` validation contract. Done when every approved row is applied and the repository's checks pass.
 
