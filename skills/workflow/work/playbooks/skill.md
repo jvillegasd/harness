@@ -9,4 +9,4 @@
 5. When the change claims to change agent behavior, prove it with [eval](eval.md) before Finish. `skip:` it for a wording or pruning change that claims none.
 6. Finish, as work mode's Finish lists.
 
-**Reply:** what the document now makes the agent do, the design choices, the validation run, the eval verdict or why there was none, and the `harness bench` metric you expect the change to move, to check later with `--split` at its merge date.
+**Reply:** what the document now makes the agent do, the design choices, the validation run, and the eval verdict or why there was none. When an eval passed, also name the `harness bench` metric you expect the change to move, to check with `--split` set to the date it merges.
