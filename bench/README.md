@@ -8,6 +8,8 @@ It compares real sessions from before a change with real sessions after it. Rere
 
 Bench deliberately does not run a fixed set of synthetic tasks. Synthetic tasks can swing between identical runs, and they tend to leak into the fixture they are meant to test. Real sessions have their own problems: they arrive slowly and mix in variables no experiment controls. The `THIN` warning and the caveats below exist to handle those.
 
+Whether an instruction change makes agents behave as intended, checked before it ships, is the eval playbook in `/work`: blinded synthetic runs with the controls these problems call for. Bench stays the after-the-fact measure of cost and friction.
+
 ## Run it
 
 ```sh
@@ -71,6 +73,13 @@ Clients record a project in different ways: as a slug with dashes, or as a `dire
 - A thread forked with its full history, by `/fork` or by a subagent started with its parent's context, copies that history into its own rollout. Those copied turns or items are counted again.
 
 **OpenCode** stores sessions in `~/.local/share/opencode/opencode.db`. Bench opens it read-only and immutable, because a client may be running. OpenCode records no interrupts, denials, failed results, or slash commands, so those four are missing.
+
+### Scratch projects are left out
+
+Sessions whose project is `~/.scratch-projects` or a directory under it are dropped before anything is counted, for every client. That directory holds synthetic work, such as the headless runs of `/work`'s eval playbook, which would otherwise join your real sessions and pull every median toward short, scripted transcripts. Keep real work out of it.
+
+- The directory is found under `--home`. A store captured from another machine keeps its scratch sessions unless that machine's home was the same path.
+- Claude Code records a project as a slug in which `/`, `.`, and `-` all become `-`, so a sibling such as `~/.scratch-projects-old` is dropped from Claude Code's sessions too. Codex and OpenCode record the real path and keep it.
 
 ### Subagents count as delegation, not as sessions
 

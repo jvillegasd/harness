@@ -15,6 +15,6 @@
 4. Capture the post-fix measurement on the same surface and compare the artifacts mechanically.
 5. Finish, as work mode's Finish lists, with the measurement in the PR's evidence.
 
-Sustained improvement against a metric, rather than a one-off fix, is autopilot with the metric as its definition of done.
+Sustained improvement against a metric, rather than a one-off fix, is [hillclimb](hillclimb.md).
 
 **Reply:** the baseline number, the post-fix number, the change, and the artifact paths.

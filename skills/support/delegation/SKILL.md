@@ -24,6 +24,9 @@ Work inline by default. Delegate for a named benefit: independent inspection, us
 
 ## Launch
 
+A subagent with no role (an eval judge, a bulk read of an artifact or transcript) is launched natively, set to the model its method names when the tool takes one; a model family the session's client cannot run goes through T3 Code as step 3 describes. The Brief and Results sections below still apply.
+
+
 1. Run `harness models resolve <role> --json` and use the model and effort it returns.
 2. When the role is assigned to this session's client, launch the installed agent natively: Claude Code's Agent tool, a Codex subagent spawned by the agent's name, or OpenCode's `task`.
 3. Otherwise, in a T3 Code session, start it with T3 Code's `delegate_task`:
@@ -38,6 +41,8 @@ Work inline by default. Delegate for a named benefit: independent inspection, us
 ## Brief
 
 Write each brief to stand alone: the goal, the scope it may touch, the base commit, how to verify it, and what to report. A delegated executor never commits; the parent commits its result.
+
+Give new work, a fix round, or a retry to a fresh agent whose brief consolidates the original brief, every later directive, and the prior agent's result and branch. Resume or message an existing agent only when the work needs state that lives in it and is costly to move: its checkout, its uncommitted changes, or a process it still runs. A resumed agent can drop directives it was given earlier, so its "done" is checked like any result.
 
 ## Results
 

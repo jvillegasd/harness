@@ -1,6 +1,12 @@
 {
   "version": 2,
   "skills": {
+    "benchmark-checklist": {
+      "source": "backnotprop/pstack",
+      "sourceType": "github",
+      "skillPath": "skills/benchmark-checklist/SKILL.md",
+      "computedHash": "2eaf797ecf11c132329a252ab286cdebbd4c83277910eecf260cc6b28f2a3162"
+    },
     "caveman-commit": {
       "source": "JuliusBrussee/caveman",
       "sourceType": "github",

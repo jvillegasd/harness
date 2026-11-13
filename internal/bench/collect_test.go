@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -338,5 +339,41 @@ func TestQuotedCommandArgsInInjectedTextIsNotATurn(t *testing.T) {
 	}
 	if v, ok := got[0].metric("turns"); !ok || v != 0 {
 		t.Fatalf("turns = %v, want 0", v)
+	}
+}
+
+// TestCollectDropsScratchProjects keeps synthetic sessions, such as an eval's
+// headless runs, out of the population: a session whose project lies under the
+// scratch directory is dropped for each client, while a sibling directory whose
+// name only shares the prefix stays where the client records a real path.
+func TestCollectDropsScratchProjects(t *testing.T) {
+	home := t.TempDir()
+	scratch := filepath.Join(home, scratchDir)
+	stamp := `{"type":"user","timestamp":"2026-03-01T09:00:00Z","message":{"content":"go"}}` + "\n"
+	for _, project := range []string{
+		claudeSlug(filepath.Join(scratch, "acme-api")),
+		claudeSlug(filepath.Join(home, "acme-api")),
+	} {
+		writeTranscript(t, filepath.Join(home, ".claude", "projects", project, "s.jsonl"), stamp)
+	}
+	day := filepath.Join(home, ".codex", "sessions", "2026", "03", "01")
+	for i, cwd := range []string{filepath.Join(scratch, "shop"), filepath.Join(home, scratchDir+"-old", "shop"), filepath.Join(home, "shop")} {
+		body := fmt.Sprintf(`{"timestamp":"2026-03-01T09:00:00Z","type":"session_meta","payload":{"id":"t%d","cwd":%q}}`+"\n", i, cwd)
+		writeTranscript(t, filepath.Join(day, fmt.Sprintf("rollout-%d.jsonl", i)), body)
+	}
+
+	got, err := collect(home, []string{"claude", "codex"}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var kept []string
+	for _, s := range got {
+		kept = append(kept, s.client+" "+filepath.Base(*s.project))
+	}
+	slices.Sort(kept)
+	want := []string{"claude " + claudeSlug(filepath.Join(home, "acme-api")), "codex shop", "codex shop"}
+	slices.Sort(want)
+	if !slices.Equal(kept, want) {
+		t.Fatalf("kept %q, want %q", kept, want)
 	}
 }

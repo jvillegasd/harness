@@ -1,0 +1,17 @@
+# Hillclimb
+
+**You own the metric and the experiment's integrity.** One metric moves toward a target over many attempts: one change, one measurement, keep or revert. A one-off fix is [perf](perf.md) or [bug fix](bug-fix.md).
+
+1. **Ground the workload.** Run `how` over the target, name the workload dimensions that move the result (data size, history, state, concurrency), and pick a case that reproduces the complaint. When no case reproduces it, fix the repro first. Then fix the metric, the direction that counts as better, and a stop predicate that pairs the target with a floor on attempts ("at least 50% better than baseline and at least 10 attempts"), so one lucky early win cannot end the run. Use the human's numbers when given; otherwise state yours and start.
+2. **Build the harness, prove it, freeze it** (`principle-build-the-lever`). Run contrasting workloads and confirm the target case shows the symptom while easier cases separate as expected; when they do not separate, change the workload or the metric. Vet it with `principle-explain-the-number`, and make it print its error count and how much work it did. Frozen means one repeatable command that emits the metric as a median of enough runs to clear the noise, and it does not change for the rest of the run. Record the baseline and a green run of the regression gate (the tests that must keep passing) before any change.
+3. **Open the attempt log**: a TSV outside the tree with one row per attempt (id, hypothesis, change, before, after, delta, gate, kept or reverted, note), its path in the task document's `## State and next action` (`continuity`). Read it before each attempt.
+4. **Ground each hypothesis** in step 1's model of the system, so it names a mechanism ("defer X off the boot path because it blocks first paint"), never "try caching something". For a speed metric, order hypotheses by [perf](perf.md)'s mantras, without its stop rule.
+5. **Loop, one hypothesis per iteration** (`principle-sequence-verifiable-units`):
+   - Make the change, measure it with the frozen harness, and run the gate. When several independent hypotheses are open, you may try them in parallel, each in its own worktree through `delegation` (`principle-separate-before-serializing-shared-state`), and measure each on the frozen harness yourself.
+   - Keep it only when the metric moves past the noise and the gate stays green; otherwise revert it in full.
+   - Commit each kept change on its own, staging only its files, and add a `## Decisions` row for it. Log every attempt, kept or reverted.
+6. **Push past the plateau.** After several rejects in a row, change category, combine near misses, reread the source, or try something more radical. Correctness and simplicity outrank the number: revert a win that breaks behavior, and keep a simplification that holds the number (`principle-laziness-protocol`).
+7. **Stop** when the predicate holds, or when every idea left is marginal and you can say why. The predicate never loosens, and cheap untried hypotheses mean keep going. Unattended, this runs under [autopilot](autopilot.md) with the predicate as its definition of done.
+8. Finish, as work mode's Finish lists, with the kept commits in the order they landed and the baseline and final numbers in the PR's evidence.
+
+**Reply:** the metric and target, baseline to final with the percent change, attempts run (kept against reverted), each kept change on one line, the attempt log path, and the next idea you would try.
