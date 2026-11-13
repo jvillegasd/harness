@@ -59,7 +59,7 @@ const listUsage = `Usage: harness review list [--branch <name>] [--head <rev>]
 
 Print, as a JSON array, the latest line of each finding and whole-review line
 on the branch (default: the current branch); [] means nothing is recorded for
-it here. "open" is true for confirmed and unverified, and for fixed until the
+it here. "open" is true for confirmed, and for fixed until the
 fixing commit is in --head (default: HEAD). "rewritten" marks a reviewed commit
 no longer in --head's history, as after a rebase; the finding still counts.
 `

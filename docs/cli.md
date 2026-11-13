@@ -126,6 +126,7 @@ The level is stored in `~/.harness/state.json` and applies to every repository o
 ```sh
 harness review list                     # findings on the current branch, as JSON
 harness review list --branch feat/x     # findings on another branch
+harness review list --head <rev>        # judge fixes against another head (default: HEAD)
 harness review path                     # where the ledger file lives
 harness review remove --branch feat/x   # delete a merged branch's ledger and patches
 ```
