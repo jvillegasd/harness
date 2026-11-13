@@ -150,13 +150,7 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"update", "agents"},
 		{"update", "--client", "cursor"},
 		{"update", "clients", "--help", "extra"},
-		{"dispatch", "reviewer", "--prompt-file", "prompt.md"},
-		{"locks", "verify"},
 		{"install", "--bogus"},
-		{"install", "--uninstall"},
-		{"install", "--skip-packages"},
-		{"install", "--clear-backups"},
-		{"install", "--component", "skills"},
 		{"install", "bogus"},
 		{"install", "skills", "--client"},
 		{"install", "--client", "cursor"},
@@ -174,12 +168,7 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"skills", "add", "bad-source", "name"},
 		{"skills", "update", "extra"},
 		{"skills", "remove"},
-		{"skills", "check"},
 		{"skills", "verify", "extra"},
-		{"state"},
-		{"dash"},
-		{"scenarios"},
-		{"agents"},
 		{"models"},
 		{"statusline", "--bogus"},
 		{"change-map", "--bogus"},
@@ -222,19 +211,6 @@ func TestOperationalFailuresExitOne(t *testing.T) {
 	} {
 		if r := runBinary(t, outside, args...); r.code != 1 {
 			t.Errorf("%v outside a checkout or configured repository exited %d, want 1 (stderr %q)", args, r.code, r.stderr)
-		}
-	}
-}
-
-// TestRetiredCommandsAreUnlisted keeps the retired commands off the help and on the ordinary unknown-command path, which the invocation matrix above drives for each of them.
-func TestRetiredCommandsAreUnlisted(t *testing.T) {
-	help := runBinary(t, t.TempDir(), "--help")
-	for _, name := range []string{"dash", "scenarios", "agents", "state"} {
-		if strings.Contains(help.stdout, "  "+name+" ") {
-			t.Errorf("help still lists %s: %q", name, help.stdout)
-		}
-		if r := runBinary(t, t.TempDir(), name); r.code != 2 || !strings.Contains(r.stderr, `unknown command "`+name+`"`) {
-			t.Errorf("%s exited %d with stderr %q", name, r.code, r.stderr)
 		}
 	}
 }

@@ -184,9 +184,6 @@ func (in *installer) selectArg(args []string, i int, stderr io.Writer) (int, boo
 			in.clients = append(in.clients, args[i+1])
 		}
 		return i + 1, true
-	case arg == "--component":
-		fmt.Fprintf(stderr, "harness %s: components are named without a flag now, as in harness %s skills agents\n", in.verb, in.verb)
-		return i, false
 	case slices.Contains(allComponents, arg):
 		if !slices.Contains(in.components, arg) {
 			in.components = append(in.components, arg)
@@ -222,12 +219,6 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 		case "-h", "--help":
 			fmt.Fprint(stdout, usage)
 			return 0
-		case "--uninstall", "--yes", "--clear-backups":
-			fmt.Fprintf(stderr, "harness install: %s moved to harness uninstall; run harness uninstall --help\n", arg)
-			return 2
-		case "--skip-packages":
-			fmt.Fprintln(stderr, "harness install: --skip-packages was removed; name the components to install instead, as in harness install skills agents")
-			return 2
 		default:
 			next, ok := in.selectArg(args, i, stderr)
 			if !ok {
