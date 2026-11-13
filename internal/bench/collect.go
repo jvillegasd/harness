@@ -149,6 +149,7 @@ func collect(home string, clients []string, work []string, since *time.Time) ([]
 		}
 		sessions = append(sessions, found...)
 	}
+	sessions = slices.DeleteFunc(sessions, func(s *session) bool { return inScratch(s.project, home) })
 	for _, s := range sessions {
 		s.cohort = cohort(s.project, work)
 	}
@@ -663,6 +664,44 @@ func opencodeSessions(home string, since *time.Time) ([]*session, error) {
 		return nil, err
 	}
 	return sessions, nil
+}
+
+// --- scratch projects ---------------------------------------------------------
+
+// scratchDir, under the home bench reads, holds synthetic projects such as the
+// eval playbook's headless runs. Their sessions are not real use, so they never
+// join the population. The name stays ordinary so a run working inside it
+// cannot tell it is being measured.
+const scratchDir = ".scratch-projects"
+
+// inScratch reports whether a session's project is the scratch directory or
+// lies under it. Codex and OpenCode record an absolute directory; Claude Code
+// records the lossy slug of one, so the root is compared in slug form; there a
+// sibling such as ".scratch-projects-old" cannot be told apart and is dropped too.
+func inScratch(project *string, home string) bool {
+	if project == nil {
+		return false
+	}
+	root := filepath.Join(home, scratchDir)
+	if filepath.IsAbs(*project) {
+		return *project == root || strings.HasPrefix(*project, root+string(filepath.Separator))
+	}
+	slug := claudeSlug(root)
+	return *project == slug || strings.HasPrefix(*project, slug+"-")
+}
+
+// claudeSlug is Claude Code's project directory name for a path: every rune
+// that is not an ASCII letter or digit becomes a dash.
+func claudeSlug(path string) string {
+	var b strings.Builder
+	for _, r := range path {
+		if r < 128 && (unicode.IsLetter(r) || unicode.IsDigit(r)) {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte('-')
+		}
+	}
+	return b.String()
 }
 
 // --- cohorts ------------------------------------------------------------------

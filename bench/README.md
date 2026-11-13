@@ -74,6 +74,13 @@ Clients record a project in different ways: as a slug with dashes, or as a `dire
 
 **OpenCode** stores sessions in `~/.local/share/opencode/opencode.db`. Bench opens it read-only and immutable, because a client may be running. OpenCode records no interrupts, denials, failed results, or slash commands, so those four are missing.
 
+### Scratch projects are left out
+
+Sessions whose project is `~/.scratch-projects` or a directory under it are dropped before anything is counted, for every client. That directory holds synthetic work, such as the headless runs of `/work`'s eval playbook, which would otherwise join your real sessions and pull every median toward short, scripted transcripts. Keep real work out of it.
+
+- The directory is found under `--home`. A store captured from another machine keeps its scratch sessions unless that machine's home was the same path.
+- Claude Code records a project as a slug in which `/`, `.`, and `-` all become `-`, so a sibling such as `~/.scratch-projects-old` is dropped from Claude Code's sessions too. Codex and OpenCode record the real path and keep it.
+
 ### Subagents count as delegation, not as sessions
 
 Each client stores subagents next to their parent session:
