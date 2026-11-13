@@ -4,24 +4,23 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"slices"
 	"testing"
 )
 
 func str(s string) *string { return &s }
 
 func finding() Entry {
-	return Entry{Branch: "feat", SHA: "abc", Round: 1, Depth: "high", Path: str("a.go"), Lines: "40-52", Severity: "bug", Summary: "s", Disposition: "confirmed"}
+	return Entry{Branch: "feat", SHA: "abc", Depth: "high", Path: str("a.go"), Lines: "40-52", Severity: "bug", Summary: "s", Disposition: "confirmed"}
 }
 
 func TestValidate(t *testing.T) {
 	for name, e := range map[string]Entry{
 		"a confirmed finding":    finding(),
-		"a whole-review line":    {Branch: "feat", SHA: "abc", Round: 1, Depth: "none", Disposition: "no-review"},
+		"a whole-review line":    {Branch: "feat", SHA: "abc", Depth: "none", Disposition: "no-review"},
 		"a fixed finding":        func() Entry { e := finding(); e.Disposition, e.Evidence, e.Commit = "fixed", "test", "def"; return e }(),
 		"a nit kept as a nit":    func() Entry { e := finding(); e.Severity, e.Disposition = "nit", "nit"; return e }(),
-		"an old bug, recorded":   func() Entry { e := finding(); e.Severity, e.Disposition = "pre-existing", "pre-existing"; return e }(),
-		"a refuted with reason":  func() Entry { e := finding(); e.Disposition, e.Evidence = "refuted", "cut at b.go:5"; return e }(),
+		"an old bug, as a nit":   func() Entry { e := finding(); e.Severity, e.Disposition = "pre-existing", "nit"; return e }(),
+		"a human's call, quoted": func() Entry { e := finding(); e.Disposition, e.Evidence = "accepted", "\"leave it\""; return e }(),
 		"a dropped with its run": func() Entry { e := finding(); e.Disposition, e.Evidence = "dropped", "ran green"; return e }(),
 	} {
 		if err := Validate(e); err != nil {
@@ -31,7 +30,6 @@ func TestValidate(t *testing.T) {
 	for name, mutate := range map[string]func(*Entry){
 		"unknown disposition":     func(e *Entry) { e.Disposition = "dismissed" },
 		"unknown depth":           func(e *Entry) { e.Depth = "huge" },
-		"third round":             func(e *Entry) { e.Round = 3 },
 		"no branch":               func(e *Entry) { e.Branch = "" },
 		"no path":                 func(e *Entry) { e.Path = nil },
 		"bad severity":            func(e *Entry) { e.Severity = "major" },
@@ -39,11 +37,9 @@ func TestValidate(t *testing.T) {
 		"no summary":              func(e *Entry) { e.Summary = "" },
 		"whole with a path":       func(e *Entry) { e.Disposition = "clean" },
 		"fixed without commit":    func(e *Entry) { e.Disposition, e.Evidence = "fixed", "test" },
-		"refuted without reason":  func(e *Entry) { e.Disposition = "refuted" },
 		"dropped without its run": func(e *Entry) { e.Disposition = "dropped" },
-		"human call unquoted":     func(e *Entry) { e.Disposition = "wont-matter" },
+		"human call unquoted":     func(e *Entry) { e.Disposition = "accepted" },
 		"bug relabelled nit":      func(e *Entry) { e.Disposition = "nit" },
-		"bug relabelled old":      func(e *Entry) { e.Disposition = "pre-existing" },
 	} {
 		e := finding()
 		mutate(&e)
@@ -55,11 +51,11 @@ func TestValidate(t *testing.T) {
 
 func TestFindReturnsTheLatestLine(t *testing.T) {
 	first, second := finding(), finding()
-	first.ID, second.ID, second.Disposition = "A", "A", "unverified"
+	first.ID, second.ID, second.Disposition = "A", "A", "dropped"
 	other := finding()
 	other.ID = "B"
 	got, ok := Find([]Entry{first, second, other}, "A")
-	if !ok || got.Disposition != "unverified" {
+	if !ok || got.Disposition != "dropped" {
 		t.Fatalf("Find returned %+v, %v; want the second line for A", got, ok)
 	}
 	if _, ok := Find([]Entry{first}, "missing"); ok {
@@ -74,12 +70,12 @@ func TestLatestState(t *testing.T) {
 	aFixed := a
 	aFixed.Disposition, aFixed.Evidence, aFixed.Commit = "fixed", "t", "landed"
 	b := finding()
-	b.ID, b.SHA, b.Disposition = "B", "gone", "unverified"
+	b.ID, b.SHA = "B", "gone"
 	c := finding()
 	c.ID, c.Disposition, c.Evidence, c.Commit = "C", "fixed", "t", "elsewhere"
 	other := finding()
 	other.ID, other.Branch = "D", "main"
-	whole := Entry{ID: "E", Branch: "feat", SHA: "abc", Round: 1, Depth: "medium", Disposition: "clean"}
+	whole := Entry{ID: "E", Branch: "feat", SHA: "abc", Depth: "medium", Disposition: "clean"}
 
 	got := Latest([]Entry{a, b, c, other, aFixed, whole}, "feat", inHead)
 	want := []struct {
@@ -106,13 +102,13 @@ func TestAppendReadRoundTrip(t *testing.T) {
 	if entries, err := Read(file); err != nil || entries != nil {
 		t.Fatalf("a missing ledger must read as empty: %v %v", entries, err)
 	}
-	if err := Append(file, Entry{ID: "A", Branch: "feat"}); err != nil {
+	if err := Append(file, Entry{ID: "A", Branch: "feat", Depth: "none", Disposition: "clean"}); err != nil {
 		t.Fatal(err)
 	}
 	f, _ := os.OpenFile(file, os.O_APPEND|os.O_WRONLY, 0)
 	f.WriteString("\n  \n")
 	f.Close()
-	if err := Append(file, Entry{ID: "B", Path: str("a.go")}); err != nil {
+	if err := Append(file, Entry{ID: "B", Path: str("a.go"), Depth: "high", Disposition: "confirmed"}); err != nil {
 		t.Fatal(err)
 	}
 	entries, err := Read(file)
@@ -121,29 +117,6 @@ func TestAppendReadRoundTrip(t *testing.T) {
 	}
 	if entries[0].Path != nil || entries[0].Digest != nil || *entries[1].Path != "a.go" {
 		t.Errorf("nulls and values must survive: %+v", entries)
-	}
-}
-
-func TestReadTranslatesEarlierDepthNames(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "ledger.jsonl")
-	for _, depth := range []string{"quick", "standard", "deep", "none"} {
-		if err := Append(file, Entry{ID: depth, Branch: "feat", Depth: depth}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	entries, err := Read(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got []string
-	for _, e := range entries {
-		got = append(got, e.Depth)
-		if err := Validate(Entry{Branch: "feat", SHA: "abc", Round: 1, Depth: e.Depth, Disposition: "clean"}); err != nil {
-			t.Errorf("an update copying depth %q from an earlier line would be rejected: %v", e.Depth, err)
-		}
-	}
-	if want := []string{"medium", "high", "deep", "none"}; !slices.Equal(got, want) {
-		t.Errorf("depths read as %v, want %v", got, want)
 	}
 }
 

@@ -15,7 +15,7 @@ A reviewer that has not heard the implementer's reasoning judges the code, not t
 
 ## Level and coverage
 
-Read `harness review level --json`; if it is unavailable, use `medium` and report the fallback. Only the human changes the setting. An explicit review uses the configured level, or Medium when the level is `off`. Quick and Standard requests mean Medium and High.
+Read `harness review level --json`; if it is unavailable, use `medium` and report the fallback. Only the human changes the setting. An explicit review uses the configured level, or Medium when the level is `off`.
 
 | Level | Automatic trigger | Hunters | Conditional calls | Cap |
 | --- | --- | --- | --- | --- |
@@ -69,7 +69,7 @@ Delegate every confirmed finding to one fresh `executor` in one brief, with the 
 At Medium, the green check or the reconciled lines are the proof. At High, launch one fresh `reviewer` with the recheck brief from `references/verify.md`, giving it the confirmed findings, their checks, the repair delta `git diff <sha> <repaired sha>` over owned paths, the requirements, and the repaired revision; it reads the repaired commit in the checkout. A nit or a fix with no behavior change needs no recheck.
 
 - `holds`: the finding stays `fixed`.
-- `fails`, or a new defect in the repaired code: reproduce it on the repaired revision. A red run records the finding `confirmed` again (a regression as a new round 2 finding) and takes it to the human; otherwise drop it and count it. Never start a second repair loop on your own.
+- `fails`, or a new defect in the repaired code: reproduce it on the repaired revision. A red run records the finding `confirmed` again (a regression as a new finding) and takes it to the human; otherwise drop it and count it. Never start a second repair loop on your own.
 - `unknown`, or a report that does not echo the repaired revision: retry once if the cap permits; the green check stands, and the recheck is reported as unknown.
 - `follow_ups`: report them beside the outcome; record none and repair none.
 

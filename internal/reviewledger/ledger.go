@@ -19,19 +19,14 @@ import (
 // Entry is one ledger line. A finding's later dispositions are new lines with the same ID; the latest wins.
 type Entry struct {
 	ID          string  `json:"id"`
-	TS          string  `json:"ts"`
 	Branch      string  `json:"branch"`
 	Base        string  `json:"base"`
 	SHA         string  `json:"sha"`
 	Digest      *string `json:"digest"`
-	Round       int     `json:"round"`
 	Depth       string  `json:"depth"`
-	Axis        string  `json:"axis"`
-	Reviewer    string  `json:"reviewer"`
 	Path        *string `json:"path"`
 	Lines       string  `json:"lines"`
 	Severity    string  `json:"severity"`
-	Class       string  `json:"class"`
 	Summary     string  `json:"summary"`
 	Disposition string  `json:"disposition"`
 	Evidence    string  `json:"evidence"`
@@ -42,20 +37,18 @@ type Entry struct {
 // Finding is a finding's latest line as `list` reports it, with the state computed against the head.
 type Finding struct {
 	Entry
-	// Open holds the merge: confirmed, unverified, or fixed by a commit the head does not contain.
+	// Open holds the merge: confirmed, or fixed by a commit the head does not contain.
 	Open bool `json:"open"`
 	// Rewritten marks a reviewed commit that is no longer in the head's history, as after a rebase.
 	Rewritten bool `json:"rewritten,omitempty"`
 }
 
 var (
-	dispositions = []string{"confirmed", "unverified", "fixed", "dropped", "refuted", "intentional", "wont-matter", "pre-existing", "nit", "clean", "no-review"}
+	dispositions = []string{"confirmed", "fixed", "dropped", "accepted", "nit", "clean", "no-review"}
 	severities   = []string{"bug", "risk", "q", "pre-existing", "nit"}
-	depths       = []string{"none", "medium", "high", "deep"}
-	// legacyDepths are the names earlier ledgers stored for the medium and high levels; reads and new records translate them.
-	legacyDepths = map[string]string{"quick": "medium", "standard": "high"}
+	depths       = []string{"none", "medium", "high"}
 	// needEvidence are the dispositions that close a finding on someone's word, so the word must be recorded.
-	needEvidence = []string{"fixed", "dropped", "refuted", "intentional", "wont-matter"}
+	needEvidence = []string{"fixed", "dropped", "accepted"}
 	linesRe      = regexp.MustCompile(`^[0-9]+(-[0-9]+)?$`)
 	// ErrInvalid marks a rejected entry; tests use it to tell a rejection from an I/O failure.
 	ErrInvalid = errors.New("invalid entry")
@@ -82,8 +75,6 @@ func Validate(e Entry) error {
 		return err
 	}
 	switch {
-	case e.Round != 1 && e.Round != 2:
-		return bad("round %d is not 1 or 2", e.Round)
 	case e.Branch == "" || e.SHA == "":
 		return bad("branch and sha are required")
 	case slices.Contains(needEvidence, e.Disposition) && e.Evidence == "":
@@ -107,8 +98,8 @@ func Validate(e Entry) error {
 		return bad("lines %q is not a line or a range such as 40-52", e.Lines)
 	case e.Summary == "":
 		return bad("a finding needs a summary")
-	case (e.Disposition == "nit" || e.Disposition == "pre-existing") && e.Severity != e.Disposition:
-		return bad("only a %s finding can take the %s disposition", e.Disposition, e.Disposition)
+	case e.Disposition == "nit" && e.Severity != "nit" && e.Severity != "pre-existing":
+		return bad("only a nit or pre-existing finding can take the nit disposition")
 	}
 	return nil
 }
@@ -190,18 +181,9 @@ func Read(file string) ([]Entry, error) {
 		if err := json.Unmarshal(scanner.Bytes(), &e); err != nil {
 			return nil, fmt.Errorf("%s line %d: %w", file, n, err)
 		}
-		e.Depth = CanonicalDepth(e.Depth)
 		entries = append(entries, e)
 	}
 	return entries, scanner.Err()
-}
-
-// CanonicalDepth returns the current name for a depth an earlier ledger stored under its old name, and any other value unchanged.
-func CanonicalDepth(depth string) string {
-	if name, ok := legacyDepths[depth]; ok {
-		return name
-	}
-	return depth
 }
 
 // Find returns the latest line for id.
@@ -232,7 +214,7 @@ func Latest(entries []Entry, branch string, inHead func(sha string) bool) []Find
 	for i := range out {
 		f := &out[i]
 		switch f.Disposition {
-		case "confirmed", "unverified":
+		case "confirmed":
 			f.Open = true
 		case "fixed":
 			f.Open = !inHead(f.Commit)

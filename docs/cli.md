@@ -132,7 +132,7 @@ harness review remove --branch feat/x   # delete a merged branch's ledger and pa
 
 `list` shows the latest state of each finding. An empty list, `[]`, means nothing was recorded for that branch on this machine. Two fields matter most:
 
-- **`open: true`:** the finding still needs attention. This covers confirmed findings, unverified findings from older reviews, and fixes whose commit is not in the branch yet.
+- **`open: true`:** the finding still needs attention. This covers confirmed findings and fixes whose commit is not in the branch yet.
 - **`rewritten: true`:** the reviewed commit is no longer in the branch history, for example after a rebase. The finding still counts.
 
 The findings live in a ledger file inside the Git directory. Git never tracks it, and every worktree of the repository shares it. `/land` deletes it once the branch merges, with `harness review remove`. That command leaves a directory alone while it still records a review worktree.
@@ -144,20 +144,18 @@ The findings live in a ledger file inside the Git directory. Git never tracks it
 | `confirmed` | Proven real, and the fix has not landed yet | Yes |
 | `fixed` | Repaired by a named commit | Until that commit is in the branch |
 | `dropped` | No run proved it. Counted in the review, not listed one by one | No |
-| `intentional` | You said the behavior is wanted. Your words are kept | No |
-| `wont-matter` | You decided not to fix it. Your words are kept | No |
-| `pre-existing` | The problem existed before this change | No |
-| `nit` | A style point, reported but not acted on | No |
+| `accepted` | You said the behavior is wanted, or decided not to fix it. Your words are kept | No |
+| `nit` | A style point, or a problem that existed before this change. Reported but not acted on | No |
 | `clean` or `no-review` | A whole review that found nothing, or a review that was skipped | No |
 
-Older reviews also recorded `unverified` (open) and `refuted` (closed). Any local process can write to the ledger, so `/land` asks you to reconfirm every `refuted`, `intentional`, and `wont-matter` finding.
+Any local process can write to the ledger, so `/land` asks you to reconfirm every `accepted` finding.
 
 ### Record your own decision on a finding
 
 Agents call `harness review record` while they review. You rarely need it yourself, except to record your decision on a finding:
 
 ```sh
-harness review record --id <id> --disposition intentional --evidence "We want retries to stop after 3."
+harness review record --id <id> --disposition accepted --evidence "We want retries to stop after 3."
 ```
 
 Run `harness review record --help` for every flag.

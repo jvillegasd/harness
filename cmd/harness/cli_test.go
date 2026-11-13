@@ -189,7 +189,6 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"review"},
 		{"review", "bogus"},
 		{"review", "record", "--bogus"},
-		{"review", "record", "--round", "two"},
 		{"review", "list", "extra"},
 		{"review", "path", "--bogus"},
 		{"resume", "extra"},
