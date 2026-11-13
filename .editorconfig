@@ -8,7 +8,7 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
-[*.{lua,json,yml,yaml,md}]
+[*.{json,yml,yaml,md}]
 indent_size = 2
 
 # Markdown prose is never hard-wrapped here, and a trailing double space is a
@@ -17,5 +17,5 @@ indent_size = 2
 trim_trailing_whitespace = false
 max_line_length = off
 
-[{Makefile,*.go,go.mod}]
+[{*.go,go.mod}]
 indent_style = tab

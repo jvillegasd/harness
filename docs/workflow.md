@@ -47,6 +47,7 @@ Each skill is a separate tool. Outside work mode, using one never starts another
 | The project needs a scripted way to drive the real app | `/create-verification-skill` |
 | A project's verify skill or its feature map may have drifted | `/maintain-verification-skill` |
 | A feature, bugfix, PR, or path needs a real end-to-end run | `/e2e-verification` |
+| A test suite may carry tests that protect nothing | `/test-audit` |
 
 ### Reflect
 
