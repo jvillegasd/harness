@@ -39,6 +39,8 @@ Work inline by default. Delegate for a named benefit: independent inspection, us
 
 Write each brief to stand alone: the goal, the scope it may touch, the base commit, how to verify it, and what to report. A delegated executor never commits; the parent commits its result.
 
+Give new work, a fix round, or a retry to a fresh agent whose brief consolidates the original brief, every later directive, and the prior agent's result and branch. Resume or message an existing agent only when the work needs state that lives in it and is costly to move: its checkout, its uncommitted changes, or a process it still runs. A resumed agent can drop directives it was given earlier, so its "done" is checked like any result.
+
 ## Results
 
 Check each result against its assigned scope and the actual Git state; a completion message alone is not evidence. Keep complete results before releasing disposable resources when recovery may need them.

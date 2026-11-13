@@ -7,7 +7,7 @@
 3. **Open the attempt log**: a TSV outside the tree with one row per attempt (id, hypothesis, change, before, after, delta, gate, kept or reverted, note), its path in the task document's `## State and next action` (`continuity`). Read it before each attempt.
 4. **Ground each hypothesis** in step 1's model of the system, so it names a mechanism ("defer X off the boot path because it blocks first paint"), never "try caching something". For a speed metric, order hypotheses by [perf](perf.md)'s mantras, without its stop rule.
 5. **Loop, one hypothesis per iteration** (`principle-sequence-verifiable-units`):
-   - Make the change, measure it with the frozen harness, and run the gate.
+   - Make the change, measure it with the frozen harness, and run the gate. When several independent hypotheses are open, you may try them in parallel, each in its own worktree through `delegation` (`principle-separate-before-serializing-shared-state`), and measure each on the frozen harness yourself.
    - Keep it only when the metric moves past the noise and the gate stays green; otherwise revert it in full.
    - Commit each kept change on its own, staging only its files, and add a `## Decisions` row for it. Log every attempt, kept or reverted.
 6. **Push past the plateau.** After several rejects in a row, change category, combine near misses, reread the source, or try something more radical. Correctness and simplicity outrank the number: revert a win that breaks behavior, and keep a simplification that holds the number (`principle-laziness-protocol`).
