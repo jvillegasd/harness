@@ -39,7 +39,7 @@ stateDiagram-v2
 
 ## Review something other than your branch
 
-Ask for a review of a PR number or URL, another branch, or a commit range such as `abc123..def456`, and you don't need it checked out. The agent fetches it, gives the reviewers a temporary copy of it, and deletes that copy when the review ends. Such a review only reports: it fixes nothing and pushes nothing, and you send the findings to the PR's branch with `/address-review`. A PR from a fork is reviewed without running any of its code, so only findings that need no run can be proven.
+Ask for a review of a PR number or URL, another branch, or a commit range such as `abc123..def456`, and you don't need it checked out. The agent fetches it, gives the reviewers a temporary copy of it, and deletes that copy when the review ends. Such a review only reports: it fixes nothing and pushes nothing, and you send the findings to the PR's branch with `/address-review`. When the target has an open PR, the agent asks at the end whether to post the result there. Say yes and it posts one comment with the confirmed findings and how each was proven. Say no and nothing appears on the PR. A PR from a fork is reviewed without running any of its code, so only findings that need no run can be proven.
 
 A clean review of a PR by number counts for `/land` even though nothing is written on the PR, because `/land` also reads the review record on your machine.
 
