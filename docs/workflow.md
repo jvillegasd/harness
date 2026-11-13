@@ -73,7 +73,11 @@ The agent picks the playbook from the task:
 | A question: how, why, are we sure, should we | Investigate playbook (read-only) |
 | The structure changes, the behavior does not | Refactor playbook |
 | Something is slow, with a number to move | Perf playbook |
+| One metric to climb toward a target over many attempts | Hillclimb playbook |
+| A runtime symptom or a captured profile to diagnose, with no fix | Forensics playbook (read-only) |
 | A shape or interface to choose, with no precedent | Design playbook |
+| Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | Skill playbook |
+| Whether a skill or instruction change changes agent behavior | Eval playbook |
 | A prototype, spike, or mock-up | `proto`'s steps |
 | A spec or plan, before anything is built | `spec`'s steps |
 | A ticket or production error to analyze, with no fix requested | `triage`'s steps |

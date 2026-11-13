@@ -30,7 +30,11 @@ Work mode lasts the conversation. "New task" means match again from step 1, and 
 | A read-only question: how, why, are we sure, should we | [investigate](playbooks/investigate.md) |
 | The structure changes and the behavior does not | [refactor](playbooks/refactor.md) |
 | Slow, with a number to move | [perf](playbooks/perf.md) |
+| One metric to climb toward a target over many attempts | [hillclimb](playbooks/hillclimb.md) |
+| A runtime symptom or a captured profile to diagnose, with no fix requested | [forensics](playbooks/forensics.md) |
 | A shape or interface to choose, with no precedent | [design](playbooks/design.md) |
+| Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | [skill](playbooks/skill.md) |
+| Whether a skill, prompt, or instruction change changes agent behavior | [eval](playbooks/eval.md) |
 | A prototype, spike, or mock-up | `proto`'s steps |
 | A spec or plan for a change, before anything is built | `spec`'s steps. When product decisions are still open, reply that `/grill-with-docs` settles them first, and stop; under autopilot they are `agent` decisions instead |
 | A ticket or a production error to turn into a plan brief, with no fix requested | `triage`'s steps |
@@ -43,7 +47,7 @@ Work mode lasts the conversation. "New task" means match again from step 1, and 
 | Resume or pick up earlier work | `continuity`'s Resume, then continue the playbook and step it recorded, or match what is left |
 | Large, multi-part, or none of the above | [large](playbooks/large.md) |
 
-A bug that is a slowdown with a number is perf. A settled spec or ticket small enough for one slice matches the row for its kind, since `implement` reuses its agreed seams. When the task fits two rows, take the narrower one, and the large playbook only when no narrower row covers it.
+A bug that is a slowdown with a number is perf, and a one-off speedup is perf while a target reached over many measured attempts is hillclimb. A settled spec or ticket small enough for one slice matches the row for its kind, since `implement` reuses its agreed seams. When the task fits two rows, take the narrower one, and the large playbook only when no narrower row covers it.
 
 A row that names a skill runs that skill's steps as the playbook: they go into the todo list like any playbook's, and work mode adds only its triggers and reply. `spec`, `tickets`, `build`, and `triage` are guarded so the model never starts them on its own; read each from its path in the installed skills, because the human's `/work` request is what starts it. A spec hands back asking "go to build it?". Only an explicit go answers it, since approving a spec authorizes local implementation alone; the go is a new task, a settled spec matched again.
 
@@ -96,6 +100,7 @@ A playbook's Finish step is these three, each its own item in the todo list:
 Every playbook ends with a reply that:
 
 - opens with the human's goal;
+- is written clean as you draft it, per `unslop` read from its path;
 - carries, for each claim, its evidence or its label in the same sentence: measured, inferred, or guessed (a prediction or an unseen cause is a guess);
 - runs every check it could run, so none is handed to the human;
 - covers what the playbook's own Reply line names.

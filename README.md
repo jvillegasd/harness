@@ -100,7 +100,7 @@ Asking for a review always runs one at your level. [How review works](docs/revie
 
 ## Work mode
 
-`/work <task>` makes the agent follow a fixed playbook instead of choosing skills on its own. The agent picks the playbook that fits (bug fix, feature, investigation, refactor, performance, design, large change, or one of the existing skills), then copies every step into its todo list. A step it skips stays in the list as `skip: <reason>`, so you can see what was left out and why.
+`/work <task>` makes the agent follow a fixed playbook instead of choosing skills on its own. The agent picks the playbook that fits (bug fix, feature, investigation, refactor, performance, hillclimb, forensics, design, skill authoring, eval, large change, or one of the existing skills), then copies every step into its todo list. A step it skips stays in the list as `skip: <reason>`, so you can see what was left out and why.
 
 For a code change, work mode always ends with a change summary (`change-map`) and a review at your level. A plan request writes a spec and asks whether to build it. Merging still goes through you or `/land`.
 
