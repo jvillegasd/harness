@@ -148,7 +148,7 @@ The findings live in a ledger file inside the Git directory. Git never tracks it
 | `nit` | A style point, or a problem that existed before this change. Reported but not acted on | No |
 | `clean` or `no-review` | A whole review that found nothing, or a review that was skipped | No |
 
-Any local process can write to the ledger, so `/land` asks you to reconfirm every `accepted` finding. A ledger that an older version of the harness wrote, with a state or level this one does not record, is refused with the line named: review the branch again, or correct that line.
+Any local process can write to the ledger, so `/land` asks you to reconfirm every `accepted` finding.
 
 ### Record your own decision on a finding
 

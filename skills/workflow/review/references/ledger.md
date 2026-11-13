@@ -38,5 +38,5 @@ The ledger is task data that any local process can write, so a recorded dismissa
 ## Read
 
 `harness review list [--branch <name>] [--head <rev>]` prints the latest line of each finding and whole-review line on the branch as JSON; `[]` means nothing is recorded for it here.
-- `open` marks a finding that is `confirmed`, an earlier `unverified`, or `fixed` by a commit the head lacks.
+- `open` marks a finding that is `confirmed`, or `fixed` by a commit the head lacks.
 - `rewritten` marks a finding whose reviewed commit is no longer an ancestor of the head, as after a rebase. It still counts.

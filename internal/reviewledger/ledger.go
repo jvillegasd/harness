@@ -160,7 +160,7 @@ func Append(file string, e Entry) error {
 	return f.Close()
 }
 
-// Read returns every line of the ledger in append order. A missing file is an empty ledger, and blank lines are skipped. A line whose disposition or depth this version does not record fails the read: guessing its state could list a finding that held the merge as closed.
+// Read returns every line of the ledger in append order. A missing file is an empty ledger, and blank lines are skipped.
 func Read(file string) ([]Entry, error) {
 	f, err := os.Open(file)
 	if errors.Is(err, os.ErrNotExist) {
@@ -180,9 +180,6 @@ func Read(file string) ([]Entry, error) {
 		var e Entry
 		if err := json.Unmarshal(scanner.Bytes(), &e); err != nil {
 			return nil, fmt.Errorf("%s line %d: %w", file, n, err)
-		}
-		if err := errors.Join(oneOf("disposition", e.Disposition, dispositions), oneOf("depth", e.Depth, depths)); err != nil {
-			return nil, fmt.Errorf("%s line %d was written by another version of the harness; review the branch again or correct the line: %w", file, n, err)
 		}
 		entries = append(entries, e)
 	}

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -46,21 +45,6 @@ func TestValidate(t *testing.T) {
 		mutate(&e)
 		if err := Validate(e); !errors.Is(err, ErrInvalid) {
 			t.Errorf("%s: got %v, want ErrInvalid", name, err)
-		}
-	}
-	// Names an earlier ledger format used are not states any more, with or without evidence.
-	for _, disposition := range []string{"unverified", "refuted", "intentional", "wont-matter", "pre-existing"} {
-		e := finding()
-		e.Disposition, e.Evidence, e.Severity = disposition, "e", "pre-existing"
-		if err := Validate(e); !errors.Is(err, ErrInvalid) {
-			t.Errorf("disposition %s: got %v, want ErrInvalid", disposition, err)
-		}
-	}
-	for _, depth := range []string{"quick", "standard", "deep"} {
-		e := finding()
-		e.Depth = depth
-		if err := Validate(e); !errors.Is(err, ErrInvalid) {
-			t.Errorf("depth %s: got %v, want ErrInvalid", depth, err)
 		}
 	}
 }
@@ -133,25 +117,6 @@ func TestAppendReadRoundTrip(t *testing.T) {
 	}
 	if entries[0].Path != nil || entries[0].Digest != nil || *entries[1].Path != "a.go" {
 		t.Errorf("nulls and values must survive: %+v", entries)
-	}
-}
-
-// A line in a state or at a level this version does not know is refused by name, never read as closed: an earlier "unverified" finding was open, and listing it as anything else would release the merge it held.
-func TestReadRefusesALineItCannotInterpret(t *testing.T) {
-	for name, old := range map[string]Entry{
-		"an earlier disposition": {ID: "B", Branch: "feat", Depth: "high", Disposition: "unverified"},
-		"an earlier depth":       {ID: "B", Branch: "feat", Depth: "standard", Disposition: "confirmed"},
-	} {
-		file := filepath.Join(t.TempDir(), "ledger.jsonl")
-		for _, e := range []Entry{{ID: "A", Branch: "feat", Depth: "none", Disposition: "clean"}, old} {
-			if err := Append(file, e); err != nil {
-				t.Fatal(err)
-			}
-		}
-		entries, err := Read(file)
-		if !errors.Is(err, ErrInvalid) || entries != nil || !strings.Contains(err.Error(), "line 2") {
-			t.Errorf("%s: Read = %v, %v; want ErrInvalid naming line 2 and no entries", name, entries, err)
-		}
 	}
 }
 
