@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -606,6 +607,21 @@ func TestMCPInstallReconcilesSettings(t *testing.T) {
 	}
 	if !strings.Contains(readFileOr(filepath.Join(base, "home", ".claude", "settings.json")), "harness") {
 		t.Error("the mcps install left the tracked settings unreconciled")
+	}
+}
+
+// OpenCode 2.x prints its config as one entry per document, with servers under mcp.servers, `disabled` for state, and Engram loaded as a file plugin; the install's check reads that, and still catches a disabled agent-browser.
+func TestMCPInstallReadsOpenCode2Config(t *testing.T) {
+	for _, disabled := range []bool{false, true} {
+		base := sandbox(t)
+		writeMode(t, filepath.Join(base, "home", ".config", "opencode", "plugins", "engram.ts"), "", 0o644)
+		writeShim(t, base, "opencode", `if [ "$*" = "debug config" ]; then
+echo '[{"type": "document", "path": "opencode.json", "info": {"mcp": {"servers": {"agent-browser": {"type": "local", "disabled": `+strconv.FormatBool(disabled)+`, "command": ["`+filepath.Join(base, "shims", "agent-browser")+`", "mcp"]}}}}}, {"type": "document", "path": "opencode.jsonc", "info": {"mcp": {"servers": {"engram": {"type": "local"}}}}}, {"type": "directory", "path": "opencode", "info": {}}]'
+fi`)
+		r := runInstaller(t, base, "mcps")
+		if failed := r.code != 0 && strings.Contains(r.stderr, "OpenCode is missing an expected plugin or MCP server"); failed != disabled {
+			t.Errorf("agent-browser disabled=%v: install exited %d: %s", disabled, r.code, r.stderr)
+		}
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -512,18 +513,16 @@ func (in *installer) assertPluginCount(plugin string, expected int) {
 func (in *installer) opencodeRegistered(resolvedPath string) bool {
 	binary, _ := exec.LookPath("agent-browser")
 	command := []any{binary, "mcp"}
-	resolved, ok := decodeFile(resolvedPath)
+	plugins, servers, ok := in.opencodeLoaded(resolvedPath)
 	if !ok {
 		return false
 	}
-	plugins, _ := resolved["plugin"].([]any)
 	engrams := 0
 	for _, plugin := range plugins {
 		if name, ok := plugin.(string); ok && strings.Contains(name, "engram") {
 			engrams++
 		}
 	}
-	servers, _ := resolved["mcp"].(map[string]any)
 	server, _ := servers["agent-browser"].(map[string]any)
 	if _, ok := servers["engram"]; engrams != 1 || !ok || server == nil ||
 		server["type"] != "local" || server["enabled"] != true || !reflect.DeepEqual(server["command"], command) {
@@ -533,6 +532,46 @@ func (in *installer) opencodeRegistered(resolvedPath string) bool {
 	globalServers, _ := global["mcp"].(map[string]any)
 	globalServer, _ := globalServers["agent-browser"].(map[string]any)
 	return ok && reflect.DeepEqual(globalServer["command"], command)
+}
+
+// opencodeLoaded reads `opencode debug config` into the plugins and MCP servers OpenCode loads, with each server's state as `enabled`. OpenCode 1.x prints one merged object. 2.x prints one entry per config document, later documents winning, with servers under mcp.servers, `disabled` in place of `enabled`, and file plugins loaded from the plugins directory rather than listed.
+func (in *installer) opencodeLoaded(path string) (plugins []any, servers map[string]any, ok bool) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil, false
+	}
+	var merged map[string]any
+	if json.Unmarshal(data, &merged) == nil {
+		plugins, _ = merged["plugin"].([]any)
+		servers, _ = merged["mcp"].(map[string]any)
+		return plugins, servers, true
+	}
+	var documents []struct {
+		Info map[string]any `json:"info"`
+	}
+	if json.Unmarshal(data, &documents) != nil {
+		return nil, nil, false
+	}
+	servers = map[string]any{}
+	for _, document := range documents {
+		listed, _ := document.Info["plugin"].([]any)
+		plugins = append(plugins, listed...)
+		mcp, _ := document.Info["mcp"].(map[string]any)
+		declared, _ := mcp["servers"].(map[string]any)
+		for name, value := range declared {
+			server, _ := value.(map[string]any)
+			if server != nil {
+				server = maps.Clone(server)
+				server["enabled"] = server["disabled"] != true
+			}
+			servers[name] = server
+		}
+	}
+	files, _ := os.ReadDir(filepath.Join(in.config, "opencode", "plugins"))
+	for _, file := range files {
+		plugins = append(plugins, file.Name())
+	}
+	return plugins, servers, true
 }
 
 // summary prints the next steps after a full install, and after a narrowed one only what it installed and where.
