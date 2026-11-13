@@ -68,13 +68,13 @@ func TestReviewLedgerCommand(t *testing.T) {
 	}
 
 	add := func(disposition string) string {
-		r := reviewRun(t, dir, data, "record", "--depth", "standard", "--axis", "bugs", "--path", "a.go", "--lines", "40-52", "--severity", "bug", "--summary", "s", "--disposition", disposition)
+		r := reviewRun(t, dir, data, "record", "--depth", "high", "--path", "a.go", "--lines", "40-52", "--severity", "bug", "--summary", "s", "--disposition", disposition)
 		if r.code != 0 {
 			t.Fatalf("record exited %d: %s", r.code, r.stderr)
 		}
 		return strings.TrimSpace(r.stdout)
 	}
-	fixed, open := add("confirmed"), add("unverified")
+	fixed, open := add("confirmed"), add("confirmed")
 	reviewed := git(t, dir, "rev-parse", "HEAD")
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "fix")
 	if r := reviewRun(t, dir, data, "record", "--id", fixed, "--disposition", "fixed", "--evidence", "red test now green", "--commit", "HEAD"); r.code != 0 {
@@ -83,7 +83,7 @@ func TestReviewLedgerCommand(t *testing.T) {
 
 	before, _ := os.ReadFile(file)
 	for _, bad := range [][]string{
-		{"record", "--depth", "standard", "--path", "a.go", "--lines", "40-x", "--severity", "bug", "--summary", "s", "--disposition", "confirmed"},
+		{"record", "--depth", "high", "--path", "a.go", "--lines", "40-x", "--severity", "bug", "--summary", "s", "--disposition", "confirmed"},
 		{"record", "--id", "missing", "--disposition", "fixed", "--evidence", "e", "--commit", "HEAD"},
 		{"record", "--id", open, "--severity", "nit", "--disposition", "nit"},
 		{"record", "--id", open, "--disposition", "fixed", "--evidence", "e"},

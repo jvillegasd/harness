@@ -35,30 +35,21 @@ Without --id, append a new line and print its id. A finding needs --depth,
 
 With --id, append a new state for that finding: only --disposition,
 --evidence, and --commit are accepted, and the rest is copied from its latest
-line. A fixed, dropped, refuted, intentional, or wont-matter disposition needs
---evidence; fixed also needs --commit. A nit or pre-existing disposition fits
-only a finding of that severity.
+line. A fixed, dropped, or accepted disposition needs --evidence; fixed also
+needs --commit. The nit disposition fits only a nit or pre-existing finding.
 
   --id           Existing finding to update
   --branch       Branch (default: the current branch)
   --base         Base revision
   --sha          Reviewed commit (default: HEAD)
   --digest       Snapshot patch hash when the reviewed work is uncommitted
-  --round        1 or 2 (default 1)
-  --depth        none, medium, or high; deep is still accepted, and quick
-                 and standard, the earlier names for medium and high, are
-                 translated
-  --axis         Hunter axis, such as bugs or spec
-  --reviewer     Client and model, such as claude/opus
+  --depth        none, medium, or high
   --path         File the finding cites
   --lines        A line or range, such as 40 or 40-52
   --severity     bug, risk, q, pre-existing, or nit
-  --class        Short kebab-case defect class
   --summary      One-line description
-  --disposition  confirmed, fixed, dropped, intentional, wont-matter,
-                 pre-existing, nit, clean, or no-review; unverified and
-                 refuted are earlier dispositions new reviews do not
-                 write. A confirmed or fixed finding cannot be dropped.
+  --disposition  confirmed, fixed, dropped, accepted, nit, clean, or
+                 no-review. A confirmed or fixed finding cannot be dropped.
   --evidence     The run's output, what a dropped finding's run showed, or
                  the human's words
   --commit       The fixing commit, for --disposition fixed
@@ -163,14 +154,10 @@ func record(args []string, stdout, stderr io.Writer) int {
 	flags.StringVar(&e.Base, "base", "", "")
 	flags.StringVar(&e.SHA, "sha", "", "")
 	flags.StringVar(&digest, "digest", "", "")
-	flags.IntVar(&e.Round, "round", 1, "")
 	flags.StringVar(&e.Depth, "depth", "", "")
-	flags.StringVar(&e.Axis, "axis", "", "")
-	flags.StringVar(&e.Reviewer, "reviewer", "", "")
 	flags.StringVar(&path, "path", "", "")
 	flags.StringVar(&e.Lines, "lines", "", "")
 	flags.StringVar(&e.Severity, "severity", "", "")
-	flags.StringVar(&e.Class, "class", "", "")
 	flags.StringVar(&e.Summary, "summary", "", "")
 	flags.StringVar(&e.Disposition, "disposition", "", "")
 	flags.StringVar(&e.Evidence, "evidence", "", "")
@@ -208,14 +195,14 @@ func record(args []string, stdout, stderr io.Writer) int {
 		}
 		// A proven finding stays proven: dropping is for findings no run proved, so it cannot close a confirmed or fixed one on an agent's word.
 		if e.Disposition == "dropped" && (prior.Disposition == "confirmed" || prior.Disposition == "fixed") {
-			fmt.Fprintf(stderr, "harness review record: finding %s is %s, and a proven finding cannot be dropped; record the human's decision as intentional or wont-matter instead\n", id, prior.Disposition)
+			fmt.Fprintf(stderr, "harness review record: finding %s is %s, and a proven finding cannot be dropped; record the human's decision as accepted instead\n", id, prior.Disposition)
 			return 2
 		}
 		prior.Disposition, prior.Evidence, prior.Commit = e.Disposition, e.Evidence, e.Commit
 		e = prior
 	} else {
 		e.Digest, e.Path = optional(digest), optional(path)
-		e.Branch, e.Depth = branch, CanonicalDepth(e.Depth)
+		e.Branch = branch
 		if e.SHA == "" {
 			e.SHA, _ = git(root, "rev-parse", "HEAD")
 		}
@@ -242,13 +229,9 @@ func record(args []string, stdout, stderr io.Writer) int {
 		if len(short) > 7 {
 			short = short[:7]
 		}
-		parts := []string{short}
-		if e.Axis != "" {
-			parts = append(parts, e.Axis)
-		}
-		id = strings.Join(append(parts, strconv.FormatInt(time.Now().UnixNano(), 36)), "-")
+		id = short + "-" + strconv.FormatInt(time.Now().UnixNano(), 36)
 	}
-	e.ID, e.TS = id, time.Now().UTC().Format(time.RFC3339)
+	e.ID = id
 	if err := Append(file, e); err != nil {
 		fmt.Fprintf(stderr, "harness review record: %v\n", err)
 		return 1
