@@ -178,6 +178,38 @@ func TestReviewRemoveCommand(t *testing.T) {
 	}
 }
 
+// TestReviewPruneCommand proves prune reads local and remote-tracking branches from git; which directories go is settled in internal/reviewledger.
+func TestReviewPruneCommand(t *testing.T) {
+	dir, data := repo(t), t.TempDir()
+	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
+	git(t, dir, "update-ref", "refs/remotes/origin/feat/remote", "HEAD")
+	record := func(name string) string {
+		if r := reviewRun(t, dir, data, "record", "--branch", name, "--depth", "medium", "--disposition", "clean", "--summary", "s"); r.code != 0 {
+			t.Fatalf("record exited %d: %s", r.code, r.stderr)
+		}
+		return filepath.Dir(strings.TrimSpace(reviewRun(t, dir, data, "path", "--branch", name).stdout))
+	}
+	local, remote, gone := record(branch), record("feat/remote"), record("feat/gone")
+
+	if r := reviewRun(t, dir, data, "prune", "--dry-run"); r.code != 0 || strings.TrimSpace(r.stdout) != gone {
+		t.Fatalf("prune --dry-run exited %d with %q, want only %s: %s", r.code, r.stdout, gone, r.stderr)
+	}
+	if _, err := os.Stat(gone); err != nil {
+		t.Fatalf("a dry run deleted %s: %v", gone, err)
+	}
+	if r := reviewRun(t, dir, data, "prune"); r.code != 0 || strings.TrimSpace(r.stdout) != gone {
+		t.Fatalf("prune exited %d with %q, want only %s: %s", r.code, r.stdout, gone, r.stderr)
+	}
+	if _, err := os.Stat(gone); !os.IsNotExist(err) {
+		t.Errorf("the gone branch's directory survived: %v", err)
+	}
+	for _, d := range []string{local, remote} {
+		if _, err := os.Stat(d); err != nil {
+			t.Errorf("a live branch's directory was removed: %v", err)
+		}
+	}
+}
+
 // TestReviewLevelCommand proves the CLI is wired to the level rules, and that an install keeps the stored level. Which values are accepted is settled in internal/reviewledger.
 func TestReviewLevelCommand(t *testing.T) {
 	base := modelsBase(t)

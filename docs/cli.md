@@ -129,6 +129,7 @@ harness review list --branch feat/x     # findings on another branch
 harness review list --head <rev>        # judge fixes against another head (default: HEAD)
 harness review path                     # where the ledger file lives
 harness review remove --branch feat/x   # delete a merged branch's ledger and patches
+harness review prune [--dry-run]        # delete ledgers of branches that exist nowhere (run git fetch --prune first)
 ```
 
 `list` shows the latest state of each finding. An empty list, `[]`, means nothing was recorded for that branch on this machine. Two fields matter most:
@@ -136,7 +137,7 @@ harness review remove --branch feat/x   # delete a merged branch's ledger and pa
 - **`open: true`:** the finding still needs attention. This covers confirmed findings and fixes whose commit is not in the branch yet.
 - **`rewritten: true`:** the reviewed commit is no longer in the branch history, for example after a rebase. The finding still counts.
 
-The findings live in a ledger file inside the Git directory. Git never tracks it, and every worktree of the repository shares it. `/land` deletes it once the branch merges, with `harness review remove`. That command leaves a directory alone while it still records a review worktree.
+The findings live in a ledger file inside the Git directory. Git never tracks it, and every worktree of the repository shares it. `/land` deletes it once the branch merges, with `harness review remove`. A pull request merged on GitHub, closed, or only reviewed by number never reaches `/land`, so `harness review prune` deletes every ledger whose branch exists neither locally nor on a remote. Both commands leave a directory alone while it still records a review worktree.
 
 ### What each disposition means
 

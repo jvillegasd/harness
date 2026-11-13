@@ -197,3 +197,39 @@ func TestRemoveBranchRefusesOutsideTheBranchesDirectory(t *testing.T) {
 		t.Fatalf("a branch's ledger was deleted: %v", err)
 	}
 }
+
+// Prune keeps every branch that still exists and every directory that records a review worktree, and a dry run deletes nothing.
+func TestPruneRemovesOnlyGoneBranches(t *testing.T) {
+	root := t.TempDir()
+	live := filepath.Dir(branchDir(t, root, "feat%2Flive"))
+	gone := filepath.Dir(branchDir(t, root, "feat%2Fgone"))
+	held := filepath.Dir(branchDir(t, root, "held"))
+	if err := os.WriteFile(filepath.Join(held, "worktree.txt"), []byte("/tmp/wt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	isLive := func(b string) bool { return b == "feat/live" }
+	dir := filepath.Join(root, "branches")
+
+	removed, kept, err := Prune(dir, isLive, true)
+	if err != nil || len(removed) != 1 || removed[0] != gone || len(kept) != 1 || kept[0] != held {
+		t.Fatalf("dry run = %v, %v, %v; want [%s], [%s]", removed, kept, err, gone, held)
+	}
+	if _, err := os.Stat(gone); err != nil {
+		t.Fatalf("a dry run deleted %s: %v", gone, err)
+	}
+
+	if removed, _, err := Prune(dir, isLive, false); err != nil || len(removed) != 1 {
+		t.Fatalf("Prune = %v, %v; want one directory removed", removed, err)
+	}
+	if _, err := os.Stat(gone); !os.IsNotExist(err) {
+		t.Errorf("a gone branch's directory survived: %v", err)
+	}
+	for _, d := range []string{live, held} {
+		if _, err := os.Stat(filepath.Join(d, "ledger.jsonl")); err != nil {
+			t.Errorf("%s was touched: %v", d, err)
+		}
+	}
+	if removed, held, err := Prune(filepath.Join(root, "missing"), isLive, false); err != nil || removed != nil || held != nil {
+		t.Errorf("Prune with no branches directory = %v, %v, %v; want nothing", removed, held, err)
+	}
+}

@@ -38,10 +38,23 @@ The cap counts every role call in the review, retries and delegated fixes includ
 
 A review covering the current patch is required for every pull request this table triggers at `medium` or `high`, and for any the human asked to have reviewed: `open-pr`'s readiness report shows whether one does, `/land merge` refuses to merge without it, and `/land` after the human's merge reports when it was missing. At `off` the gap is reported without holding anything.
 
+## Target
+
+The target is what the human or the calling skill names; with none, it is the current task branch. Resolve it to `<base>..<sha>` and a ledger key before the snapshot, and pass that key as `--branch` to every `harness review` call below:
+
+- **Current task branch**: the work in this checkout; the key is the branch.
+- **Pull request** (number or URL): read `gh pr view <n> --json headRefName,headRefOid,baseRefName,isCrossRepository`, run `git fetch origin <baseRefName>` and `git fetch origin refs/pull/<n>/head`, and require `git rev-parse FETCH_HEAD` to equal `headRefOid`. `<sha>` is `headRefOid`, `<base>` is `git merge-base origin/<baseRefName> <sha>`, and the key is `headRefName`, the name `land` reads. A fork (`isCrossRepository` true) is keyed `pr-<n>` and is reviewed without running anything.
+- **Branch** (a local name or `origin/<name>`, fetched first when remote): `<sha>` is its tip, `<base>` the merge-base with its open pull request's base, or with the default branch when it has none. The key is the name without the remote.
+- **Range** `<base>..<sha>`: as given, both resolved to full SHAs; the key is `range-<base>-<sha>` with each cut to 12 characters.
+
+Every target other than the current task branch is foreign. A foreign review creates no refs of its own (a fetch by pull request lands only in `FETCH_HEAD`), commits nothing, pushes nothing, and is report-only: it skips Fix, and its confirmed findings stay `confirmed` for the human to route through `address-review` on the owning branch.
+
+When a foreign `<sha>` is not what this checkout has checked out, hunters read it from one read worktree: write a fresh directory outside the checkout to `worktree.txt` in the key's directory (`dirname "$(harness review path --branch <key>)"`) first, then run `git -c core.hooksPath=/dev/null worktree add --detach <path> <sha>`. It is the only worktree this review creates, the High executor reuses it, and Verify's last step removes it, so it lives for one run; a run that dies leaves `worktree.txt`, which keeps `harness review remove` and `harness review prune` off that directory until it is retired.
+
 ## Snapshot
 
-1. Commit owned work where the floor lets you, then record `<base>..<sha>`. Confirm both resolve with `git rev-parse` and that the diff is non-empty before launching anything. Hunters read the repository at `<sha>`; make no edits until every hunter has reported. Work you may not commit is reviewed from `git diff --binary <base> -- <owned paths>` saved in the branch directory (`dirname "$(harness review path)"`), with the patch's sha256 as its content identity. Such a review stops after Verify: record confirmed findings as `confirmed` and hand them to the human, because a fix cannot be committed or recorded `fixed`.
-2. Check whether the patch is already reviewed, unless the human asked for this review by name. Read `harness review list --head <sha>`. A recorded review covers the patch when its `base` is `<base>`, its depth is the triggered level or deeper, it left no slice unreviewed, and its `sha` is `<sha>` or every commit after it is one the ledger names as a `fixed` commit. A review recorded with a `digest` covers only uncommitted work with that same digest. Report a covering review as the result, with its depth, its `sha`, and each finding still open, and stop: launch no one and record nothing, because a second hunt over the same content spends the cap again and finds what the first one did.
+1. For the current task branch, commit owned work where the floor lets you, then record `<base>..<sha>`; a foreign target is already committed, and its `<base>..<sha>` comes from Target. Confirm both resolve with `git rev-parse` and that the diff is non-empty before launching anything. Hunters read the repository at `<sha>`; make no edits until every hunter has reported. Work you may not commit is reviewed from `git diff --binary <base> -- <owned paths>` saved in the branch directory (`dirname "$(harness review path)"`), with the patch's sha256 as its content identity. Such a review stops after Verify: record confirmed findings as `confirmed` and hand them to the human, because a fix cannot be committed or recorded `fixed`.
+2. Check whether the patch is already reviewed, unless the human asked for this review by name. Read `harness review list --branch <key> --head <sha>`. A recorded review covers the patch when its `base` is `<base>`, its depth is the triggered level or deeper, it left no slice unreviewed, and its `sha` is `<sha>` or every commit after it is one the ledger names as a `fixed` commit. A review recorded with a `digest` covers only uncommitted work with that same digest. Report a covering review as the result, with its depth, its `sha`, and each finding still open, and stop: launch no one and record nothing, because a second hunt over the same content spends the cap again and finds what the first one did.
 3. Copy the requirements verbatim from their source: the ticket body and comment thread (latest wins), the spec, the task document's requirements, or the human's exact words. A paraphrase carries your framing into a blind brief. With no source, omit `review-spec` and report requirements coverage unavailable.
 
 When a diff is too large for one hunter, split it into coherent slices (by module or call path); each hunter covers its lens across the slices within the cap. An unreviewed slice stays unverified.
@@ -56,13 +69,15 @@ Each report must open with `loaded:` naming the standards files it opened, or `n
 
 1. Collect every `bug`, `risk`, and `q`, and dedupe by path, line range, and class. Report `nit` and `pre-existing` findings without verifying or fixing them here.
 2. Try to reproduce each finding yourself, with repro files in a scratch directory outside the checkout. A run that fails for the reason the finding gives confirms it and becomes its red check. A defect in prose, such as two contradictory instructions, is confirmed by citing both lines. Never run code from a fork's pull request; a fork's findings that need a run are dropped.
-3. **High, when a finding needs a run you could not do inline**, and never for a fork: record a sibling path in the branch directory as `worktree.txt`, create one detached worktree there with `git -c core.hooksPath=/dev/null worktree add --detach <path> <sha>`, apply the saved patch with `git -C <path> apply --binary <patch>` when the work is uncommitted, and launch one fresh `executor` there with the executor brief from `references/verify.md` and every such finding's text, never the rationale or which hunter raised it. `red` confirms the finding.
+3. **High, when a finding needs a run you could not do inline**, and never for a fork: use the read worktree of a foreign target, or record a sibling path in the branch directory as `worktree.txt` and create one detached worktree there with `git -c core.hooksPath=/dev/null worktree add --detach <path> <sha>`; then apply the saved patch with `git -C <path> apply --binary <patch>` when the work is uncommitted, and launch one fresh `executor` there with the executor brief from `references/verify.md` and every such finding's text, never the rationale or which hunter raised it. `red` confirms the finding.
 4. Dispose each finding:
    - **confirmed**: your run or the executor ran red, or contradictory prose was cited.
    - **dropped**: everything else, with what was tried: the run stayed green, could not run, or the finding needed a run this level does not launch. Report each hunter's dropped count and reasons, not the findings.
-5. Clean up the executor's worktree: every `!!` line of `git -C <wt> status --porcelain --ignored` must be regenerable build output; save its work with `git -C <wt> add -A . && git -C <wt> diff --cached --binary <sha> > "<branch directory>/<wt name>.patch"`; only when that exited 0 and the file exists, run `git worktree remove --force <path in worktree.txt>` and delete `worktree.txt`. Otherwise leave both and report the worktree.
+5. Clean up the worktree `worktree.txt` records, whether the executor's or a foreign target's read worktree: every `!!` line of `git -C <wt> status --porcelain --ignored` must be regenerable build output; save its work with `git -C <wt> add -A . && git -C <wt> diff --cached --binary <sha> > "<branch directory>/<wt name>.patch"`; only when that exited 0 and the file exists, run `git worktree remove --force <path in worktree.txt>` and delete `worktree.txt`. Otherwise leave both and report the worktree.
 
 ## Fix
+
+A foreign target skips this section.
 
 Delegate every confirmed finding to one fresh `executor` in one brief, with the fix brief from `references/verify.md`. It edits the checkout and never commits. Read its diff, run each red check yourself, and commit the result. A code finding is fixed when its red check turns green; a prose finding is fixed when the cited lines no longer contradict each other, and needs no recheck. Fix inline only when the executor cannot launch or the cap has no call left for it beside any recheck the fix needs, and report which.
 
@@ -75,10 +90,11 @@ At Medium, the green check or the reconciled lines are the proof. At High, launc
 
 ## Record
 
-Record every disposition in the ledger as `references/ledger.md` describes.
+Record every disposition in the ledger as `references/ledger.md` describes, under the target's key with its `--base` and `--sha`. A foreign review that ends with no finding left `confirmed` and no slice unreviewed also records one whole-review `clean` line for `<base>..<sha>`: it is the coverage `land` reads when the pull request body has no `Reviewed:` line, since a foreign review writes nothing to the forge.
 
 ## Output
 
+- The target, its ledger key, and whether it was foreign (report-only) or a fork (no runs).
 - Level, coverage, selected specialists with their reasons, and calls used against the cap.
 - The reviewed revision and content identity, and the standards each hunter loaded.
 - Each axis's confirmed findings side by side, sorted by severity within the axis and never reranked across axes, each with its disposition and the run that proved it.

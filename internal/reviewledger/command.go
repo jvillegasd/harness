@@ -24,6 +24,7 @@ Commands:
   list    Print the latest line of each finding on a branch as JSON
   path    Print the ledger file's path
   remove  Delete a branch's ledger and patches, once the branch has merged
+  prune   Delete the review directories of branches that exist nowhere
   level   Print or set the review level: off, medium (default), or high
 `
 
@@ -77,6 +78,17 @@ recorded prints nothing and exits 0. A directory that still holds worktree.txt,
 review's record of a worktree it could not retire, is refused untouched.
 `
 
+const pruneUsage = `Usage: harness review prune [--dry-run]
+
+Delete the review directory of every branch that exists neither as a local
+branch nor as a remote-tracking branch, and print each directory removed. Run
+git fetch --prune first so a branch deleted on the remote counts as gone. A
+directory that still holds worktree.txt is kept and named on stderr. A review
+of a range, keyed range-<base>-<sha>, has no branch and is always pruned.
+
+  --dry-run  Print what would be removed, and remove nothing
+`
+
 // Command runs `harness review` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -95,6 +107,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return printPath(args[1:], stdout, stderr)
 	case "remove":
 		return remove(args[1:], stdout, stderr)
+	case "prune":
+		return prune(args[1:], stdout, stderr)
 	case "level":
 		return level(args[1:], stdout, stderr)
 	}
@@ -302,6 +316,52 @@ func remove(args []string, stdout, stderr io.Writer) int {
 	}
 	if removed {
 		fmt.Fprintln(stdout, filepath.Dir(file))
+	}
+	return 0
+}
+
+func prune(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("prune", flag.ContinueOnError)
+	dryRun := flags.Bool("dry-run", false, "")
+	if code := parse(flags, args, pruneUsage, stdout, stderr); code >= 0 {
+		return code
+	}
+	cwd, err := os.Getwd()
+	root := ""
+	if err == nil {
+		root, err = git(cwd, "rev-parse", "--show-toplevel")
+	}
+	if err != nil {
+		fmt.Fprintln(stderr, "harness review prune: not inside a git repository")
+		return 2
+	}
+	live := map[string]bool{}
+	// A local branch is refs/heads/<name>; a remote-tracking one is refs/remotes/<remote>/<name>.
+	for strip, refs := range map[string]string{"2": "refs/heads", "3": "refs/remotes"} {
+		out, err := git(root, "for-each-ref", "--format=%(refname:lstrip="+strip+")", refs)
+		if err != nil {
+			fmt.Fprintf(stderr, "harness review prune: %v\n", err)
+			return 1
+		}
+		for _, name := range strings.Split(out, "\n") {
+			live[name] = true
+		}
+	}
+	dir, err := BranchesDir(root)
+	if err != nil {
+		fmt.Fprintf(stderr, "harness review prune: %v\n", err)
+		return 1
+	}
+	removed, held, err := Prune(dir, func(b string) bool { return live[b] }, *dryRun)
+	for _, d := range removed {
+		fmt.Fprintln(stdout, d)
+	}
+	for _, d := range held {
+		fmt.Fprintf(stderr, "harness review prune: kept %s: worktree.txt still records a review worktree\n", d)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness review prune: %v\n", err)
+		return 1
 	}
 	return 0
 }

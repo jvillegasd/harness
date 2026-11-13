@@ -113,11 +113,51 @@ func File(root, branch string) (string, error) {
 	if branch == "." || branch == ".." {
 		return "", fmt.Errorf("%w: %q is not a branch name", ErrInvalid, branch)
 	}
+	dir, err := BranchesDir(root)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, url.PathEscape(branch), "ledger.jsonl"), nil
+}
+
+// BranchesDir is the directory holding every branch's review directory in the repository at root.
+func BranchesDir(root string) (string, error) {
 	common, err := git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(common, "harness-review", "branches", url.PathEscape(branch), "ledger.jsonl"), nil
+	return filepath.Join(common, "harness-review", "branches"), nil
+}
+
+// Prune removes each branch directory under dir whose branch live does not report, as after a pull request merged without `land` or was closed. It returns the directories removed, or that would be with dryRun, and those held because worktree.txt still records a review worktree. A name that does not unescape is left alone.
+func Prune(dir string, live func(branch string) bool, dryRun bool) (removed, held []string, err error) {
+	names, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil, nil
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, n := range names {
+		branch, err := url.PathUnescape(n.Name())
+		if !n.IsDir() || err != nil || live(branch) {
+			continue
+		}
+		path := filepath.Join(dir, n.Name())
+		if _, err := os.Stat(filepath.Join(path, "worktree.txt")); err == nil {
+			held = append(held, path)
+			continue
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return removed, held, err
+		}
+		if !dryRun {
+			if err := os.RemoveAll(path); err != nil {
+				return removed, held, err
+			}
+		}
+		removed = append(removed, path)
+	}
+	return removed, held, nil
 }
 
 // RemoveBranch deletes the branch directory that holds the ledger file, with its patches, and reports whether there was one. It refuses while worktree.txt is there: that file is the only record of an executor worktree review could not retire, and of where its work was saved.
