@@ -38,7 +38,7 @@ Most of the time a plain request is enough. These are the shortcuts worth knowin
 | Keep frontend or backend journey tests | `journey-verification` |
 | Get a review of your changes | `review` |
 | Publish the work as a pull request | "Open a PR" or "ship this" |
-| Clean up after you merge a PR | `/land`, or `/land merge` to have the agent merge for you |
+| Clean up after you merge a PR | `/land`, or `/land merge` to have the agent merge for you; name PRs (`/land merge 19 20`, `/land merge stack 23`) to land ones not checked out here |
 
 The [workflow guide](docs/workflow.md) lists every skill and when to reach for it.
 
