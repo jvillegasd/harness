@@ -186,7 +186,7 @@ stateDiagram-v2
 | Any request to build something | Edit files and commit on a task branch it creates |
 | "Open a PR" or "ship this" | Also push, open or update the PR, and fix required checks. Feedback on that PR stays on the same branch |
 | `/land merge` | Recheck the gates and merge for you |
-| `/land merge 19 20` or `/land merge stack 23` | Land those PRs, or the stack under PR 23, bottom-up one at a time, even when their branches are not checked out. It stops at the first PR that fails a gate |
+| `/land merge 19 20` or `/land merge stack 23` | Land those PRs, or the stack under PR 23, bottom-up one at a time, even when their branches are not checked out, and even when one comes from a fork. It stops at the first PR that fails a gate |
 
 Publishing a PR never allows merging. You merge, then run `/land` to clean up.
 
