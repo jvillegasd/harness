@@ -143,6 +143,7 @@ func TestCommandHelpMatrix(t *testing.T) {
 		{"pr", "threads", "reply", "12", "T1"},
 		{"tickets"},
 		{"tickets", "check"},
+		{"tickets", "frontier"},
 		{"resume"},
 	}
 	for _, command := range commands {
@@ -264,6 +265,9 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"tickets", "check", "a", "b"},
 		{"tickets", "check", "../x"},
 		{"tickets", "check", "--bogus"},
+		{"tickets", "frontier"},
+		{"tickets", "frontier", "a", "--dir", "d"},
+		{"tickets", "frontier", "a", "--done", "x"},
 		{"resume", "extra"},
 	}
 	for _, want := range args {
