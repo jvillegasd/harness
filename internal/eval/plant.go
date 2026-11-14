@@ -74,7 +74,10 @@ func Root(home string) string {
 // MetaDir holds a run's manifest, label key, outputs, and session record, outside the scratch root.
 func MetaDir(home, run string) string { return filepath.Join(home, ".harness", "eval", run) }
 
-var runIDRe = regexp.MustCompile(`^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}$`)
+var (
+	runIDRe     = regexp.MustCompile(`^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}$`)
+	skillNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
+)
 
 // ValidRun reports whether a run id has the shape Plant gives one, so it can never name a path outside the meta directory.
 func ValidRun(run string) bool { return runIDRe.MatchString(run) }
@@ -132,6 +135,14 @@ func Plant(home string, o PlantOptions) (Manifest, error) {
 	name, err := skillName(o.Variant)
 	if err != nil {
 		return m, err
+	}
+	if !skillNameRe.MatchString(name) {
+		return m, fmt.Errorf("invalid skill name %q", name)
+	}
+	for _, word := range Banned {
+		if strings.Contains(strings.ToLower(name), word) {
+			return m, fmt.Errorf("skill name %q contains a banned word", name)
+		}
 	}
 	if base, err := skillName(o.Baseline); err != nil {
 		return m, err

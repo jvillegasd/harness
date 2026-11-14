@@ -220,3 +220,21 @@ func TestPlanListsEveryIssueEdgeAndLabel(t *testing.T) {
 		t.Errorf("plan:\n%s\nwant:\n%s", out.String(), want)
 	}
 }
+
+// A kept draft whose blocker chain is matched keeps every draft it reaches, so the rerun still passes the check.
+func TestPublishKeepsTheWholeBlockerChainOfAKeptDraft(t *testing.T) {
+	root := t.TempDir()
+	rel := feature(t, root, map[string]string{
+		"01-a.md": draft("01 Alpha", "none"),
+		"02-b.md": draft("02 Beta", "01"),
+		"03-c.md": draft("03 Gamma", "02"),
+	})
+	f := newFake()
+	f.retitle = 43
+	if _, err := Publish(config, root, checked(t, root, rel), f.run); err != nil {
+		t.Fatal(err)
+	}
+	if _, problems, err := Check(root, rel); err != nil || len(problems) != 0 {
+		t.Fatalf("the kept drafts no longer check: %v %v", err, problems)
+	}
+}

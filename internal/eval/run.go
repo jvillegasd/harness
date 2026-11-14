@@ -101,7 +101,7 @@ func command(client, model, prompt string) ([]string, bool, string) {
 	case "codex":
 		return []string{"codex", "exec", "--sandbox", "workspace-write", "--skip-git-repo-check", "--model", model, "-"}, true, ""
 	}
-	return []string{"opencode", "run", "--auto", "--model", model, prompt}, false, ""
+	return []string{"opencode", "run", "--auto", "--model", model, "--", prompt}, false, ""
 }
 
 func uuid() string {

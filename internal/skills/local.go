@@ -106,6 +106,10 @@ func Move(c checkout.Checkout, name, groupName string) ([]string, error) {
 	if err := checkLink(agentLink, oldRel); err != nil {
 		return nil, err
 	}
+	link := filepath.Join(p.claude, name)
+	if err := checkLink(link, "../../.agents/skills/"+name); err != nil {
+		return nil, err
+	}
 	target := filepath.Join(dir, name)
 	if tracked(p.root, body) {
 		cmd := exec.Command("git", "-C", p.root, "mv", "--", rel(p, body), rel(p, target))
@@ -118,11 +122,7 @@ func Move(c checkout.Checkout, name, groupName string) ([]string, error) {
 	if err := os.Remove(agentLink); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	}
-	link := filepath.Join(p.claude, name)
 	if exists(link) {
-		if err := checkLink(link, "../../.agents/skills/"+name); err != nil {
-			return nil, err
-		}
 		if err := os.Remove(link); err != nil {
 			return nil, err
 		}

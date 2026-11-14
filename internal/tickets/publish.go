@@ -193,11 +193,25 @@ func Publish(c Config, root string, ts []Ticket, forge Forge) (Published, error)
 	}
 	// A kept draft still names its blockers by draft number, so their drafts stay until it is published too.
 	needed := map[int]bool{}
+	byNumber := make(map[int]Ticket, len(order))
+	for _, t := range order {
+		byNumber[t.Number] = t
+	}
+	var needBlockers func(int)
+	seen := map[int]bool{}
+	needBlockers = func(number int) {
+		if seen[number] {
+			return
+		}
+		seen[number] = true
+		for _, blocker := range byNumber[number].BlockedBy {
+			needed[blocker] = true
+			needBlockers(blocker)
+		}
+	}
 	for _, t := range order {
 		if !matched[t.Number] {
-			for _, b := range t.BlockedBy {
-				needed[b] = true
-			}
+			needBlockers(t.Number)
 		}
 	}
 	for _, t := range order {

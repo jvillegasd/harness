@@ -140,7 +140,7 @@ func TestDryRunPrintsEachCommandAndStartsNothing(t *testing.T) {
 	for client, want := range map[string]string{
 		"claude":   "claude -p --permission-mode acceptEdits --model sonnet --session-id ",
 		"codex":    "codex exec --sandbox workspace-write --skip-git-repo-check --model sonnet - < ",
-		"opencode": `opencode run --auto --model sonnet "$(cat `,
+		"opencode": `opencode run --auto --model sonnet -- "$(cat `,
 	} {
 		m, _ := f.plant(t, client, 1)
 		var out strings.Builder
@@ -174,5 +174,12 @@ func TestRunRefusesAnUnknownRunOrMissingPrompt(t *testing.T) {
 	}
 	if entries, _ := os.ReadDir(log); len(entries) != 0 {
 		t.Errorf("a refused run started %v", entries)
+	}
+}
+
+func TestOpenCodeTakesADashLedPromptAsTheMessage(t *testing.T) {
+	cmd, _, _ := command("opencode", "m", "- fix the list")
+	if len(cmd) < 2 || cmd[len(cmd)-2] != "--" || cmd[len(cmd)-1] != "- fix the list" {
+		t.Fatalf("opencode argv %q does not end the flags before the prompt", cmd)
 	}
 }

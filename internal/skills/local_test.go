@@ -144,3 +144,27 @@ func TestMoveKeepsHistoryLinksAndTheLock(t *testing.T) {
 		t.Errorf("verify after the move: %+v %v", results, err)
 	}
 }
+
+func TestMoveRefusesAnUnexpectedLinkBeforeMovingAnything(t *testing.T) {
+	c := localCheckout(t)
+	if _, err := New(c, "demo", "support", false); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(c.ClaudeSkills(), "demo")
+	if err := os.Remove(link); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(link, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Move(c, "demo", "ops"); err == nil {
+		t.Fatal("a move over a real .claude/skills directory was accepted")
+	}
+	if _, err := os.Stat(filepath.Join(c.Skills(), "support", "demo", "SKILL.md")); err != nil {
+		t.Error("a refused move moved the body")
+	}
+	linksResolveAgent := filepath.Join(c.AgentSkills(), "demo")
+	if _, err := os.Readlink(linksResolveAgent); err != nil {
+		t.Error("a refused move removed the .agents link")
+	}
+}

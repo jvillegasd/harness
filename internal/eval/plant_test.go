@@ -167,3 +167,20 @@ func TestCleanRemovesOnlyItsRun(t *testing.T) {
 		}
 	}
 }
+
+func TestPlantRefusesASkillNameACandidateMustNotSee(t *testing.T) {
+	f := newFixture(t)
+	for _, name := range []string{"testing-guide", "../escape"} {
+		for _, dir := range []string{f.variant, f.baseline} {
+			if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("---\nname: "+name+"\n---\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if _, err := Plant(f.home, PlantOptions{Variant: f.variant, Baseline: f.baseline, Client: "claude", Runs: 1}); err == nil {
+			t.Errorf("skill name %q was planted", name)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(f.root), "escape")); err == nil {
+		t.Error("a skill was written outside its candidate directory")
+	}
+}
