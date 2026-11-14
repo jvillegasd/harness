@@ -121,6 +121,9 @@ func TestCommandHelpMatrix(t *testing.T) {
 		{"worktree", "audit"},
 		{"worktree", "retire"},
 		{"worktree", "retire", "some/path"},
+		{"land"},
+		{"land", "check"},
+		{"land", "check", "--merge", "12"},
 		{"resume"},
 	}
 	for _, command := range commands {
@@ -192,6 +195,12 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"worktree", "retire", "some/path", "--branch", "x"},
 		{"worktree", "retire", "--branch", "x", "--keep-branch"},
 		{"worktree", "retire", "one", "two"},
+		{"land"},
+		{"land", "bogus"},
+		{"land", "check", "--bogus"},
+		{"land", "check", "feat/x"},
+		{"land", "check", "--stack"},
+		{"land", "check", "--stack", "1", "2"},
 		{"resume", "extra"},
 	}
 	for _, want := range args {

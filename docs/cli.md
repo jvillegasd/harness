@@ -190,3 +190,26 @@ harness worktree retire --branch feat/x            # delete a landed branch that
 A branch has landed when it is an ancestor of the default branch, or when merging it would change nothing, which is how a squash merge reads. If the default branch later rewrote the same lines, the branch reads as `unlanded` even though its PR merged. Pass `--into <ref>` to compare against another ref. Neither command fetches, so run `git fetch --prune` first.
 
 Run `harness worktree audit --help` and `harness worktree retire --help` for every flag.
+
+## Land commands
+
+`harness land check` answers whether a PR can land, and how. `/land` runs it and acts on the answer, so the rules live in the command and you can read the same verdict yourself. It reads GitHub through `gh`, fetches the PR's head and base, and changes nothing else.
+
+```sh
+harness land check                 # the PR of the branch checked out here
+harness land check --merge 19 20   # can these merge? Printed in the order they would land
+harness land check --merge --stack 23   # PR 23 and every open PR under it
+```
+
+It prints one JSON verdict per PR. The fields you will read most:
+
+| Field | Meaning |
+| --- | --- |
+| `lane` | `open` (it can be merged), `merged` (clean up after it), or `stop` |
+| `holds` | Every reason not to merge. Empty means the gates passed. For a merged PR, what the merge skipped |
+| `mode` | `local` when this checkout is the PR's head, `fork` for a PR from another repository, otherwise `remote` |
+| `mine` | Whether you wrote the PR. `/land` deletes the remote branch, and rebases a PR stacked on it, only when it is yours |
+| `review` | Whether a review is required, where the reviewed commit came from, and whether it still covers the head |
+| `findings` | Open review findings and the ones you dismissed, each of which holds the merge |
+
+Without `--merge`, an open PR reads as `stop`. Run `harness land check --help` for every field.
