@@ -4,7 +4,9 @@
       "Read(~/.claude/skills/**)"
     ],
     "deny": [
-      "Read(**/.env*)",
+      "Read(**/.env)",
+      "Read(**/.env.prod*)",
+      "Read(**/.env.stag*)",
       "Read(**/.dev.vars*)",
       "Read(**/*.pem)",
       "Read(**/*.key)",

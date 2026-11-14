@@ -106,15 +106,20 @@ func refusedFlag(arg string, refused []string) bool {
 	return false
 }
 
-// credentialShaped mirrors the tracked Read denies in clients/claude.json, applied to every path-like piece of an argument, including a git revision's path after ":".
+// credentialShaped follows the tracked Read denies in clients/claude.json, applied to every path-like piece of an argument, including a git revision's path after ":". For env files it is the stricter allowlist form OpenCode's read rules take: every `.env*` name is refused unless it is a local, development, test, or example one, where Claude Code can only deny named variants.
 func credentialShaped(arg string) bool {
 	for _, part := range strings.FieldsFunc(arg, func(r rune) bool { return r == '/' || r == ':' || r == '=' }) {
 		switch {
-		case strings.HasPrefix(part, ".env"), strings.HasPrefix(part, ".dev.vars"),
+		case strings.HasPrefix(part, ".env") && !readableEnv(part), strings.HasPrefix(part, ".dev.vars"),
 			strings.HasSuffix(part, ".pem"), strings.HasSuffix(part, ".key"),
 			slices.Contains([]string{"secrets", "credentials", ".aws", ".ssh", ".npmrc", ".pypirc", "database.yml", "credentials.json"}, part):
 			return true
 		}
 	}
 	return false
+}
+
+// readableEnv reports whether an env file name holds local, development, test, or example values rather than a deployed environment's secrets.
+func readableEnv(name string) bool {
+	return name == ".env.local" || name == ".env.example" || strings.HasPrefix(name, ".env.dev") || strings.HasPrefix(name, ".env.test")
 }

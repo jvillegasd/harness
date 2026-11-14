@@ -46,6 +46,9 @@ var opencodeControls = map[string]string{
 		"    \"*\": allow\n" +
 		"    \"*.env\": deny\n" +
 		"    \"*.env.*\": deny\n" +
+		"    \"*.env.local\": allow\n" +
+		"    \"*.env.dev*\": allow\n" +
+		"    \"*.env.test*\": allow\n" +
 		"    \"*.env.example\": allow\n" +
 		"  grep: allow\n" +
 		"  glob: allow\n" +
