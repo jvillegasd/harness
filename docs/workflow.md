@@ -190,6 +190,8 @@ stateDiagram-v2
 
 Publishing a PR never allows merging. You merge, then run `/land` to clean up.
 
+`/land` asks [`harness land check`](cli.md#land-commands) whether each PR can land and stops on anything it holds. On a PR someone else wrote, it merges and cleans up your side only: their remote branch stays, and a PR of theirs stacked on it is reported for them to rebase.
+
 `/land` cleans up the PR it lands. For everything else that piles up (a PR someone merged on GitHub, an abandoned branch, a run that died), run `/cleanup`. It lists every worktree with what removing it would delete, and removes only the ones you name.
 
 The agent brings important decisions back to you. Small choices that are easy to undo do not need your approval each time.
