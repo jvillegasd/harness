@@ -106,15 +106,20 @@ func refusedFlag(arg string, refused []string) bool {
 	return false
 }
 
-// credentialShaped mirrors the tracked Read denies in clients/claude.json, applied to every path-like piece of an argument, including a git revision's path after ":".
+// credentialShaped mirrors the tracked Read denies in clients/claude.json, applied to every path-like piece of an argument, including a git revision's path after ":". An env file is refused unless it is a local, development, test, or example one, the same exceptions OpenCode's read rules make.
 func credentialShaped(arg string) bool {
 	for _, part := range strings.FieldsFunc(arg, func(r rune) bool { return r == '/' || r == ':' || r == '=' }) {
 		switch {
-		case strings.HasPrefix(part, ".env"), strings.HasPrefix(part, ".dev.vars"),
+		case strings.HasPrefix(part, ".env") && !readableEnv(part), strings.HasPrefix(part, ".dev.vars"),
 			strings.HasSuffix(part, ".pem"), strings.HasSuffix(part, ".key"),
 			slices.Contains([]string{"secrets", "credentials", ".aws", ".ssh", ".npmrc", ".pypirc", "database.yml", "credentials.json"}, part):
 			return true
 		}
 	}
 	return false
+}
+
+// readableEnv reports whether an env file name holds local, development, test, or example values rather than a deployed environment's secrets.
+func readableEnv(name string) bool {
+	return name == ".env.local" || name == ".env.example" || strings.HasPrefix(name, ".env.dev") || strings.HasPrefix(name, ".env.test")
 }
