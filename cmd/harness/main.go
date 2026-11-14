@@ -37,6 +37,7 @@ Commands:
   review     Record and read the local review ledger
   worktree   Audit and retire linked worktrees without losing work
   land       Report whether pull requests can land, and how
+  pr         Report a pull request's readiness and what blocks it
 `
 
 func run(args []string, stdout, stderr io.Writer) int {
@@ -67,6 +68,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return worktree.Command(args[1:], stdout, stderr)
 	case "land":
 		return land.Command(args[1:], stdout, stderr)
+	case "pr":
+		return land.PrCommand(args[1:], stdout, stderr)
 	case "resume":
 		return resume.Command(args[1:], stdout, stderr)
 	case "-h", "--help", "help":

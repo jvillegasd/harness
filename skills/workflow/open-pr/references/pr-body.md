@@ -49,5 +49,5 @@ Merge danger: <one-way or two-way> door. Blast radius: <a few words>.
 
 <Closes #N, only for scope actually completed. Omit otherwise.>
 
-<Reviewed: <base>..<sha>, or Review: not run (level <level>). When any review slice stayed unreviewed, write neither line and name the gap under Risks.>
+<The line `harness review stamp` prints. When it prints nothing, write no line and name its reason under Risks.>
 ```

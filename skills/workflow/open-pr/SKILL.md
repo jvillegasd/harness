@@ -20,22 +20,19 @@ An explicit request to open or ship a PR covers these steps together (see the fl
 3. Prepare a concise PR description from [the PR body template](references/pr-body.md), which defers to the repository's own template: the problem, then the `change-map` output with every changed file and its tier, the fact each risky item rests on, merge danger, and the tradeoffs, the evidence, and material unresolved risks other than review findings, which stay in `review`'s ledger. Preserve issue links and human-written context. Add a closing reference only for scope actually completed. Read `unslop` from its path and apply it to the title and body.
 4. Commit only owned changes, since unrelated staged work belongs to someone else. Read the staged content and stage explicit paths. When unrelated changes are already staged, commit through an isolated temporary index or an exact-path commit, and only after confirming each included path holds solely owned changes, so the original index entries survive. If shared paths cannot be separated, hold that commit and ask.
    When a task document exists (`continuity`), commit its final update with the work: status shipped for review, the final evidence, and the open decisions.
-   When a review applied, commit first, then add one line `Reviewed: <base>..<sha>` to the PR body, where `<sha>` is the commit that contains exactly the reviewed content (after repairs, the repaired head, rechecked at High; when any review slice stayed unreviewed, write no line and report the gap), so `land` can tell whether later commits changed what was reviewed. When the level kept review from running, write `Review: not run (level <level>)` instead. That line is the only review content in the PR body; findings and their dispositions stay in `review`'s local ledger.
-5. Push the task branch and open or refresh its PR with the prepared title and body, ready for review, never as a draft. Read back the branch, base, head revision, and metadata. For a stack, take one status pass per PR instead of driving each one, as [stacks](references/stacks.md) describes. Otherwise drive the required checks green with scoped repairs and affected rechecks. Wait for them with `gh pr checks <n> --required --watch` run in the background, which reports when they settle, rather than polling. Then check mergeability with `gh pr view <n> --json mergeable,mergeStateStatus`: resolve a mechanical conflict on the task branch, and ask before resolving a semantic one or rewriting a shared branch.
+   Commit first, then add the line `harness review stamp` prints to the PR body: `Reviewed: <base>..<sha>` when a complete review covers the head, or `Review: not run (level <level>)` when the level kept review from running, so `land` can tell whether later commits changed what was reviewed. When it prints nothing, it names why (a finding still open, a review that left a part unreviewed, a change the review never read): write no line, and fix the cause or report the gap. That line is the only review content in the PR body; findings and their dispositions stay in `review`'s local ledger.
+5. Push the task branch and open or refresh its PR with the prepared title and body, ready for review, never as a draft. Read back the branch, base, head revision, and metadata. For a stack, take one status pass per PR instead of driving each one, as [stacks](references/stacks.md) describes. Otherwise drive the required checks green with scoped repairs and affected rechecks. Wait with `harness pr status --watch <n>` run in the background rather than polling: it returns once the verdict no longer waits on pending checks, and its exit code names the first blocker. On a conflict, resolve a mechanical one on the task branch, and ask before resolving a semantic one or rewriting a shared branch.
 6. Apply tracker transitions only when that write set is already authorized; read `local-tracker` from its path for file-backed trackers.
 7. Never merge. End with the readiness report below.
 
 ## Readiness report
 
-The facts the human reads before merging, each taken at the PR's current head:
+The facts the human reads before merging, taken at the PR's current head. `harness pr status <n>` reports the forge gates, the review coverage, the ledger's open findings, and the unresolved threads, and its exit code names the first blocker. Report its verdict, and add the two facts it does not hold:
 
-- **Checks:** each required check's state, and mergeability.
-- **Review:** whether the `Reviewed:` line covers the head, or why no review ran.
 - **Verdict:** `verification`'s verdict line, or why none ran.
-- **Ledger:** open findings from `harness review list --head <head>`, and the dropped count.
 - **Limits:** material remaining limitations.
 
-Lead with `Ready to merge` only when every required check passed, the PR is mergeable, any required review covers the head, the verdict is not FAIL, and no finding is open; otherwise lead with `Not ready` and the first blocker.
+Lead with `Ready to merge` only when `harness pr status` exits 0 and the verdict is not FAIL; otherwise lead with `Not ready` and the first blocker it names.
 
 ## Output
 

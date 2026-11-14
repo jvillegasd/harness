@@ -52,6 +52,28 @@ type Check struct {
 	Dependents []Dependent `json:"dependents"`
 	Holds      []string    `json:"holds"`
 	Notes      []string    `json:"notes"`
+	// gate is what the forge gates found, which `harness pr status` ranks into its exit code.
+	gate gateFacts
+}
+
+// gateFacts sorts the forge gates' holds into the blockers `harness pr status` names, and keeps the unresolved threads it lists.
+type gateFacts struct {
+	conflict, failing, pending bool
+	// computing is a forge that has not yet worked out mergeability, as right after a push; waiting settles it.
+	computing bool
+	threads   []Thread
+}
+
+// Thread is one unresolved review thread, located by its first comment.
+type Thread struct {
+	ID     string `json:"id"`
+	Path   string `json:"path"`
+	Line   int    `json:"line,omitempty"`
+	Author string `json:"author"`
+	// Permission is the author's permission on the base repository: admin, maintain, write, triage, read, none, or unknown when the forge would not say.
+	Permission string `json:"permission"`
+	Body       string `json:"body"`
+	URL        string `json:"url"`
 }
 
 // Review is whether a review is required and whether one still covers the head.
@@ -106,7 +128,7 @@ type pull struct {
 
 const viewFields = "number,url,title,state,isDraft,headRefName,headRefOid,baseRefName,isCrossRepository,author,mergeable,mergeStateStatus,reviewDecision,body,mergeCommit"
 
-const threadsQuery = `query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){pageInfo{hasNextPage}nodes{isResolved}}}}}`
+const threadsQuery = `query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){pageInfo{hasNextPage}nodes{id isResolved path line originalLine comments(first:1){nodes{author{login}body url}}}}}}}`
 
 // Gh is the Forge that runs the gh CLI in dir.
 func Gh(dir string) Forge {
@@ -124,19 +146,53 @@ func Gh(dir string) Forge {
 
 // Run resolves the pull requests a landing covers and checks each, in the order they land. No number means the pull request of the branch checked out in e.Dir. With stack, the one number is a stack's tip and every open pull request under it joins.
 func Run(e Env, numbers []int, stack, merge bool) ([]Check, error) {
+	run, err := e.resolve(numbers, stack)
+	if err != nil {
+		return nil, err
+	}
+	checks := []Check{}
+	for i, p := range run.pulls {
+		c, err := e.check(run.root, p, run.def, run.me, merge, run.below(p, run.pulls[:i]))
+		if err != nil {
+			return nil, fmt.Errorf("#%d: %w", p.Number, err)
+		}
+		checks = append(checks, c)
+	}
+	return checks, nil
+}
+
+// landing is the resolved run: the repository root, the default branch, the forge user, and the pull requests in the order they land.
+type landing struct {
+	root, def, me string
+	pulls         []pull
+}
+
+// below is the open pull request among the given ones whose head is p's base, which p lands after.
+func (landing) below(p pull, among []pull) int {
+	for _, q := range among {
+		if q.Number != p.Number && q.State == "OPEN" && !q.IsCrossRepository && q.HeadRefName == p.BaseRefName {
+			return q.Number
+		}
+	}
+	return 0
+}
+
+// resolve reads the forge user, the default branch, and the pull requests a run covers, walking a stack down from its tip, and orders them bottom-up.
+func (e Env) resolve(numbers []int, stack bool) (landing, error) {
+	var run landing
 	root, err := git(e.Dir, "rev-parse", "--show-toplevel")
 	if err != nil {
-		return nil, errors.New("not inside a git repository")
+		return run, errors.New("not inside a git repository")
 	}
 	var repo struct{ DefaultBranchRef struct{ Name string } }
 	if err := e.read(&repo, "repo", "view", "--json", "defaultBranchRef"); err != nil {
-		return nil, err
+		return run, err
 	}
 	def := repo.DefaultBranchRef.Name
 	raw, err := e.Forge("api", "user", "--jq", ".login")
 	me := strings.TrimSpace(string(raw))
 	if err != nil || me == "" || def == "" {
-		return nil, fmt.Errorf("cannot read the forge user and default branch: %v", err)
+		return run, fmt.Errorf("cannot read the forge user and default branch: %v", err)
 	}
 
 	var pulls []pull
@@ -146,7 +202,7 @@ func Run(e Env, numbers []int, stack, merge bool) ([]Check, error) {
 	for _, n := range numbers {
 		p, err := e.view(n)
 		if err != nil {
-			return nil, err
+			return run, err
 		}
 		if !slices.ContainsFunc(pulls, func(q pull) bool { return q.Number == p.Number }) {
 			pulls = append(pulls, p)
@@ -159,7 +215,7 @@ func Run(e Env, numbers []int, stack, merge bool) ([]Check, error) {
 			IsCrossRepository bool
 		}
 		if err := e.read(&heads, "pr", "list", "--state", "open", "--head", p.BaseRefName, "--json", "number,isCrossRepository"); err != nil {
-			return nil, err
+			return run, err
 		}
 		under := 0
 		for _, h := range heads {
@@ -168,48 +224,32 @@ func Run(e Env, numbers []int, stack, merge bool) ([]Check, error) {
 			}
 		}
 		if under == 0 {
-			return nil, fmt.Errorf("#%d is based on %s, which is not the default branch and has no open pull request", p.Number, p.BaseRefName)
+			return run, fmt.Errorf("#%d is based on %s, which is not the default branch and has no open pull request", p.Number, p.BaseRefName)
 		}
 		if p, err = e.view(under); err != nil {
-			return nil, err
+			return run, err
 		}
 		pulls = append(pulls, p)
 	}
 
 	// A pull request lands after the open one in the run whose head is its base.
-	below := func(p pull, among []pull) int {
-		for _, q := range among {
-			if q.Number != p.Number && q.State == "OPEN" && !q.IsCrossRepository && q.HeadRefName == p.BaseRefName {
-				return q.Number
-			}
-		}
-		return 0
-	}
 	var ordered []pull
 	for rest := pulls; len(rest) > 0; {
 		var blocked []pull
 		for _, p := range rest {
-			if below(p, rest) != 0 {
+			if run.below(p, rest) != 0 {
 				blocked = append(blocked, p)
 			} else {
 				ordered = append(ordered, p)
 			}
 		}
 		if len(blocked) == len(rest) {
-			return nil, errors.New("the pull requests are based on each other in a cycle")
+			return run, errors.New("the pull requests are based on each other in a cycle")
 		}
 		rest = blocked
 	}
 
-	checks := []Check{}
-	for i, p := range ordered {
-		c, err := e.check(root, p, def, me, merge, below(p, ordered[:i]))
-		if err != nil {
-			return nil, fmt.Errorf("#%d: %w", p.Number, err)
-		}
-		checks = append(checks, c)
-	}
-	return checks, nil
+	return landing{root, def, me, ordered}, nil
 }
 
 func (e Env) check(root string, p pull, def, me string, merge bool, after int) (Check, error) {
@@ -319,10 +359,13 @@ func (e Env) gates(p pull, c *Check, def string) {
 	// UNSTABLE is a failing check that is not required, and HAS_HOOKS a mergeable branch with hooks.
 	switch {
 	case p.Mergeable == "UNKNOWN" || p.MergeStateStatus == "UNKNOWN":
+		c.gate.computing = true
 		hold("the forge is still computing whether it can merge: check again")
 	case p.Mergeable != "MERGEABLE":
+		c.gate.conflict = p.Mergeable == "CONFLICTING"
 		hold("the forge reports it %s, not MERGEABLE", p.Mergeable)
 	case !slices.Contains([]string{"CLEAN", "UNSTABLE", "HAS_HOOKS"}, p.MergeStateStatus):
+		c.gate.conflict = p.MergeStateStatus == "DIRTY"
 		hold("its merge state is %s", p.MergeStateStatus)
 	}
 	switch p.ReviewDecision {
@@ -342,6 +385,12 @@ func (e Env) gates(p pull, c *Check, def string) {
 		if check.Bucket != "pass" && check.Bucket != "skipping" {
 			hold("required check %s is %s", check.Name, check.Bucket)
 		}
+		switch check.Bucket {
+		case "fail", "cancel":
+			c.gate.failing = true
+		case "pending":
+			c.gate.pending = true
+		}
 	}
 
 	var threads struct {
@@ -350,7 +399,18 @@ func (e Env) gates(p pull, c *Check, def string) {
 				PullRequest struct {
 					ReviewThreads struct {
 						PageInfo struct{ HasNextPage bool }
-						Nodes    []struct{ IsResolved bool }
+						Nodes    []struct {
+							ID                 string
+							IsResolved         bool
+							Path               string
+							Line, OriginalLine int
+							Comments           struct {
+								Nodes []struct {
+									Author    struct{ Login string }
+									Body, URL string
+								}
+							}
+						}
 					}
 				}
 			}
@@ -361,9 +421,19 @@ func (e Env) gates(p pull, c *Check, def string) {
 	}
 	unresolved := 0
 	for _, t := range threads.Data.Repository.PullRequest.ReviewThreads.Nodes {
-		if !t.IsResolved {
-			unresolved++
+		if t.IsResolved {
+			continue
 		}
+		unresolved++
+		// An outdated thread has no line on the current diff, so it is placed where it was written.
+		th := Thread{ID: t.ID, Path: t.Path, Line: t.Line}
+		if th.Line == 0 {
+			th.Line = t.OriginalLine
+		}
+		if first := t.Comments.Nodes; len(first) > 0 {
+			th.Author, th.Body, th.URL = first[0].Author.Login, first[0].Body, first[0].URL
+		}
+		c.gate.threads = append(c.gate.threads, th)
 	}
 	if unresolved > 0 {
 		hold("%d review thread(s) are unresolved", unresolved)
@@ -554,64 +624,12 @@ func (e Env) approval(number int) (string, error) {
 	return verdicts[last].CommitID, nil
 }
 
-// changedSince lists the files whose patch against base differs between the reviewed commit and the head. A file is compared by patch id over a diff with no context, so a base that moved under an unchanged patch, or edited near it, does not count; whitespace does.
-func changedSince(root, baseRef, reviewed, head string, touched []string) ([]string, error) {
-	before, err := names(root, baseRef+"..."+reviewed)
-	if err != nil {
-		return nil, err
-	}
-	differing, err := names(root, reviewed, head)
-	if err != nil {
-		return nil, err
-	}
-	var changed []string
-	for _, f := range differing {
-		if !slices.Contains(touched, f) && !slices.Contains(before, f) {
-			continue
-		}
-		was, err := patchID(root, baseRef+"..."+reviewed, f)
-		if err != nil {
-			return nil, err
-		}
-		now, err := patchID(root, baseRef+"..."+head, f)
-		if err != nil {
-			return nil, err
-		}
-		if was != now {
-			changed = append(changed, f)
-		}
-	}
-	return changed, nil
-}
-
-func names(root string, revs ...string) ([]string, error) {
-	out, err := git(root, append([]string{"diff", "--name-only", "--no-renames", "-z"}, revs...)...)
-	if err != nil {
-		return nil, err
-	}
-	return strings.FieldsFunc(out, func(r rune) bool { return r == 0 }), nil
-}
-
-// patchID identifies one file's change in a range. A file the range does not touch has an empty id, and a binary file is identified by its diff header, which names both blobs.
-func patchID(root, revs, file string) (string, error) {
-	diff := exec.Command("git", "diff", "-U0", "--no-renames", "--full-index", revs, "--", file)
-	diff.Dir = root
-	patch, err := diff.Output()
-	if err != nil {
-		return "", fmt.Errorf("git diff %s -- %s: %w", revs, file, err)
-	}
-	id := exec.Command("git", "patch-id", "--verbatim")
-	id.Dir = root
-	id.Stdin = bytes.NewReader(patch)
-	out, err := id.Output()
-	if err != nil {
-		return "", fmt.Errorf("git patch-id: %w", err)
-	}
-	if len(bytes.TrimSpace(out)) == 0 {
-		return string(patch), nil
-	}
-	return string(out), nil
-}
+// The patch comparison is the review ledger's, so land check and review covers read the same change the same way.
+var (
+	changedSince = reviewledger.ChangedSince
+	names        = reviewledger.Names
+	patchID      = reviewledger.PatchID
+)
 
 func (e Env) view(number int) (pull, error) {
 	args := []string{"pr", "view"}

@@ -20,6 +20,6 @@ Run `open-pr`'s steps for each pull request from the root up, each with its own 
 
 ## After opening
 
-Take one status pass per pull request, as `address-review`'s `check` mode does, and write a readiness report for each. Driving the stack green is `address-review`'s `drive` mode, run when asked and after the whole stack exists, because a fix low in the stack restarts the checks above it.
+Take one status pass over the stack with `harness pr status --stack <tip>`, which reports every pull request under the tip bottom-up, and write a readiness report for each. Driving the stack green is `address-review`'s `drive` mode, run when asked and after the whole stack exists, because a fix low in the stack restarts the checks above it.
 
 Never rebase, retarget, or force-push a pushed branch in the stack. A fix goes on the branch that owns the code. When a parent merges, `/land` repairs its children.
