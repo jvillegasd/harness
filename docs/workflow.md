@@ -54,6 +54,7 @@ Each skill is a separate tool. Outside work mode, using one never starts another
 | Situation | Skill |
 | --- | --- |
 | A session needs a retrospective | `/retro` |
+| Old worktrees, branches, and review records pile up | `/cleanup` |
 
 ### `/implement` or `/build`?
 
@@ -87,6 +88,7 @@ The agent picks the playbook from the task:
 | Feedback or red checks on an open PR | `address-review`'s steps |
 | "Open a PR" or "ship this" | `open-pr`'s steps |
 | A merge, or "it merged, clean up" | Nothing. The agent tells you to run `/land` |
+| "Clean up old worktrees" | Nothing. The agent tells you to run `/cleanup` |
 | Pick up earlier work | `continuity`'s resume steps, then the recorded playbook |
 | Large, multi-part, or none of the above | Large playbook |
 
@@ -187,6 +189,8 @@ stateDiagram-v2
 | `/land merge 19 20` or `/land merge stack 23` | Land those PRs, or the stack under PR 23, bottom-up one at a time, even when their branches are not checked out. It stops at the first PR that fails a gate |
 
 Publishing a PR never allows merging. You merge, then run `/land` to clean up.
+
+`/land` cleans up the PR it lands. For everything else that piles up (a PR someone merged on GitHub, an abandoned branch, a run that died), run `/cleanup`. It lists every worktree with what removing it would delete, and removes only the ones you name.
 
 The agent brings important decisions back to you. Small choices that are easy to undo do not need your approval each time.
 

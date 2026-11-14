@@ -15,6 +15,7 @@ import (
 	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/statusline"
 	"github.com/jvillegasd/harness/internal/update"
+	"github.com/jvillegasd/harness/internal/worktree"
 )
 
 func main() {
@@ -33,6 +34,7 @@ Commands:
   models     Choose each delegated role's client, model, and effort
   change-map Classify this branch's changed files into review tiers
   review     Record and read the local review ledger
+  worktree   Audit and retire linked worktrees without losing work
 `
 
 func run(args []string, stdout, stderr io.Writer) int {
@@ -59,6 +61,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return changemap.Command(args[1:], stdout, stderr)
 	case "review":
 		return reviewledger.Command(args[1:], stdout, stderr)
+	case "worktree":
+		return worktree.Command(args[1:], stdout, stderr)
 	case "resume":
 		return resume.Command(args[1:], stdout, stderr)
 	case "-h", "--help", "help":

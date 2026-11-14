@@ -161,3 +161,32 @@ harness review record --id <id> --disposition accepted --evidence "We want retri
 ```
 
 Run `harness review record --help` for every flag.
+
+## Worktree commands
+
+`harness worktree` lists a repository's linked worktrees and removes one without losing work. `/land`, review, and `/build` use it to retire the worktrees they create, and `/cleanup` uses it to sweep the rest.
+
+```sh
+harness worktree audit                             # every linked worktree and whether it is safe to retire
+harness worktree retire ../my-task                 # remove the worktree and its landed branch
+harness worktree retire ../my-task --keep-branch   # remove only the worktree
+harness worktree retire --branch feat/x            # delete a landed branch that no worktree holds
+```
+
+`audit` removes nothing. It prints one line per worktree with a state:
+
+| State | Meaning |
+| --- | --- |
+| `safe` | Clean, and its branch has landed |
+| `dirty` | It holds uncommitted changes |
+| `unlanded` | Its branch is not proven to be on the default branch |
+| `loose` | It is detached at a commit no branch holds |
+| `ignored` | Only ignored files stand in the way, and removal would delete them |
+| `locked` | You locked it with `git worktree lock` |
+| `missing` | Its directory is gone. `git worktree prune` clears it |
+
+`retire` refuses, and changes nothing, in every state but `safe`. Each refusal names the flag that answers it: `--allow-ignored` once you have checked the ignored files are build output, `--save-patch <file>` to keep uncommitted work as a patch, or `--keep-branch` to leave the branch. It never removes the main worktree.
+
+A branch has landed when it is an ancestor of the default branch, or when merging it would change nothing, which is how a squash merge reads. If the default branch later rewrote the same lines, the branch reads as `unlanded` even though its PR merged. Pass `--into <ref>` to compare against another ref. Neither command fetches, so run `git fetch --prune` first.
+
+Run `harness worktree audit --help` and `harness worktree retire --help` for every flag.

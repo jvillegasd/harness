@@ -73,7 +73,7 @@ Each report must open with `loaded:` naming the standards files it opened, or `n
 4. Dispose each finding:
    - **confirmed**: your run or the executor ran red, or contradictory prose was cited.
    - **dropped**: everything else, with what was tried: the run stayed green, could not run, or the finding needed a run this level does not launch. Report each hunter's dropped count and reasons, not the findings.
-5. Clean up the worktree `worktree.txt` records, whether the executor's or a foreign target's read worktree: every `!!` line of `git -C <wt> status --porcelain --ignored` must be regenerable build output; save its work with `git -C <wt> add -A . && git -C <wt> diff --cached --binary <sha> > "<branch directory>/<wt name>.patch"`; only when that exited 0 and the file exists, run `git worktree remove --force <path in worktree.txt>` and delete `worktree.txt`. Otherwise leave both and report the worktree.
+5. Retire the worktree `worktree.txt` records, whether the executor's or a foreign target's read worktree: `harness worktree retire <path in worktree.txt> --at <sha> --save-patch "<branch directory>/<wt name>.patch"`, which saves whatever work the worktree holds as that patch before removing it. When it refuses over ignored paths, pass `--allow-ignored` only when every path it lists is regenerable build output. Delete `worktree.txt` once it exits 0; on any other refusal leave both and report the worktree.
 
 ## Fix
 
