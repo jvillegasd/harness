@@ -209,6 +209,8 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"pr", "status", "--bogus"},
 		{"pr", "status", "feat/x"},
 		{"pr", "status", "--stack"},
+		{"pr", "status", "--watch", "--interval", "0"},
+		{"pr", "status", "--timeout", "5"},
 		{"resume", "extra"},
 	}
 	for _, want := range args {

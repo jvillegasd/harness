@@ -2,7 +2,9 @@ package land
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
+	"time"
 )
 
 // Exit codes of `harness pr status`, one per blocker in the order address-review works them. 1 and 2 stay an operational failure and an invalid invocation.
@@ -48,9 +50,6 @@ func (s Status) Code() int {
 	}
 	return ExitOther
 }
-
-// Terminal reports whether waiting cannot change the verdict on its own: anything but pending required checks.
-func (s Status) Terminal() bool { return s.Blocker != "pending" }
 
 // Statuses reports the pull requests in landing order, as `land check --merge` would check them, and never writes to the forge.
 func Statuses(e Env, numbers []int, stack bool) ([]Status, error) {
@@ -120,4 +119,43 @@ func Code(statuses []Status) int {
 		}
 	}
 	return ExitReady
+}
+
+// Clock is what a watch waits on, injected so a test never sleeps.
+type Clock struct {
+	Now   func() time.Time
+	Sleep func(time.Duration)
+}
+
+// Watch repeats the status pass until the verdict is terminal, or until timeout passes, and returns the last verdict with its exit code: ExitTimeout when time ran out first. A failed pass is retried on the next one; three in a row end the watch with the last error.
+func Watch(e Env, numbers []int, stack bool, interval, timeout time.Duration, clock Clock) ([]Status, int, error) {
+	deadline := clock.Now().Add(timeout)
+	var last []Status
+	failures := 0
+	for {
+		statuses, err := Statuses(e, numbers, stack)
+		switch {
+		case err != nil:
+			if failures++; failures == 3 {
+				return last, 1, fmt.Errorf("three status passes in a row failed: %w", err)
+			}
+		default:
+			failures, last = 0, statuses
+			if terminal(statuses) {
+				return statuses, Code(statuses), nil
+			}
+		}
+		if !clock.Now().Add(interval).Before(deadline) {
+			if last == nil {
+				return nil, 1, fmt.Errorf("timed out before a status pass succeeded: %w", err)
+			}
+			return last, ExitTimeout, nil
+		}
+		clock.Sleep(interval)
+	}
+}
+
+// terminal reports whether the run's first blocker, the one its exit code names, is anything but pending required checks.
+func terminal(statuses []Status) bool {
+	return Code(statuses) != ExitPending
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -78,6 +79,13 @@ func TestPrStatusCommand(t *testing.T) {
 
 	if r := run(prForge(head, `[{"name":"ci","bucket":"fail"}]`), "pr", "status", "7"); r.code != 5 {
 		t.Errorf("a failing required check exited %d: %s", r.code, r.stdout)
+	}
+	if r := run(prForge(head, `[{"name":"ci","bucket":"pass"}]`), "pr", "status", "--watch", "7"); r.code != 0 || !strings.Contains(r.stdout, `"ready": true`) {
+		t.Errorf("a watch over a ready pull request exited %d: %s %s", r.code, r.stdout, r.stderr)
+	}
+	// A timeout no longer than one interval gives up after the first pass, without sleeping.
+	if r := run(prForge(head, `[{"name":"ci","bucket":"pending"}]`), "pr", "status", "--watch", "--interval", "5", "--timeout", "5", "7"); r.code != 8 || !strings.Contains(r.stdout, `"blocker": "pending"`) {
+		t.Errorf("a timed-out watch exited %d: %s %s", r.code, r.stdout, r.stderr)
 	}
 	if r := run(`"repo view") echo '{"defaultBranchRef":{"name":"main"}}';;`+"\n", "pr", "status", "7"); r.code != 1 || r.stdout != "" {
 		t.Errorf("an unreadable forge exited %d with stdout %q", r.code, r.stdout)
