@@ -83,7 +83,7 @@ func Statuses(e Env, numbers []int, stack bool) ([]Status, error) {
 			s.Blocker = "thread"
 		case c.gate.failing:
 			s.Blocker = "failing"
-		case c.gate.pending:
+		case c.gate.pending || c.gate.computing:
 			s.Blocker = "pending"
 		default:
 			s.Blocker = "other"

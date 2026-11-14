@@ -64,7 +64,8 @@ Each verdict carries:
 
 The exit code names the first pull request's first blocker, in the order to
 work them: 0 ready, 3 merge conflict, 4 unresolved review thread, 5 failing
-required check, 6 pending required check, 7 any other hold (a draft, a merged
+required check, 6 pending required check or mergeability the forge is still
+computing, 7 any other hold (a draft, a merged
 or closed pull request, a missing approval, a required review that is not
 current, an open ledger finding). 1 is an operational failure and 2 an invalid
 invocation.

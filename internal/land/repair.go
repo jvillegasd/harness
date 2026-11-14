@@ -142,7 +142,9 @@ func RepairDependent(e Env, dependent, landed int) (Repair, error) {
 			return Repair{}, err
 		}
 	}
+	// A refusal after the retarget puts the base back, so the dependent still reads as built on the landed branch, which keeps that branch.
 	undo := func() {
+		e.Forge("pr", "edit", strconv.Itoa(dependent), "--base", d.BaseRefName)
 		if r.Temporary {
 			git(root, "worktree", "remove", "--force", r.Worktree)
 			os.RemoveAll(filepath.Dir(r.Worktree))

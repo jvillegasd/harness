@@ -71,6 +71,9 @@ func AddWorktree(root, key, sha, patch string) (string, error) {
 			return "", err
 		}
 		switch {
+		// A patch cannot be told apart from what the worktree already holds, so it goes only into a fresh one.
+		case tree != nil && patch != "":
+			return "", fmt.Errorf("%w: the review worktree %s already exists, so the patch was not applied; retire it first", ErrHeld, path)
 		case tree != nil && tree.Head == full:
 			return path, nil
 		case tree != nil:

@@ -199,12 +199,21 @@ func (e Env) deleteRemote(root string, p pull, me string) (Action, error) {
 	if _, err := git(root, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+p.HeadRefName); err != nil {
 		return Action{}, nil
 	}
+	if tip, _ := git(root, "rev-parse", "refs/remotes/origin/"+p.HeadRefName); tip != p.HeadRefOid {
+		return Action{false, fmt.Sprintf("#%d remote branch %s: it moved to %s after the merged head %s", p.Number, p.HeadRefName, short(tip), short(p.HeadRefOid))}, nil
+	}
 	if p.Author.Login != me {
 		return Action{false, fmt.Sprintf("#%d remote branch %s: it is %s's", p.Number, p.HeadRefName, p.Author.Login)}, nil
 	}
-	var deps []struct{ Number int }
+	var deps, heads []struct{ Number int }
 	if err := e.read(&deps, "pr", "list", "--state", "open", "--base", p.HeadRefName, "--json", "number"); err != nil {
 		return Action{}, err
+	}
+	if err := e.read(&heads, "pr", "list", "--state", "open", "--head", p.HeadRefName, "--json", "number"); err != nil {
+		return Action{}, err
+	}
+	if len(heads) > 0 {
+		return Action{false, fmt.Sprintf("#%d remote branch %s: open #%d is from it", p.Number, p.HeadRefName, heads[0].Number)}, nil
 	}
 	if len(deps) > 0 {
 		var ns []string

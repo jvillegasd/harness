@@ -59,7 +59,9 @@ type Check struct {
 // gateFacts sorts the forge gates' holds into the blockers `harness pr status` names, and keeps the unresolved threads it lists.
 type gateFacts struct {
 	conflict, failing, pending bool
-	threads                    []Thread
+	// computing is a forge that has not yet worked out mergeability, as right after a push; waiting settles it.
+	computing bool
+	threads   []Thread
 }
 
 // Thread is one unresolved review thread, located by its first comment.
@@ -357,13 +359,13 @@ func (e Env) gates(p pull, c *Check, def string) {
 	// UNSTABLE is a failing check that is not required, and HAS_HOOKS a mergeable branch with hooks.
 	switch {
 	case p.Mergeable == "UNKNOWN" || p.MergeStateStatus == "UNKNOWN":
+		c.gate.computing = true
 		hold("the forge is still computing whether it can merge: check again")
-	case p.Mergeable == "CONFLICTING" || p.MergeStateStatus == "DIRTY":
-		c.gate.conflict = true
-		hold("the forge reports it %s, not MERGEABLE", p.Mergeable)
 	case p.Mergeable != "MERGEABLE":
+		c.gate.conflict = p.Mergeable == "CONFLICTING"
 		hold("the forge reports it %s, not MERGEABLE", p.Mergeable)
 	case !slices.Contains([]string{"CLEAN", "UNSTABLE", "HAS_HOOKS"}, p.MergeStateStatus):
+		c.gate.conflict = p.MergeStateStatus == "DIRTY"
 		hold("its merge state is %s", p.MergeStateStatus)
 	}
 	switch p.ReviewDecision {
