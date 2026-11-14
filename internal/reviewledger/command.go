@@ -84,7 +84,9 @@ Delete the review directory of every branch that exists neither as a local
 branch nor as a remote-tracking branch, and print each directory removed. Run
 git fetch --prune first so a branch deleted on the remote counts as gone. A
 directory that still holds worktree.txt is kept and named on stderr. A review
-of a range, keyed range-<base>-<sha>, has no branch and is always pruned.
+keyed pr-<n> (a fork's pull request) or range-<base>-<sha> has no branch and is
+always pruned, even while that pull request is open, so run --dry-run first and
+prune only once each listed directory is approved for removal.
 
   --dry-run  Print what would be removed, and remove nothing
 `

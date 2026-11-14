@@ -23,6 +23,7 @@ type fixture struct {
 	checks    map[int]string // `gh pr checks --json` output; absent means no required checks
 	checksErr map[int]error
 	threads   map[int]int    // unresolved review threads
+	resolved  map[int]int    // resolved review threads listed before the unresolved ones, beyond the one always there
 	reviews   map[int]string // pages of the reviews endpoint
 }
 
@@ -33,7 +34,7 @@ func setup(t *testing.T) *fixture {
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(home, "gitconfig"))
 	base := t.TempDir()
-	f := &fixture{t: t, dir: filepath.Join(base, "work"), state: filepath.Join(home, "state.json"), pulls: map[int]*pull{}, checks: map[int]string{}, checksErr: map[int]error{}, threads: map[int]int{}, reviews: map[int]string{}}
+	f := &fixture{t: t, dir: filepath.Join(base, "work"), state: filepath.Join(home, "state.json"), pulls: map[int]*pull{}, checks: map[int]string{}, checksErr: map[int]error{}, threads: map[int]int{}, resolved: map[int]int{}, reviews: map[int]string{}}
 	f.git(base, "init", "-q", "--bare", "-b", "main", "origin.git")
 	f.git(base, "clone", "-q", "origin.git", "work")
 	var lines []string
@@ -127,8 +128,19 @@ func (f *fixture) forge(args ...string) ([]byte, error) {
 		return nil, errors.New("no required checks reported on the branch")
 	case "api graphql":
 		number, _ := strconv.Atoi(strings.TrimPrefix(args[len(args)-1], "number="))
-		nodes := `{"isResolved":true}` + strings.Repeat(`,{"isResolved":false}`, f.threads[number])
-		return []byte(`{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[` + nodes + `]}}}}}`), nil
+		// Like the forge, a page carries at most 100 threads and says whether more follow.
+		nodes := make([]string, 0, 1+f.resolved[number]+f.threads[number])
+		for i := 0; i < 1+f.resolved[number]; i++ {
+			nodes = append(nodes, `{"isResolved":true}`)
+		}
+		for i := 0; i < f.threads[number]; i++ {
+			nodes = append(nodes, `{"isResolved":false}`)
+		}
+		more := len(nodes) > 100
+		if more {
+			nodes = nodes[:100]
+		}
+		return []byte(`{"data":{"repository":{"pullRequest":{"reviewThreads":{"pageInfo":{"hasNextPage":` + strconv.FormatBool(more) + `},"nodes":[` + strings.Join(nodes, ",") + `]}}}}}`), nil
 	case "pr list":
 		if base := arg("--base"); base != "" {
 			return list(func(p *pull) bool { return p.BaseRefName == base })
@@ -220,14 +232,15 @@ func TestGates(t *testing.T) {
 		change func()
 		want   string
 	}{
-		"conflict":      {func() { p.Mergeable = "CONFLICTING" }, "CONFLICTING"},
-		"blocked":       {func() { p.MergeStateStatus = "BLOCKED" }, "merge state is BLOCKED"},
-		"not computed":  {func() { p.Mergeable, p.MergeStateStatus = "UNKNOWN", "UNKNOWN" }, "still computing"},
-		"approval":      {func() { p.ReviewDecision = "REVIEW_REQUIRED" }, "approval is missing"},
-		"changes":       {func() { p.ReviewDecision = "CHANGES_REQUESTED" }, "requested changes"},
-		"thread":        {func() { f.threads[1] = 1 }, "1 review thread"},
-		"stacked base":  {func() { p.BaseRefName = "other" }, "not the default branch"},
-		"failing check": {func() { f.checks[1], f.checksErr[1] = `[{"name":"ci","bucket":"fail"}]`, errors.New("exit status 1") }, "required check ci is fail"},
+		"conflict":                   {func() { p.Mergeable = "CONFLICTING" }, "CONFLICTING"},
+		"blocked":                    {func() { p.MergeStateStatus = "BLOCKED" }, "merge state is BLOCKED"},
+		"not computed":               {func() { p.Mergeable, p.MergeStateStatus = "UNKNOWN", "UNKNOWN" }, "still computing"},
+		"approval":                   {func() { p.ReviewDecision = "REVIEW_REQUIRED" }, "approval is missing"},
+		"changes":                    {func() { p.ReviewDecision = "CHANGES_REQUESTED" }, "requested changes"},
+		"thread":                     {func() { f.threads[1] = 1 }, "1 review thread"},
+		"thread past the first page": {func() { f.resolved[1], f.threads[1] = 100, 1 }, "more than 100 review threads"},
+		"stacked base":               {func() { p.BaseRefName = "other" }, "not the default branch"},
+		"failing check":              {func() { f.checks[1], f.checksErr[1] = `[{"name":"ci","bucket":"fail"}]`, errors.New("exit status 1") }, "required check ci is fail"},
 		"pending check": {func() {
 			f.checks[1], f.checksErr[1] = `[{"name":"ci","bucket":"pending"}]`, errors.New("exit status 8")
 		}, "required check ci is pending"},
@@ -235,7 +248,7 @@ func TestGates(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			saved, checks := *p, f.checks[1]
-			defer func() { *p, f.checks[1], f.threads[1] = saved, checks, 0; delete(f.checksErr, 1) }()
+			defer func() { *p, f.checks[1], f.threads[1], f.resolved[1] = saved, checks, 0, 0; delete(f.checksErr, 1) }()
 			tc.change()
 			if tc.want == "not the default branch" {
 				f.git(f.dir, "push", "-q", "origin", "main:refs/heads/other")

@@ -106,7 +106,7 @@ type pull struct {
 
 const viewFields = "number,url,title,state,isDraft,headRefName,headRefOid,baseRefName,isCrossRepository,author,mergeable,mergeStateStatus,reviewDecision,body,mergeCommit"
 
-const threadsQuery = `query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{isResolved}}}}}`
+const threadsQuery = `query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){pageInfo{hasNextPage}nodes{isResolved}}}}}`
 
 // Gh is the Forge that runs the gh CLI in dir.
 func Gh(dir string) Forge {
@@ -348,7 +348,10 @@ func (e Env) gates(p pull, c *Check, def string) {
 		Data struct {
 			Repository struct {
 				PullRequest struct {
-					ReviewThreads struct{ Nodes []struct{ IsResolved bool } }
+					ReviewThreads struct {
+						PageInfo struct{ HasNextPage bool }
+						Nodes    []struct{ IsResolved bool }
+					}
 				}
 			}
 		}
@@ -364,6 +367,9 @@ func (e Env) gates(p pull, c *Check, def string) {
 	}
 	if unresolved > 0 {
 		hold("%d review thread(s) are unresolved", unresolved)
+	}
+	if threads.Data.Repository.PullRequest.ReviewThreads.PageInfo.HasNextPage {
+		hold("it has more than 100 review threads, and those past the first 100 are unread; resolve them on the forge")
 	}
 }
 
