@@ -21,6 +21,7 @@ tracks it, and /land removes the branch directory with the branch.
 
 Commands:
   record  Append a new finding, or a new disposition for an existing one
+  snapshot Save owned uncommitted work as a binary patch and print path and digest
   list    Print the latest line of each finding on a branch as JSON
   path    Print the ledger file's path
   remove  Delete a branch's ledger and patches, once the branch has merged
@@ -65,6 +66,13 @@ fixing commit is in --head (default: HEAD). "rewritten" marks a reviewed commit
 no longer in --head's history, as after a rebase; the finding still counts.
 `
 
+const snapshotUsage = `Usage: harness review snapshot --base <base> [--branch <key>] -- <owned paths>...
+
+Save tracked and untracked changes under the owned paths as one binary patch
+against base, then print the patch path and its sha256 digest on separate lines.
+The branch key defaults to the current branch.
+`
+
 const pathUsage = `Usage: harness review path [--branch <name>]
 
 Print the ledger file path for the branch (default: the current branch).
@@ -103,6 +111,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return 0
 	case "record":
 		return record(args[1:], stdout, stderr)
+	case "snapshot":
+		return snapshot(args[1:], stdout, stderr)
 	case "list":
 		return list(args[1:], stdout, stderr)
 	case "path":
@@ -116,6 +126,46 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stderr, "harness review: unknown command %q; run harness review --help\n", args[0])
 	return 2
+}
+
+func snapshot(args []string, stdout, stderr io.Writer) int {
+	separator := -1
+	for i, arg := range args {
+		if arg == "--" {
+			separator = i
+			break
+		}
+	}
+	if separator < 0 || separator == len(args)-1 {
+		fmt.Fprintf(stderr, "harness review snapshot: provide -- followed by at least one owned path\n%s", snapshotUsage)
+		return 2
+	}
+	flags := flag.NewFlagSet("snapshot", flag.ContinueOnError)
+	var base, branch string
+	flags.StringVar(&base, "base", "", "")
+	flags.StringVar(&branch, "branch", "", "")
+	if code := parse(flags, args[:separator], snapshotUsage, stdout, stderr); code >= 0 {
+		return code
+	}
+	if base == "" {
+		fmt.Fprintf(stderr, "harness review snapshot: --base is required\n%s", snapshotUsage)
+		return 2
+	}
+	root, branch, _, code := ledger("snapshot", branch, stderr)
+	if code >= 0 {
+		return code
+	}
+	path, digest, err := Snapshot(root, base, branch, args[separator+1:])
+	if err != nil {
+		if strings.Contains(err.Error(), "no changes under the owned paths") {
+			fmt.Fprintf(stderr, "harness review snapshot: %v\n", err)
+			return 1
+		}
+		fmt.Fprintf(stderr, "harness review snapshot: %v\n", err)
+		return 2
+	}
+	fmt.Fprintf(stdout, "%s\n%s\n", path, digest)
+	return 0
 }
 
 // parse handles help and usage errors before any git call, returning -1 to continue.
