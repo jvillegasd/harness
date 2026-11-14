@@ -23,7 +23,7 @@ tracks it, and /land removes the branch directory with the branch.
 
 Commands:
   record  Append a new finding, or a new disposition for an existing one
-  snapshot Save owned uncommitted work as a binary patch and print path and digest
+  snapshot  Save owned uncommitted work as a patch and print its digest
   list    Print the latest line of each finding on a branch as JSON
   path    Print the ledger file's path
   remove  Delete a branch's ledger and patches, once the branch has merged
@@ -155,9 +155,12 @@ no longer in --head's history, as after a rebase; the finding still counts.
 
 const snapshotUsage = `Usage: harness review snapshot --base <base> [--branch <key>] -- <owned paths>...
 
-Save tracked and untracked changes under the owned paths as one binary patch
-against base, then print the patch path and its sha256 digest on separate lines.
-The branch key defaults to the current branch.
+Save tracked and untracked changes under the owned paths, given relative to
+the repository root, as one binary patch against base in the key's review
+directory (default key: the current branch). Print the patch path and its
+sha256 digest on separate lines: the digest is the content identity review
+records with --digest. The index and working tree are left as they were. With
+no change under the owned paths it writes nothing and exits 1.
 `
 
 const pathUsage = `Usage: harness review path [--branch <name>]
@@ -224,6 +227,15 @@ func Command(args []string, stdout, stderr io.Writer) int {
 }
 
 func snapshot(args []string, stdout, stderr io.Writer) int {
+	for _, a := range args {
+		if a == "--" {
+			break
+		}
+		if a == "-h" || a == "--help" {
+			fmt.Fprint(stdout, snapshotUsage)
+			return 0
+		}
+	}
 	separator := -1
 	for i, arg := range args {
 		if arg == "--" {
@@ -252,12 +264,11 @@ func snapshot(args []string, stdout, stderr io.Writer) int {
 	}
 	path, digest, err := Snapshot(root, base, branch, args[separator+1:])
 	if err != nil {
-		if strings.Contains(err.Error(), "no changes under the owned paths") {
-			fmt.Fprintf(stderr, "harness review snapshot: %v\n", err)
-			return 1
-		}
 		fmt.Fprintf(stderr, "harness review snapshot: %v\n", err)
-		return 2
+		if errors.Is(err, ErrInvalid) {
+			return 2
+		}
+		return 1
 	}
 	fmt.Fprintf(stdout, "%s\n%s\n", path, digest)
 	return 0

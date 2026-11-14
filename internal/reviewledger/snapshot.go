@@ -11,15 +11,14 @@ import (
 	"strings"
 )
 
-// Snapshot saves the tracked and untracked changes under owned as one binary patch against base.
-// It builds an isolated index, so the repository's real index is never read or written.
+// Snapshot saves the tracked and untracked changes under owned, paths relative to root, as one binary patch against base in the key's review directory, and returns its path and sha256 digest. It builds a temporary index, so the repository's real index is never read or written.
 func Snapshot(root, base, branchKey string, owned []string) (path, digest string, err error) {
 	if len(owned) == 0 {
-		return "", "", fmt.Errorf("at least one owned path is required")
+		return "", "", fmt.Errorf("%w: at least one owned path is required", ErrInvalid)
 	}
 	resolvedBase, err := git(root, "rev-parse", "--verify", "--end-of-options", base+"^{commit}")
 	if err != nil {
-		return "", "", fmt.Errorf("base %q does not name a commit", base)
+		return "", "", fmt.Errorf("%w: base %q does not name a commit", ErrInvalid, base)
 	}
 
 	indexFile, err := os.CreateTemp("", "harness-review-index-*")
