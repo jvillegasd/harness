@@ -39,7 +39,7 @@ stateDiagram-v2
 
 ## Review something other than your branch
 
-Ask for a review of a PR number or URL, another branch, or a commit range such as `abc123..def456`, and you don't need it checked out. The agent fetches it, gives the reviewers a temporary copy of it, and deletes that copy when the review ends. Such a review only reports: it fixes nothing and pushes nothing, and you send the findings to the PR's branch with `/address-review`. When the target has an open PR, the agent asks at the end whether to post the result there, unless your request already said to post it. Say yes and it posts one comment with the confirmed findings and how each was proven. Say no and nothing appears on the PR. A PR from a fork is reviewed without running any of its code, so only findings that need no run can be proven.
+Ask for a review of a PR number or URL, another branch, or a commit range such as `abc123..def456`, and you don't need it checked out. The agent fetches it, gives the reviewers a temporary copy of it, and deletes that copy when the review ends. Such a review only reports: it fixes nothing and pushes nothing, and you send the findings to the PR's branch with `/address-review`. When the target has an open PR, the agent asks at the end whether to post the result there, unless your request already said to post it. Say yes and it posts one comment with the confirmed findings and how each was proven. It never approves the PR or requests changes on it; that stays with you. Say no and nothing appears on the PR. A PR from a fork is reviewed without running any of its code, so only findings that need no run can be proven.
 
 A clean review of a PR by number counts for `/land` even though nothing is written on the PR, because `/land` also reads the review record on your machine.
 
@@ -114,7 +114,7 @@ Findings stay on your machine, in a ledger for each branch inside the Git direct
 At `medium` and `high`:
 
 - The PR's readiness report says whether a review covers its latest commit.
-- `/land merge` refuses to merge a PR beyond docs or tests until one does.
+- `/land merge` refuses to merge a PR beyond docs or tests until one does. For a PR someone else wrote, a person's approval on GitHub counts as that review, as long as the changes are still the ones they approved. Your own PRs always need the agent's review.
 - `/land` after your own merge tells you when no review covered it.
 
 Review never pushes or merges on its own.

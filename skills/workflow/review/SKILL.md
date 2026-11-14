@@ -103,7 +103,7 @@ Record every disposition in the ledger as `references/ledger.md` describes, unde
 
 A change to the reviewed revision invalidates the verdict until the affected evidence is rechecked. The review posts nothing to the forge on its own; `address-review` handles pull request threads.
 
-When the target was foreign and has an open pull request, post the result on it when the human's request already asked for that ("review 123 and post it"); otherwise end by asking whether to post. Only that request or a yes posts, as one comment with `gh pr comment <n> --body-file <file>`: the reviewed `<base>..<sha>`, the level, and each confirmed finding with its path, lines, severity, summary, and the run that proved it, or that none was confirmed. Dropped findings, hunter reasoning, and the ledger stay local. Without either, post nothing.
+When the target was foreign and has an open pull request, post the result on it when the human's request already asked for that ("review 123 and post it"); otherwise end by asking whether to post. Only that request or a yes posts, as one comment with `gh pr comment <n> --body-file <file>`: the reviewed `<base>..<sha>`, the level, and each confirmed finding with its path, lines, severity, summary, and the run that proved it, or that none was confirmed. Dropped findings, hunter reasoning, and the ledger stay local. Without either, post nothing. That comment is the only forge write a review makes: approving or requesting changes stays with the human.
 
 ## References
 
