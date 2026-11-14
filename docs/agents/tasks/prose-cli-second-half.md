@@ -1,7 +1,7 @@
 # Skill prose to CLI steps, second half
 
 - Branch: `feat/prose-cli-second-half` (integration branch, base `main` at db43919)
-- Status: in progress
+- Status: ready for delivery
 - Request (`/work`, this session): "on remaining issues"
 - Scope: issues #202 to #210, the open half of the published tickets #192 to #210.
 
@@ -49,9 +49,12 @@ Finish: change-map, review at `harness review level` (medium), open-pr only when
 
 ## State and next action
 
-Playbook: build, step 9
-Next: verification, change-map, and review at medium on the integration branch.
+Playbook: build, step 10 (offer delivery)
+Next: the human asks for a PR (`open-pr`, body carries `Reviewed: db43919..b7f3ea3`), then `/land`. Gotcha: the installed `harness` predates these commands; use `go run ./cmd/harness` until `harness install` runs.
 
 ## Evidence
 
-- `go vet ./...`, `test -z "$(gofmt -l .)"`, `go build ./...`, `go test ./...`, `git diff --check` at e30f166: all pass.
+- `go vet ./...`, `test -z "$(gofmt -l .)"`, `go build ./...`, `go test ./...`, `git diff --check` at e30f166, 9b958ab, and b7f3ea3: all pass.
+- Review at medium (`review-bugs` on sonnet, 1 hunter call plus 1 fix executor, cap 2): 7 raised, 4 confirmed with red tests and fixed in b7f3ea3, 3 nits reported, 0 dropped.
+- `opencode` 2.3.0: a dash-led prompt prints usage; after `--` it parses (checked with a bogus model, no session started).
+- Not run: any command against the real forge or a real client session; every gh call and client is a fake or a stand-in.
