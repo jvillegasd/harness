@@ -1,7 +1,7 @@
 # Skill prose to CLI steps, first half
 
 - Branch: `feat/skill-prose-cli-steps` (integration branch, base `main` at 13c8ff9; ticket-draft commits on it net to no diff)
-- Status: in progress
+- Status: built, reviewed at medium, ready locally; not pushed
 - Request (`/work`, this session): "on the first half of the tickets"
 - Scope: issues #192 to #201, the first 10 of the 19 published tickets #192 to #210. #202 to #210 are the second half.
 
@@ -15,7 +15,7 @@
 | #195 | `harness review covers` | none | parent | done | 840bd7e |
 | #196 | `harness review worktree add/retire` | none | parent | done | e05809a |
 | #197 | `harness review stamp` | #195 | parent | done | 978743d |
-| #198 | `harness review snapshot` | none | executor | running |  |
+| #198 | `harness review snapshot` | none | executor | done | f26d7c2, a679764 |
 | #199 | `harness land repair` | none | parent | done | 152c07d |
 | #200 | `harness pr threads reply/resolve` | #192 | parent | done | 0b08e05 |
 | #201 | `harness land sync/finish` | none | parent | done | 5ff9816 |
@@ -47,9 +47,11 @@ Finish: change-map, review at `harness review level` (medium), open-pr only when
 | Parent builds #194 to #197, #199, #201 inline too | one executor per slice | agent | every slice edits the same `command.go` and a critical skill (`land`, `review`), so slices could not run in parallel, and #199 rewrites pushed branches | file sets in the slice table |
 | Patch comparison moves from `land` to `reviewledger` (`ChangedSince`, `Names`, `PatchID`) | a copy in each package | agent | #195 requires `covers` and `land check` to compare the same way, and `land` already imports `reviewledger` | `internal/reviewledger/patch.go` |
 | `worktree.txt` gains a second line, the commit | path only | agent | `retire` needs the creation commit for a lossless detached retirement; remove and prune only test existence | `internal/reviewledger/worktree.go` |
+| Snapshot stderr finding dropped, code unchanged | switching the diff to stdout-only output | agent | an autocrlf/safecrlf repro left the patch clean, and an unproven finding is dropped | review ledger |
 | `pr status --watch` defaults to a 1800s timeout | no bound | agent | a background wait that never ends hides a stuck check | `internal/land/pr.go` |
 
 ## State and next action
 
-Playbook: build, step 6
-Next: check the #198 executor result against its scope, integrate it (resolve `internal/reviewledger/command.go` and `cmd/harness/cli_test.go` conflicts), edit `review` Snapshot step 1 and `verification` for `harness review snapshot`, then step 9: verification, change-map, review.
+Playbook: build, step 10
+Next: delivery only on the human's request (`open-pr`). Review at medium found 7: 6 fixed in 92492a4, 1 dropped (no repro); `harness review stamp` prints `Reviewed: 13c8ff9..92492a4`.
+Gotchas: the installed `harness` predates these commands; use `go run ./cmd/harness` until `harness install` runs. #198 asks `verification` step 3 to drop a diff-and-hash recipe it never had.
