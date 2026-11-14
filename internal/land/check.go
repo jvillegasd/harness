@@ -622,64 +622,12 @@ func (e Env) approval(number int) (string, error) {
 	return verdicts[last].CommitID, nil
 }
 
-// changedSince lists the files whose patch against base differs between the reviewed commit and the head. A file is compared by patch id over a diff with no context, so a base that moved under an unchanged patch, or edited near it, does not count; whitespace does.
-func changedSince(root, baseRef, reviewed, head string, touched []string) ([]string, error) {
-	before, err := names(root, baseRef+"..."+reviewed)
-	if err != nil {
-		return nil, err
-	}
-	differing, err := names(root, reviewed, head)
-	if err != nil {
-		return nil, err
-	}
-	var changed []string
-	for _, f := range differing {
-		if !slices.Contains(touched, f) && !slices.Contains(before, f) {
-			continue
-		}
-		was, err := patchID(root, baseRef+"..."+reviewed, f)
-		if err != nil {
-			return nil, err
-		}
-		now, err := patchID(root, baseRef+"..."+head, f)
-		if err != nil {
-			return nil, err
-		}
-		if was != now {
-			changed = append(changed, f)
-		}
-	}
-	return changed, nil
-}
-
-func names(root string, revs ...string) ([]string, error) {
-	out, err := git(root, append([]string{"diff", "--name-only", "--no-renames", "-z"}, revs...)...)
-	if err != nil {
-		return nil, err
-	}
-	return strings.FieldsFunc(out, func(r rune) bool { return r == 0 }), nil
-}
-
-// patchID identifies one file's change in a range. A file the range does not touch has an empty id, and a binary file is identified by its diff header, which names both blobs.
-func patchID(root, revs, file string) (string, error) {
-	diff := exec.Command("git", "diff", "-U0", "--no-renames", "--full-index", revs, "--", file)
-	diff.Dir = root
-	patch, err := diff.Output()
-	if err != nil {
-		return "", fmt.Errorf("git diff %s -- %s: %w", revs, file, err)
-	}
-	id := exec.Command("git", "patch-id", "--verbatim")
-	id.Dir = root
-	id.Stdin = bytes.NewReader(patch)
-	out, err := id.Output()
-	if err != nil {
-		return "", fmt.Errorf("git patch-id: %w", err)
-	}
-	if len(bytes.TrimSpace(out)) == 0 {
-		return string(patch), nil
-	}
-	return string(out), nil
-}
+// The patch comparison is the review ledger's, so land check and review covers read the same change the same way.
+var (
+	changedSince = reviewledger.ChangedSince
+	names        = reviewledger.Names
+	patchID      = reviewledger.PatchID
+)
 
 func (e Env) view(number int) (pull, error) {
 	args := []string{"pr", "view"}

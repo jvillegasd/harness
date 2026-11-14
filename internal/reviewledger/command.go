@@ -26,6 +26,25 @@ Commands:
   remove  Delete a branch's ledger and patches, once the branch has merged
   prune   Delete the review directories of branches that exist nowhere
   level   Print or set the review level: off, medium (default), or high
+  covers  Say whether a recorded review already covers a patch
+`
+
+const coversUsage = `Usage: harness review covers --base <base> --sha <sha> --level <medium|high> [--branch <key>] [--digest <hash>]
+
+Print, as JSON, whether a recorded review already covers the change
+<base>..<sha>, and write nothing. A whole-review clean record is the one
+marker of a complete review. The branch's latest clean record at --level or
+deeper covers the change when it is the same change file by file, compared by
+patch as harness land check compares a reviewed commit with a head, so a
+rebase that changes no file's patch keeps its review. A record made with
+--digest covers only a request with that same --digest, and one made without
+covers only committed work.
+
+  covered  true when the record covers the change
+  depth    the covering review's depth
+  base     the covering review's recorded base
+  sha      its reviewed commit
+  open     each finding still open at --sha
 `
 
 const recordUsage = `Usage: harness review record [flags]
@@ -113,6 +132,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return prune(args[1:], stdout, stderr)
 	case "level":
 		return level(args[1:], stdout, stderr)
+	case "covers":
+		return covers(args[1:], stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "harness review: unknown command %q; run harness review --help\n", args[0])
 	return 2
@@ -373,4 +394,37 @@ func optional(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+func covers(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("covers", flag.ContinueOnError)
+	var branch, base, sha, depth, digest string
+	flags.StringVar(&branch, "branch", "", "")
+	flags.StringVar(&base, "base", "", "")
+	flags.StringVar(&sha, "sha", "", "")
+	flags.StringVar(&depth, "level", "", "")
+	flags.StringVar(&digest, "digest", "", "")
+	if code := parse(flags, args, coversUsage, stdout, stderr); code >= 0 {
+		return code
+	}
+	if base == "" || sha == "" || depth == "" {
+		fmt.Fprintf(stderr, "harness review covers: --base, --sha, and --level are required\n%s", coversUsage)
+		return 2
+	}
+	root, branch, _, code := ledger("covers", branch, stderr)
+	if code >= 0 {
+		return code
+	}
+	c, err := Covers(root, branch, base, sha, depth, digest)
+	if errors.Is(err, ErrInvalid) {
+		fmt.Fprintf(stderr, "harness review covers: %v\n", err)
+		return 2
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness review covers: %v\n", err)
+		return 1
+	}
+	out, _ := json.MarshalIndent(c, "", "  ")
+	fmt.Fprintln(stdout, string(out))
+	return 0
 }
