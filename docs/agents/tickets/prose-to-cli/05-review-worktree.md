@@ -24,7 +24,7 @@ Two commands own the one worktree a review may create, so the record that protec
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: the review ledger package's tests over throwaway repositories settle the lifecycle; one command test in `cmd/harness` proves the wiring.
+The review ledger package's tests over throwaway repositories settle the lifecycle; one command test in `cmd/harness` proves the wiring.
 
 ## Blocked by
 

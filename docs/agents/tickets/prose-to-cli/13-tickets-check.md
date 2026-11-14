@@ -10,7 +10,7 @@ A draft is a file named `<NN>-<slug>.md` in the feature's draft directory with a
 
 ## Acceptance criteria
 
-- The drafts under `docs/agents/tickets/prose-to-cli/` pass.
+- A fixture feature of well-formed drafts passes with no output.
 - A draft missing a section, or with an empty one, is reported with its path and the section's name.
 - Two drafts sharing a number are both reported.
 - `Blocked by` naming a ticket that does not exist is reported with the missing number.
@@ -21,7 +21,7 @@ A draft is a file named `<NN>-<slug>.md` in the feature's draft directory with a
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: a small package's tests over fixture draft directories settle the rules; one command test in `cmd/harness` proves the wiring, and one test runs the check over this repository's own drafts.
+A small package's tests over fixture draft directories settle the rules; one command test in `cmd/harness` proves the wiring.
 
 ## Blocked by
 

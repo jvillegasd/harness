@@ -17,7 +17,7 @@ It replaces the two-step wait in `open-pr` and `address-review`, which today run
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: the landing package's tests drive the loop with a scripted fake forge and an injected clock, so no test sleeps; one command test in `cmd/harness` proves the flags are wired.
+The landing package's tests drive the loop with a scripted fake forge and an injected clock, so no test sleeps; one command test in `cmd/harness` proves the flags are wired.
 
 ## Blocked by
 

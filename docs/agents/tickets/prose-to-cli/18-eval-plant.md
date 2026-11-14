@@ -24,7 +24,7 @@ The `eval` playbook's planting step and its final cleanup call these commands.
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: a small package's tests over a temporary scratch root settle planting and cleaning; one command test in `cmd/harness` proves the wiring.
+A small package's tests over a temporary scratch root settle planting and cleaning; one command test in `cmd/harness` proves the wiring.
 
 ## Blocked by
 

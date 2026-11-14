@@ -23,7 +23,7 @@ The `eval` playbook's run step calls this command and keeps the human's go, the 
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: the eval package's tests start stand-in client programs placed on `PATH`, as the skills tests already do for `npx`, and assert each one's arguments, working directory, and input; one command test in `cmd/harness` proves the wiring. No test starts a real client.
+The eval package's tests start stand-in client programs placed on `PATH`, as the skills tests already do for `npx`, and assert each one's arguments, working directory, and input; one command test in `cmd/harness` proves the wiring. No test starts a real client.
 
 ## Blocked by
 
@@ -33,4 +33,4 @@ Proposed, awaiting the human's confirmation: the eval package's tests start stan
 
 Confirming from a session record that the planted skill loaded, which differs per client and stays with the agent. Launching the judge. A live run, which needs the human's budget approval and is behavioral acceptance, not a test.
 
-Open question for the human, with the default the worker takes when unanswered: the headless flags are the ones the `eval` playbook names today. Default: take them from the playbook and verify each against the client version installed on the build machine before relying on it.
+The headless flags are the ones the `eval` playbook names today. Verify each against the client version installed on the build machine before relying on it, and report any that differ.

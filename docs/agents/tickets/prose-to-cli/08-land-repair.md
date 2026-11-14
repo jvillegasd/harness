@@ -32,7 +32,7 @@ The second step, `--push`, publishes the rebased head with a lease pinned to the
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: the landing package's tests over throwaway repositories with a bare origin and its fake forge settle every rule above; one command test in `cmd/harness` proves the wiring.
+The landing package's tests over throwaway repositories with a bare origin and its fake forge settle every rule above; one command test in `cmd/harness` proves the wiring.
 
 ## Blocked by
 

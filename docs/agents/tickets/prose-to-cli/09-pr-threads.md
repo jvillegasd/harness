@@ -20,7 +20,7 @@ Thread ids are the ones `harness pr status` lists. Both commands write to the fo
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: the landing package's tests assert the exact forge calls against its fake forge; one command test in `cmd/harness` proves the wiring.
+The landing package's tests assert the exact forge calls against its fake forge; one command test in `cmd/harness` proves the wiring.
 
 ## Blocked by
 

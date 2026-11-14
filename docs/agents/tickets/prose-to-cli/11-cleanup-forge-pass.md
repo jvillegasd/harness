@@ -21,7 +21,7 @@
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: the worktree package's and the review ledger package's tests, each with a fake forge and throwaway repositories, settle the added columns; one command test apiece in `cmd/harness` proves the wiring.
+The worktree package's and the review ledger package's tests, each with a fake forge and throwaway repositories, settle the added columns; one command test apiece in `cmd/harness` proves the wiring.
 
 ## Blocked by
 

@@ -33,7 +33,7 @@ Retiring this checkout happens once, after every other pull request in the run. 
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: the landing package's tests over throwaway repositories with a bare origin and its fake forge settle the order and the conditions; one command test in `cmd/harness` proves the wiring. The retirement rules stay proven by the worktree package's existing tests.
+The landing package's tests over throwaway repositories with a bare origin and its fake forge settle the order and the conditions; one command test in `cmd/harness` proves the wiring. The retirement rules stay proven by the worktree package's existing tests.
 
 ## Blocked by
 

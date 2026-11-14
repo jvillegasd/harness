@@ -25,7 +25,7 @@ The exit code names the first blocker in the order `address-review` works them: 
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: the landing package's tests over its existing fake forge and throwaway repositories settle the verdict and exit-code rules; one command test in `cmd/harness` proves the CLI is wired to them.
+The landing package's tests over its existing fake forge and throwaway repositories settle the verdict and exit-code rules; one command test in `cmd/harness` proves the CLI is wired to them.
 
 ## Blocked by
 

@@ -21,7 +21,7 @@ Both refuse a name that already exists in any group, a group that does not exist
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: the skills package's tests over throwaway checkouts settle creation and moves; one command test in `cmd/harness` proves the wiring.
+The skills package's tests over throwaway checkouts settle creation and moves; one command test in `cmd/harness` proves the wiring.
 
 ## Blocked by
 

@@ -21,7 +21,7 @@
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: a small package's tests over throwaway repositories and a fake forge settle the probe and the writes; one command test in `cmd/harness` proves the wiring. The existing byte-identical check between the harness's reconciler and the deployed one stays as it is.
+A small package's tests over throwaway repositories and a fake forge settle the probe and the writes; one command test in `cmd/harness` proves the wiring. The existing byte-identical check between the harness's reconciler and the deployed one stays as it is.
 
 ## Blocked by
 

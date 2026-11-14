@@ -20,7 +20,7 @@ Done comes from the caller's `--done` list, which is how `build` reports the sli
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: the tickets package's tests over fixture draft directories settle the computation; one command test in `cmd/harness` proves the wiring.
+The tickets package's tests over fixture draft directories settle the computation; one command test in `cmd/harness` proves the wiring.
 
 ## Blocked by
 

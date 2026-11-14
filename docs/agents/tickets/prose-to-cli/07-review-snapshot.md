@@ -18,7 +18,7 @@ The digest is the content identity `review` records with `--digest` and `verific
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: the review ledger package's tests over throwaway repositories settle the snapshot; one command test in `cmd/harness` proves the wiring.
+The review ledger package's tests over throwaway repositories settle the snapshot; one command test in `cmd/harness` proves the wiring.
 
 ## Blocked by
 

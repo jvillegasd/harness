@@ -22,7 +22,7 @@ A rejected value writes nothing. `hillclimb` steps 3 and 5 call these commands.
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: a small package's tests over temporary files settle the row rules; one command test in `cmd/harness` proves the wiring.
+A small package's tests over temporary files settle the row rules; one command test in `cmd/harness` proves the wiring.
 
 ## Blocked by
 

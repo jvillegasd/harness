@@ -23,7 +23,7 @@
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: the review ledger package's tests over throwaway repositories and a fake forge settle the resolution rules; one command test in `cmd/harness` proves the wiring.
+The review ledger package's tests over throwaway repositories and a fake forge settle the resolution rules; one command test in `cmd/harness` proves the wiring.
 
 ## Blocked by
 

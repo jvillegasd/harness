@@ -31,7 +31,7 @@ On any failure the command stops, reports what was created and what remains, and
 
 ## Seam
 
-Proposed, awaiting the human's confirmation: the tickets package's tests assert the exact forge calls and their order against a fake forge over fixture drafts; one command test in `cmd/harness` proves the wiring.
+The tickets package's tests assert the exact forge calls and their order against a fake forge over fixture drafts; one command test in `cmd/harness` proves the wiring.
 
 ## Blocked by
 
