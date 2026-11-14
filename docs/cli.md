@@ -130,6 +130,7 @@ harness review list --head <rev>        # judge fixes against another head (defa
 harness review path                     # where the ledger file lives
 harness review remove --branch feat/x   # delete a merged branch's ledger and patches
 harness review prune [--dry-run]        # delete ledgers of branches that exist nowhere (run git fetch --prune first)
+harness review prune --dry-run --forge  # also mark each pr-<n> ledger whose PR is still open
 ```
 
 `list` shows the latest state of each finding. An empty list, `[]`, means nothing was recorded for that branch on this machine. Two fields matter most:
@@ -137,7 +138,7 @@ harness review prune [--dry-run]        # delete ledgers of branches that exist 
 - **`open: true`:** the finding still needs attention. This covers confirmed findings and fixes whose commit is not in the branch yet.
 - **`rewritten: true`:** the reviewed commit is no longer in the branch history, for example after a rebase. The finding still counts.
 
-The findings live in a ledger file inside the Git directory. Git never tracks it, and every worktree of the repository shares it. `/land` deletes it once the branch merges, with `harness review remove`. A pull request merged on GitHub, closed, or only reviewed by number never reaches `/land`, so `harness review prune` deletes every ledger whose branch exists neither locally nor on a remote. A fork's `pr-<n>` ledger has no local branch and goes even while that pull request is open, so run `--dry-run` first. Both commands leave a directory alone while it still records a review worktree.
+The findings live in a ledger file inside the Git directory. Git never tracks it, and every worktree of the repository shares it. `/land` deletes it once the branch merges, with `harness review remove`. A pull request merged on GitHub, closed, or only reviewed by number never reaches `/land`, so `harness review prune` deletes every ledger whose branch exists neither locally nor on a remote. A fork's `pr-<n>` ledger has no local branch and goes even while that pull request is open, so run `--dry-run --forge` first, which marks each one whose pull request is still open. Both commands leave a directory alone while it still records a review worktree.
 
 ### What each disposition means
 
@@ -168,6 +169,7 @@ Run `harness review record --help` for every flag.
 
 ```sh
 harness worktree audit                             # every linked worktree and whether it is safe to retire
+harness worktree audit --forge                     # also each branch's PR, and the head to retire a merged one into
 harness worktree retire ../my-task                 # remove the worktree and its landed branch
 harness worktree retire ../my-task --keep-branch   # remove only the worktree
 harness worktree retire --branch feat/x            # delete a landed branch that no worktree holds
@@ -187,7 +189,7 @@ harness worktree retire --branch feat/x            # delete a landed branch that
 
 `retire` refuses, and changes nothing, in every state but `safe`. Each refusal names the flag that answers it: `--allow-ignored` once you have checked the ignored files are build output, `--save-patch <file>` to keep uncommitted work as a patch, or `--keep-branch` to leave the branch. It never removes the main worktree.
 
-A branch has landed when it is an ancestor of the default branch, or when merging it would change nothing, which is how a squash merge reads. If the default branch later rewrote the same lines, the branch reads as `unlanded` even though its PR merged. Pass `--into <ref>` to compare against another ref. Neither command fetches, so run `git fetch --prune` first.
+A branch has landed when it is an ancestor of the default branch, or when merging it would change nothing, which is how a squash merge reads. If the default branch later rewrote the same lines, the branch reads as `unlanded` even though its PR merged. Pass `--into <ref>` to compare against another ref. `audit --forge` reads each branch's PR through `gh`: an open PR marks its row held, and for an `unlanded` branch whose PR merged it fetches that PR's head and prints it under `INTO`, so `retire --into <that head>` can prove the branch holds nothing the merged PR lacked. Otherwise neither command fetches, so run `git fetch --prune` first.
 
 Run `harness worktree audit --help` and `harness worktree retire --help` for every flag.
 

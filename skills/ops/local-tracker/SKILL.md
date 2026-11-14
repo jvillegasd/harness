@@ -39,4 +39,4 @@ Commit only changed tracker files under the existing authority, using `docs(trac
 
 ## Frontier
 
-Scan all configured feature issue files and promoted single-slice specs. Ready means mapped `ready_for_agent` with every same-feature blocker `done` and any explicit cross-feature dependency satisfied. Missing acceptance/state or unverified merge evidence keeps an item out of the frontier. Local mode installs no lifecycle workflow or reconciler; file edits emit no issue events.
+Scan all configured feature issue files and promoted single-slice specs. For same-feature blockers, run `harness tickets frontier --dir <spec_home>/<feature-slug>/issues`, which counts a `Status: done` file as done. Ready means in its `ready` list, mapped `ready_for_agent`, and with any explicit cross-feature dependency satisfied. Missing acceptance/state or unverified merge evidence keeps an item out of the frontier. Local mode installs no lifecycle workflow or reconciler; file edits emit no issue events.

@@ -699,3 +699,26 @@ esac
 		t.Fatal(calls, r.stdout)
 	}
 }
+
+// TestSkillsNewAndMoveCommand proves the CLI is wired to local skill creation and moves: a new skill passes verify with both links, a move repoints them, and a refused move exits 1.
+func TestSkillsNewAndMoveCommand(t *testing.T) {
+	lr := newLockRun(t)
+	for _, g := range []string{"support", "ops"} {
+		if err := os.MkdirAll(filepath.Join(lr.root, "skills", g), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r := ok(t, lr.harness(t, "skills", "new", "demo", "support", "--guarded"), "skills new")
+	if !strings.Contains(r.stdout, "created skills/support/demo") {
+		t.Errorf("new printed %q", r.stdout)
+	}
+	ok(t, lr.harness(t, "skills", "verify"), "skills verify after new")
+	ok(t, lr.harness(t, "skills", "move", "demo", "ops"), "skills move")
+	if got, err := os.Readlink(filepath.Join(lr.root, ".agents", "skills", "demo")); err != nil || got != "../../skills/ops/demo" {
+		t.Errorf(".agents/skills/demo = %q, %v", got, err)
+	}
+	ok(t, lr.harness(t, "skills", "verify"), "skills verify after move")
+	if r := lr.harness(t, "skills", "move", "demo", "ops"); r.code != 1 {
+		t.Errorf("a move onto the current group exited %d", r.code)
+	}
+}
