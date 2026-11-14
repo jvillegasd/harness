@@ -87,13 +87,13 @@ func literalWords(command string) ([]string, bool) {
 // secretGuardReason tells the agent why the call was refused and what stays open.
 const secretGuardReason = "Env files hold secrets: no agent may read, search, edit, or name one in a command, except .env.example, .env.local, and .env.<mode>.local. Work from .env.example, or ask the human for the value."
 
-// SecretGuard is the PreToolUse hook every Claude tool call passes through, the main session and every subagent alike. It denies a call that names a secret env file (envSecret) in a file tool's path or glob, or anywhere in a Bash command, and otherwise prints nothing, so the client's own permission rules still decide. Claude Code cannot express this as rules, since a deny always beats an allow. It reads names only: a command that reaches a secret without naming it, such as a recursive search of a directory or a glob like .e*, is not caught.
+// SecretGuard is the PreToolUse hook every Claude tool call passes through, the main session and every subagent alike. It denies a call that names a secret env file (envSecret) in a file tool's path or glob, or anywhere in a Bash command, and otherwise prints nothing, so the client's own permission rules still decide. Claude Code cannot express this as rules, since a deny always beats an allow. A Bash command is also checked with its quotes, backslashes, and backticks removed, since the shell joins quoted fragments back into the one name it opens. It decodes the whole input with no size cap, because a capped decode would deny every large Write to an ordinary file. It reads names only: a command that reaches a secret without naming it, such as a recursive search of a directory or a glob like .e*, is not caught.
 func SecretGuard(input io.Reader, output io.Writer) int {
 	var request struct {
 		Tool  string         `json:"tool_name"`
 		Input map[string]any `json:"tool_input"`
 	}
-	if err := json.NewDecoder(io.LimitReader(input, 1<<20)).Decode(&request); err != nil || request.Tool == "" {
+	if err := json.NewDecoder(input).Decode(&request); err != nil || request.Tool == "" {
 		return denySecret(output)
 	}
 	keys := []string{"file_path", "notebook_path", "path", "glob"}
@@ -105,7 +105,11 @@ func SecretGuard(input io.Reader, output io.Writer) int {
 	}
 	for _, key := range keys {
 		text, _ := request.Input[key].(string)
-		if slices.ContainsFunc(nameParts(text), envSecret) {
+		parts := nameParts(text)
+		if request.Tool == "Bash" {
+			parts = append(parts, nameParts(strings.NewReplacer(`'`, "", `"`, "", `\`, "", "`", "").Replace(text))...)
+		}
+		if slices.ContainsFunc(parts, envSecret) {
 			return denySecret(output)
 		}
 	}

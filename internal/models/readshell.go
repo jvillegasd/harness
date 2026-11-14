@@ -119,8 +119,9 @@ func credentialShaped(arg string) bool {
 	return false
 }
 
-// envSecret reports whether a name is an env file agents may not touch: every `.env*` name except the example template and the files explicitly named local (.env.local and .env.<mode>.local).
+// envSecret reports whether a name is an env file agents may not touch: every `.env*` name except the example template and the files explicitly named local (.env.local and .env.<mode>.local). It compares the lowercased name, because a case-insensitive file system such as macOS's opens the same file for an uppercase or mixed-case spelling.
 func envSecret(name string) bool {
+	name = strings.ToLower(name)
 	if !strings.HasPrefix(name, ".env") {
 		return false
 	}
