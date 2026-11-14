@@ -91,3 +91,28 @@ func TestPrStatusCommand(t *testing.T) {
 		t.Errorf("an unreadable forge exited %d with stdout %q", r.code, r.stdout)
 	}
 }
+
+// TestPrThreadsCommand proves the CLI is wired to the thread writes: a reply reaches gh as one argument and prints the thread read back, and a foreign id is refused.
+func TestPrThreadsCommand(t *testing.T) {
+	_, _, run := prRepo(t)
+	log := filepath.Join(t.TempDir(), "gh.log")
+	body := filepath.Join(t.TempDir(), "reply.md")
+	text := "it's `fixed`; \"see\" $HOME\n"
+	if err := os.WriteFile(body, []byte(text), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The shim records each argument on its own line, then answers with one open thread.
+	forge := `"api graphql") for a in "$@"; do printf '%s\n--\n' "$a" >> '` + log + `'; done; echo '{"data":{"repository":{"pullRequest":{"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{"id":"T1","isResolved":false,"comments":{"totalCount":1,"nodes":[{"body":"b","url":"u"}]}}]}}}}}';;
+`
+	r := run(forge, "pr", "threads", "reply", "7", "T1", "--body-file", body)
+	if r.code != 0 || !strings.Contains(r.stdout, `"id": "T1"`) {
+		t.Fatalf("reply exited %d: %s %s", r.code, r.stdout, r.stderr)
+	}
+	raw, _ := os.ReadFile(log)
+	if !strings.Contains(string(raw), "\n--\nbody="+text+"\n--\n") {
+		t.Errorf("gh did not get the body as one argument: %q", raw)
+	}
+	if r := run(forge, "pr", "threads", "resolve", "7", "T9"); r.code != 1 || !strings.Contains(r.stderr, "T9") {
+		t.Errorf("a foreign id exited %d: %s", r.code, r.stderr)
+	}
+}

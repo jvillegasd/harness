@@ -14,7 +14,22 @@ import (
 const prUsage = `Usage: harness pr <command> [arguments]
 
 Commands:
-  status  Report whether pull requests are ready to merge, and what blocks them
+  status   Report whether pull requests are ready to merge, and what blocks them
+  threads  Reply to or resolve a pull request's review threads
+`
+
+const threadsUsage = `Usage: harness pr threads reply <pr> <thread id> --body-file <file>
+       harness pr threads resolve <pr> <thread id>...
+
+reply posts the file's exact text as a reply on one review thread; the text
+never passes through a shell. resolve marks each named thread resolved, and
+leaves one already resolved as it is. Thread ids are the ones harness pr
+status lists. Every id must belong to the pull request, and a reply's file
+must hold text, before anything is written. Each prints the threads as read
+back from the forge, as JSON.
+
+Both write to the forge, so run them only under the authority the work
+already has for its pull request; the commands grant none.
 `
 
 const statusUsage = `Usage: harness pr status [--stack] [--watch [--interval <s>] [--timeout <s>]] [<pr>...]
@@ -67,6 +82,8 @@ func PrCommand(args []string, stdout, stderr io.Writer) int {
 		return 0
 	case "status":
 		return status(args[1:], stdout, stderr)
+	case "threads":
+		return threads(args[1:], stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "harness pr: unknown command %q; run harness pr --help\n", args[0])
 	return 2
@@ -155,4 +172,66 @@ func cwdEnv() (Env, error) {
 		return Env{}, err
 	}
 	return Env{Dir: cwd, Forge: Gh(cwd), State: statefile.Path(home)}, nil
+}
+
+func threads(args []string, stdout, stderr io.Writer) int {
+	usage := func(format string, a ...any) int {
+		fmt.Fprintf(stderr, "harness pr threads: "+format+"; run harness pr threads --help\n", a...)
+		return 2
+	}
+	var body string
+	var rest []string
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "-h", "--help":
+			fmt.Fprint(stdout, threadsUsage)
+			return 0
+		case "--body-file":
+			if i+1 >= len(args) {
+				return usage("--body-file takes a file")
+			}
+			i++
+			body = args[i]
+		default:
+			rest = append(rest, args[i])
+		}
+	}
+	if len(rest) < 3 || rest[0] != "reply" && rest[0] != "resolve" {
+		return usage("give reply or resolve, a pull request number, and thread ids")
+	}
+	number, err := strconv.Atoi(rest[1])
+	if err != nil || number <= 0 {
+		return usage("%q is not a pull request number", rest[1])
+	}
+	ids := rest[2:]
+	switch {
+	case rest[0] == "reply" && (len(ids) != 1 || body == ""):
+		return usage("reply takes one thread id and --body-file")
+	case rest[0] == "resolve" && body != "":
+		return usage("resolve takes no --body-file")
+	}
+	e, err := cwdEnv()
+	var out any
+	if err == nil {
+		if rest[0] == "reply" {
+			var state ThreadState
+			if state, err = Reply(e, number, ids[0], body); err == nil {
+				out = state
+			}
+		} else {
+			var states []ThreadState
+			if states, err = Resolve(e, number, ids); states != nil {
+				out = states
+			}
+		}
+	}
+	if out != nil {
+		raw, _ := json.MarshalIndent(out, "", "  ")
+		fmt.Fprintln(stdout, string(raw))
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness pr threads %s: %v\n", rest[0], err)
+		return 1
+	}
+	return 0
 }

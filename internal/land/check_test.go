@@ -26,6 +26,9 @@ type fixture struct {
 	resolved  map[int]int    // resolved review threads listed before the unresolved ones, beyond the one always there
 	reviews   map[int]string // pages of the reviews endpoint
 	calls     []string       // every gh call, in order
+	// resolvedIDs and replies are what the thread mutations wrote, by thread id.
+	resolvedIDs map[string]bool
+	replies     map[string][]string
 }
 
 func setup(t *testing.T) *fixture {
@@ -35,7 +38,7 @@ func setup(t *testing.T) *fixture {
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(home, "gitconfig"))
 	base := t.TempDir()
-	f := &fixture{t: t, dir: filepath.Join(base, "work"), state: filepath.Join(home, "state.json"), pulls: map[int]*pull{}, checks: map[int]string{}, checksErr: map[int]error{}, threads: map[int]int{}, resolved: map[int]int{}, reviews: map[int]string{}}
+	f := &fixture{t: t, dir: filepath.Join(base, "work"), state: filepath.Join(home, "state.json"), pulls: map[int]*pull{}, checks: map[int]string{}, checksErr: map[int]error{}, threads: map[int]int{}, resolved: map[int]int{}, reviews: map[int]string{}, resolvedIDs: map[string]bool{}, replies: map[string][]string{}}
 	f.git(base, "init", "-q", "--bare", "-b", "main", "origin.git")
 	f.git(base, "clone", "-q", "origin.git", "work")
 	var lines []string
@@ -129,14 +132,33 @@ func (f *fixture) forge(args ...string) ([]byte, error) {
 		}
 		return nil, errors.New("no required checks reported on the branch")
 	case "api graphql":
+		if q := args[3]; strings.HasPrefix(q, "query=mutation") {
+			thread := strings.TrimPrefix(args[5], "thread=")
+			if strings.Contains(q, "resolveReviewThread") {
+				f.resolvedIDs[thread] = true
+			} else {
+				f.replies[thread] = append(f.replies[thread], strings.TrimPrefix(args[7], "body="))
+			}
+			return []byte(`{"data":{}}`), nil
+		}
 		number, _ := strconv.Atoi(strings.TrimPrefix(args[len(args)-1], "number="))
 		// Like the forge, a page carries at most 100 threads and says whether more follow.
 		nodes := make([]string, 0, 1+f.resolved[number]+f.threads[number])
 		for i := 0; i < 1+f.resolved[number]; i++ {
-			nodes = append(nodes, `{"isResolved":true}`)
+			nodes = append(nodes, fmt.Sprintf(`{"id":"R%d","isResolved":true,"comments":{"totalCount":1,"nodes":[]}}`, i))
 		}
 		for i := 0; i < f.threads[number]; i++ {
-			nodes = append(nodes, fmt.Sprintf(`{"id":"T%d","isResolved":false,"path":"a.go","line":%d,"comments":{"nodes":[{"author":{"login":"rev"},"body":"fix \"this\"","url":"https://x/%d"}]}}`, i, i+3, i))
+			id := fmt.Sprintf("T%d", i)
+			comments, _ := json.Marshal(append([]string{`fix "this"`}, f.replies[id]...))
+			var bodies []string
+			_ = json.Unmarshal(comments, &bodies)
+			last, _ := json.Marshal(bodies[len(bodies)-1])
+			// The status query asks for the first comment, the read-back for the last.
+			first := `fix \"this\"`
+			if strings.Contains(args[3], "comments(last:1)") {
+				first = string(last[1 : len(last)-1])
+			}
+			nodes = append(nodes, fmt.Sprintf(`{"id":"%s","isResolved":%t,"path":"a.go","line":%d,"comments":{"totalCount":%d,"nodes":[{"author":{"login":"rev"},"body":"%s","url":"https://x/%d"}]}}`, id, f.resolvedIDs[id], i+3, len(bodies), first, i))
 		}
 		more := len(nodes) > 100
 		if more {
