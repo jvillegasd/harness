@@ -43,7 +43,7 @@ Commands:
   pr         Report a pull request's readiness and what blocks it
   tickets    Check, order, and publish ticket drafts
   setup      Probe and write a repository's tracker setup
-  eval       Plant and clean blinded skill comparisons
+  eval       Plant, run, and clean blinded skill comparisons
 `
 
 func run(args []string, stdout, stderr io.Writer) int {

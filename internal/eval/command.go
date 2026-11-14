@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"text/tabwriter"
 )
 
 const usage = `Usage: harness eval <command> [arguments]
@@ -17,6 +18,7 @@ the records live under ~/.harness/eval/<run id>/, outside every candidate.
 
 Commands:
   plant  Create the candidate directories for a variant and a baseline skill
+  run    Start one headless client session in each candidate directory
   clean  Delete one run's directories, key, and records
 `
 
@@ -34,6 +36,30 @@ skills are never touched.
 Print the run id. The label key, mapping each neutral label to its arm, and
 the manifest of directories are written to ~/.harness/eval/<run id>/; give the
 judge labels, never the key.
+`
+
+const runUsage = `Usage: harness eval run <run id> --prompt-file <file> --model <model>... [--dry-run]
+
+Start one headless client session per planted directory and --model, every one
+with the prompt file's exact text, in the mode that lets the client edit only
+its own directory:
+
+  claude    claude -p --permission-mode acceptEdits --model <m> --session-id <id>, prompt on stdin
+  codex     codex exec --sandbox workspace-write --skip-git-repo-check --model <m> -, prompt on stdin
+  opencode  opencode run --auto --model <m> <prompt>, under the planted opencode.json
+
+The first model runs in the planted directories; each later model runs in a
+fresh copy of each, with its own label, so every model appears in both arms.
+All sessions run at once. When all have finished, it prints each label's
+model, status, output, and session record, and saves them to
+~/.harness/eval/<run id>/sessions.json. Outputs are saved by label under
+~/.harness/eval/<run id>/outputs/, outside every candidate directory. A session
+that fails is recorded and named, the rest still run, and the command exits 1.
+A run runs once.
+
+  --model    A model to run, repeatable
+  --dry-run  Print every command and start nothing, so the human can approve
+             the model budget first
 `
 
 const cleanUsage = `Usage: harness eval clean <run id>
@@ -55,6 +81,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return 0
 	case "plant":
 		return plant(args[1:], stdout, stderr)
+	case "run":
+		return runCommand(args[1:], stdout, stderr)
 	case "clean":
 		return clean(args[1:], stdout, stderr)
 	}
@@ -154,6 +182,71 @@ func clean(args []string, stdout, stderr io.Writer) int {
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness eval clean: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
+func runCommand(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("run", flag.ContinueOnError)
+	var o RunOptions
+	flags.StringVar(&o.PromptFile, "prompt-file", "", "")
+	flags.Func("model", "", func(v string) error {
+		if v == "" {
+			return errors.New("empty model")
+		}
+		o.Models = append(o.Models, v)
+		return nil
+	})
+	flags.BoolVar(&o.DryRun, "dry-run", false, "")
+	// The run id may come before the flags.
+	run := ""
+	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
+		run, args = args[0], args[1:]
+	}
+	if code := parse(flags, args, runUsage, stdout, stderr); code >= 0 {
+		return code
+	}
+	rest := flags.Args()
+	if run == "" && len(rest) > 0 {
+		run, rest = rest[0], rest[1:]
+	}
+	switch {
+	case run == "" || len(rest) != 0:
+		fmt.Fprintln(stderr, "harness eval run: name one run id; run harness eval run --help")
+		return 2
+	case o.PromptFile == "" || len(o.Models) == 0:
+		fmt.Fprintln(stderr, "harness eval run: --prompt-file and at least one --model are required; run harness eval run --help")
+		return 2
+	}
+	h, ok := home("run", stderr)
+	if !ok {
+		return 1
+	}
+	sessions, err := Run(h, run, o, stdout)
+	if err != nil {
+		fmt.Fprintf(stderr, "harness eval run: %v\n", err)
+		return 1
+	}
+	if o.DryRun {
+		return 0
+	}
+	table := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(table, "LABEL\tMODEL\tSTATUS\tOUTPUT\tRECORD")
+	failed := 0
+	for _, s := range sessions {
+		record := s.Record
+		if record == "" {
+			record = "-"
+		}
+		fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\n", s.Label, s.Model, s.Status, s.Output, record)
+		if s.Status != "ok" {
+			failed++
+			fmt.Fprintf(stderr, "harness eval run: %s failed (exit %d) %s\n", s.Label, s.Exit, s.Error)
+		}
+	}
+	table.Flush()
+	if failed > 0 {
 		return 1
 	}
 	return 0

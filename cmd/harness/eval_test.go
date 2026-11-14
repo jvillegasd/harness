@@ -53,3 +53,52 @@ func TestEvalPlantAndCleanCommand(t *testing.T) {
 		t.Errorf("clean left %v", entries)
 	}
 }
+
+// TestEvalRunCommand proves the CLI is wired to the runs: a dry run prints each command and starts nothing, and a run starts the stand-in client in each planted directory and prints its label.
+func TestEvalRunCommand(t *testing.T) {
+	base := t.TempDir()
+	home, root, skill, bin := filepath.Join(base, "home"), filepath.Join(base, "scratch"), filepath.Join(base, "tidy"), filepath.Join(base, "bin")
+	for _, dir := range []string{home, skill, bin} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	log := filepath.Join(base, "started")
+	files := map[string]string{
+		filepath.Join(skill, "SKILL.md"): "---\nname: tidy\n---\n",
+		filepath.Join(base, "ask.md"):    "Tidy up.\n",
+		filepath.Join(bin, "claude"):     "#!/bin/sh\npwd >> '" + log + "'\ncat >/dev/null\necho done\n",
+	}
+	for path, body := range files {
+		if err := os.WriteFile(path, []byte(body), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run := strings.TrimSpace(evalRun(t, home, root, "plant", "--variant", skill, "--baseline", skill, "--client", "claude", "--runs", "1").stdout)
+	runWith := func(args ...string) result {
+		cmd := exec.Command(binary, append([]string{"eval", "run", run, "--prompt-file", filepath.Join(base, "ask.md"), "--model", "sonnet"}, args...)...)
+		cmd.Dir = home
+		cmd.Env = []string{"HOME=" + home, "HARNESS_SCRATCH_ROOT=" + root, "PATH=" + bin + ":/usr/bin:/bin"}
+		var stdout, stderr strings.Builder
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		code := 0
+		if exit, ok := cmd.Run().(*exec.ExitError); ok {
+			code = exit.ExitCode()
+		}
+		return result{stdout.String(), stderr.String(), code}
+	}
+	if r := runWith("--dry-run"); r.code != 0 || strings.Count(r.stdout, "claude -p --permission-mode acceptEdits --model sonnet") != 2 {
+		t.Fatalf("dry run exited %d: %s %s", r.code, r.stdout, r.stderr)
+	}
+	if _, err := os.Stat(log); err == nil {
+		t.Fatal("a dry run started a client")
+	}
+	r := runWith()
+	if r.code != 0 || !strings.Contains(r.stdout, "r1") || !strings.Contains(r.stdout, "r2") {
+		t.Fatalf("run exited %d: %s %s", r.code, r.stdout, r.stderr)
+	}
+	raw, _ := os.ReadFile(log)
+	if strings.Count(string(raw), root) != 2 {
+		t.Errorf("clients started in %q", raw)
+	}
+}

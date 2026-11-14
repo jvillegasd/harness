@@ -152,6 +152,7 @@ func TestCommandHelpMatrix(t *testing.T) {
 		{"setup", "tracker"},
 		{"eval"},
 		{"eval", "plant"},
+		{"eval", "run"},
 		{"eval", "clean"},
 		{"resume"},
 	}
@@ -300,6 +301,10 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"eval", "plant", "--variant", "a", "--baseline", "b", "--client", "claude"},
 		{"eval", "clean"},
 		{"eval", "clean", "a", "b"},
+		{"eval", "run"},
+		{"eval", "run", "x", "--model", "m"},
+		{"eval", "run", "x", "--prompt-file", "p"},
+		{"eval", "run", "x", "y", "--prompt-file", "p", "--model", "m"},
 		{"resume", "extra"},
 	}
 	for _, want := range args {
