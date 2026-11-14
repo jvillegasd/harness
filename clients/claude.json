@@ -4,23 +4,19 @@
       "Read(~/.claude/skills/**)"
     ],
     "deny": [
-      "Read(**/.env)",
-      "Read(**/.env.prod*)",
-      "Read(**/.env.stag*)",
-      "Read(**/.dev.vars*)",
-      "Read(**/*.pem)",
-      "Read(**/*.key)",
-      "Read(**/secrets/**)",
-      "Read(**/credentials/**)",
-      "Read(**/.aws/**)",
-      "Read(**/.ssh/**)",
-      "Read(**/config/database.yml)",
-      "Read(**/config/credentials.json)",
-      "Read(**/.npmrc)",
-      "Read(**/.pypirc)",
-      "Edit(**/.env*)",
-      "Edit(**/secrets/**)",
-      "Edit(**/.ssh/**)",
+      "Read(//**/.dev.vars*)",
+      "Read(//**/*.pem)",
+      "Read(//**/*.key)",
+      "Read(//**/secrets/**)",
+      "Read(//**/credentials/**)",
+      "Read(//**/.aws/**)",
+      "Read(//**/.ssh/**)",
+      "Read(//**/config/database.yml)",
+      "Read(//**/config/credentials.json)",
+      "Read(//**/.npmrc)",
+      "Read(//**/.pypirc)",
+      "Edit(//**/secrets/**)",
+      "Edit(//**/.ssh/**)",
       "Bash(git reset --hard:*)",
       "Bash(git reset --keep:*)",
       "Bash(git clean:*)",
@@ -51,6 +47,17 @@
     "command": "\"$HOME/.local/bin/harness\" statusline"
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.local/bin/harness\" models secret-guard || exit 2"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "compact",

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -81,4 +82,49 @@ func literalWords(command string) ([]string, bool) {
 		words = append(words, word.String())
 	}
 	return words, true
+}
+
+// secretGuardReason tells the agent why the call was refused and what stays open.
+const secretGuardReason = "Env files hold secrets: no agent may read, search, edit, or name one in a command, except .env.example, .env.local, and .env.<mode>.local. Work from .env.example, or ask the human for the value."
+
+// SecretGuard is the PreToolUse hook every Claude tool call passes through, the main session and every subagent alike. It denies a call that names a secret env file (envSecret) in a file tool's path or glob, or anywhere in a Bash command, and otherwise prints nothing, so the client's own permission rules still decide. Claude Code cannot express this as rules, since a deny always beats an allow. It reads names only: a command that reaches a secret without naming it, such as a recursive search of a directory or a glob like .e*, is not caught.
+func SecretGuard(input io.Reader, output io.Writer) int {
+	var request struct {
+		Tool  string         `json:"tool_name"`
+		Input map[string]any `json:"tool_input"`
+	}
+	if err := json.NewDecoder(io.LimitReader(input, 1<<20)).Decode(&request); err != nil || request.Tool == "" {
+		return denySecret(output)
+	}
+	keys := []string{"file_path", "notebook_path", "path", "glob"}
+	switch request.Tool {
+	case "Bash":
+		keys = []string{"command"}
+	case "Glob":
+		keys = append(keys, "pattern")
+	}
+	for _, key := range keys {
+		text, _ := request.Input[key].(string)
+		if slices.ContainsFunc(nameParts(text), envSecret) {
+			return denySecret(output)
+		}
+	}
+	return 0
+}
+
+// nameParts splits text at every character a file name in a path, a git revision, or a shell word does not carry, so each piece is one candidate name.
+func nameParts(text string) []string {
+	return strings.FieldsFunc(text, func(r rune) bool {
+		return unicode.IsSpace(r) || strings.ContainsRune("/:=\"'`$;&|<>(){},\\!#~", r)
+	})
+}
+
+func denySecret(output io.Writer) int {
+	err := json.NewEncoder(output).Encode(map[string]any{"hookSpecificOutput": map[string]string{
+		"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": secretGuardReason,
+	}})
+	if err != nil {
+		return 2
+	}
+	return 0
 }
