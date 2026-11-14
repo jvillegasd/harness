@@ -8,6 +8,7 @@ import (
 
 	"github.com/jvillegasd/harness/internal/bench"
 	"github.com/jvillegasd/harness/internal/changemap"
+	"github.com/jvillegasd/harness/internal/eval"
 	"github.com/jvillegasd/harness/internal/install"
 	"github.com/jvillegasd/harness/internal/land"
 	"github.com/jvillegasd/harness/internal/models"
@@ -42,6 +43,7 @@ Commands:
   pr         Report a pull request's readiness and what blocks it
   tickets    Check, order, and publish ticket drafts
   setup      Probe and write a repository's tracker setup
+  eval       Plant and clean blinded skill comparisons
 `
 
 func run(args []string, stdout, stderr io.Writer) int {
@@ -78,6 +80,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return tickets.Command(args[1:], stdout, stderr)
 	case "setup":
 		return setup.Command(args[1:], stdout, stderr)
+	case "eval":
+		return eval.Command(args[1:], stdout, stderr)
 	case "resume":
 		return resume.Command(args[1:], stdout, stderr)
 	case "-h", "--help", "help":
