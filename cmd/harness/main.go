@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/jvillegasd/harness/internal/attempts"
 	"github.com/jvillegasd/harness/internal/bench"
 	"github.com/jvillegasd/harness/internal/changemap"
 	"github.com/jvillegasd/harness/internal/install"
@@ -38,6 +39,7 @@ Commands:
   worktree   Audit and retire linked worktrees without losing work
   land       Report whether pull requests can land, and how
   pr         Report a pull request's readiness and what blocks it
+  attempts   Keep the attempt log for measured loops
 `
 
 func run(args []string, stdout, stderr io.Writer) int {
@@ -54,6 +56,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return install.UninstallCommand(args[1:], stdout, stderr)
 	case "bench":
 		return bench.Command(args[1:], stdout, stderr)
+	case "attempts":
+		return attempts.Command(args[1:], stdout, stderr)
 	case "skills":
 		return skills.Command(args[1:], stdout, stderr)
 	case "statusline":
