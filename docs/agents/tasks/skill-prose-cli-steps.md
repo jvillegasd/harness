@@ -1,7 +1,7 @@
 # Skill prose to CLI steps, first half
 
 - Branch: `feat/skill-prose-cli-steps` (integration branch, base `main` at 13c8ff9; ticket-draft commits on it net to no diff)
-- Status: built, reviewed at medium, ready locally; not pushed
+- Status: shipped for review
 - Request (`/work`, this session): "on the first half of the tickets"
 - Scope: issues #192 to #201, the first 10 of the 19 published tickets #192 to #210. #202 to #210 are the second half.
 
@@ -52,6 +52,12 @@ Finish: change-map, review at `harness review level` (medium), open-pr only when
 
 ## State and next action
 
-Playbook: build, step 10
-Next: delivery only on the human's request (`open-pr`). Review at medium found 7: 6 fixed in 92492a4, 1 dropped (no repro); `harness review stamp` prints `Reviewed: 13c8ff9..92492a4`.
+Playbook: build, step 10 (open-pr)
+Next: the human reads and merges the pull request; then `/land`. Review at medium found 7: 6 fixed in 92492a4, 1 dropped (no repro); `harness review stamp` prints `Reviewed: 13c8ff9..92492a4`.
 Gotchas: the installed `harness` predates these commands; use `go run ./cmd/harness` until `harness install` runs. #198 asks `verification` step 3 to drop a diff-and-hash recipe it never had.
+
+## Evidence
+
+- `go vet ./...`, `test -z "$(gofmt -l .)"`, `go test ./...`, `go build ./...`, `git diff --check` at 92492a4: all pass.
+- Review at medium (`review-bugs`, 1 of 2 calls): 7 findings, 6 fixed in 92492a4 with red-then-green tests, 1 dropped (no repro).
+- Not run: any command against the real forge; every gh call is tested against a fake.
