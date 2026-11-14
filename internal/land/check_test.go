@@ -170,6 +170,10 @@ func (f *fixture) forge(args ...string) ([]byte, error) {
 			return list(func(p *pull) bool { return p.BaseRefName == base })
 		}
 		return list(func(p *pull) bool { return p.HeadRefName == arg("--head") })
+	case "pr edit":
+		number, _ := strconv.Atoi(args[2])
+		f.pulls[number].BaseRefName = arg("--base")
+		return nil, nil
 	case "api repos/{owner}/{repo}/collaborators/rev/permission":
 		return []byte("write\n"), nil
 	case "api --paginate":

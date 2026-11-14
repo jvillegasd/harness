@@ -13,6 +13,33 @@ Commands:
   check   Report whether pull requests can land, and how
   sync    Fetch from origin and fast-forward the local default branch
   finish  Clean up after merged pull requests
+  repair  Move a stacked dependent onto the default branch after a squash merge
+`
+
+const repairUsage = `Usage: harness land repair <dependent pr> --landed <pr>
+       harness land repair <dependent pr> --push
+
+After a squash merge, an open pull request based on the landed head still
+carries the absorbed commits. Repair moves that one dependent onto the
+default branch in two steps, and refuses whenever it cannot prove the
+dependent's own change survives intact.
+
+With --landed, it reads, decides, and rebases locally. It refuses, changing
+nothing, when the dependent is not the forge user's, comes from a fork, or
+holds a merge commit; when no commit it was built on can be found (the
+landed head when that is an ancestor, else the last of its commits whose
+patch the landed head holds); and when anything it holds up to that boundary
+is not already on the default branch. Only then does it retarget the
+dependent to the default branch and rebase its commits past the boundary, in
+the worktree holding its branch or a temporary detached one with hooks
+disabled. A conflict, or an own change that is empty or differs after the
+rebase, puts the branch back and exits 1. It prints the boundary, the
+recorded head, the rebased head, and the worktree where the branch's checks
+can run.
+
+With --push, it publishes the rebased head with a lease pinned to the
+recorded head, so a push by anyone since fails instead of being overwritten,
+and removes any temporary worktree.
 `
 
 const syncUsage = `Usage: harness land sync
@@ -118,6 +145,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return syncCommand(args[1:], stdout, stderr)
 	case "finish":
 		return finish(args[1:], stdout, stderr)
+	case "repair":
+		return repair(args[1:], stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "harness land: unknown command %q; run harness land --help\n", args[0])
 	return 2
@@ -230,5 +259,57 @@ func finish(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness land finish: %v\n", err)
 		return 1
 	}
+	return 0
+}
+
+func repair(args []string, stdout, stderr io.Writer) int {
+	usage := func(format string, a ...any) int {
+		fmt.Fprintf(stderr, "harness land repair: "+format+"; run harness land repair --help\n", a...)
+		return 2
+	}
+	dependent, landed, push := 0, 0, false
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; a {
+		case "-h", "--help":
+			fmt.Fprint(stdout, repairUsage)
+			return 0
+		case "--push":
+			push = true
+		case "--landed":
+			if i+1 < len(args) {
+				i++
+				landed, _ = strconv.Atoi(args[i])
+			}
+			if landed <= 0 {
+				return usage("--landed takes a pull request number")
+			}
+		default:
+			n, err := strconv.Atoi(a)
+			if err != nil || n <= 0 || dependent != 0 {
+				return usage("%q is not the one dependent pull request number or a flag", a)
+			}
+			dependent = n
+		}
+	}
+	if dependent == 0 || push == (landed != 0) {
+		return usage("give the dependent pull request and either --landed <pr> or --push")
+	}
+	e, err := cwdEnv()
+	if err != nil {
+		fmt.Fprintf(stderr, "harness land repair: %v\n", err)
+		return 1
+	}
+	var r Repair
+	if push {
+		r, err = PushRepair(e, dependent)
+	} else {
+		r, err = RepairDependent(e, dependent, landed)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness land repair: %v\n", err)
+		return 1
+	}
+	out, _ := json.MarshalIndent(r, "", "  ")
+	fmt.Fprintln(stdout, string(out))
 	return 0
 }

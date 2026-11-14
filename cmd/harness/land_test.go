@@ -92,3 +92,18 @@ func TestLandFinishCommand(t *testing.T) {
 		t.Errorf("the checkout moved to %q", got)
 	}
 }
+
+// TestLandRepairCommand proves the CLI is wired to the repair: a push with no repair waiting is refused, and a dependent that is someone else's is refused before any write.
+func TestLandRepairCommand(t *testing.T) {
+	_, head, run := prRepo(t)
+	if r := run("", "land", "repair", "7", "--push"); r.code != 1 || !strings.Contains(r.stderr, "no repair of #7 is waiting") {
+		t.Errorf("a push with nothing waiting exited %d: %s", r.code, r.stderr)
+	}
+	forge := `"repo view") echo '{"defaultBranchRef":{"name":"main"}}';;
+"api user") echo me;;
+"pr view") if [ "$3" = 7 ]; then echo '{"number":7,"state":"OPEN","headRefName":"` + branch + `","headRefOid":"` + head + `","baseRefName":"x","author":{"login":"someone"}}'; else echo '{"number":6,"state":"MERGED","headRefName":"x","headRefOid":"` + head + `","baseRefName":"main","author":{"login":"me"}}'; fi;;
+`
+	if r := run(forge, "land", "repair", "7", "--landed", "6"); r.code != 1 || !strings.Contains(r.stderr, "someone") || r.stdout != "" {
+		t.Errorf("someone else's dependent exited %d: %q %q", r.code, r.stdout, r.stderr)
+	}
+}
