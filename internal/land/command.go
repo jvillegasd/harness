@@ -4,10 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
-
-	"github.com/jvillegasd/harness/internal/statefile"
 )
 
 const usage = `Usage: harness land <command> [arguments]
@@ -114,15 +111,11 @@ func check(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness land check: %v\n", err)
 		return 1
 	}
-	cwd, err := os.Getwd()
+	e, err := cwdEnv()
 	if err != nil {
 		return fail(err)
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return fail(err)
-	}
-	checks, err := Run(Env{Dir: cwd, Forge: Gh(cwd), State: statefile.Path(home)}, numbers, stack, merge)
+	checks, err := Run(e, numbers, stack, merge)
 	if err != nil {
 		return fail(err)
 	}

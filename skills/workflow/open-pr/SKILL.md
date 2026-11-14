@@ -27,15 +27,12 @@ An explicit request to open or ship a PR covers these steps together (see the fl
 
 ## Readiness report
 
-The facts the human reads before merging, each taken at the PR's current head:
+The facts the human reads before merging, taken at the PR's current head. `harness pr status <n>` reports the forge gates, the review coverage, the ledger's open findings, and the unresolved threads, and its exit code names the first blocker. Report its verdict, and add the two facts it does not hold:
 
-- **Checks:** each required check's state, and mergeability.
-- **Review:** whether the `Reviewed:` line covers the head, or why no review ran.
 - **Verdict:** `verification`'s verdict line, or why none ran.
-- **Ledger:** open findings from `harness review list --head <head>`, and the dropped count.
 - **Limits:** material remaining limitations.
 
-Lead with `Ready to merge` only when every required check passed, the PR is mergeable, any required review covers the head, the verdict is not FAIL, and no finding is open; otherwise lead with `Not ready` and the first blocker.
+Lead with `Ready to merge` only when `harness pr status` exits 0 and the verdict is not FAIL; otherwise lead with `Not ready` and the first blocker it names.
 
 ## Output
 

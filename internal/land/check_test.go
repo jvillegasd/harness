@@ -25,6 +25,7 @@ type fixture struct {
 	threads   map[int]int    // unresolved review threads
 	resolved  map[int]int    // resolved review threads listed before the unresolved ones, beyond the one always there
 	reviews   map[int]string // pages of the reviews endpoint
+	calls     []string       // every gh call, in order
 }
 
 func setup(t *testing.T) *fixture {
@@ -90,6 +91,7 @@ func (f *fixture) push(p *pull) {
 }
 
 func (f *fixture) forge(args ...string) ([]byte, error) {
+	f.calls = append(f.calls, strings.Join(args, " "))
 	arg := func(flag string) string {
 		for i, a := range args {
 			if a == flag && i+1 < len(args) {
@@ -134,7 +136,7 @@ func (f *fixture) forge(args ...string) ([]byte, error) {
 			nodes = append(nodes, `{"isResolved":true}`)
 		}
 		for i := 0; i < f.threads[number]; i++ {
-			nodes = append(nodes, `{"isResolved":false}`)
+			nodes = append(nodes, fmt.Sprintf(`{"id":"T%d","isResolved":false,"path":"a.go","line":%d,"comments":{"nodes":[{"author":{"login":"rev"},"body":"fix \"this\"","url":"https://x/%d"}]}}`, i, i+3, i))
 		}
 		more := len(nodes) > 100
 		if more {
@@ -146,6 +148,8 @@ func (f *fixture) forge(args ...string) ([]byte, error) {
 			return list(func(p *pull) bool { return p.BaseRefName == base })
 		}
 		return list(func(p *pull) bool { return p.HeadRefName == arg("--head") })
+	case "api repos/{owner}/{repo}/collaborators/rev/permission":
+		return []byte("write\n"), nil
 	case "api --paginate":
 		number, _ := strconv.Atoi(strings.Split(args[2], "/")[4])
 		if raw, ok := f.reviews[number]; ok {
