@@ -163,6 +163,24 @@ harness review record --id <id> --disposition accepted --evidence "We want retri
 
 Run `harness review record --help` for every flag.
 
+### Commands the review skills run
+
+The review, `open-pr`, and `/land` skills call these instead of working the answers out by hand. You can run them to see what an agent saw:
+
+```sh
+harness review target 42                 # what a review of PR 42 reads: its base, commit, and ledger key
+harness review covers --base <base> --sha <sha> --level medium   # does a recorded review already cover this change?
+harness review stamp                     # the review line this branch's PR body should carry
+```
+
+| Command | What it answers or does |
+| --- | --- |
+| `target` | Resolves the current branch, a PR number or URL, another branch, or a `<base>..<sha>` range to the base, commit, and ledger key a review reads. It fetches what it needs and creates no branch or tag. A PR from a fork is keyed `pr-<n>` |
+| `covers` | Whether the latest `clean` review at that depth or deeper still covers the change. A rebase that changes no file's patch keeps its review. It also lists findings still open, and writes nothing |
+| `stamp` | Prints `Reviewed: <base>..<sha>` when a clean review covers the head and nothing is open, or `Review: not run (level <level>)` when the level skipped review. Otherwise it prints nothing, names the reason, and exits 1. This is the line `harness land check` reads back |
+| `worktree add`, `worktree retire` | Creates the one temporary worktree a review may use, outside your checkout with Git hooks off, and removes it later. Anything it holds is saved as a patch in the review directory before removal |
+| `snapshot` | Saves uncommitted work under the named paths as one patch and prints its digest, so a review of work not yet committed can be matched to exactly that content. It leaves your index and working tree as they were |
+
 ## Worktree commands
 
 `harness worktree` lists a repository's linked worktrees and removes one without losing work. `/land`, review, and `/build` use it to retire the worktrees they create, and `/cleanup` uses it to sweep the rest.
@@ -215,3 +233,120 @@ It prints one JSON verdict per PR. The fields you will read most:
 | `findings` | Open review findings and the ones you dismissed, each of which holds the merge |
 
 Without `--merge`, an open PR reads as `stop`. Run `harness land check --help` for every field.
+
+### After the merge
+
+`/land` runs these once a PR has merged. Each one is safe to run again.
+
+```sh
+harness land sync                     # fetch and fast-forward the local default branch
+harness land finish 19 20             # clean up after merged PRs 19 and 20
+harness land repair 24 --landed 23    # move PR 24 onto the default branch after PR 23 was squash-merged
+harness land repair 24 --push         # publish that move
+```
+
+- **`sync`** fast-forwards the default branch in the worktree that holds it, or moves the branch when none does. A default branch with commits `origin` lacks is reported and left alone.
+- **`finish`** refuses an unmerged PR before it removes anything. For each merged PR it removes the review directory, deletes the remote branch only when the PR is yours, not from a fork, and not the base of another open PR, and retires the local branch and worktree once they are proven landed. This checkout goes last. It prints each action as done or kept, with the reason.
+- **`repair`** fixes a PR that was stacked on one you squash-merged. With `--landed`, it rebases the dependent's own commits onto the default branch locally and refuses, changing nothing, when the PR is not yours, comes from a fork, holds a merge commit, or its own change would not survive intact. With `--push`, it publishes the result with a lease, so a push someone made in the meantime fails instead of being overwritten.
+
+## PR commands
+
+`harness pr` reports whether a PR is ready to merge and lets agents answer review threads. `open-pr` builds its readiness report from `pr status`, and `address-review` works through what it lists.
+
+```sh
+harness pr status                 # the PR of the branch checked out here
+harness pr status 19 20           # these PRs, in landing order
+harness pr status --stack 23      # PR 23 and every open PR under it
+harness pr status --watch 19      # wait while required checks are pending
+```
+
+It prints a JSON verdict per PR with the same holds and review coverage as `harness land check --merge`, plus every unresolved review thread and its author's permission. It writes nothing to GitHub. The exit code names the first PR's first blocker, in the order to work on them:
+
+| Exit code | First blocker |
+| --- | --- |
+| 0 | None, ready to merge |
+| 3 | A merge conflict |
+| 4 | An unresolved review thread |
+| 5 | A failing required check |
+| 6 | A pending required check, or mergeability GitHub is still computing |
+| 7 | Any other hold, such as a draft, a missing approval, a review that is not current, or an open finding |
+| 8 | `--watch` timed out (default 30 minutes) |
+
+`harness pr threads reply <pr> <thread id> --body-file <file>` posts a file's exact text as a reply, and `harness pr threads resolve <pr> <thread id>...` resolves threads. Both write to GitHub, so agents run them only under the authority they already have for that PR.
+
+## Skill commands
+
+Skills live in `skills/<group>/<name>/`, and clients call each one by its bare name. Every skill also has two links, `.agents/skills/<name>` and `.claude/skills/<name>`, which these commands keep correct.
+
+```sh
+harness skills new my-skill support             # a local skill with a starting body and both links
+harness skills new my-skill planning --guarded  # the same, but only callable by name
+harness skills move my-skill design             # move a skill to another group, keeping its history
+harness skills add <owner/repo> <name> <group>  # lock a third-party skill
+harness skills update                           # update every locked skill from upstream
+harness skills remove <name>                    # remove a locked skill and its lock entry
+harness skills verify                           # recheck every locked body's hash, offline
+```
+
+`--guarded` adds the invocation guard for each client, so no agent starts the skill on its own. `move` uses `git mv` and keeps a locked skill's hash. Both `new` and `move` refuse a name that exists, an unknown group, or the group a skill is already in, and write nothing.
+
+Locked skills come from other projects and change only through `add`, `update`, and `remove`. [Updating skills safely](#updating-skills-safely) covers what `update` refuses.
+
+## Ticket commands
+
+`/tickets` writes drafts to `docs/agents/tickets/<feature-slug>/`, one `<NN>-<slug>.md` file per ticket. These commands read them:
+
+```sh
+harness tickets check                      # validate every feature's drafts
+harness tickets check my-feature           # one feature
+harness tickets frontier my-feature        # which tickets are ready, done, and blocked
+harness tickets frontier my-feature --done 1,2
+harness tickets publish my-feature --dry-run
+harness tickets publish my-feature
+```
+
+- **`check`** prints each problem as `path:line: message`: a missing or empty section, a reused number, a blocker that is not in the feature, or a cycle. A draft needs a title and five sections: What to build, Acceptance criteria, Seam, Blocked by, and Out of scope.
+- **`frontier`** is how `/build` picks the next tickets. A ticket is done when `--done` names it or its draft says `Status: done`, and ready once every ticket blocking it is done.
+- **`publish`** creates GitHub issues, blockers first, with the ready or blocked label and native dependency links. It records each issue in its draft as it goes, so a rerun after a failure creates no duplicates, and removes a draft once its issue reads back correctly. It refuses a repository whose tracker is not GitHub. It writes to GitHub, so agents run it only when you ask to publish. `--dry-run` shows every issue, link, and label and writes nothing.
+
+## Tracker setup commands
+
+`setup-harness` runs these when you set up issue tracking for a repository. Choosing the mode stays with you.
+
+```sh
+harness setup probe                                          # the evidence, as JSON; changes nothing
+harness setup tracker --mode github
+harness setup tracker --mode local-markdown --spec-home docs/specs
+```
+
+`probe` reports the GitHub remote, the default branch and whether it is protected, the mode already configured, and any local spec tree. `tracker` writes `docs/agents/harness.json`, keeping your label names, `criticalPaths`, and keys it does not know. In GitHub mode it first checks `gh` is signed in, creates only the labels the repository lacks, and installs the lifecycle workflow and reconciler. Local mode reaches no forge. A second run with the same arguments changes nothing.
+
+## Eval commands
+
+The eval playbook in `/work` uses these to test whether a skill change changes agent behavior, with blinded sessions:
+
+```sh
+harness eval plant --variant <skill dir> --baseline <skill dir> --client claude --runs 3
+harness eval run <run id> --prompt-file prompt.md --model <a> --model <b> --dry-run
+harness eval run <run id> --prompt-file prompt.md --model <a> --model <b>
+harness eval clean <run id>
+```
+
+- **`plant`** makes `--runs` directories per version under `~/.scratch-projects` (or `$HARNESS_SCRATCH_ROOT`). Each looks like an ordinary project and holds one version of the skill where the client loads it. Your installed skills are never touched. The key that says which directory holds which version stays in `~/.harness/eval/<run id>/`, outside every candidate.
+- **`run`** starts one headless session per directory and model, each allowed to edit only its own directory, and saves the outputs by neutral label. Every model runs against both versions. `--dry-run` prints every command so you can approve the model budget first. A run runs once.
+- **`clean`** deletes the run's directories, key, and records, and nothing else.
+
+`harness bench` is the other half: it measures cost and friction in real sessions after a change ships. See [Bench](../bench/README.md).
+
+## Attempt log
+
+The hillclimb playbook in `/work` records every attempt with `harness attempts`:
+
+```sh
+harness attempts add --log ~/attempts.tsv --hypothesis "cache the index" --change "add LRU" \
+  --before 812 --after 640 --gate pass --outcome kept
+harness attempts list --log ~/attempts.tsv
+harness attempts list --log ~/attempts.tsv --json
+```
+
+The log is a tab-separated file outside the repository. `add` fills in the id, the time, and the change as a number and a percent. A value that is not a number, or an unknown `--gate` or `--outcome`, is refused and nothing is written.

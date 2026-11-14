@@ -198,9 +198,16 @@ Two options delete things for good:
 - `harness install --no-backup` deletes files in the way instead of archiving them.
 - `harness uninstall --clear-backups` deletes the archives.
 
-## Manage third-party skills
+## Manage skills
 
 Skills live in `skills/<group>/<name>/`. The group only organizes this repository. Clients call a skill by its name alone.
+
+Create or move a skill of your own with these commands, which also write the links each client reads:
+
+```sh
+harness skills new <name> <group> [--guarded]   # --guarded: callable only by name
+harness skills move <name> <group>
+```
 
 Skills taken from other projects are locked: `skills-lock.json` records a hash of each one, and you change them only through these commands, never by editing them.
 
@@ -211,7 +218,24 @@ harness skills remove <name>
 harness skills verify
 ```
 
-Read the upstream changes before you commit them. An install does not update locked skills.
+Read the upstream changes before you commit them. An install does not update locked skills. The [command-line reference](docs/cli.md#skill-commands) covers each command.
+
+## Commands the skills run
+
+Many skill steps are `harness` commands rather than written instructions, so they behave the same every time. You can run them yourself to see what an agent saw:
+
+| Command | What it does | Run by |
+| --- | --- | --- |
+| `harness pr status` | Whether a PR is ready to merge, and its first blocker | `open-pr`, `address-review` |
+| `harness land check`, `sync`, `finish`, `repair` | Whether a PR can land, then the cleanup after it merges | `/land` |
+| `harness review target`, `covers`, `stamp` | What a review reads, whether a past review still covers the change, and the PR's review line | `review`, `open-pr` |
+| `harness worktree audit`, `retire` | List worktrees and remove one without losing work | `/land`, `/cleanup`, `/build` |
+| `harness tickets check`, `frontier`, `publish` | Validate ticket drafts, pick the ready ones, publish them to GitHub | `/tickets`, `/build` |
+| `harness setup probe`, `tracker` | Gather the evidence for a tracker mode and write it | `setup-harness` |
+| `harness eval plant`, `run`, `clean` | Blinded comparisons of two versions of a skill | `/work`'s eval playbook |
+| `harness attempts add`, `list` | The log of measured attempts | `/work`'s hillclimb playbook |
+
+The [command-line reference](docs/cli.md) explains each one. `harness <command> --help` lists the flags.
 
 ## Contribute to the harness
 

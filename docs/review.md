@@ -109,7 +109,9 @@ Your own decisions are recorded too. When you say "this is intended" or "not wor
 
 ## Where results live
 
-Findings stay on your machine, in a ledger for each branch inside the Git directory. When a skill calls for a review and the ledger already holds one that covers the same commit at that level or deeper, the agent reports that review and does not run a second one. A review you ask for by name always runs. They never go into commits. A PR carries only one line, `Reviewed: <base>..<sha>`. `/land` deletes the ledger once the branch merges. The [`harness review` commands](cli.md#review-commands) show you how to read it.
+Findings stay on your machine, in a ledger for each branch inside the Git directory. They never go into commits. When a skill calls for a review and `harness review covers` finds one in the ledger that covers the same change at that level or deeper, the agent reports that review and does not run a second one. A rebase that changes no file's patch keeps its review. A review you ask for by name always runs.
+
+A PR carries only one line, printed by `harness review stamp`: `Reviewed: <base>..<sha>` when a clean review covers its head with nothing open, or `Review: not run (level <level>)` when your level skipped review. `/land` deletes the ledger once the branch merges. The [`harness review` commands](cli.md#review-commands) show you how to read it.
 
 At `medium` and `high`:
 

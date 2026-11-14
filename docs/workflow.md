@@ -94,6 +94,8 @@ The agent picks the playbook from the task:
 
 When a row names a skill, work mode runs that skill's own steps. It adds its checklist and its reply, never a second copy of the skill.
 
+Two playbooks lean on their own commands. The eval playbook plants blinded copies of a project with [`harness eval`](cli.md#eval-commands), runs one session per copy and model, and shows you the model budget with `--dry-run` before anything starts. The hillclimb playbook logs every attempt, kept or reverted, with [`harness attempts`](cli.md#attempt-log).
+
 How each kind of task ends:
 
 - **A code change** ends with a change summary (`change-map`) and a review at your review level. If you already asked for delivery, it goes on to `open-pr`.
@@ -190,7 +192,7 @@ stateDiagram-v2
 
 Publishing a PR never allows merging. You merge, then run `/land` to clean up.
 
-`/land` asks [`harness land check`](cli.md#land-commands) whether each PR can land and stops on anything it holds. On a PR someone else wrote, it merges and cleans up your side only: their remote branch stays, and a PR of theirs stacked on it is reported for them to rebase.
+`/land` asks [`harness land check`](cli.md#land-commands) whether each PR can land and stops on anything it holds. After the merge, `harness land finish` updates the default branch and removes the branch, worktree, and review records, and `harness land repair` moves a PR of yours that was stacked on a squash-merged one onto the default branch. On a PR someone else wrote, it merges and cleans up your side only: their remote branch stays, and a PR of theirs stacked on it is reported for them to rebase.
 
 `/land` cleans up the PR it lands. For everything else that piles up (a PR someone merged on GitHub, an abandoned branch, a run that died), run `/cleanup`. It lists every worktree with what removing it would delete, and removes only the ones you name.
 
@@ -202,7 +204,7 @@ The agent brings important decisions back to you. Small choices that are easy to
 - If the project has a verify skill (made with `/create-verification-skill`), a separate agent that never saw the code drives the changed features the way a user would. It returns PASS, PASS+NOTES, or FAIL. For a bugfix, it shows the bug on the old code and its absence on the new code.
 - [Review](review.md) runs according to your `harness review level`. At `medium` and `high`, a PR beyond docs or tests needs a review of its current changes. The readiness report shows whether it has one, and `/land merge` refuses to merge without it.
 
-A PR ends with a readiness report: required checks, whether it can merge, review coverage, the run-as-user verdict, and open findings.
+A PR ends with a readiness report: required checks, whether it can merge, review coverage, the run-as-user verdict, and open findings. The agent builds it from [`harness pr status`](cli.md#pr-commands), which you can run yourself on any PR. The PR body carries the review line `harness review stamp` prints, never one the agent wrote by hand.
 
 ### The stages
 
@@ -230,16 +232,16 @@ For longer work, the agent keeps the requirements, decisions, evidence, and next
 
 Use it when the work is settled enough to hand off. Resolve missing acceptance criteria, disputed test seams, or shared assumptions first.
 
-`/work` on a settled spec or set of tickets starts `/build` for you. A spec without tickets is first cut into them with `tickets`, as local drafts. Publishing still needs your request, and merging still needs `/land`. Under `/work` autopilot, your step-away request also counts as the request to publish.
+`/work` on a settled spec or set of tickets starts `/build` for you. A spec without tickets is first cut into them with `tickets`, as local drafts that [`harness tickets check`](cli.md#ticket-commands) validates. `/build` picks the next tickets with `harness tickets frontier`: those whose blockers are all done. Publishing still needs your request, and merging still needs `/land`. Under `/work` autopilot, your step-away request also counts as the request to publish.
 
 ## Optional tracking
 
-Ordinary coding needs no tracker. To set one up for a repository, run `setup-harness`. It offers two modes:
+Ordinary coding needs no tracker. To set one up for a repository, run `setup-harness`. It gathers the evidence with `harness setup probe`, settles the mode with you, and writes it with `harness setup tracker`. It offers two modes:
 
 - **GitHub mode** installs labels and a workflow that moves tickets through their lifecycle.
 - **Local mode** keeps ticket status in Markdown files.
 
-Tracker writes and publishing tickets always need your explicit request.
+Tracker writes and publishing tickets always need your explicit request. When you ask to publish, `harness tickets publish` creates the issues, blockers first, and is safe to rerun after a failure. The [command-line reference](cli.md#tracker-setup-commands) covers both commands.
 
 ### How GitHub tickets move
 
