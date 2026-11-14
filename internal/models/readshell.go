@@ -106,7 +106,7 @@ func refusedFlag(arg string, refused []string) bool {
 	return false
 }
 
-// credentialShaped mirrors the tracked Read denies in clients/claude.json, applied to every path-like piece of an argument, including a git revision's path after ":". An env file is refused unless it is a local, development, test, or example one, the same exceptions OpenCode's read rules make.
+// credentialShaped follows the tracked Read denies in clients/claude.json, applied to every path-like piece of an argument, including a git revision's path after ":". For env files it is the stricter allowlist form OpenCode's read rules take: every `.env*` name is refused unless it is a local, development, test, or example one, where Claude Code can only deny named variants.
 func credentialShaped(arg string) bool {
 	for _, part := range strings.FieldsFunc(arg, func(r rune) bool { return r == '/' || r == ':' || r == '=' }) {
 		switch {
