@@ -10,7 +10,7 @@
 | Ticket | Title | Blocked by | Owner | Status | Commit |
 | --- | --- | --- | --- | --- | --- |
 | #202 | worktree audit and review prune `--forge` | none | parent | done | ce85839 |
-| #203 | `harness attempts add/list` | none | executor | running | |
+| #203 | `harness attempts add/list` | none | executor | done | e30738d, merged 5cb15f5 |
 | #204 | `harness tickets check` | none | parent | done | 6b8bed4 |
 | #205 | `harness tickets frontier` | #204 | parent | done | 0cc779c |
 | #206 | `harness tickets publish` | #204 | parent | done | b6cb73d |
@@ -49,8 +49,8 @@ Finish: change-map, review at `harness review level` (medium), open-pr only when
 
 ## State and next action
 
-Playbook: build, step 6
-Next: check and integrate the #203 executor result, then step 9 (verification, change-map, review at medium).
+Playbook: build, step 9
+Next: verification, change-map, and review at medium on the integration branch.
 
 ## Evidence
 
