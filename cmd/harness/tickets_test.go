@@ -65,3 +65,39 @@ func TestTicketsFrontierCommand(t *testing.T) {
 		t.Errorf("a failing feature exited %d with %q, %q", r.code, r.stdout, r.stderr)
 	}
 }
+
+// TestTicketsPublishCommand proves the CLI is wired to publishing: a dry run and a non-GitHub tracker reach no gh, and a publish creates the issue through gh, records it in the draft, and reports a read-back mismatch by keeping the draft.
+func TestTicketsPublishCommand(t *testing.T) {
+	dir, _, run := prRepo(t)
+	writeDraft(t, dir, "demo", "01-a.md", "01 Alpha", "none")
+	config := filepath.Join(dir, "docs", "agents", "harness.json")
+	log := filepath.Join(t.TempDir(), "gh.log")
+	forge := `"issue create") printf '%s\n' "$*" >> '` + log + `'; echo https://github.com/o/r/issues/9;;
+"issue view") echo '{"title":"Alpha","body":"edited","labels":[{"name":"go"}]}';;
+`
+	if err := os.WriteFile(config, []byte(`{"tracker":"local-markdown"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if r := run(forge, "tickets", "publish", "demo"); r.code != 1 || !strings.Contains(r.stderr, "local-markdown") {
+		t.Errorf("a local tracker exited %d: %s", r.code, r.stderr)
+	}
+	if err := os.WriteFile(config, []byte(`{"tracker":"github","labels":{"ready_for_agent":"go"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if r := run(forge, "tickets", "publish", "demo", "--dry-run"); r.code != 0 || r.stdout != "create 01 \"Alpha\" label go\n" {
+		t.Errorf("dry run exited %d: %q %s", r.code, r.stdout, r.stderr)
+	}
+	if _, err := os.Stat(log); err == nil {
+		t.Fatal("a refused or dry run reached gh")
+	}
+	r := run(forge, "tickets", "publish", "demo")
+	if r.code != 1 || r.stdout != "https://github.com/o/r/issues/9\n" || !strings.Contains(r.stderr, "body differs") {
+		t.Errorf("publish exited %d: %q %s", r.code, r.stdout, r.stderr)
+	}
+	if raw, _ := os.ReadFile(log); !strings.Contains(string(raw), "--title Alpha --body ## What to build") || !strings.Contains(string(raw), "--label go") {
+		t.Errorf("gh create got %q", raw)
+	}
+	if raw, _ := os.ReadFile(filepath.Join(dir, "docs", "agents", "tickets", "demo", "01-a.md")); !strings.Contains(string(raw), "Issue: https://github.com/o/r/issues/9") {
+		t.Errorf("the kept draft does not record its issue:\n%s", raw)
+	}
+}

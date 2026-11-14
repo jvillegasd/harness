@@ -1,6 +1,7 @@
 package tickets
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -19,6 +20,7 @@ Work with the ticket drafts under docs/agents/tickets/<feature-slug>/.
 Commands:
   check     Validate the drafts of one feature, or of every feature
   frontier  Print which tickets of a feature are ready, done, and blocked
+  publish   Publish a feature's drafts as GitHub issues
 `
 
 const checkUsage = `Usage: harness tickets check [<feature-slug>]
@@ -50,6 +52,28 @@ drafts fail harness tickets check is refused with the check's problems.
           tracker's <spec_home>/<feature-slug>/issues
 `
 
+const publishUsage = `Usage: harness tickets publish <feature-slug> [--dry-run]
+
+Publish the drafts in docs/agents/tickets/<feature-slug>/ as GitHub issues. It
+writes to the forge, so run it only when the human asked to publish; it grants
+no authority. It refuses, before any write, a repository whose
+docs/agents/harness.json does not select the github tracker and drafts that
+fail harness tickets check.
+
+Blockers are created before the tickets they block. Each issue takes the
+draft's title and its five sections, with Blocked by naming the published
+issues, and the mapped ready_for_agent label when it has no blocker or the
+mapped blocked label otherwise. Each blocking edge is a native dependency sent
+with the blocker's database id. The issue URL is recorded in the draft as an
+Issue: line the moment it is created, so a rerun after a failure skips it.
+Every write is read back; a draft whose issue matches is removed, and one that
+does not is kept and reported. On a forge failure it stops, reports what was
+created and what remains, and leaves the remaining drafts as they are.
+
+  --dry-run  Print each issue to create, each edge, and each label, and write
+             nothing
+`
+
 // Command runs `harness tickets` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -64,6 +88,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return check(args[1:], stdout, stderr)
 	case "frontier":
 		return frontier(args[1:], stdout, stderr)
+	case "publish":
+		return publish(args[1:], stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "harness tickets: unknown command %q; run harness tickets --help\n", args[0])
 	return 2
@@ -267,4 +293,84 @@ func interspersed(args []string) []string {
 		return append(append([]string{}, args[1:]...), args[0])
 	}
 	return args
+}
+
+// gh is the Forge that runs the gh CLI in dir.
+func gh(dir string) Forge {
+	return func(args ...string) ([]byte, error) {
+		cmd := exec.Command("gh", args...)
+		cmd.Dir = dir
+		var out, errOut bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &out, &errOut
+		if err := cmd.Run(); err != nil {
+			return out.Bytes(), fmt.Errorf("gh %s: %w: %s", args[0]+" "+args[1], err, strings.TrimSpace(errOut.String()))
+		}
+		return out.Bytes(), nil
+	}
+}
+
+func publish(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("publish", flag.ContinueOnError)
+	dryRun := flags.Bool("dry-run", false, "")
+	if code := parse(flags, interspersed(args), publishUsage, stdout, stderr); code >= 0 {
+		return code
+	}
+	if flags.NArg() != 1 {
+		fmt.Fprintln(stderr, "harness tickets publish: name one feature slug; run harness tickets publish --help")
+		return 2
+	}
+	name := flags.Arg(0)
+	if err := slug(name); err != nil {
+		fmt.Fprintf(stderr, "harness tickets publish: %v\n", err)
+		return 2
+	}
+	top, ok := root("publish", stderr)
+	if !ok {
+		return 2
+	}
+	c, err := ReadConfig(top)
+	if err == nil && c.Tracker != "github" {
+		err = fmt.Errorf("%s selects the %q tracker; publish writes only to github", ConfigPath, c.Tracker)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness tickets publish: %v\n", err)
+		return 1
+	}
+	rel := filepath.Join(DraftDir, name)
+	ts, code := load("publish", top, rel, stderr)
+	if code != 0 {
+		return code
+	}
+	if len(ts) == 0 {
+		fmt.Fprintf(stderr, "harness tickets publish: no drafts in %s\n", rel)
+		return 1
+	}
+	if *dryRun {
+		Plan(c, ts, stdout)
+		return 0
+	}
+	p, err := Publish(c, top, ts, gh(top))
+	for _, url := range p.Issues {
+		fmt.Fprintln(stdout, url)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness tickets publish: stopped: %v\n", err)
+		fmt.Fprintf(stderr, "created: %s\n", list(p.Created))
+		fmt.Fprintf(stderr, "remains: %s\n", list(p.Remains))
+		return 1
+	}
+	if len(p.Mismatch) > 0 {
+		for _, m := range p.Mismatch {
+			fmt.Fprintf(stderr, "harness tickets publish: kept %s\n", m)
+		}
+		return 1
+	}
+	return 0
+}
+
+func list(items []string) string {
+	if len(items) == 0 {
+		return "none"
+	}
+	return strings.Join(items, ", ")
 }
