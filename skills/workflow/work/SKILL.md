@@ -44,6 +44,7 @@ Work mode lasts the conversation. "New task" means match again from step 1, and 
 | An existing PR: review comments, red checks, conflicts | `address-review`'s steps, with its mode declared |
 | Open a PR, ship this | `open-pr`'s steps |
 | Merge, or "it merged, clean up" | Reply "run `/land` in this worktree" and stop. Merging and cleanup belong to the human through `land` |
+| Clean up old worktrees or branches | Reply "run `/cleanup`" and stop. The human names what a sweep removes |
 | Resume or pick up earlier work | `continuity`'s Resume, then continue the playbook and step it recorded, or match what is left |
 | Large, multi-part, or none of the above | [large](playbooks/large.md) |
 

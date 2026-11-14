@@ -9,12 +9,14 @@ import (
 	"github.com/jvillegasd/harness/internal/bench"
 	"github.com/jvillegasd/harness/internal/changemap"
 	"github.com/jvillegasd/harness/internal/install"
+	"github.com/jvillegasd/harness/internal/land"
 	"github.com/jvillegasd/harness/internal/models"
 	"github.com/jvillegasd/harness/internal/resume"
 	"github.com/jvillegasd/harness/internal/reviewledger"
 	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/statusline"
 	"github.com/jvillegasd/harness/internal/update"
+	"github.com/jvillegasd/harness/internal/worktree"
 )
 
 func main() {
@@ -33,6 +35,8 @@ Commands:
   models     Choose each delegated role's client, model, and effort
   change-map Classify this branch's changed files into review tiers
   review     Record and read the local review ledger
+  worktree   Audit and retire linked worktrees without losing work
+  land       Report whether pull requests can land, and how
 `
 
 func run(args []string, stdout, stderr io.Writer) int {
@@ -59,6 +63,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return changemap.Command(args[1:], stdout, stderr)
 	case "review":
 		return reviewledger.Command(args[1:], stdout, stderr)
+	case "worktree":
+		return worktree.Command(args[1:], stdout, stderr)
+	case "land":
+		return land.Command(args[1:], stdout, stderr)
 	case "resume":
 		return resume.Command(args[1:], stdout, stderr)
 	case "-h", "--help", "help":

@@ -54,6 +54,7 @@ Each skill is a separate tool. Outside work mode, using one never starts another
 | Situation | Skill |
 | --- | --- |
 | A session needs a retrospective | `/retro` |
+| Old worktrees, branches, and review records pile up | `/cleanup` |
 
 ### `/implement` or `/build`?
 
@@ -87,6 +88,7 @@ The agent picks the playbook from the task:
 | Feedback or red checks on an open PR | `address-review`'s steps |
 | "Open a PR" or "ship this" | `open-pr`'s steps |
 | A merge, or "it merged, clean up" | Nothing. The agent tells you to run `/land` |
+| "Clean up old worktrees" | Nothing. The agent tells you to run `/cleanup` |
 | Pick up earlier work | `continuity`'s resume steps, then the recorded playbook |
 | Large, multi-part, or none of the above | Large playbook |
 
@@ -184,8 +186,13 @@ stateDiagram-v2
 | Any request to build something | Edit files and commit on a task branch it creates |
 | "Open a PR" or "ship this" | Also push, open or update the PR, and fix required checks. Feedback on that PR stays on the same branch |
 | `/land merge` | Recheck the gates and merge for you |
+| `/land merge 19 20` or `/land merge stack 23` | Land those PRs, or the stack under PR 23, bottom-up one at a time, even when their branches are not checked out, and even when one comes from a fork. It stops at the first PR that fails a gate |
 
 Publishing a PR never allows merging. You merge, then run `/land` to clean up.
+
+`/land` asks [`harness land check`](cli.md#land-commands) whether each PR can land and stops on anything it holds. On a PR someone else wrote, it merges and cleans up your side only: their remote branch stays, and a PR of theirs stacked on it is reported for them to rebase.
+
+`/land` cleans up the PR it lands. For everything else that piles up (a PR someone merged on GitHub, an abandoned branch, a run that died), run `/cleanup`. It lists every worktree with what removing it would delete, and removes only the ones you name.
 
 The agent brings important decisions back to you. Small choices that are easy to undo do not need your approval each time.
 

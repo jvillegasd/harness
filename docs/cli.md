@@ -129,6 +129,7 @@ harness review list --branch feat/x     # findings on another branch
 harness review list --head <rev>        # judge fixes against another head (default: HEAD)
 harness review path                     # where the ledger file lives
 harness review remove --branch feat/x   # delete a merged branch's ledger and patches
+harness review prune [--dry-run]        # delete ledgers of branches that exist nowhere (run git fetch --prune first)
 ```
 
 `list` shows the latest state of each finding. An empty list, `[]`, means nothing was recorded for that branch on this machine. Two fields matter most:
@@ -136,7 +137,7 @@ harness review remove --branch feat/x   # delete a merged branch's ledger and pa
 - **`open: true`:** the finding still needs attention. This covers confirmed findings and fixes whose commit is not in the branch yet.
 - **`rewritten: true`:** the reviewed commit is no longer in the branch history, for example after a rebase. The finding still counts.
 
-The findings live in a ledger file inside the Git directory. Git never tracks it, and every worktree of the repository shares it. `/land` deletes it once the branch merges, with `harness review remove`. That command leaves a directory alone while it still records a review worktree.
+The findings live in a ledger file inside the Git directory. Git never tracks it, and every worktree of the repository shares it. `/land` deletes it once the branch merges, with `harness review remove`. A pull request merged on GitHub, closed, or only reviewed by number never reaches `/land`, so `harness review prune` deletes every ledger whose branch exists neither locally nor on a remote. A fork's `pr-<n>` ledger has no local branch and goes even while that pull request is open, so run `--dry-run` first. Both commands leave a directory alone while it still records a review worktree.
 
 ### What each disposition means
 
@@ -160,3 +161,55 @@ harness review record --id <id> --disposition accepted --evidence "We want retri
 ```
 
 Run `harness review record --help` for every flag.
+
+## Worktree commands
+
+`harness worktree` lists a repository's linked worktrees and removes one without losing work. `/land`, review, and `/build` use it to retire the worktrees they create, and `/cleanup` uses it to sweep the rest.
+
+```sh
+harness worktree audit                             # every linked worktree and whether it is safe to retire
+harness worktree retire ../my-task                 # remove the worktree and its landed branch
+harness worktree retire ../my-task --keep-branch   # remove only the worktree
+harness worktree retire --branch feat/x            # delete a landed branch that no worktree holds
+```
+
+`audit` removes nothing. It prints one line per worktree with a state:
+
+| State | Meaning |
+| --- | --- |
+| `safe` | Clean, and its branch has landed |
+| `dirty` | It holds uncommitted changes |
+| `unlanded` | Its branch is not proven to be on the default branch |
+| `loose` | It is detached at a commit no branch holds |
+| `ignored` | Only ignored files stand in the way, and removal would delete them |
+| `locked` | You locked it with `git worktree lock` |
+| `missing` | Its directory is gone. `git worktree prune` clears it |
+
+`retire` refuses, and changes nothing, in every state but `safe`. Each refusal names the flag that answers it: `--allow-ignored` once you have checked the ignored files are build output, `--save-patch <file>` to keep uncommitted work as a patch, or `--keep-branch` to leave the branch. It never removes the main worktree.
+
+A branch has landed when it is an ancestor of the default branch, or when merging it would change nothing, which is how a squash merge reads. If the default branch later rewrote the same lines, the branch reads as `unlanded` even though its PR merged. Pass `--into <ref>` to compare against another ref. Neither command fetches, so run `git fetch --prune` first.
+
+Run `harness worktree audit --help` and `harness worktree retire --help` for every flag.
+
+## Land commands
+
+`harness land check` answers whether a PR can land, and how. `/land` runs it and acts on the answer, so the rules live in the command and you can read the same verdict yourself. It reads GitHub through `gh`, fetches the PR's head and base, and changes nothing else.
+
+```sh
+harness land check                 # the PR of the branch checked out here
+harness land check --merge 19 20   # can these merge? Printed in the order they would land
+harness land check --merge --stack 23   # PR 23 and every open PR under it
+```
+
+It prints one JSON verdict per PR. The fields you will read most:
+
+| Field | Meaning |
+| --- | --- |
+| `lane` | `open` (it can be merged), `merged` (clean up after it), or `stop` |
+| `holds` | Every reason not to merge. Empty means the gates passed. For a merged PR, what the merge skipped |
+| `mode` | `local` when this checkout is the PR's head, `fork` for a PR from another repository, otherwise `remote` |
+| `mine` | Whether you wrote the PR. `/land` deletes the remote branch, and rebases a PR stacked on it, only when it is yours |
+| `review` | Whether a review is required, where the reviewed commit came from, and whether it still covers the head |
+| `findings` | Open review findings and the ones you dismissed, each of which holds the merge |
+
+Without `--merge`, an open PR reads as `stop`. Run `harness land check --help` for every field.
