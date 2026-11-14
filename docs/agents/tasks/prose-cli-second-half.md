@@ -1,7 +1,7 @@
 # Skill prose to CLI steps, second half
 
 - Branch: `feat/prose-cli-second-half` (integration branch, base `main` at db43919)
-- Status: ready for delivery
+- Status: shipped for review
 - Request (`/work`, this session): "on remaining issues"
 - Scope: issues #202 to #210, the open half of the published tickets #192 to #210.
 
@@ -49,7 +49,7 @@ Finish: change-map, review at `harness review level` (medium), open-pr only when
 
 ## State and next action
 
-Playbook: build, step 10 (offer delivery)
+Playbook: open-pr, step 5
 Next: the human asks for a PR (`open-pr`, body carries `Reviewed: db43919..b7f3ea3`), then `/land`. Gotcha: the installed `harness` predates these commands; use `go run ./cmd/harness` until `harness install` runs.
 
 ## Evidence
