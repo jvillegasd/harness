@@ -176,7 +176,7 @@ recorded prints nothing and exits 0. A directory that still holds worktree.txt,
 review's record of a worktree it could not retire, is refused untouched.
 `
 
-const pruneUsage = `Usage: harness review prune [--dry-run]
+const pruneUsage = `Usage: harness review prune [--dry-run [--forge]]
 
 Delete the review directory of every branch that exists neither as a local
 branch nor as a remote-tracking branch, and print each directory removed. Run
@@ -187,6 +187,10 @@ always pruned, even while that pull request is open, so run --dry-run first and
 prune only once each listed directory is approved for removal.
 
   --dry-run  Print what would be removed, and remove nothing
+  --forge    With --dry-run, read each listed pr-<n> directory's pull request
+             with gh and mark the ones still open, after a tab, since that
+             ledger is what land check reads; a failed read is marked
+             unavailable
 `
 
 // Command runs `harness review` and returns the process exit code.
@@ -481,8 +485,13 @@ func remove(args []string, stdout, stderr io.Writer) int {
 func prune(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("prune", flag.ContinueOnError)
 	dryRun := flags.Bool("dry-run", false, "")
+	withForge := flags.Bool("forge", false, "")
 	if code := parse(flags, args, pruneUsage, stdout, stderr); code >= 0 {
 		return code
+	}
+	if *withForge && !*dryRun {
+		fmt.Fprintln(stderr, "harness review prune: --forge needs --dry-run")
+		return 2
 	}
 	cwd, err := os.Getwd()
 	root := ""
@@ -511,7 +520,15 @@ func prune(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	removed, held, err := Prune(dir, func(b string) bool { return live[b] }, *dryRun)
+	marks := map[string]string{}
+	if *withForge {
+		marks = PruneMarks(removed, Gh(root))
+	}
 	for _, d := range removed {
+		if m := marks[d]; m != "" {
+			fmt.Fprintf(stdout, "%s\t%s\n", d, m)
+			continue
+		}
 		fmt.Fprintln(stdout, d)
 	}
 	for _, d := range held {

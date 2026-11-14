@@ -232,6 +232,8 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"worktree", "retire", "some/path", "--branch", "x"},
 		{"worktree", "retire", "--branch", "x", "--keep-branch"},
 		{"worktree", "retire", "one", "two"},
+		{"worktree", "audit", "--forge=maybe"},
+		{"review", "prune", "--forge"},
 		{"land"},
 		{"land", "bogus"},
 		{"land", "check", "--bogus"},

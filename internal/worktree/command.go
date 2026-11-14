@@ -19,7 +19,7 @@ Commands:
   retire  Remove a worktree and its landed branch, refusing to lose work
 `
 
-const auditUsage = `Usage: harness worktree audit [--into <ref>]
+const auditUsage = `Usage: harness worktree audit [--into <ref>] [--forge]
 
 Print one line per linked worktree: its state, how many changed and ignored
 paths it holds, its branch, its head, and its path. It removes nothing.
@@ -36,6 +36,12 @@ paths it holds, its branch, its head, and its path. It removes nothing.
           origin/main, then origin/master). A branch has landed when it is an
           ancestor of the ref or merging it into the ref changes nothing, as
           after a squash merge.
+  --forge Also read each branch's pull request with gh and add two columns.
+          PR is its number and state (an open one is marked held), none, or
+          unavailable when the read failed. INTO, for an unlanded branch whose
+          pull request merged, is that pull request's head, fetched from
+          origin, to pass as retire --into: it proves the branch holds nothing
+          the merged pull request lacked. The state column is unchanged.
 `
 
 const retireUsage = `Usage: harness worktree retire <path> [flags]
@@ -109,6 +115,7 @@ func repository(name string, stderr io.Writer) (string, bool) {
 func audit(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("audit", flag.ContinueOnError)
 	into := flags.String("into", "", "")
+	withForge := flags.Bool("forge", false, "")
 	if code := parse(flags, args, auditUsage, stdout, stderr); code >= 0 {
 		return code
 	}
@@ -134,7 +141,11 @@ func audit(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	table := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(table, "STATE\tCHANGES\tIGNORED\tBRANCH\tHEAD\tPATH\n")
+	if *withForge {
+		fmt.Fprintf(table, "STATE\tCHANGES\tIGNORED\tBRANCH\tHEAD\tPR\tINTO\tPATH\n")
+	} else {
+		fmt.Fprintf(table, "STATE\tCHANGES\tIGNORED\tBRANCH\tHEAD\tPATH\n")
+	}
 	for _, t := range trees {
 		if t.Main {
 			continue
@@ -150,6 +161,15 @@ func audit(args []string, stdout, stderr io.Writer) int {
 		}
 		if len(head) > 12 {
 			head = head[:12]
+		}
+		if *withForge {
+			p := ReadPull(dir, s, gh(dir))
+			into := p.Into
+			if into == "" {
+				into = "-"
+			}
+			fmt.Fprintf(table, "%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\n", s.State, len(s.Changes), len(s.Ignored), branch, head, p, into, s.Path)
+			continue
 		}
 		fmt.Fprintf(table, "%s\t%d\t%d\t%s\t%s\t%s\n", s.State, len(s.Changes), len(s.Ignored), branch, head, s.Path)
 	}
