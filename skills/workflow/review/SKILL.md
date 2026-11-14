@@ -44,7 +44,7 @@ The target is what the human or the calling skill names; with none, it is the cu
 
 Every target other than the current task branch is foreign. A foreign review creates no refs of its own (a fetch by pull request lands only in `FETCH_HEAD`), commits nothing, pushes nothing, and is report-only: it skips Fix, and its confirmed findings stay `confirmed` for the human to route through `address-review` on the owning branch.
 
-When a foreign `<sha>` is not what this checkout has checked out, hunters read it from one read worktree: write a fresh directory outside the checkout to `worktree.txt` in the key's directory (`dirname "$(harness review path --branch <key>)"`) first, then run `git -c core.hooksPath=/dev/null worktree add --detach <path> <sha>`. It is the only worktree this review creates, the High executor reuses it, and Verify's last step removes it, so it lives for one run; a run that dies leaves `worktree.txt`, which keeps `harness review remove` and `harness review prune` off that directory until it is retired.
+When a foreign `<sha>` is not what this checkout has checked out, hunters read it from one read worktree: `harness review worktree add --branch <key> <sha>` prints its path. It is the only worktree this review creates, the High executor reuses it, and Verify's last step retires it, so it lives for one run; a run that dies leaves its record, which keeps `harness review remove` and `harness review prune` off that directory until it is retired.
 
 ## Snapshot
 
@@ -64,11 +64,11 @@ Each report must open with `loaded:` naming the standards files it opened, or `n
 
 1. Collect every `bug`, `risk`, and `q`, and dedupe by path, line range, and class. Report `nit` and `pre-existing` findings without verifying or fixing them here.
 2. Try to reproduce each finding yourself, with repro files in a scratch directory outside the checkout. A run that fails for the reason the finding gives confirms it and becomes its red check. A defect in prose, such as two contradictory instructions, is confirmed by citing both lines. Never run code from a fork's pull request; a fork's findings that need a run are dropped.
-3. **High, when a finding needs a run you could not do inline**, and never for a fork: use the read worktree of a foreign target, or record a sibling path in the branch directory as `worktree.txt` and create one detached worktree there with `git -c core.hooksPath=/dev/null worktree add --detach <path> <sha>`; then apply the saved patch with `git -C <path> apply --binary <patch>` when the work is uncommitted, and launch one fresh `executor` there with the executor brief from `references/verify.md` and every such finding's text, never the rationale or which hunter raised it. `red` confirms the finding.
+3. **High, when a finding needs a run you could not do inline**, and never for a fork: use the read worktree of a foreign target, or create one with `harness review worktree add --branch <key> <sha>`, adding `--patch <patch>` when the work is uncommitted, and launch one fresh `executor` there with the executor brief from `references/verify.md` and every such finding's text, never the rationale or which hunter raised it. `red` confirms the finding.
 4. Dispose each finding:
    - **confirmed**: your run or the executor ran red, or contradictory prose was cited.
    - **dropped**: everything else, with what was tried: the run stayed green, could not run, or the finding needed a run this level does not launch. Report each hunter's dropped count and reasons, not the findings.
-5. Retire the worktree `worktree.txt` records, whether the executor's or a foreign target's read worktree: `harness worktree retire <path in worktree.txt> --at <sha> --save-patch "<branch directory>/<wt name>.patch"`, which saves whatever work the worktree holds as that patch before removing it. When it refuses over ignored paths, pass `--allow-ignored` only when every path it lists is regenerable build output. Delete `worktree.txt` once it exits 0; on any other refusal leave both and report the worktree.
+5. Retire the review worktree, whether the executor's or a foreign target's read worktree: `harness review worktree retire --branch <key>`, which saves whatever work it holds as a patch in the review directory before removing it. When it refuses over ignored paths, pass `--allow-ignored` only when every path it lists is regenerable build output. On any other refusal it leaves the worktree and its record; report the worktree.
 
 ## Fix
 

@@ -173,7 +173,7 @@ func RemoveBranch(file string) (bool, error) {
 		return false, err
 	}
 	if _, err := os.Stat(filepath.Join(dir, "worktree.txt")); err == nil {
-		return false, fmt.Errorf("%w in %s; retire it as review's Verify step describes, then remove again", ErrHeld, filepath.Join(dir, "worktree.txt"))
+		return false, fmt.Errorf("%w in %s; retire it with harness review worktree retire, then remove again", ErrHeld, filepath.Join(dir, "worktree.txt"))
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return false, err
 	}

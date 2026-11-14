@@ -31,6 +31,28 @@ Commands:
   covers  Say whether a recorded review already covers a patch
   stamp   Print the review line a pull request body carries
   target  Resolve what a review reads: its base, commit, and ledger key
+  worktree  Add or retire the one worktree a review may create
+`
+
+const worktreeUsage = `Usage: harness review worktree add [--branch <key>] [--patch <file>] <sha>
+       harness review worktree retire [--branch <key>] [--allow-ignored]
+
+Own the one worktree a review may create, recorded in worktree.txt in the
+key's review directory (default key: the current branch). While that record
+exists, harness review remove and prune leave the directory alone.
+
+add picks a fresh sibling directory outside the checkout, records it before
+anything else, creates a detached worktree there at <sha> with Git hooks
+disabled, applies --patch when given, and prints the path. Run again while
+that worktree exists at the same commit, it prints the same path and changes
+nothing.
+
+retire removes the recorded worktree without losing work: whatever it holds
+is first saved as <worktree name>.patch in the review directory, and the
+record is deleted only once the worktree is gone. It refuses over ignored
+paths unless --allow-ignored, which deletes them; pass it only once each is
+regenerable build output. A refusal leaves the worktree and the record and
+exits 1. With no record it does nothing.
 `
 
 const targetUsage = `Usage: harness review target [<pr number or URL> | <branch> | <base>..<sha>]
@@ -184,6 +206,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return stamp(args[1:], stdout, stderr)
 	case "target":
 		return target(args[1:], stdout, stderr)
+	case "worktree":
+		return worktreeCommand(args[1:], stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "harness review: unknown command %q; run harness review --help\n", args[0])
 	return 2
@@ -556,5 +580,83 @@ func target(args []string, stdout, stderr io.Writer) int {
 	}
 	out, _ := json.MarshalIndent(t, "", "  ")
 	fmt.Fprintln(stdout, string(out))
+	return 0
+}
+
+func worktreeCommand(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 {
+		fmt.Fprint(stderr, worktreeUsage)
+		return 2
+	}
+	switch args[0] {
+	case "-h", "--help", "help":
+		fmt.Fprint(stdout, worktreeUsage)
+		return 0
+	case "add", "retire":
+	default:
+		fmt.Fprintf(stderr, "harness review worktree: unknown command %q; run harness review worktree --help\n", args[0])
+		return 2
+	}
+	name := "worktree " + args[0]
+	flags := flag.NewFlagSet(name, flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	var branch, patch string
+	var allowIgnored bool
+	flags.StringVar(&branch, "branch", "", "")
+	if args[0] == "add" {
+		flags.StringVar(&patch, "patch", "", "")
+	} else {
+		flags.BoolVar(&allowIgnored, "allow-ignored", false, "")
+	}
+	// Flags may follow the commit, so parse around the one positional argument.
+	var positional []string
+	rest := args[1:]
+	for {
+		if err := flags.Parse(rest); err != nil {
+			if errors.Is(err, flag.ErrHelp) {
+				fmt.Fprint(stdout, worktreeUsage)
+				return 0
+			}
+			fmt.Fprintf(stderr, "harness review %s: %v\n%s", name, err, worktreeUsage)
+			return 2
+		}
+		if flags.NArg() == 0 {
+			break
+		}
+		positional = append(positional, flags.Arg(0))
+		rest = flags.Args()[1:]
+	}
+	want := 0
+	if args[0] == "add" {
+		want = 1
+	}
+	if len(positional) != want {
+		fmt.Fprintf(stderr, "harness review %s: takes %d argument(s), got %d; run harness review worktree --help\n", name, want, len(positional))
+		return 2
+	}
+	root, key, _, code := ledger(name, branch, stderr)
+	if code >= 0 {
+		return code
+	}
+	if args[0] == "add" {
+		path, err := AddWorktree(root, key, positional[0], patch)
+		if err != nil {
+			fmt.Fprintf(stderr, "harness review %s: %v\n", name, err)
+			if errors.Is(err, ErrInvalid) {
+				return 2
+			}
+			return 1
+		}
+		fmt.Fprintln(stdout, path)
+		return 0
+	}
+	done, err := RetireWorktree(root, key, allowIgnored)
+	for _, line := range done {
+		fmt.Fprintln(stdout, line)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness review %s: %v\n", name, err)
+		return 1
+	}
 	return 0
 }
