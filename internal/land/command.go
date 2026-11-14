@@ -10,7 +10,44 @@ import (
 const usage = `Usage: harness land <command> [arguments]
 
 Commands:
-  check  Report whether pull requests can land, and how
+  check   Report whether pull requests can land, and how
+  sync    Fetch from origin and fast-forward the local default branch
+  finish  Clean up after merged pull requests
+`
+
+const syncUsage = `Usage: harness land sync
+
+Fetch from origin with pruning and fast-forward the local default branch: in
+the worktree that holds it, or by moving the branch when no worktree does.
+A default branch with commits origin lacks is reported, left as it is, and
+exits 1.
+`
+
+const finishUsage = `Usage: harness land finish <pr>... [--allow-ignored] [--keep-branch]
+
+Clean up after merged pull requests, and print each action as done or kept,
+with the reason for a kept one. A pull request that is not merged is refused
+before anything is removed. It runs harness land sync first, then for each
+pull request:
+
+  - removes its review directory, keeping one that still records a review
+    worktree;
+  - deletes the remote head branch only when the pull request is the forge
+    user's, is not from a fork, and no open pull request is based on it;
+  - retires this checkout and its branch when this checkout holds the head
+    branch, or the local branch by name when it does not, once proven landed
+    on origin/<default>. A fork's pull request loses only its review
+    directory.
+
+Retiring this checkout comes once, after every other pull request. In the
+main worktree, which is never removed, the checkout switches to the default
+branch and the branch is retired by name. A refused retirement leaves the
+checkout and exits 1 after printing every action taken. Running it again
+changes nothing.
+
+  --allow-ignored  Delete this checkout's ignored files with it; pass it only
+                   once each is regenerable build output
+  --keep-branch    Retire this checkout but keep its branch
 `
 
 const checkUsage = `Usage: harness land check [--merge] [--stack] [<pr>...]
@@ -77,6 +114,10 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return 0
 	case "check":
 		return check(args[1:], stdout, stderr)
+	case "sync":
+		return syncCommand(args[1:], stdout, stderr)
+	case "finish":
+		return finish(args[1:], stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "harness land: unknown command %q; run harness land --help\n", args[0])
 	return 2
@@ -121,5 +162,73 @@ func check(args []string, stdout, stderr io.Writer) int {
 	}
 	out, _ := json.MarshalIndent(checks, "", "  ")
 	fmt.Fprintln(stdout, string(out))
+	return 0
+}
+
+func syncCommand(args []string, stdout, stderr io.Writer) int {
+	for _, a := range args {
+		if a == "-h" || a == "--help" {
+			fmt.Fprint(stdout, syncUsage)
+			return 0
+		}
+	}
+	if len(args) > 0 {
+		fmt.Fprintf(stderr, "harness land sync: unexpected argument %q; run harness land sync --help\n", args[0])
+		return 2
+	}
+	e, err := cwdEnv()
+	if err != nil {
+		fmt.Fprintf(stderr, "harness land sync: %v\n", err)
+		return 1
+	}
+	a, err := Sync(e)
+	if a.Text != "" {
+		fmt.Fprintln(stdout, a)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness land sync: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
+func finish(args []string, stdout, stderr io.Writer) int {
+	var numbers []int
+	var o FinishOptions
+	for _, a := range args {
+		switch a {
+		case "-h", "--help":
+			fmt.Fprint(stdout, finishUsage)
+			return 0
+		case "--allow-ignored":
+			o.AllowIgnored = true
+		case "--keep-branch":
+			o.KeepBranch = true
+		default:
+			n, err := strconv.Atoi(a)
+			if err != nil || n <= 0 {
+				fmt.Fprintf(stderr, "harness land finish: %q is not a pull request number or a flag; run harness land finish --help\n", a)
+				return 2
+			}
+			numbers = append(numbers, n)
+		}
+	}
+	if len(numbers) == 0 {
+		fmt.Fprintln(stderr, "harness land finish: name the merged pull requests; run harness land finish --help")
+		return 2
+	}
+	e, err := cwdEnv()
+	if err != nil {
+		fmt.Fprintf(stderr, "harness land finish: %v\n", err)
+		return 1
+	}
+	actions, err := Finish(e, numbers, o)
+	for _, a := range actions {
+		fmt.Fprintln(stdout, a)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness land finish: %v\n", err)
+		return 1
+	}
 	return 0
 }

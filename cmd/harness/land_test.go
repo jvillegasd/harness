@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -70,5 +71,24 @@ func TestLandCheckCommand(t *testing.T) {
 
 	if r := run(forge, "land", "check", "7"); r.code != 1 || r.stdout != "" || r.stderr == "" {
 		t.Errorf("an unreadable pull request exited %d with stdout %q, stderr %q", r.code, r.stdout, r.stderr)
+	}
+}
+
+// TestLandFinishCommand proves the CLI is wired to the cleanup: sync reports the default branch, and finish refuses an open pull request with nothing removed.
+func TestLandFinishCommand(t *testing.T) {
+	dir, head, run := prRepo(t)
+	const forge = `"repo view") echo '{"defaultBranchRef":{"name":"main"}}';;
+"api user") echo me;;
+`
+	if r := run(forge, "land", "sync"); r.code != 0 || !strings.Contains(r.stdout, "main") {
+		t.Errorf("sync exited %d: %s %s", r.code, r.stdout, r.stderr)
+	}
+	open := forge + `"pr view") echo '{"number":7,"state":"OPEN","headRefName":"` + branch + `","headRefOid":"` + head + `","baseRefName":"main","author":{"login":"me"}}';;` + "\n"
+	r := run(open, "land", "finish", "7")
+	if r.code != 1 || !strings.Contains(r.stderr, "not merged") || r.stdout != "" {
+		t.Errorf("finish of an open pull request exited %d: %q %q", r.code, r.stdout, r.stderr)
+	}
+	if got := git(t, dir, "branch", "--show-current"); got != branch {
+		t.Errorf("the checkout moved to %q", got)
 	}
 }

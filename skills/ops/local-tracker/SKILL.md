@@ -24,7 +24,7 @@ An implementation-ready ticket has `Status: <mapped label>` and `Blocked by: <sa
 
 ## Authorized operations
 
-Local drafting stays local. Publishing tracker state needs explicit scope covering commits and pushes to its destination. When already covered by the request or an invoked capability, do not ask again. For default-branch bookkeeping, locate its worktree, fetch and fast-forward it, verify protection and preserve unrelated index/worktree state. If protected, report the need for a supported PR route rather than creating an unpushable commit. Commits on the default branch need an explicit request (the floor); a covered tracker write allows only the default-branch bookkeeping below, and implementation never qualifies.
+Local drafting stays local. Publishing tracker state needs explicit scope covering commits and pushes to its destination. When already covered by the request or an invoked capability, do not ask again. For default-branch bookkeeping, run `harness land sync` to fetch and fast-forward the default branch, then locate its worktree, verify protection and preserve unrelated index/worktree state. If protected, report the need for a supported PR route rather than creating an unpushable commit. Commits on the default branch need an explicit request (the floor); a covered tracker write allows only the default-branch bookkeeping below, and implementation never qualifies.
 
 | Operation | State change |
 | --- | --- |
