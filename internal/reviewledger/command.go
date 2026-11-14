@@ -30,6 +30,28 @@ Commands:
   level   Print or set the review level: off, medium (default), or high
   covers  Say whether a recorded review already covers a patch
   stamp   Print the review line a pull request body carries
+  target  Resolve what a review reads: its base, commit, and ledger key
+`
+
+const targetUsage = `Usage: harness review target [<pr number or URL> | <branch> | <base>..<sha>]
+
+Print, as JSON, what a review of the target reads. It fetches what it reads
+from origin without tags, and creates no branch or tag.
+
+  (none)          the current task branch; a detached head is refused
+  <pr>            a pull request by number or URL; its head is fetched and
+                  must be the head the forge reports. base is its merge-base
+                  with the pull request's base branch, and the key its head
+                  branch, or pr-<n> for a fork
+  <branch>        a local branch, or origin/<name> (fetched first). base is
+                  its merge-base with its open pull request's base, or with
+                  the default branch when it has none; the key is the name
+                  without the remote
+  <base>..<sha>   a range; the key is range-<base>-<sha>, each cut to 12
+
+Fields: kind (branch, pr, or range), base and sha as full commit ids, key,
+foreign (anything but the current task branch: the review is report-only),
+and fork (a fork's pull request: nothing from it is run).
 `
 
 const stampUsage = `Usage: harness review stamp [--branch <key>] [--head <rev>] [--base <rev>]
@@ -160,6 +182,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return covers(args[1:], stdout, stderr)
 	case "stamp":
 		return stamp(args[1:], stdout, stderr)
+	case "target":
+		return target(args[1:], stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "harness review: unknown command %q; run harness review --help\n", args[0])
 	return 2
@@ -492,5 +516,45 @@ func stamp(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	fmt.Fprintln(stdout, line)
+	return 0
+}
+
+func target(args []string, stdout, stderr io.Writer) int {
+	arg := ""
+	for _, a := range args {
+		switch {
+		case a == "-h" || a == "--help":
+			fmt.Fprint(stdout, targetUsage)
+			return 0
+		case strings.HasPrefix(a, "-"):
+			fmt.Fprintf(stderr, "harness review target: unknown flag %q; run harness review target --help\n", a)
+			return 2
+		case arg != "":
+			fmt.Fprintf(stderr, "harness review target: one target only, not %q and %q\n", arg, a)
+			return 2
+		default:
+			arg = a
+		}
+	}
+	cwd, err := os.Getwd()
+	root := ""
+	if err == nil {
+		root, err = git(cwd, "rev-parse", "--show-toplevel")
+	}
+	if err != nil {
+		fmt.Fprintln(stderr, "harness review target: not inside a git repository")
+		return 2
+	}
+	t, err := ResolveTarget(root, Gh(root), arg)
+	if errors.Is(err, ErrInvalid) {
+		fmt.Fprintf(stderr, "harness review target: %v\n", err)
+		return 2
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness review target: %v\n", err)
+		return 1
+	}
+	out, _ := json.MarshalIndent(t, "", "  ")
+	fmt.Fprintln(stdout, string(out))
 	return 0
 }

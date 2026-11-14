@@ -40,12 +40,7 @@ A review covering the current patch is required for every pull request this tabl
 
 ## Target
 
-The target is what the human or the calling skill names; with none, it is the current task branch. Resolve it to `<base>..<sha>` and a ledger key before the snapshot, and pass that key as `--branch` to every `harness review` call below:
-
-- **Current task branch**: the work in this checkout; the key is the branch.
-- **Pull request** (number or URL): read `gh pr view <n> --json headRefName,headRefOid,baseRefName,isCrossRepository`, run `git fetch origin <baseRefName>` and `git fetch origin refs/pull/<n>/head`, and require `git rev-parse FETCH_HEAD` to equal `headRefOid`. `<sha>` is `headRefOid`, `<base>` is `git merge-base origin/<baseRefName> <sha>`, and the key is `headRefName`, the name `land` reads. A fork (`isCrossRepository` true) is keyed `pr-<n>` and is reviewed without running anything.
-- **Branch** (a local name or `origin/<name>`, fetched first when remote): `<sha>` is its tip, `<base>` the merge-base with its open pull request's base, or with the default branch when it has none. The key is the name without the remote.
-- **Range** `<base>..<sha>`: as given, both resolved to full SHAs; the key is `range-<base>-<sha>` with each cut to 12 characters.
+The target is what the human or the calling skill names; with none, it is the current task branch. Resolve it before the snapshot with `harness review target [<pr number or URL> | <branch> | <base>..<sha>]`, which prints `base` and `sha` as full commit ids, the ledger `key`, and whether the target is `foreign` or a `fork`; `harness review target --help` gives the rule for each kind. Pass that key as `--branch` to every `harness review` call below. A fork is reviewed without running anything.
 
 Every target other than the current task branch is foreign. A foreign review creates no refs of its own (a fetch by pull request lands only in `FETCH_HEAD`), commits nothing, pushes nothing, and is report-only: it skips Fix, and its confirmed findings stay `confirmed` for the human to route through `address-review` on the owning branch.
 
