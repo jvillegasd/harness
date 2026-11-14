@@ -19,7 +19,7 @@ Computing the frontier from merged work, rather than from tracker counts, keeps 
 
 ## Steps
 
-1. Read the spec and the tickets in full, with their threads, and the agreed test seams (see `spec`). A spec without tickets is cut into them first: read `tickets` from its path and draft them locally, without publishing. Stop and ask when the seams were never agreed, a slice has no acceptance criteria that fail on the base, or the blocking edges contain a cycle, because workers cannot repair those.
+1. Read the spec and the tickets in full, with their threads, and the agreed test seams (see `spec`). A spec without tickets is cut into them first: read `tickets` from its path and draft them locally, without publishing. For drafts, run `harness tickets check <feature-slug>`. Stop and ask when the seams were never agreed, a slice has no acceptance criteria that fail on the base, or the check reports a problem, such as a blocking cycle, because workers cannot repair those.
 2. Create one integration branch for the run from the default branch, named as the floor's Working rules name a task branch. Record its base SHA, and keep a task document (`continuity`) with the slice list, status, and a `## Decisions` table when the run is long.
 3. Compute the frontier: the tickets whose blockers are all integrated on the integration branch. Use the merged work on that branch as the source of truth, and read tracker state only to find the edges.
 4. Run the first slice alone, end to end: brief it, build it, check it, integrate it. Fan out only after it succeeds, and revise the brief template if it failed.

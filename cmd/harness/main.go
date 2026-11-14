@@ -15,6 +15,7 @@ import (
 	"github.com/jvillegasd/harness/internal/reviewledger"
 	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/statusline"
+	"github.com/jvillegasd/harness/internal/tickets"
 	"github.com/jvillegasd/harness/internal/update"
 	"github.com/jvillegasd/harness/internal/worktree"
 )
@@ -38,6 +39,7 @@ Commands:
   worktree   Audit and retire linked worktrees without losing work
   land       Report whether pull requests can land, and how
   pr         Report a pull request's readiness and what blocks it
+  tickets    Check ticket drafts
 `
 
 func run(args []string, stdout, stderr io.Writer) int {
@@ -70,6 +72,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return land.Command(args[1:], stdout, stderr)
 	case "pr":
 		return land.PrCommand(args[1:], stdout, stderr)
+	case "tickets":
+		return tickets.Command(args[1:], stdout, stderr)
 	case "resume":
 		return resume.Command(args[1:], stdout, stderr)
 	case "-h", "--help", "help":

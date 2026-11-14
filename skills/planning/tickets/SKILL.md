@@ -24,14 +24,14 @@ Source: $ARGUMENTS
 2. **Cut the tracer bullets.** Ask of each "what can I demo?", size it to one fresh context, and cut and order by dependency and risk. Prefactoring comes first ("make the change easy, then make the easy change"), and a wide refactor becomes expand, migrate in batches, and contract, so each ticket leaves the system working. When an overlapping ticket or draft already covers a bullet, update it in place and keep its identifier; create a parent only for a grouping the human asked for. Done when every requirement from step 1 sits in exactly one ticket's What to build or acceptance criteria, or is named in the breakdown as left out of this set.
 3. **Name each seam**: the spec's agreed seam, or, without a spec, one proposed and confirmed with the human as `spec`'s Seam agreement describes. Done when every ticket has a confirmed seam, because `build` refuses a ticket without one.
 4. **Show the breakdown** as a numbered list: each ticket's title, what blocks it, and what it delivers, and the requirements left out of this set. Done when the list is shown.
-5. **Write each ticket** to `docs/agents/tickets/<feature-slug>/<NN>-<slug>.md`. The feature slug follows the spec's title, or names the feature in a few words when the source has no title, and takes a suffix when another feature's drafts already use it. Each ticket has:
+5. **Write each ticket** to `docs/agents/tickets/<feature-slug>/<NN>-<slug>.md`. The feature slug follows the spec's title, or names the feature in a few words when the source has no title, and takes a suffix when another feature's drafts already use it. Each ticket opens with a `# <NN> <title>` line and has these five `##` sections, in this order:
    - **What to build**: the behavior in the domain's own words, durable and free of file paths.
    - **Acceptance criteria**: checks that are red on the base commit.
    - **Seam**: from step 3.
-   - **Blocked by**: ticket numbers, or none.
+   - **Blocked by**: `none`, or the numbers of tickets in the same feature.
    - **Out of scope**.
 
-   A research finding keeps its evidence and confidence, so an uncertain finding stays an open question in the ticket. Done when every ticket has all five parts.
+   A research finding keeps its evidence and confidence, so an uncertain finding stays an open question in the ticket. Done when `harness tickets check <feature-slug>` prints nothing, which proves every draft has all five parts, unique numbers, blockers that exist, and no blocking cycle.
 6. **Publish only when asked**: read [publishing](references/publishing.md) and follow it. Otherwise the drafts are the result.
 
 Ticketing ends at drafts or published tickets; claiming a ticket and implementing it are later requests.
