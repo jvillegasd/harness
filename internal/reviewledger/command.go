@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jvillegasd/harness/internal/statefile"
 )
 
 const usage = `Usage: harness review <command> [arguments]
@@ -27,6 +29,28 @@ Commands:
   prune   Delete the review directories of branches that exist nowhere
   level   Print or set the review level: off, medium (default), or high
   covers  Say whether a recorded review already covers a patch
+  stamp   Print the review line a pull request body carries
+`
+
+const stampUsage = `Usage: harness review stamp [--branch <key>] [--head <rev>] [--base <rev>]
+
+Print the one review line a pull request body carries for --head (default:
+HEAD), taken from the branch's ledger, so the line harness land check parses
+is never composed by hand:
+
+  Reviewed: <base>..<sha>          the latest clean record still covers the
+                                   head, compared file by file by patch, and
+                                   no finding is open
+  Review: not run (level <level>)  the latest whole-review record is
+                                   no-review
+
+Otherwise it prints nothing on stdout, names the reason on stderr (a finding
+still open, no clean record, a change the review never read, or no review
+recorded), and exits 1.
+
+  --base  The pull request's base the change is compared against (default:
+          origin/HEAD, then origin/main, then origin/master, then the
+          record's own base)
 `
 
 const coversUsage = `Usage: harness review covers --base <base> --sha <sha> --level <medium|high> [--branch <key>] [--digest <hash>]
@@ -134,6 +158,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return level(args[1:], stdout, stderr)
 	case "covers":
 		return covers(args[1:], stdout, stderr)
+	case "stamp":
+		return stamp(args[1:], stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "harness review: unknown command %q; run harness review --help\n", args[0])
 	return 2
@@ -426,5 +452,45 @@ func covers(args []string, stdout, stderr io.Writer) int {
 	}
 	out, _ := json.MarshalIndent(c, "", "  ")
 	fmt.Fprintln(stdout, string(out))
+	return 0
+}
+
+func stamp(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("stamp", flag.ContinueOnError)
+	var branch, head, base string
+	flags.StringVar(&branch, "branch", "", "")
+	flags.StringVar(&head, "head", "HEAD", "")
+	flags.StringVar(&base, "base", "", "")
+	if code := parse(flags, args, stampUsage, stdout, stderr); code >= 0 {
+		return code
+	}
+	root, branch, _, code := ledger("stamp", branch, stderr)
+	if code >= 0 {
+		return code
+	}
+	if base == "" {
+		for _, ref := range []string{"refs/remotes/origin/HEAD", "refs/remotes/origin/main", "refs/remotes/origin/master"} {
+			if _, err := git(root, "rev-parse", "--verify", "--quiet", ref+"^{commit}"); err == nil {
+				base = ref
+				break
+			}
+		}
+	}
+	level := "medium"
+	if home, err := os.UserHomeDir(); err == nil {
+		if l, _, err := LoadLevel(statefile.Path(home)); err == nil {
+			level = l
+		}
+	}
+	line, err := Stamp(root, branch, head, base, level)
+	if errors.Is(err, ErrInvalid) {
+		fmt.Fprintf(stderr, "harness review stamp: %v\n", err)
+		return 2
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness review stamp: %v\n", err)
+		return 1
+	}
+	fmt.Fprintln(stdout, line)
 	return 0
 }
