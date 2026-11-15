@@ -227,7 +227,7 @@ Many skill steps are `harness` commands rather than written instructions, so the
 | Command | What it does | Run by |
 | --- | --- | --- |
 | `harness pr status` | Whether a PR is ready to merge, and its first blocker | `open-pr`, `address-review` |
-| `harness land check`, `sync`, `finish`, `repair` | Whether a PR can land, then the cleanup after it merges | `/land` |
+| `harness land check`, `merge`, `sync`, `finish`, `repair` | Whether a PR can land, the merge itself, then the cleanup after it | `/land` |
 | `harness review target`, `covers`, `stamp` | What a review reads, whether a past review still covers the change, and the PR's review line | `review`, `open-pr` |
 | `harness worktree audit`, `retire` | List worktrees and remove one without losing work | `/land`, `/cleanup`, `/build` |
 | `harness tickets check`, `frontier`, `publish` | Validate ticket drafts, pick the ready ones, publish them to GitHub | `/tickets`, `/build` |

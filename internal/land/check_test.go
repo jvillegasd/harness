@@ -29,6 +29,9 @@ type fixture struct {
 	// resolvedIDs and replies are what the thread mutations wrote, by thread id.
 	resolvedIDs map[string]bool
 	replies     map[string][]string
+	// mergeRefused makes the forge refuse a merge; mergeBodies are the squash bodies it was sent.
+	mergeRefused bool
+	mergeBodies  []string
 }
 
 func setup(t *testing.T) *fixture {
@@ -170,6 +173,15 @@ func (f *fixture) forge(args ...string) ([]byte, error) {
 			return list(func(p *pull) bool { return p.BaseRefName == base })
 		}
 		return list(func(p *pull) bool { return p.HeadRefName == arg("--head") })
+	case "pr merge":
+		number, _ := strconv.Atoi(args[2])
+		body, _ := os.ReadFile(arg("--body-file"))
+		f.mergeBodies = append(f.mergeBodies, string(body))
+		if f.mergeRefused {
+			return nil, errors.New("merge refused")
+		}
+		f.pulls[number].State, f.pulls[number].MergeCommit.Oid = "MERGED", "abc123"
+		return nil, nil
 	case "pr edit":
 		number, _ := strconv.Atoi(args[2])
 		f.pulls[number].BaseRefName = arg("--base")

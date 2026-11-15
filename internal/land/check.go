@@ -54,6 +54,8 @@ type Check struct {
 	Notes      []string    `json:"notes"`
 	// gate is what the forge gates found, which `harness pr status` ranks into its exit code.
 	gate gateFacts
+	// body is the pull request description, which a merge takes its tradeoffs from.
+	body string
 }
 
 // gateFacts sorts the forge gates' holds into the blockers `harness pr status` names, and keeps the unresolved threads it lists.
@@ -62,6 +64,8 @@ type gateFacts struct {
 	// computing is a forge that has not yet worked out mergeability, as right after a push; waiting settles it.
 	computing bool
 	threads   []Thread
+	// holds are the forge gates' own holds, which no acceptance clears.
+	holds []string
 }
 
 // Thread is one unresolved review thread, located by its first comment.
@@ -257,6 +261,7 @@ func (e Env) check(root string, p pull, def, me string, merge bool, after int) (
 		Number: p.Number, URL: p.URL, Title: p.Title, Mine: p.Author.Login == me,
 		Head: p.HeadRefOid, HeadRefName: p.HeadRefName, Base: p.BaseRefName, Default: def, After: after, Key: p.HeadRefName,
 		Worktrees: []string{}, Findings: []Finding{}, Dependents: []Dependent{}, Holds: []string{}, Notes: []string{},
+		body: p.Body,
 	}
 	hold := func(format string, args ...any) { c.Holds = append(c.Holds, fmt.Sprintf(format, args...)) }
 	note := func(format string, args ...any) { c.Notes = append(c.Notes, fmt.Sprintf(format, args...)) }
@@ -327,7 +332,9 @@ func (e Env) check(root string, p pull, def, me string, merge bool, after int) (
 	}
 
 	if open {
+		before := len(c.Holds)
 		e.gates(p, &c, def)
+		c.gate.holds = slices.Clone(c.Holds[before:])
 	}
 	if err := e.review(root, p, &c, baseRef); err != nil {
 		return c, err

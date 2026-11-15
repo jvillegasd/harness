@@ -28,7 +28,7 @@ Merging publishes to the shared default branch and is hard to undo, so the human
 
    A review the human asked for is required whatever `review.required` says: treat any `review.status` but `current` as a hold.
 
-3. **Merge.** `gh pr merge <n> --squash --match-head-commit <head>`, so a push after the check fails the merge instead of landing unchecked code. The subject is the pull request title. The body carries the resulting behavior, the `## Tradeoffs` section, and material assumptions from the description, so the reasons reach the default branch. Leave out `--delete-branch`: its local checkout fails when another worktree holds the default branch and reads as a failed merge. Then read `gh pr view <n> --json state,mergeCommit`; anything but `MERGED` stops the run, whatever the merge command exited with.
+3. **Merge.** Write the resulting behavior and material assumptions from the description to a file, so the reasons reach the default branch, and run `harness land merge <n> --head <head> --body-file <file>`, adding `--accepted` only when the human accepted every hold step 2 reported. It checks again, refuses on a moved head or any forge gate, and adds the description's `## Tradeoffs`; `harness land merge --help` gives the rest. A non-zero exit stops the run.
 
 4. **Repair dependents** before deleting anything. Squashing replaces the head's commits, so each of `dependents` still carries them. Repair each one with `mine` true as [`references/stacked.md`](references/stacked.md) describes. Leave every other one as it is and report it with what its author needs to do: retarget to `<default>` and rebase off `<head>`.
 

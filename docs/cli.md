@@ -234,6 +234,16 @@ It prints one JSON verdict per PR. The fields you will read most:
 
 Without `--merge`, an open PR reads as `stop`. Run `harness land check --help` for every field.
 
+### Merge
+
+`/land merge` merges through `harness land merge`, which writes to GitHub, so run it only when you mean to merge:
+
+```sh
+harness land merge 19 --head <sha> --body-file body.md   # squash-merge PR 19 at the head check printed
+```
+
+It runs the check again and refuses, changing nothing, when the PR is not on the open lane, its head moved, or a GitHub gate holds it (a conflict, a red or pending required check, a missing approval, an unresolved thread). It also refuses any other hold, such as an open review finding, unless you pass `--accepted`. The squash commit takes the PR title as its subject and the file as its body, plus the description's `## Tradeoffs` section when the file has none. It never deletes the branch, and it succeeds only once GitHub reports the PR merged.
+
 ### After the merge
 
 `/land` runs these once a PR has merged. Each one is safe to run again.
