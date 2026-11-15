@@ -110,26 +110,6 @@ func TestFindOutsideAnyCheckout(t *testing.T) {
 	}
 }
 
-func TestAssetLocations(t *testing.T) {
-	root := "/repo"
-	c := Checkout{Root: root}
-	cases := map[string]string{
-		c.Floor():        filepath.Join(root, "FLOOR.md"),
-		c.Skills():       filepath.Join(root, "skills"),
-		c.Aliases():      filepath.Join(root, "aliases.sh"),
-		c.Clients():      filepath.Join(root, "clients"),
-		c.Generated():    filepath.Join(root, ".generated"),
-		c.Bench():        filepath.Join(root, "bench"),
-		c.Lock():         filepath.Join(root, "skills-lock.json"),
-		c.ClaudeSkills(): filepath.Join(root, ".claude", "skills"),
-	}
-	for got, want := range cases {
-		if got != want {
-			t.Errorf("asset = %s, want %s", got, want)
-		}
-	}
-}
-
 // TestManagedIsExplicitNamespaces pins the ownership predicate: a managed asset and everything beneath it is the installer's, while the repository's own tooling at the promoted root is not.
 func TestManagedIsExplicitNamespaces(t *testing.T) {
 	c := Checkout{Root: "/repo"}

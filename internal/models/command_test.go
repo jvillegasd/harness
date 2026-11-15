@@ -63,13 +63,14 @@ func TestSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
 	}
 }
 
-// TestSetAcceptsListedCodexModels covers the catalog path: a listed model at a supported effort, and inherit, which needs no listing.
-func TestSetAcceptsListedCodexModels(t *testing.T) {
+// TestSetAcceptsValidValues covers the catalog path, a listed Codex model at a supported effort and inherit, which needs no listing, and Sonnet 5's effort range, which Claude Code's docs list with xhigh.
+func TestSetAcceptsValidValues(t *testing.T) {
 	listingPath(t)
 	path := filepath.Join(t.TempDir(), "state.json")
 	for _, args := range [][]string{
 		{"reviewer", "--client", "codex", "--model", "gpt-6.1-sol", "--effort", "ultra"},
 		{"executor", "--client", "codex", "--model", "inherit"},
+		{"reviewer", "--client", "claude", "--model", "sonnet", "--effort", "xhigh"},
 	} {
 		if err := run(path, append([]string{"set"}, args...), &strings.Builder{}); err != nil {
 			t.Errorf("set %v: %v", args, err)
@@ -99,17 +100,6 @@ func TestShowRejectsAStaleChoice(t *testing.T) {
 		if err := run(path, []string{"show"}, &strings.Builder{}); err != nil {
 			t.Errorf("%s: show after reset failed: %v", name, err)
 		}
-	}
-}
-
-// TestSetAcceptsSonnetXhigh pins Sonnet 5's effort range, which Claude Code's docs list with xhigh.
-func TestSetAcceptsSonnetXhigh(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "state.json")
-	if err := os.WriteFile(path, []byte(`{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}`+"\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := run(path, []string{"set", "reviewer", "--client", "claude", "--model", "sonnet", "--effort", "xhigh"}, &strings.Builder{}); err != nil {
-		t.Fatalf("set sonnet xhigh: %v", err)
 	}
 }
 

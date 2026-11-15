@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,10 +13,7 @@ func TestAttemptsCommandWiring(t *testing.T) {
 	if result := harness(t, dir, args...); result.code != 0 {
 		t.Fatalf("add exited %d: %s", result.code, result.stderr)
 	}
-	before, err := os.ReadFile(log)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Which adds are rejected, and that a rejection writes nothing, is settled in internal/attempts.
 	bad := append([]string(nil), args...)
 	for i := range bad {
 		if bad[i] == "pass" {
@@ -28,13 +23,6 @@ func TestAttemptsCommandWiring(t *testing.T) {
 	}
 	if result := harness(t, dir, bad...); result.code != 2 {
 		t.Fatalf("rejected add exited %d, want 2: %s", result.code, result.stderr)
-	}
-	after, err := os.ReadFile(log)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(before, after) {
-		t.Fatal("rejected add changed the log")
 	}
 	result := harness(t, dir, "attempts", "list", "--log", log, "--json")
 	if result.code != 0 || !strings.Contains(result.stdout, `"before":10`) || !strings.Contains(result.stdout, `"delta":-2`) {

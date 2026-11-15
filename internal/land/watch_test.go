@@ -54,6 +54,21 @@ func TestWatch(t *testing.T) {
 			t.Fatalf("code %d, sleeps %d, err %v", code, c.sleeps, err)
 		}
 	})
+	// Right after a push the forge is still computing mergeability, so the watch waits instead of stopping.
+	t.Run("still computing", func(t *testing.T) {
+		defer func() { f.pulls[1].Mergeable, f.pulls[1].MergeStateStatus = "MERGEABLE", "CLEAN" }()
+		_, code, err, c := f.watch(time.Hour, func(pass int) {
+			passing()
+			if pass == 1 {
+				f.pulls[1].Mergeable, f.pulls[1].MergeStateStatus = "UNKNOWN", "UNKNOWN"
+			} else {
+				f.pulls[1].Mergeable, f.pulls[1].MergeStateStatus = "MERGEABLE", "CLEAN"
+			}
+		})
+		if err != nil || code != ExitReady || c.sleeps != 1 {
+			t.Fatalf("code %d after %d sleeps: %v", code, c.sleeps, err)
+		}
+	})
 	t.Run("turns red", func(t *testing.T) {
 		_, code, _, c := f.watch(time.Hour, func(pass int) {
 			if pass < 2 {

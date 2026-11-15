@@ -157,7 +157,7 @@ func TestGenerationIsIdempotent(t *testing.T) {
 	if !strings.Contains(stdout, "output: unchanged") {
 		t.Fatalf("second generate did not report its output as unchanged: %s", stdout)
 	}
-	if len(treeOf(t, out)) != len(first) {
+	if !deepEqualStrings(treeOf(t, out), first) {
 		t.Fatal("idempotent generation changed the tree")
 	}
 }
@@ -807,7 +807,15 @@ func TestLensExtendsTheReviewer(t *testing.T) {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
 	lens := readFile(t, filepath.Join(out, "claude", "review-spec.md"))
-	core, own := strings.Index(lens, "# Reviewer: find what is wrong, without the story"), strings.Index(lens, "## Lens: spec")
+	body := func(name string) string {
+		t.Helper()
+		parts := strings.SplitN(readFile(t, filepath.Join(repoRoot(), "skills", "workflow", "review", "roles", name)), "---\n", 3)
+		if len(parts) != 3 {
+			t.Fatalf("%s has no frontmatter", name)
+		}
+		return strings.TrimSpace(parts[2])
+	}
+	core, own := strings.Index(lens, body("reviewer.md")), strings.Index(lens, body("review-spec.md"))
 	if core < 0 || own < core {
 		t.Errorf("review-spec does not carry the reviewer text followed by its lens:\n%s", lens)
 	}

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -119,12 +120,15 @@ func TestProbeReportsEvidenceAndWritesNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	f = &fake{protected: true}
+	hostedBefore := snapshot(t, hosted)
 	e = Probe(hosted, f.run)
 	if !e.GitHubRemote || e.RemoteURL != "https://github.com/o/r.git" || e.DefaultBranch != "main" || e.Protected == nil || !*e.Protected || e.ConfiguredMode != "github" || len(e.LocalSpecTrees) != 0 {
 		t.Errorf("hosted probe = %+v", e)
 	}
-	if after := snapshot(t, local); len(after) != len(before) {
-		t.Error("probe wrote a file")
+	for dir, want := range map[string]map[string]string{local: before, hosted: hostedBefore} {
+		if got := snapshot(t, dir); !reflect.DeepEqual(got, want) {
+			t.Errorf("probe changed files under %s: before %v, after %v", dir, want, got)
+		}
 	}
 }
 

@@ -94,7 +94,12 @@ func TestRetireRemovesALandedWorktreeFromInsideIt(t *testing.T) {
 	if exists(path) || hasBranch(t, dir, "feat/x") {
 		t.Fatalf("worktree or branch survived: %v", done)
 	}
-	if got := strings.Join(done, "; "); got != "removed worktree "+path+"; deleted branch feat/x" {
+	// git reports the worktree by its real path, which on macOS is not the temp path spelling.
+	real, err := filepath.EvalSymlinks(filepath.Dir(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(done, "; "); got != "removed worktree "+filepath.Join(real, filepath.Base(path))+"; deleted branch feat/x" {
 		t.Errorf("reported %q", got)
 	}
 }
