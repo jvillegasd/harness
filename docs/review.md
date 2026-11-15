@@ -105,7 +105,7 @@ Dropping unproven findings means some real bugs slip through. In exchange, every
 
 ## Where results live
 
-The result is one verdict comment on the PR, posted with `harness review verdict`, and nothing is kept on your machine. Like a verifier's verdict, it reads `PASS`, `PASS+NOTES` (it may land, and the notes say what to read), or `FAIL` (a proven problem is unfixed, or part of the change went unreviewed). Below the verdict come the reviewed range, the level, the proven findings with how each was proven, and how many findings each reviewer dropped. A review of work that has no PR yet posts nothing until `open-pr` opens one.
+The result is one verdict comment on the PR, posted with `harness review verdict`, and nothing is kept on your machine. Like a verifier's verdict, it reads `PASS`, `PASS+NOTES` (it may land, and the notes say what to read), or `FAIL` (a proven problem is unfixed, or part of the change went unreviewed). Below the verdict come the reviewed range, the level, the proven findings with how each was proven, and how many findings each reviewer dropped. A review of work that has no PR yet posts nothing; `open-pr` opens the PR first, then runs the review that posts it.
 
 `/land` and the readiness report read the newest verdict from someone with write access to the repository, and ignore any other. They compare the commit it read with the PR's head file by file, so a rebase that changes no file's patch keeps it. When a skill calls for a review and the PR already has a current `PASS` or `PASS+NOTES` verdict at that level or deeper, the agent reports it and does not run a second one. A review you ask for by name always runs.
 

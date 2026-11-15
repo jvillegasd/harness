@@ -115,9 +115,9 @@ stateDiagram-v2
     Local --> Local: A check fails, agent fixes it
     Local --> LocalReady: Work done, checks pass
     LocalReady --> Preparing: You ask for a PR, or autopilot opens one
-    Preparing --> PR: Checks and review pass, PR opens
+    Preparing --> PR: Checks pass, PR opens
     PR --> PR: Agent fixes checks or feedback
-    PR --> MergeReady: Checks and review pass
+    PR --> MergeReady: Checks pass and the review posts its verdict
     MergeReady --> PR: New changes need checks
     MergeReady --> Merged: You merge, or run /land merge
     Merged --> [*]: You run /land to clean up

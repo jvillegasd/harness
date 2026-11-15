@@ -131,7 +131,7 @@ A review's result is one verdict comment on the PR, never a file on your machine
 | `PASS+NOTES` | It may land; the notes say what you should still read | No |
 | `FAIL` | A confirmed finding is unfixed, or part of the change went unreviewed | Yes, until a newer verdict replaces it or you accept it by name |
 
-Only the newest verdict from someone with write access to the repository counts. A verdict from anyone else is listed as ignored. A review of work with no PR yet posts nothing; `open-pr` posts its verdict right after it opens the PR.
+Only the newest verdict from someone with write access to the repository counts. A verdict from anyone else is listed as ignored. A review of work with no PR yet posts nothing; `open-pr` opens the PR first and then runs the review that posts it.
 
 ### Commands the review skills run
 
@@ -212,7 +212,7 @@ Without `--merge`, an open PR reads as `stop`. Run `harness land check --help` f
 harness land merge 19 --head <sha> --body-file body.md   # squash-merge PR 19 at the head check printed
 ```
 
-It runs the check again and refuses, changing nothing, when the PR is not on the open lane, its head moved, or a GitHub gate holds it (a conflict, a red or pending required check, a missing approval, an unresolved thread). It also refuses any other hold, such as an open review finding, unless you pass `--accepted`. The squash commit takes the PR title as its subject and the file as its body, plus the description's `## Tradeoffs` section when the file has none. It never deletes the branch, and it succeeds only once GitHub reports the PR merged.
+It runs the check again and refuses, changing nothing, when the PR is not on the open lane, its head moved, or a GitHub gate holds it (a conflict, a red or pending required check, a missing approval, an unresolved thread). It also refuses any other hold, such as a `FAIL` review verdict or a stale review, unless you pass `--accepted`. The squash commit takes the PR title as its subject and the file as its body, plus the description's `## Tradeoffs` section when the file has none. It never deletes the branch, and it succeeds only once GitHub reports the PR merged.
 
 ### After the merge
 

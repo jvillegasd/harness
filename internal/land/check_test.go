@@ -495,6 +495,26 @@ func TestVerdictSources(t *testing.T) {
 	holds(t, c)
 }
 
+// TestVerdictBase covers a verdict whose range starts inside the pull request: it read only part of the change, so it is stale.
+func TestVerdictBase(t *testing.T) {
+	f := setup(t)
+	p := f.open(1, "code", "main", map[string]string{"b.go": "package b\n"})
+	first := p.HeadRefOid
+	f.commit(map[string]string{"c.go": "package c\n"})
+	f.push(p)
+	v := review.Verdict{Result: "PASS", Base: first, SHA: p.HeadRefOid, Level: "medium"}
+	page, err := json.Marshal([]map[string]any{{"body": review.Body(v, ""), "html_url": "https://x/1#partial", "user": map[string]string{"login": "me"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.comments[1] = string(page)
+	c := f.one(1)
+	if r := c.Review; r.Status != "stale" {
+		t.Fatalf("a verdict over part of the change got %+v", r)
+	}
+	holds(t, c, "after the pull request's base")
+}
+
 // TestVerdictResults covers what each result does: a FAIL holds even where no review is required and whatever changed since, PASS+NOTES points the human at its notes, and a newer verdict replaces a FAIL.
 func TestVerdictResults(t *testing.T) {
 	f := setup(t)

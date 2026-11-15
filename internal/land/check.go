@@ -88,6 +88,8 @@ type Review struct {
 	Result string `json:"result,omitempty"`
 	Depth  string `json:"depth,omitempty"`
 	URL    string `json:"url,omitempty"`
+	// Base and SHA are the range the verdict read.
+	Base   string `json:"base,omitempty"`
 	SHA    string `json:"sha,omitempty"`
 	Status string `json:"status"` // current, tests-docs, stale, or missing
 	// Changed are the files whose patch differs between the reviewed commit and the head.
@@ -466,7 +468,7 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 	}
 	r.Ignored = ignored
 	if v != nil {
-		r.Source, r.Result, r.Depth, r.URL, r.SHA = "verdict", v.Result, v.Level, url, v.SHA
+		r.Source, r.Result, r.Depth, r.URL, r.Base, r.SHA = "verdict", v.Result, v.Level, url, v.Base, v.SHA
 	}
 	switch r.Result {
 	case "FAIL":
@@ -514,6 +516,7 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 	r.Tier = string(tier)
 	r.Required = level != "off" && tier.Rank() > changemap.TestsDocs.Rank()
 
+	partial := false
 	if r.Source != "none" {
 		// A reviewed commit that is gone cannot be compared, so its review is stale.
 		r.Status = "stale"
@@ -530,6 +533,10 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 				r.Status = "tests-docs"
 			}
 		}
+		// A range that starts after the pull request's base read only part of the change.
+		if _, err := git(root, "merge-base", "--is-ancestor", r.Base, mergeBase); err != nil && r.Status != "stale" {
+			r.Status, partial = "stale", true
+		}
 	}
 	say := note
 	if r.Required {
@@ -541,6 +548,10 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 			hold("a required review never ran (level %s, tier %s): run /review %d", level, tier, p.Number)
 		}
 	case "stale":
+		if partial {
+			say("the review verdict of %s is stale: its range starts at %s, after the pull request's base, so it read only part of the change", short(r.SHA), short(r.Base))
+			break
+		}
 		say("the review verdict of %s is stale: %s", short(r.SHA), describe(r.Changed))
 	case "tests-docs":
 		say("only test or documentation files changed after the review verdict of %s: %s. Read their hunks; the review stands when they change no shipped behavior", short(r.SHA), describe(r.Changed))

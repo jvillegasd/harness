@@ -38,7 +38,7 @@ Commands:
   statusline Print the Claude Code status line for the payload on stdin
   models     Choose each delegated role's client, model, and effort
   change-map Classify this branch's changed files into review tiers
-  review     Record and read the local review ledger
+  review     Post review verdicts and keep review scratch
   worktree   Audit and retire linked worktrees without losing work
   land       Report whether pull requests can land, and how
   pr         Report a pull request's readiness and what blocks it

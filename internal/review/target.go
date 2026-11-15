@@ -26,7 +26,7 @@ func Gh(dir string) Forge {
 	}
 }
 
-// Target is what a review reads: the change base..sha as full commit ids, the ledger key it records under, whether it is foreign (anything but the current task branch, so the review is report-only), and whether it is a fork's pull request (reviewed without running anything).
+// Target is what a review reads: the change base..sha as full commit ids, the key of its review directory, whether it is foreign (anything but the current task branch, so the review is report-only), and whether it is a fork's pull request (reviewed without running anything).
 type Target struct {
 	Kind    string `json:"kind"` // branch, pr, or range; the current task branch is a branch
 	Base    string `json:"base"`

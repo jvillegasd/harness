@@ -145,8 +145,10 @@ of the pull request body. review.source is verdict when the pull request
 carries a verdict comment that harness review verdict posted, and none
 otherwise. Only the newest verdict by someone with admin, maintain, or write
 permission counts; review.ignored lists the others. review.result is its PASS,
-PASS+NOTES, or FAIL, review.depth its level, review.url its comment, and
-review.sha the commit it read. review.status compares that commit's patch with
+PASS+NOTES, or FAIL, review.depth its level (reported, never compared), review.url its comment,
+and review.base and review.sha the range it read. A verdict whose base is not
+an ancestor of the pull request's merge base read only part of the change, so
+it is stale. review.status compares that commit's patch with
 the head's, file by file:
 
   current     the head carries the reviewed patch
