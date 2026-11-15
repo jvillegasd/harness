@@ -158,11 +158,12 @@ func TestRemoveBranchWithNoDirectoryIsDone(t *testing.T) {
 	}
 }
 
-// worktree.txt is review's record of an executor worktree it could not retire; deleting it would orphan that worktree and its saved patch.
+// worktree.txt is review's record of an executor worktree it could not retire; deleting it would orphan that worktree and its saved patch. A record whose directory is gone holds nothing.
 func TestRemoveBranchRefusesARecordedWorktree(t *testing.T) {
 	file := branchDir(t, t.TempDir(), "feat")
 	dir := filepath.Dir(file)
-	if err := os.WriteFile(filepath.Join(dir, "worktree.txt"), []byte("/tmp/wt\n"), 0o644); err != nil {
+	tree := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "worktree.txt"), []byte(tree+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	removed, err := RemoveBranch(file)
@@ -173,6 +174,12 @@ func TestRemoveBranchRefusesARecordedWorktree(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			t.Fatalf("%s was deleted by a refused removal: %v", f, err)
 		}
+	}
+	if err := os.Remove(tree); err != nil {
+		t.Fatal(err)
+	}
+	if removed, err := RemoveBranch(file); err != nil || !removed {
+		t.Fatalf("RemoveBranch with the recorded worktree gone = %v, %v; want it removed", removed, err)
 	}
 }
 
@@ -198,28 +205,33 @@ func TestRemoveBranchRefusesOutsideTheBranchesDirectory(t *testing.T) {
 	}
 }
 
-// Prune keeps every branch that still exists and every directory that records a review worktree, and a dry run deletes nothing.
+// Prune keeps every branch that still exists and every directory that records a review worktree still on disk, and a dry run deletes nothing.
 func TestPruneRemovesOnlyGoneBranches(t *testing.T) {
 	root := t.TempDir()
 	live := filepath.Dir(branchDir(t, root, "feat%2Flive"))
 	gone := filepath.Dir(branchDir(t, root, "feat%2Fgone"))
 	held := filepath.Dir(branchDir(t, root, "held"))
-	if err := os.WriteFile(filepath.Join(held, "worktree.txt"), []byte("/tmp/wt\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(held, "worktree.txt"), []byte(t.TempDir()+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A record whose worktree directory is gone, as after a retirement by path, is no hold.
+	stale := filepath.Dir(branchDir(t, root, "stale"))
+	if err := os.WriteFile(filepath.Join(stale, "worktree.txt"), []byte(filepath.Join(root, "retired")+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	isLive := func(b string) bool { return b == "feat/live" }
 	dir := filepath.Join(root, "branches")
 
 	removed, kept, err := Prune(dir, isLive, true)
-	if err != nil || len(removed) != 1 || removed[0] != gone || len(kept) != 1 || kept[0] != held {
-		t.Fatalf("dry run = %v, %v, %v; want [%s], [%s]", removed, kept, err, gone, held)
+	if err != nil || len(removed) != 2 || removed[0] != gone || removed[1] != stale || len(kept) != 1 || kept[0] != held {
+		t.Fatalf("dry run = %v, %v, %v; want [%s %s], [%s]", removed, kept, err, gone, stale, held)
 	}
 	if _, err := os.Stat(gone); err != nil {
 		t.Fatalf("a dry run deleted %s: %v", gone, err)
 	}
 
-	if removed, _, err := Prune(dir, isLive, false); err != nil || len(removed) != 1 {
-		t.Fatalf("Prune = %v, %v; want one directory removed", removed, err)
+	if removed, _, err := Prune(dir, isLive, false); err != nil || len(removed) != 2 {
+		t.Fatalf("Prune = %v, %v; want two directories removed", removed, err)
 	}
 	if _, err := os.Stat(gone); !os.IsNotExist(err) {
 		t.Errorf("a gone branch's directory survived: %v", err)

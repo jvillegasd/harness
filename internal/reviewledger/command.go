@@ -172,8 +172,9 @@ const removeUsage = `Usage: harness review remove [--branch <name>]
 
 Delete the branch's review directory, its ledger and saved patches (default:
 the current branch), and print the directory removed. A branch with nothing
-recorded prints nothing and exits 0. A directory that still holds worktree.txt,
-review's record of a worktree it could not retire, is refused untouched.
+recorded prints nothing and exits 0. A directory whose worktree.txt, review's
+record of a worktree it could not retire, names a directory that still exists
+is refused untouched; one whose recorded directory is gone is removed.
 `
 
 const pruneUsage = `Usage: harness review prune [--dry-run [--forge]]
@@ -181,7 +182,9 @@ const pruneUsage = `Usage: harness review prune [--dry-run [--forge]]
 Delete the review directory of every branch that exists neither as a local
 branch nor as a remote-tracking branch, and print each directory removed. Run
 git fetch --prune first so a branch deleted on the remote counts as gone. A
-directory that still holds worktree.txt is kept and named on stderr. A review
+directory whose worktree.txt names a directory that still exists is kept and
+named on stderr; once that worktree is retired, by path or by harness review
+worktree retire, the directory goes like any other. A review
 keyed pr-<n> (a fork's pull request) or range-<base>-<sha> has no branch and is
 always pruned, even while that pull request is open, so run --dry-run first and
 prune only once each listed directory is approved for removal.
@@ -532,7 +535,7 @@ func prune(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, d)
 	}
 	for _, d := range held {
-		fmt.Fprintf(stderr, "harness review prune: kept %s: worktree.txt still records a review worktree\n", d)
+		fmt.Fprintf(stderr, "harness review prune: kept %s: worktree.txt records a review worktree that still exists\n", d)
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness review prune: %v\n", err)

@@ -167,7 +167,7 @@ func TestReviewRemoveCommand(t *testing.T) {
 		t.Fatalf("a dot-segment branch name deleted another branch's ledger: %v", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(kept, "worktree.txt"), []byte("/tmp/wt\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(kept, "worktree.txt"), []byte(t.TempDir()+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if r := reviewRun(t, dir, data, "remove", "--branch", "feat/y"); r.code != 1 || r.stderr == "" {

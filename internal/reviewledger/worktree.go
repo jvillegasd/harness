@@ -11,7 +11,7 @@ import (
 	wt "github.com/jvillegasd/harness/internal/worktree"
 )
 
-// recordName is the file in a key's review directory that records the one worktree a review may create. Its first line is the worktree's path and its second the commit it was created at. While it exists, `remove` and `prune` leave the directory alone.
+// recordName is the file in a key's review directory that records the one worktree a review may create. Its first line is the worktree's path and its second the commit it was created at. While the worktree it names exists, `remove` and `prune` leave the directory alone.
 const recordName = "worktree.txt"
 
 func readRecord(dir string) (path, sha string, ok bool, err error) {
@@ -28,6 +28,15 @@ func readRecord(dir string) (path, sha string, ok bool, err error) {
 		sha = strings.TrimSpace(lines[1])
 	}
 	return path, sha, true, nil
+}
+
+// recordLive reports whether dir's worktree.txt names a worktree whose directory still exists. A record whose directory is gone, as after the worktree was retired without `harness review worktree retire`, holds no work and so holds nothing.
+func recordLive(dir string) (bool, error) {
+	path, _, ok, err := readRecord(dir)
+	if err != nil || !ok {
+		return false, err
+	}
+	return path != "" && exists(path), nil
 }
 
 // findTree returns the worktree of the repository at path, if any.
