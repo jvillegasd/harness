@@ -9,10 +9,8 @@ import (
 	"strings"
 )
 
-// Forge runs one gh command and returns its stdout.
 type Forge func(args ...string) ([]byte, error)
 
-// Gh is the Forge that runs the gh CLI in dir.
 func Gh(dir string) Forge {
 	return func(args ...string) ([]byte, error) {
 		cmd := exec.Command("gh", args...)
@@ -26,9 +24,8 @@ func Gh(dir string) Forge {
 	}
 }
 
-// Target is what a review reads: the change base..sha as full commit ids, the key of its review directory, whether it is foreign (anything but the current task branch, so the review is report-only), and whether it is a fork's pull request (reviewed without running anything).
 type Target struct {
-	Kind    string `json:"kind"` // branch, pr, or range; the current task branch is a branch
+	Kind    string `json:"kind"`
 	Base    string `json:"base"`
 	SHA     string `json:"sha"`
 	Key     string `json:"key"`
@@ -41,7 +38,6 @@ var (
 	prNumRe = regexp.MustCompile(`^#?([0-9]+)$`)
 )
 
-// ResolveTarget resolves a review target: none for the current task branch, a pull request number or URL, a local or origin/ branch, or a <base>..<sha> range. It fetches what it reads from origin without tags and creates no branch.
 func ResolveTarget(root string, forge Forge, arg string) (Target, error) {
 	current, _ := git(root, "branch", "--show-current")
 	if arg == "" {
@@ -111,7 +107,7 @@ func pullTarget(root string, forge Forge, number, current string) (Target, error
 	if t.Fork {
 		t.Key = "pr-" + number
 	} else if head, _ := git(root, "rev-parse", "HEAD"); p.HeadRefName == current && head == p.HeadRefOid {
-		// The pull request of the branch checked out here, at its head, is the current task branch.
+
 		t.Foreign = false
 	}
 	return t, nil

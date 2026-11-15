@@ -11,7 +11,6 @@ import (
 	"testing"
 )
 
-// lockRun is a throwaway checkout with the lock tool's paths, an isolated HOME, and a shim directory.
 type lockRun struct {
 	root, shims, home string
 }
@@ -40,7 +39,6 @@ func newLockRun(t *testing.T) lockRun {
 	return lr
 }
 
-// setNpx writes the shim at PATH: it records every call, with the directory it ran in, in the checkout's npx.log and, when install is set, performs what skills.sh does for an add in that directory: the body under .agents/skills and the lock beside it.
 func (lr lockRun) setNpx(t *testing.T, install bool) {
 	t.Helper()
 	script := `#!/bin/sh
@@ -220,7 +218,6 @@ func TestSkillsUpdateDrivesNpx(t *testing.T) {
 	lr.ranOutsideCheckout(t)
 }
 
-// TestSkillsUpdateReplacesTheBodyInItsGroup has skills.sh rewrite a body and the lock in its scratch project, and expects the new body in the group that held the old one, with no stale file left and the lock copied back.
 func TestSkillsUpdateReplacesTheBodyInItsGroup(t *testing.T) {
 	lr := newLockRun(t)
 	seedLockedSkill(t, lr, "myskill")
@@ -243,7 +240,6 @@ sed 's/0000000000000000000000000000000000000000000000000000000000000000/11111111
 	}
 }
 
-// ranOutsideCheckout fails when skills.sh ran inside the checkout, where it would write a flat body beside the groups.
 func (lr lockRun) ranOutsideCheckout(t *testing.T) {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(lr.root, "npx.dirs"))
@@ -400,7 +396,6 @@ func seedLockedSkill(t *testing.T, lr lockRun, name string) {
 	}
 }
 
-// TestSkillsVerifyMatchesThePinnedLock recomputes the real committed bodies against the lock skills.sh wrote, so a Go hash that diverged from skills.sh's version 2 computeSkillFolderHash would show drift.
 func TestSkillsVerifyMatchesThePinnedLock(t *testing.T) {
 	lr := locksVerifySandbox(t)
 	r := ok(t, lr.harness(t, "skills", "verify"), "skills verify")
@@ -452,9 +447,9 @@ func TestSkillsVerifyReportsUnverifiableNotDrift(t *testing.T) {
 		t.Fatal(err)
 	}
 	skills := lf["skills"].(map[string]any)
-	// A 40-hex git tree sha is a blob install's server snapshot, not a locally recomputed folder hash.
+
 	skills["handoff"].(map[string]any)["computedHash"] = strings.Repeat("a", 40)
-	// An entry whose body is gone cannot be recomputed either.
+
 	skills["ponytail"].(map[string]any)["computedHash"] = strings.Repeat("b", 64)
 	if err := os.RemoveAll(filepath.Join(lr.root, "skills/support/ponytail")); err != nil {
 		t.Fatal(err)
@@ -475,7 +470,6 @@ func TestSkillsVerifyReportsUnverifiableNotDrift(t *testing.T) {
 	}
 }
 
-// TestSkillsVerifyRefusesAnUnguardedLocalSkill fails verify for a local skill missing a guard, while locked bodies, which carry none, still pass.
 func TestSkillsVerifyRefusesAnUnguardedLocalSkill(t *testing.T) {
 	lr := locksVerifySandbox(t)
 	ok(t, lr.harness(t, "skills", "verify"), "skills verify with guarded local skills")
@@ -489,7 +483,6 @@ func TestSkillsVerifyRefusesAnUnguardedLocalSkill(t *testing.T) {
 	}
 }
 
-// TestAliasesShellSyntax keeps the shipped shell entry point parseable.
 func TestAliasesShellSyntax(t *testing.T) {
 	if out, err := exec.Command("bash", "-n", filepath.Join("..", "..", "aliases.sh")).CombinedOutput(); err != nil {
 		t.Fatalf("bash -n aliases.sh: %v\n%s", err, out)
@@ -541,7 +534,6 @@ func copyTree(t *testing.T, src, dst string) error {
 	})
 }
 
-// TestSkillsUpdateChangesNothingWhenABodyHasNoGroup has skills.sh rewrite two bodies, one of which no group holds, and expects the refusal to leave every grouped body and the lock as they were, so verify never sees a body newer than its lock.
 func TestSkillsUpdateChangesNothingWhenABodyHasNoGroup(t *testing.T) {
 	lr := newLockRun(t)
 	seedLockedSkill(t, lr, "aaa")
@@ -700,7 +692,6 @@ esac
 	}
 }
 
-// TestSkillsNewAndMoveCommand proves the CLI is wired to local skill creation and moves: a new skill passes verify with both links, a move repoints them, and a refused move exits 1.
 func TestSkillsNewAndMoveCommand(t *testing.T) {
 	lr := newLockRun(t)
 	for _, g := range []string{"support", "ops"} {

@@ -9,21 +9,17 @@ import (
 	"strings"
 )
 
-// Forge runs one gh command and returns its stdout.
 type Forge func(args ...string) ([]byte, error)
 
-// Pull is what the forge says about a worktree's branch: its pull request, and for a merged one whose branch the audit could not prove landed, the merged head to retire it into.
 type Pull struct {
 	Number int
-	State  string // OPEN, MERGED, or CLOSED; empty when the branch has no pull request
-	Into   string // the merged head, fetched, to pass as --into
-	Err    error  // the forge read or the fetch failed, so the forge state is unavailable
+	State  string
+	Into   string
+	Err    error
 }
 
-// Held reports whether an open pull request holds the row.
 func (p Pull) Held() bool { return p.State == "OPEN" }
 
-// String is the audit's PR column.
 func (p Pull) String() string {
 	switch {
 	case p.Err != nil:
@@ -36,7 +32,6 @@ func (p Pull) String() string {
 	return fmt.Sprintf("#%d %s", p.Number, p.State)
 }
 
-// ReadPull asks the forge for the pull request of a status's branch, preferring an open one, then the newest merged one. For an unlanded branch whose pull request merged, it fetches that pull request's head from origin into dir, so retiring with --into that head proves the branch holds nothing the merged pull request lacked.
 func ReadPull(dir string, s Status, forge Forge) Pull {
 	if s.Branch == "" {
 		return Pull{}
@@ -80,7 +75,6 @@ func ReadPull(dir string, s Status, forge Forge) Pull {
 	return p
 }
 
-// gh is the Forge that runs the gh CLI in dir.
 func gh(dir string) Forge {
 	return func(args ...string) ([]byte, error) {
 		cmd := exec.Command("gh", args...)

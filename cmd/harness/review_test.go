@@ -10,7 +10,6 @@ import (
 	"testing"
 )
 
-// reviewRun runs the built binary in dir; review scratch lands in the repository's Git directory.
 func reviewRun(t *testing.T, dir, data string, args ...string) result {
 	t.Helper()
 	cmd := exec.Command(binary, append([]string{"review"}, args...)...)
@@ -28,7 +27,6 @@ func reviewRun(t *testing.T, dir, data string, args ...string) result {
 	return result{stdout.String(), stderr.String(), code}
 }
 
-// scratchDir makes key's review directory holding a saved patch, as a review run leaves it, and returns it.
 func scratchDir(t *testing.T, dir, key string) string {
 	t.Helper()
 	d := filepath.Join(git(t, dir, "rev-parse", "--path-format=absolute", "--git-common-dir"), "harness-review", "branches", url.PathEscape(key))
@@ -41,7 +39,6 @@ func scratchDir(t *testing.T, dir, key string) string {
 	return d
 }
 
-// TestReviewRemoveCommand proves the CLI is wired to the removal rule: the named branch's directory goes, another branch's stays, a second run is a no-op, and a recorded worktree is refused. The rule itself is settled in internal/review.
 func TestReviewRemoveCommand(t *testing.T) {
 	dir, data := repo(t), t.TempDir()
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
@@ -80,7 +77,6 @@ func TestReviewRemoveCommand(t *testing.T) {
 	}
 }
 
-// TestReviewPruneCommand proves prune reads local and remote-tracking branches from git; which directories go is settled in internal/review.
 func TestReviewPruneCommand(t *testing.T) {
 	dir, data := repo(t), t.TempDir()
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
@@ -106,7 +102,6 @@ func TestReviewPruneCommand(t *testing.T) {
 	}
 }
 
-// TestReviewLevelCommand proves the CLI is wired to the level rules, and that an install keeps the stored level. Which values are accepted is settled in internal/review.
 func TestReviewLevelCommand(t *testing.T) {
 	base := modelsBase(t)
 	level := func(args ...string) result {
@@ -134,7 +129,6 @@ func TestReviewLevelCommand(t *testing.T) {
 	}
 }
 
-// TestReviewVerdictCommand proves the CLI is wired to the verdict rules: a dry run prints the comment and posts nothing, a verdict for a commit that is not the head or on a closed pull request is refused, and a post sends the comment from a file.
 func TestReviewVerdictCommand(t *testing.T) {
 	dir, head, run := prRepo(t)
 	base := git(t, dir, "rev-parse", "HEAD~1")
@@ -178,9 +172,16 @@ func TestReviewVerdictCommand(t *testing.T) {
 	if r := run(forge("OPEN", head), args("PASS")...); r.code != 0 || readFile(t, log) != r.stdout {
 		t.Errorf("post exited %d, printed %q, posted %q: %s", r.code, r.stdout, readFile(t, log), r.stderr)
 	}
+
+	r = run(forge("OPEN", head), "review", "verdict", "7", "--run", "--result", "PASS", "--sha", "HEAD", "--dry-run")
+	if r.code != 0 || !strings.HasPrefix(r.stdout, "<!-- harness-run verdict=PASS sha="+head+" -->\n") {
+		t.Errorf("run dry run exited %d with %q: %s", r.code, r.stdout, r.stderr)
+	}
+	if r := run(forge("OPEN", head), "review", "verdict", "7", "--run", "--result", "PASS", "--sha", "HEAD", "--level", "medium"); r.code != 2 || r.stderr == "" {
+		t.Errorf("a run verdict with a level exited %d with %q, want 2 and a diagnostic", r.code, r.stderr)
+	}
 }
 
-// TestReviewEvalsCommand proves the CLI is wired to the evals: seed prints candidates and writes nothing, and score reads evals.jsonl from the Git directory, appends its summary, and refuses a second scoring.
 func TestReviewEvalsCommand(t *testing.T) {
 	dir, data := repo(t), t.TempDir()
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")

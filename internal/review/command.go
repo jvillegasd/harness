@@ -18,11 +18,12 @@ const usage = `Usage: harness review <command> [arguments]
 
 Post a review's verdict on its pull request and keep a review run's scratch.
 Findings and verdicts live on the pull request as one verdict comment per
-review, which harness land check and harness pr status read; nothing about a
-review's result is kept on this machine.
+review, and one per run-as-user check, which harness land check and harness
+pr status read; nothing about either result is kept on this machine.
 
 Commands:
-  verdict   Post a review's verdict comment on its pull request
+  verdict   Post a review's or a run-as-user check's verdict comment on its
+            pull request
   level     Print or set the review level: off, medium (default), or high
   target    Resolve what a review reads: its base, commit, and key
   snapshot  Save owned uncommitted work as a patch and print its digest
@@ -65,22 +66,28 @@ regression true when recall dropped or false positives rose.
 `
 
 const verdictUsage = `Usage: harness review verdict <pr> --result <PASS|PASS+NOTES|FAIL> --base <base> --sha <sha> --level <medium|high> [--notes <file>] [--dry-run]
+       harness review verdict <pr> --run --result <PASS|PASS+NOTES|FAIL> --sha <sha> [--notes <file>] [--dry-run]
 
-Post one review's verdict on pull request <pr> as one comment, and print it.
-The comment starts with a hidden marker naming the result, the reviewed
-<base>..<sha> as full commit ids, and the level, which harness land check
+Post one verdict on pull request <pr> as one comment, and print it. A review's
+verdict names the reviewed <base>..<sha> and the level. With --run it is a
+run-as-user verdict: an agent that did not write the change drove it at <sha>,
+and it takes no --base or --level. The comment starts with a hidden marker
+naming the kind, the result, and the full commit ids, which harness land check
 parses; only a verdict by someone with write access to the repository counts
 there. --sha must be the pull request's current head, so a verdict always
 names a commit the pull request holds.
 
   PASS        nothing left to report
   PASS+NOTES  the change may land; the notes say what the human should read
-  FAIL        a confirmed finding is unfixed, or part of the change went
-              unreviewed
+  FAIL        a confirmed finding is unfixed, part of the change went
+              unreviewed, or a driven feature missed its end state
 
-  --notes    A Markdown file with the confirmed findings, each with its path,
-             lines, severity, and the run that proved it, plus coverage and
-             dropped counts; required for PASS+NOTES and FAIL
+  --run      Post a run-as-user verdict instead of a review's
+  --notes    A Markdown file, required for PASS+NOTES and FAIL. For a review:
+             the confirmed findings, each with its path, lines, severity, and
+             the run that proved it, plus coverage and dropped counts. For a
+             run: each feature driven with its result and evidence, and the
+             gaps
   --dry-run  Check everything, print the comment, and post nothing
 `
 
@@ -161,7 +168,6 @@ lost.
   --dry-run  Print what would be removed, and remove nothing
 `
 
-// Command runs `harness review` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)
@@ -240,7 +246,6 @@ func snapshot(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// parse handles help and usage errors before any git call, returning -1 to continue.
 func parse(flags *flag.FlagSet, args []string, text string, stdout, stderr io.Writer) int {
 	flags.SetOutput(io.Discard)
 	if err := flags.Parse(args); err != nil {
@@ -258,7 +263,6 @@ func parse(flags *flag.FlagSet, args []string, text string, stdout, stderr io.Wr
 	return -1
 }
 
-// reviewDir resolves the repository root, the key (default: the current branch), and the key's review directory.
 func reviewDir(name, key string, stderr io.Writer) (root, resolved, dir string, code int) {
 	cwd, err := os.Getwd()
 	if err == nil {
@@ -321,7 +325,7 @@ func prune(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	live := map[string]bool{}
-	// A local branch is refs/heads/<name>; a remote-tracking one is refs/remotes/<remote>/<name>.
+
 	for strip, refs := range map[string]string{"2": "refs/heads", "3": "refs/remotes"} {
 		out, err := git(root, "for-each-ref", "--format=%(refname:lstrip="+strip+")", refs)
 		if err != nil {
@@ -416,7 +420,7 @@ func worktreeCommand(args []string, stdout, stderr io.Writer) int {
 	} else {
 		flags.BoolVar(&allowIgnored, "allow-ignored", false, "")
 	}
-	// Flags may follow the commit, so parse around the one positional argument.
+
 	var positional []string
 	rest := args[1:]
 	for {
@@ -478,12 +482,13 @@ func verdict(args []string, stdout, stderr io.Writer) int {
 	flags.StringVar(&v.SHA, "sha", "", "")
 	flags.StringVar(&v.Level, "level", "", "")
 	flags.StringVar(&notesFile, "notes", "", "")
+	flags.BoolVar(&v.Run, "run", false, "")
 	dryRun := flags.Bool("dry-run", false, "")
-	// The pull request number is the one argument that is not a flag or a flag's value.
+
 	var rest, positional []string
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; {
-		case strings.HasPrefix(a, "-") && !strings.Contains(a, "=") && a != "--dry-run" && a != "-h" && a != "--help" && i+1 < len(args):
+		case strings.HasPrefix(a, "-") && !strings.Contains(a, "=") && a != "--dry-run" && a != "--run" && a != "-h" && a != "--help" && i+1 < len(args):
 			rest = append(rest, a, args[i+1])
 			i++
 		case strings.HasPrefix(a, "-"):
@@ -499,8 +504,8 @@ func verdict(args []string, stdout, stderr io.Writer) int {
 	if len(positional) == 1 {
 		number, err = strconv.Atoi(positional[0])
 	}
-	if len(positional) != 1 || err != nil || number <= 0 || v.Result == "" || v.Base == "" || v.SHA == "" || v.Level == "" {
-		fmt.Fprintf(stderr, "harness review verdict: give one pull request number, --result, --base, --sha, and --level; run harness review verdict --help\n")
+	if len(positional) != 1 || err != nil || number <= 0 || v.Result == "" || v.SHA == "" || !v.Run && (v.Base == "" || v.Level == "") {
+		fmt.Fprintf(stderr, "harness review verdict: give one pull request number, --result, and --sha, with --base and --level for a review or --run for a run; run harness review verdict --help\n")
 		return 2
 	}
 	notes := ""
@@ -522,6 +527,10 @@ func verdict(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	for _, rev := range []*string{&v.Base, &v.SHA} {
+		if *rev == "" {
+
+			continue
+		}
 		full, err := git(root, "rev-parse", "--verify", "--quiet", "--end-of-options", *rev+"^{commit}")
 		if err != nil {
 			fmt.Fprintf(stderr, "harness review verdict: %q does not name a commit here; fetch it first\n", *rev)
@@ -548,7 +557,7 @@ func verdict(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness review verdict: pull request #%d is %s, and a verdict is posted only on an open one\n", number, strings.ToLower(pull.State))
 		return 1
 	case pull.HeadRefOid != v.SHA:
-		fmt.Fprintf(stderr, "harness review verdict: pull request #%d's head is %s, not the reviewed %s; push the reviewed commit, or review the new head\n", number, pull.HeadRefOid, v.SHA)
+		fmt.Fprintf(stderr, "harness review verdict: pull request #%d's head is %s, not %s, the commit this verdict covers; push that commit, or get a verdict for the new head\n", number, pull.HeadRefOid, v.SHA)
 		return 1
 	}
 	body := Body(v, notes)

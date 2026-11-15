@@ -14,7 +14,6 @@ import (
 	"testing"
 )
 
-// agentOutputs are the role agents this checkout renders, per client.
 var agentOutputs = []string{"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "claude/review-bugs.md", "claude/review-risk.md", "claude/review-spec.md", "codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml", "codex/review-bugs.toml", "codex/review-risk.toml", "codex/review-spec.toml", "opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md", "opencode/review-bugs.md", "opencode/review-risk.md", "opencode/review-spec.md"}
 
 func readFile(t *testing.T, path string) string {
@@ -41,13 +40,11 @@ func isSymlink(path string) bool {
 	return err == nil && info.Mode()&fs.ModeSymlink != 0
 }
 
-// readFileOr is the file's text, or "" for anything unreadable.
 func readFileOr(path string) string {
 	data, _ := os.ReadFile(path)
 	return string(data)
 }
 
-// readDir names a directory's entries, or none for a missing one.
 func readDir(dir string) []string {
 	list, _ := os.ReadDir(dir)
 	var out []string
@@ -57,7 +54,6 @@ func readDir(dir string) []string {
 	return out
 }
 
-// Every guarded skill is installed in the shared namespace used by both clients.
 func TestGuardedSkillsAreInstalled(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "skip-packages install")
@@ -81,7 +77,6 @@ func TestGuardedSkillsAreInstalled(t *testing.T) {
 	}
 }
 
-// TestInstallRefusesAnUnguardedLocalSkill stops the install before it writes anything when a skill absent from the lock lacks an invocation guard. Which frontmatter shapes count as guarded is settled at the parser, in internal/skills.
 func TestInstallRefusesAnUnguardedLocalSkill(t *testing.T) {
 	base := sandbox(t)
 	writeMode(t, filepath.Join(base, "checkout", "skills", "workflow", "zz-bare", "SKILL.md"), "---\nname: zz-bare\ndisable-model-invocation: true\n---\nbody\n", 0o644)
@@ -98,7 +93,6 @@ func TestInstallRefusesAnUnguardedLocalSkill(t *testing.T) {
 	}
 }
 
-// TestInstallExplainsAMissingLock names why the lock is needed when a HARNESS_ASSETS tree lacks it.
 func TestInstallExplainsAMissingLock(t *testing.T) {
 	base := sandbox(t)
 	if err := os.Remove(filepath.Join(base, "checkout", "skills-lock.json")); err != nil {
@@ -109,7 +103,6 @@ func TestInstallExplainsAMissingLock(t *testing.T) {
 	}
 }
 
-// Role agents are copied into each client beside private entries, and the uninstall removes only the recorded copies.
 func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
@@ -166,7 +159,6 @@ func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
 	untouched("the uninstall")
 }
 
-// An unrecorded entry at a role agent path is archived before the copy lands, never overwritten in place.
 func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 	for _, kind := range []string{"file", "foreign-link", "root-link"} {
 		t.Run(kind, func(t *testing.T) {
@@ -198,7 +190,6 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 	}
 }
 
-// A copy edited after the install is the user's: the uninstall keeps it and says so.
 func TestUninstallKeepsAnEditedCopy(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
@@ -242,7 +233,6 @@ func TestUninstallOpenCodeLeavesClaudeCopies(t *testing.T) {
 	}
 }
 
-// Codex is configured in ~/.codex even when the terminal points CODEX_HOME elsewhere, as a launcher may, and its uninstall leaves the copies the other clients still use.
 func TestCodexInstallsIntoHomeCodexAndUninstallsAlone(t *testing.T) {
 	base := sandbox(t)
 	elsewhere := filepath.Join(base, "launcher-codex-home")
@@ -303,7 +293,6 @@ func TestNoBackupReplacesCollisionWithoutArchiving(t *testing.T) {
 	}
 }
 
-// TestInstallInstallsTheEmbeddedHarnessFromAnywhere runs outside any checkout with no asset override, so what lands is what the binary carries.
 func TestInstallInstallsTheEmbeddedHarnessFromAnywhere(t *testing.T) {
 	base := sandbox(t)
 	seedFull(t, base)
@@ -322,7 +311,6 @@ func TestInstallInstallsTheEmbeddedHarnessFromAnywhere(t *testing.T) {
 	}
 }
 
-// --clear-backups reads only $HOME, so it runs from outside any checkout.
 func TestClearBackupsRunsOutsideTheCheckout(t *testing.T) {
 	base := sandbox(t)
 	seedBackups(t, base)
@@ -337,7 +325,6 @@ func TestClearBackupsRunsOutsideTheCheckout(t *testing.T) {
 	}
 }
 
-// TestInstallReplacesAnUnusableStatuslineBinary keeps the tracked statusLine honest: a missing binary, one without the exec bit, or one predating the subcommand is replaced by the running harness rather than left for Claude Code to draw an empty status line with.
 func TestInstallReplacesAnUnusableStatuslineBinary(t *testing.T) {
 	installed := func(base string) string { return filepath.Join(base, "home", ".local", "bin", "harness") }
 	cases := []struct {
@@ -370,7 +357,6 @@ func TestInstallReplacesAnUnusableStatuslineBinary(t *testing.T) {
 	}
 }
 
-// A non-object mcp in opencode.json stops the run before either client is registered, and leaves the file as it was.
 func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
 	base := sandbox(t)
 	config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
@@ -391,7 +377,6 @@ func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
 	}
 }
 
-// With Codex gone, its uninstall still removes Engram's files beside config.toml and succeeds, leaving the config entries with a warning.
 func TestCodexUninstallWithoutCodex(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
@@ -411,7 +396,6 @@ func TestCodexUninstallWithoutCodex(t *testing.T) {
 	}
 }
 
-// A registration that landed outside the user scope fails the run, so the scope check cannot pass on a server Claude Code would not load for every project. Only a full run reaches checkTools.
 func TestInstallRefusesANonUserScopeEngramMCP(t *testing.T) {
 	base := sandbox(t)
 	seedLived(t, base)
@@ -426,7 +410,6 @@ esac`)
 	}
 }
 
-// A surviving engram entry fails the uninstall's own sweep, so the removal at removeClaudeMCP cannot pass vacuously.
 func TestUninstallRefusesASurvivingEngramMCP(t *testing.T) {
 	base := sandbox(t)
 	seedLived(t, base)
@@ -438,7 +421,6 @@ func TestUninstallRefusesASurvivingEngramMCP(t *testing.T) {
 	}
 }
 
-// missingTools takes tools off PATH and makes the brew and npm shims put each back when asked to install it, so a run sees them missing, installs them, and finds them after.
 func missingTools(t *testing.T, base string, names ...string) {
 	t.Helper()
 	shims, saved := filepath.Join(base, "shims"), filepath.Join(base, "saved")
@@ -453,7 +435,6 @@ func missingTools(t *testing.T, base string, names ...string) {
 	writeShim(t, base, "npm", `if [ "$1" = install ]; then `+restore+`; fi`)
 }
 
-// recordedTools reads the tool records the install left in state.json.
 func recordedTools(t *testing.T, base string) map[string]string {
 	t.Helper()
 	var s struct {
@@ -466,7 +447,6 @@ func recordedTools(t *testing.T, base string) map[string]string {
 	return s.Tools
 }
 
-// TestFullInstallProvisionsMissingOnly locks the provisioning contract: presence is read from PATH, no inventory or upgrade runs, only a missing tool is installed and recorded, its tap is added only then, and MCP reconciliation still runs for the tools already present.
 func TestFullInstallProvisionsMissingOnly(t *testing.T) {
 	base := sandbox(t)
 	seedFull(t, base)
@@ -494,7 +474,6 @@ func TestFullInstallProvisionsMissingOnly(t *testing.T) {
 	}
 }
 
-// With every tool on PATH, an install calls no package manager and downloads no browser, while still reconciling the copies and the MCP registrations.
 func TestInstallWithEveryToolPresentCallsNoPackageManager(t *testing.T) {
 	base := sandbox(t)
 	seedLived(t, base)
@@ -518,7 +497,6 @@ func TestInstallWithEveryToolPresentCallsNoPackageManager(t *testing.T) {
 	}
 }
 
-// A named component installs only itself: no other copy, registration, or setting is written, and the record names only it.
 func TestNamedComponentInstallsOnlyItself(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
@@ -542,7 +520,7 @@ func TestNamedComponentInstallsOnlyItself(t *testing.T) {
     ]`) {
 		t.Errorf("the record does not hold skills alone:\n%s", got)
 	}
-	// A later run of another component keeps the skills' records.
+
 	ok(t, runInstaller(t, base, "floor"), "floor install")
 	ok(t, runUninstaller(t, base, "skills", "--yes"), "skills uninstall")
 	if _, err := os.Stat(filepath.Join(home, ".claude", "skills", "open-pr")); err == nil {
@@ -553,7 +531,6 @@ func TestNamedComponentInstallsOnlyItself(t *testing.T) {
 	}
 }
 
-// --client limits a run to the named clients; the others get nothing.
 func TestClientFlagLimitsTheInstall(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
@@ -574,7 +551,6 @@ func TestClientFlagLimitsTheInstall(t *testing.T) {
 	}
 }
 
-// A named client that is not installed stops the run before any write; without --client, a missing client is simply not configured.
 func TestMissingClientIsRefusedOnlyWhenNamed(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
@@ -598,9 +574,12 @@ func TestMissingClientIsRefusedOnlyWhenNamed(t *testing.T) {
 	}
 }
 
-// Installing mcps alone also reconciles settings, which Engram's setup rewrites, and says so.
 func TestMCPInstallReconcilesSettings(t *testing.T) {
 	base := sandbox(t)
+	writeShim(t, base, "engram", `if [ "$*" = "setup claude-code" ]; then
+mkdir -p "$HOME/.claude"
+printf '%s\n' '{"env":{"ENGRAM_FIXTURE":"preserved"}}' > "$HOME/.claude/settings.json"
+fi`)
 	r := ok(t, runInstaller(t, base, "mcps"), "mcps install")
 	if !strings.Contains(r.stdout, "also reconciling settings") {
 		t.Errorf("the mcps install did not say it reconciles settings:\n%s", r.stdout)
@@ -608,9 +587,11 @@ func TestMCPInstallReconcilesSettings(t *testing.T) {
 	if !strings.Contains(readFileOr(filepath.Join(base, "home", ".claude", "settings.json")), "harness") {
 		t.Error("the mcps install left the tracked settings unreconciled")
 	}
+	if !strings.Contains(readFileOr(filepath.Join(base, "home", ".claude", "settings.json")), `"ENGRAM_FIXTURE": "preserved"`) {
+		t.Error("the settings reconcile lost the value written by Engram setup")
+	}
 }
 
-// OpenCode 2.x prints its config as one entry per document, with servers under mcp.servers, `disabled` for state, and Engram loaded as a file plugin; the install's check reads that, and still catches a disabled agent-browser or a missing Engram plugin.
 func TestMCPInstallReadsOpenCode2Config(t *testing.T) {
 	for name, c := range map[string]struct {
 		disabled, plugin, fails bool
@@ -625,6 +606,8 @@ func TestMCPInstallReadsOpenCode2Config(t *testing.T) {
 				writeMode(t, filepath.Join(base, "home", ".config", "opencode", "plugins", "engram.ts"), "", 0o644)
 			}
 			writeShim(t, base, "opencode", `if [ "$*" = "debug config" ]; then
+[ -f /dev/stdout ] || exit 1
+printf '%s' '`+strings.Repeat(" ", 70_000)+`'
 echo '[{"type": "document", "path": "opencode.json", "info": {"mcp": {"servers": {"agent-browser": {"type": "local", "disabled": `+strconv.FormatBool(c.disabled)+`, "command": ["`+filepath.Join(base, "shims", "agent-browser")+`", "mcp"]}}}}}, {"type": "document", "path": "opencode.jsonc", "info": {"mcp": {"servers": {"engram": {"type": "local"}}}}}, {"type": "directory", "path": "opencode", "info": {}}]'
 fi`)
 			r := runInstaller(t, base, "mcps")
@@ -637,7 +620,6 @@ fi`)
 	}
 }
 
-// A bare uninstall removes managed config only: recorded tools stay, and so does the state that records them.
 func TestBareUninstallKeepsToolsAndTheirRecord(t *testing.T) {
 	base := sandbox(t)
 	seedFull(t, base)
@@ -658,7 +640,6 @@ func TestBareUninstallKeepsToolsAndTheirRecord(t *testing.T) {
 	}
 }
 
-// --all removes only the tools the harness recorded installing, the way it installed them, keeps their data and the ones present before, and then removes ~/.harness and the binary.
 func TestUninstallAllRemovesOnlyRecordedTools(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
@@ -691,7 +672,6 @@ func TestUninstallAllRemovesOnlyRecordedTools(t *testing.T) {
 	}
 }
 
-// A shared tool stays while a client still has harness config, Codex included while its other components remain, and a client's own tool goes with that client.
 func TestNamedToolUninstallKeepsSharedTools(t *testing.T) {
 	base := sandbox(t)
 	seedFull(t, base)
@@ -710,7 +690,6 @@ func TestNamedToolUninstallKeepsSharedTools(t *testing.T) {
 	}
 }
 
-// The uninstall sees ~/.local/bin as the install does, so a Claude Code the native installer put there is removed rather than taken for gone.
 func TestUninstallFindsANativeClaudeInLocalBin(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
@@ -731,7 +710,6 @@ func TestUninstallFindsANativeClaudeInLocalBin(t *testing.T) {
 	}
 }
 
-// A package outlives every recorded tool installed through it: node stays while the Codex npm installed is recorded, so a later client uninstall can still reach npm, and goes once Codex has.
 func TestPackageStaysWhileAToolInstalledThroughItIsRecorded(t *testing.T) {
 	base := sandbox(t)
 	shims := filepath.Join(base, "shims")
@@ -767,7 +745,6 @@ func TestPackageStaysWhileAToolInstalledThroughItIsRecorded(t *testing.T) {
 	}
 }
 
-// An older install recorded the floor as policy and the MCPs as mcp; reading them under the new names lets an uninstall act on them.
 func TestOldComponentNamesAreMigrated(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
@@ -782,7 +759,6 @@ func TestOldComponentNamesAreMigrated(t *testing.T) {
 	}
 }
 
-// Every other sandbox has the claude shim; this run stands in for Anthropic's installer and proves it is reached exactly once.
 func TestInstallAddsClaudeOnlyWhenAbsent(t *testing.T) {
 	base := sandbox(t)
 	seedFull(t, base)
@@ -793,7 +769,7 @@ func TestInstallAddsClaudeOnlyWhenAbsent(t *testing.T) {
 	if err := os.Remove(claude); err != nil {
 		t.Fatal(err)
 	}
-	// bash stands in for the native installer: it records the call and writes the claude binary the tool check and the agent-browser registration then look for.
+
 	writeMode(t, filepath.Join(shims, "bash"), "#!/bin/sh\nprintf '%s\\n' \"bash $*\" >> '"+log+"'\ncp '"+saved+"' '"+claude+"'\nchmod +x '"+claude+"'\nexit 0\n", 0o755)
 
 	ok(t, runInstaller(t, base), "full install without claude")
@@ -807,7 +783,6 @@ func TestInstallAddsClaudeOnlyWhenAbsent(t *testing.T) {
 	}
 }
 
-// TestInstallRefusesMissingOrRelativeLocations proves the installer validates HOME and the config location before any write, so a relative one can never turn managed paths into writes inside the invocation directory.
 func TestInstallRefusesMissingOrRelativeLocations(t *testing.T) {
 	for _, c := range []struct {
 		name string
@@ -835,7 +810,6 @@ func TestInstallRefusesMissingOrRelativeLocations(t *testing.T) {
 	}
 }
 
-// homeTree renders the home tree so a test can assert a refused run left it unchanged.
 func homeTree(t *testing.T, home string) string {
 	t.Helper()
 	var b strings.Builder
@@ -843,7 +817,6 @@ func homeTree(t *testing.T, home string) string {
 	return b.String()
 }
 
-// A second install over unchanged copies rewrites and archives nothing.
 func TestReinstallRewritesNothingUnchanged(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
@@ -861,7 +834,6 @@ func TestReinstallRewritesNothingUnchanged(t *testing.T) {
 	}
 }
 
-// A TMPDIR reached through a symlink, as macOS /var is, still extracts assets the role agent renderer accepts.
 func TestInstallWithSymlinkedTmpdir(t *testing.T) {
 	base := sandbox(t)
 	link := filepath.Join(base, "tmp-link")
@@ -923,7 +895,6 @@ func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
 	}
 }
 
-// The compaction hooks reach every client, and Claude Code's merge replaces only the harness's own hook group: the user's hooks under the same event and under other events survive both the install and the uninstall, and a stale harness group is replaced rather than duplicated.
 func TestCompactionHooksKeepTheUsersOwn(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
@@ -975,7 +946,6 @@ func TestCompactionHooksKeepTheUsersOwn(t *testing.T) {
 	}
 }
 
-// A user's own ~/.codex/hooks.json keeps its hooks: the install adds the harness's compaction group beside them, and the uninstall removes only that group.
 func TestCodexHooksKeepTheUsersOwn(t *testing.T) {
 	base := sandbox(t)
 	path := filepath.Join(base, "home", ".codex", "hooks.json")
@@ -992,7 +962,6 @@ func TestCodexHooksKeepTheUsersOwn(t *testing.T) {
 	}
 }
 
-// The tracked allow rules join the user's own instead of replacing them: the install keeps every live rule and adds the harness's, and the uninstall removes only the harness's.
 func TestClaudeAllowKeepsTheUsersRules(t *testing.T) {
 	base := sandbox(t)
 	settings := filepath.Join(base, "home", ".claude", "settings.json")
@@ -1022,7 +991,6 @@ func TestClaudeAllowKeepsTheUsersRules(t *testing.T) {
 	}
 }
 
-// The floor's command and secret rules reach Codex and OpenCode. Codex gets its own rules file. OpenCode's rules join the user's in opencode.json after them, because OpenCode applies the last rule that matches, and a reinstall moves them back behind a rule the user added later. The uninstall takes out only the harness's rules.
 func TestFloorRulesReachCodexAndOpenCode(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
@@ -1101,7 +1069,6 @@ func TestFloorRulesReachCodexAndOpenCode(t *testing.T) {
 	}
 }
 
-// A rule the user made stricter than the harness's stays as strict: the install keeps the user's deny where the harness would ask, and the uninstall leaves a rule whose action differs from the harness's.
 func TestOpenCodeKeepsAStricterUserRule(t *testing.T) {
 	base := sandbox(t)
 	config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
@@ -1116,13 +1083,11 @@ func TestOpenCodeKeepsAStricterUserRule(t *testing.T) {
 	}
 }
 
-// runWithShell runs the harness from the sandbox under a given login shell.
 func runWithShell(t *testing.T, base, shell string, args ...string) result {
 	t.Helper()
 	return runHarness(t, base, []string{"TMPDIR=" + filepath.Join(base, "tmp"), "HARNESS_ASSETS=" + filepath.Join(base, "checkout"), "SHELL=" + shell}, args...)
 }
 
-// The managed line goes into the startup file the login shell reads, uses the POSIX dot so sh can read it too, and an uninstall takes it out again.
 func TestAliasesGoToTheLoginShellsStartupFile(t *testing.T) {
 	bash := ".bashrc"
 	if runtime.GOOS == "darwin" {
@@ -1150,7 +1115,6 @@ func TestAliasesGoToTheLoginShellsStartupFile(t *testing.T) {
 	}
 }
 
-// A shell that cannot source aliases.sh gets no startup file, and the warning names the installed copy, never the run's temporary directory.
 func TestAliasesWarnForAnotherShell(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
@@ -1165,7 +1129,6 @@ func TestAliasesWarnForAnotherShell(t *testing.T) {
 	}
 }
 
-// Uninstall edits only a startup file that carries the harness marker, so a hand-written alias elsewhere stays.
 func TestUninstallKeepsAliasesItNeverWrote(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
@@ -1178,7 +1141,6 @@ func TestUninstallKeepsAliasesItNeverWrote(t *testing.T) {
 	}
 }
 
-// On macOS a bash login shell reads only the first of ~/.bash_profile, ~/.bash_login, and ~/.profile, so the line joins the one that exists rather than a new file that would hide it.
 func TestMacBashUsesTheExistingProfile(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("bash login shells read ~/.bashrc on Linux")

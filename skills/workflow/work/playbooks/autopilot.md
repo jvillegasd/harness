@@ -34,4 +34,12 @@ Everything up to verified, open pull requests: commits, pushes of the run's own 
 
 "Keep going" and "going to bed" never trigger a pause; only done, a written spec, the ceiling, or a ruled-out goal ends the run.
 
-**Reply:** the goal, then the `agent` decisions each with "tell me X to switch", so they are the first thing the human reads; then the definition of done with its final state, each pull request with its readiness verdict, the follow-ups, the parked dead ends with their evidence, and the time used against the ceiling.
+## Audit the trail
+
+Nobody watched this run, so the `## Decisions` table is what the human trusts in its place. Before the report, whatever ended the run:
+
+1. Walk the table against `git log <base>..HEAD` and the task document's evidence. Done when every row's evidence resolves and shows what the row claims, and every fork, pivot, revert, and default the run took has a row. Correct by appending a row that supersedes the wrong one, so the table stays a record of what was believed and when.
+2. Launch one fresh subagent with no role through `delegation`, on a model family other than this session's. Give it the task document, the base and head, and the location of this session's record, and none of your reasoning. It reads the record itself and returns, cited by row or by location in the record, what the human should read first: an `agent` decision with weak or missing evidence, a check claimed without a run, a choice that widened the scope or covered a symptom, a decision the record shows and the table lacks. It flags and redoes nothing. When no other family can launch, use this one and say so.
+3. Add each omission it found as a row, and carry its flags into the reply unedited: a flag you disagree with stays, with your answer beside it.
+
+**Reply:** the goal, then the `agent` decisions each with "tell me X to switch", so they are the first thing the human reads; then `Attention`, opening with `reviewed by <model>` and listing each flag with its row, or `no flags`; then the definition of done with its final state, each pull request with its readiness verdict, the follow-ups, the parked dead ends with their evidence, and the time used against the ceiling.

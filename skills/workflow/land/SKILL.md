@@ -23,7 +23,7 @@ Merging publishes to the shared default branch and is hard to undo, so the human
 
 2. **Read the verdict.**
    - `lane` `stop`: report its `holds` and stop with everything kept.
-   - `lane` `open`: an empty `holds` goes to step 3. Otherwise report each hold as a finding and stop. Two kinds can be cleared. A hold that says only test or documentation files changed after the review clears when you read those hunks and they change no shipped behavior. A review hold, a FAIL verdict included, clears when the human, in this session, accepts that one by name; `review.url` links the verdict comment with each finding and its proof to show them. A forge gate never clears: a red or pending required check is not merged past.
+   - `lane` `open`: an empty `holds` goes to step 3. Otherwise report each hold as a finding and stop. Two kinds can be cleared. A hold that says only test or documentation files changed after the review clears when you read those hunks and they change no shipped behavior. A review hold or a run-as-user hold, a FAIL verdict of either kind included, clears when the human, in this session, accepts that one by name; `review.url` and `run.url` link the verdict comments, with each finding and its proof or each driven feature and its evidence, to show them. A forge gate never clears: a red or pending required check is not merged past.
    - `lane` `merged`: nothing can hold a merge that happened. Lead the report with `holds` as what the merge skipped, then continue at step 4.
 
    A review the human asked for is required whatever `review.required` says: treat any `review.status` but `current` as a hold.

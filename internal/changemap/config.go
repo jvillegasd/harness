@@ -15,29 +15,23 @@ import (
 	"github.com/jvillegasd/harness/internal/skills"
 )
 
-// ConfigPath is the repository-relative file shared with the tools that own the tracker and label fields. This package reads only criticalPaths from it and ignores every other key.
 const ConfigPath = "docs/agents/harness.json"
 
-// Config is what a repository adds to the built-in rules.
 type Config struct {
-	// CriticalPaths are repo-relative, slash-separated globs for files that always need a human.
 	CriticalPaths []string
-	// Locked are the skill bodies skills-lock.json pins to an upstream source.
+
 	Locked []Lock
 }
 
-// SkillLockPath is the lock `harness skills` writes; each entry pins one vendored skill body to its upstream source and folder hash.
 const SkillLockPath = "skills-lock.json"
 
-// Lock is one locked skill body: its folder, name, and upstream source, and whether the folder still hashes to the lock's computedHash.
 type Lock struct {
 	Dir, Name, Source string
 	Verified          bool
-	// Hashed holds the folder-relative paths the hash covered; only these may collapse, because a skipped file (a metadata.json, a file under .git, __pycache__, or __pypackages__, or a symlink leading out of the folder) would otherwise ride along unverified.
+
 	Hashed map[string]bool
 }
 
-// LoadLocks reads the working tree's skill lock. The branch's own lock is the one that covers a body it adds, and it cannot hide code: the lock file itself is a built-in critical path, an entry outside skills/ is ignored, a critical path is matched before any locked body, and a body collapses only when its folder hash matches the entry. A missing lock means no locked bodies.
 func LoadLocks(root string) ([]Lock, error) {
 	raw, err := os.ReadFile(filepath.Join(root, SkillLockPath))
 	if errors.Is(err, fs.ErrNotExist) {
@@ -78,7 +72,6 @@ func LoadLocks(root string) ([]Lock, error) {
 	return locks, nil
 }
 
-// bodyDir finds a locked body in the working tree: at its recorded skillPath folder, else flat at skills/<name>, else in a group at skills/<group>/<name>, which is where this repository keeps its skills. With none present it returns the recorded folder, so the entry stays unverified.
 func bodyDir(root, name, recorded string) string {
 	candidates := []string{recorded, "skills/" + name}
 	if groups, err := os.ReadDir(filepath.Join(root, "skills")); err == nil {
@@ -96,7 +89,6 @@ func bodyDir(root, name, recorded string) string {
 	return recorded
 }
 
-// LoadConfig reads criticalPaths from the repository root's ConfigPath. A missing file or field means no configured paths; a field of the wrong shape, or an entry that is not a valid glob, is an error that names the field and the entry, because silently dropping a critical path would lower the floor.
 func LoadConfig(root string) (Config, error) {
 	raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ConfigPath)))
 	if errors.Is(err, fs.ErrNotExist) {
@@ -108,7 +100,6 @@ func LoadConfig(root string) (Config, error) {
 	return parseConfig(raw, ConfigPath)
 }
 
-// EffectiveConfig is the floor a change is classified against: the union of the criticalPaths in the working tree, at the merge base, and at the merge base with the default branch. Reading only the working tree would let a branch lower its own floor by deleting an entry, and reading only the chosen base would let a caller pick a commit that already dropped it, so every one of those entries counts.
 func EffectiveConfig(root, mergeBase string) (Config, error) {
 	current, err := LoadConfig(root)
 	if err != nil {
@@ -143,7 +134,6 @@ func EffectiveConfig(root, mergeBase string) (Config, error) {
 	return cfg, nil
 }
 
-// configAt reads criticalPaths from ConfigPath as committed at rev; a revision without the file adds nothing.
 func configAt(root, rev string) (Config, error) {
 	if _, err := git(root, "cat-file", "-e", rev+":"+ConfigPath); err != nil {
 		return Config{}, nil
@@ -166,7 +156,6 @@ func shortRev(rev string) string {
 	return rev
 }
 
-// parseConfig reads criticalPaths from raw, naming source in every error.
 func parseConfig(raw []byte, source string) (Config, error) {
 	var doc map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &doc); err != nil {

@@ -13,7 +13,6 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-// group returns skills/<group> when it is an existing group directory.
 func group(p paths, name string) (string, error) {
 	dir := filepath.Join(p.skills, name)
 	fi, err := os.Lstat(dir)
@@ -23,7 +22,6 @@ func group(p paths, name string) (string, error) {
 	return dir, nil
 }
 
-// starter is the body `new` writes: frontmatter naming the skill, with every guard when guarded, and a heading to write under.
 func starter(name string, guarded bool) string {
 	var b strings.Builder
 	b.WriteString("---\nname: " + name + "\ndescription: \"Say what this skill does and when to use it.\"\n")
@@ -34,7 +32,6 @@ func starter(name string, guarded bool) string {
 	return b.String()
 }
 
-// New creates a local skill in an existing group with a starting body and both bookkeeping links. With guarded it carries all three invocation guards, one per client, and otherwise none. It refuses a name any group or the lock already holds, and writes nothing then.
 func New(c checkout.Checkout, name, groupName string, guarded bool) ([]string, error) {
 	p := pathsFor(c)
 	if err := validateName(name); err != nil {
@@ -78,7 +75,6 @@ func New(c checkout.Checkout, name, groupName string, guarded bool) ([]string, e
 	return []string{"created " + rel(p, body), "linked " + rel(p, filepath.Join(p.agents, name)), "linked " + rel(p, filepath.Join(p.claude, name))}, nil
 }
 
-// Move moves a skill's body to another existing group with git mv where Git tracks it, so its history follows, and repoints its .agents/skills link. The body's content is unchanged, so a locked body keeps matching its lock. It refuses an unknown skill or group, and the group the skill is already in, changing nothing.
 func Move(c checkout.Checkout, name, groupName string) ([]string, error) {
 	p := pathsFor(c)
 	if err := validateName(name); err != nil {
@@ -133,7 +129,6 @@ func Move(c checkout.Checkout, name, groupName string) ([]string, error) {
 	return []string{"moved " + rel(p, body) + " to " + rel(p, target), "linked " + rel(p, agentLink)}, nil
 }
 
-// tracked reports whether Git tracks any file under path.
 func tracked(root, path string) bool {
 	out, err := exec.Command("git", "-C", root, "ls-files", "--", path).Output()
 	return err == nil && strings.TrimSpace(string(out)) != ""

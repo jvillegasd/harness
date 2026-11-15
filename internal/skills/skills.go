@@ -14,7 +14,6 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-// skillsCLI is the exact skills.sh release add and update run. folderHash ports this release's computeSkillFolderHash, so a newer release that hashes differently is a deliberate bump of both, not drift in every lock entry.
 const skillsCLI = "skills@1.8.1"
 
 var (
@@ -113,7 +112,6 @@ func add(c checkout.Checkout, args []string, stdout, stderr io.Writer) error {
 	return reviewPaths(p, stdout)
 }
 
-// update runs skills.sh against a scratch copy of the lock, which is all it needs to compare every entry with upstream, then copies each body it rewrote into the group that already holds it.
 func update(c checkout.Checkout, stdout, stderr io.Writer) error {
 	p := pathsFor(c)
 	if err := CheckUpdate(c); err != nil {
@@ -131,7 +129,7 @@ func update(c checkout.Checkout, stdout, stderr io.Writer) error {
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	// Every body is resolved and staged beside its group before any is swapped in, so a body no group holds or a failed copy leaves the checkout and the lock as they were.
+
 	type swap struct{ body, staged string }
 	var swaps []swap
 	defer func() {
@@ -221,7 +219,6 @@ func remove(c checkout.Checkout, args []string, stdout, stderr io.Writer) error 
 	return reviewPaths(p, stdout)
 }
 
-// checkLink refuses to remove anything at path but a symlink to want; an empty want accepts any target, for a link whose body is already gone.
 func checkLink(path, want string) error {
 	if !exists(path) {
 		return nil
@@ -243,7 +240,6 @@ func checkLink(path, want string) error {
 	return nil
 }
 
-// findBody returns skills/<group>/<name> from whichever group holds it, or "" when none does. A file or symlink at that path is refused, because removing or replacing it could reach outside the checkout.
 func findBody(p paths, name string) (string, error) {
 	groups, err := os.ReadDir(p.skills)
 	if err != nil {
@@ -273,7 +269,6 @@ func findBody(p paths, name string) (string, error) {
 	return found, nil
 }
 
-// linkSkill points .agents/skills/<name> at the grouped body and .claude/skills/<name> at that link, so every client finds the working-tree skill by its bare name.
 func linkSkill(p paths, name, body string) error {
 	for _, dir := range []string{p.agents, p.claude} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -290,7 +285,6 @@ func linkSkill(p paths, name, body string) error {
 	return os.Symlink("../../.agents/skills/"+name, filepath.Join(p.claude, name))
 }
 
-// scratchProject is a throwaway directory holding a copy of the lock, where skills.sh can run without writing into the checkout's grouped tree.
 func scratchProject(p paths) (string, error) {
 	dir, err := os.MkdirTemp("", "harness-skills-")
 	if err != nil {
@@ -311,7 +305,6 @@ func copyFile(src, dst string) error {
 	return os.WriteFile(dst, data, 0o644)
 }
 
-// copyTree copies the regular files and directories under src to dst, keeping each file's mode.
 func copyTree(src, dst string) error {
 	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -364,8 +357,6 @@ func insideWorkTree(dir string) bool {
 	return cmd.Run() == nil
 }
 
-// CheckUpdate refuses local edits to the lock and every locked body, including
-// ignored files, since replacement removes the entire body directory.
 func CheckUpdate(c checkout.Checkout) error {
 	p := pathsFor(c)
 	lf, err := readLock(p.lock)

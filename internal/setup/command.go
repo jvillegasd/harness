@@ -46,7 +46,6 @@ local-markdown  Set the two mode values, with --spec-home (default
                 docs/specs); create no label and install no workflow.
 `
 
-// Command runs `harness setup` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)
@@ -91,7 +90,6 @@ func root(name string, stderr io.Writer) (string, bool) {
 	return strings.TrimSpace(string(out)), true
 }
 
-// gh is the Forge that runs the gh CLI in dir.
 func gh(dir string) Forge {
 	return func(args ...string) ([]byte, error) {
 		cmd := exec.Command("gh", args...)

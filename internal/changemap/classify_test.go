@@ -27,21 +27,21 @@ func TestClassify(t *testing.T) {
 	cases := []struct {
 		path string
 		want Tier
-		// reason is a fragment the reason must contain.
+
 		reason string
 	}{
-		// Configured critical globs name themselves.
+
 		{"POLICY.md", Critical, "POLICY.md"},
 		{"clients/claude/settings.json", Critical, "clients/**"},
 		{"internal/install/install.go", Critical, "internal/install/**"},
-		// Built-in critical paths.
+
 		{".github/workflows/ci.yml", Critical, ".github/workflows/**"},
 		{"db/migrations/001_init.go", Critical, "**/migrations/**"},
 		{"schema/up.sql", Critical, "**/*.sql"},
 		{"Dockerfile", Critical, "**/Dockerfile"},
 		{"svc/api/Dockerfile", Critical, "**/Dockerfile"},
 		{"infra/main.tf", Critical, "**/*.tf"},
-		// Lockfiles and generated files are mechanical.
+
 		{"go.sum", Mechanical, "lockfile"},
 		{"web/package-lock.json", Mechanical, "lockfile"},
 		{"yarn.lock", Mechanical, "lockfile"},
@@ -55,7 +55,7 @@ func TestClassify(t *testing.T) {
 		{"x/models_gen.go", Mechanical, "generated"},
 		{"x/schema.gen.ts", Mechanical, "generated"},
 		{"x/types_generated.go", Mechanical, "generated"},
-		// Tests and docs.
+
 		{"internal/a/a_test.go", TestsDocs, "test"},
 		{"web/app.test.ts", TestsDocs, "test"},
 		{"web/app.spec.js", TestsDocs, "test"},
@@ -68,7 +68,7 @@ func TestClassify(t *testing.T) {
 		{"notes/a.rst", TestsDocs, "doc"},
 		{"notes/a.txt", TestsDocs, "doc"},
 		{"docs/agents/tasks/x.json", TestsDocs, "doc"},
-		// Skill and role prose is executable agent instruction; skill code takes the ordinary rules.
+
 		{"skills/x/SKILL.md", Structural, "agent instruction"},
 		{"skills/x/references/notes.md", Structural, "agent instruction"},
 		{"skills/x/scripts/run_test.go", TestsDocs, "test"},
@@ -82,10 +82,10 @@ func TestClassify(t *testing.T) {
 		{"AGENTS.md", Structural, "agent instruction"},
 		{"sub/AGENTS.md", Structural, "agent instruction"},
 		{"CLAUDE.md", Structural, "agent instruction"},
-		// Anything else is judged by a human or a model.
+
 		{"internal/a/a.go", Structural, "no deterministic signal; judge whether behavior changes"},
 		{"main.go", Structural, "no deterministic signal; judge whether behavior changes"},
-		// skills/ is a top-level prefix only.
+
 		{"internal/skills/guards_test.go", TestsDocs, "test"},
 	}
 	for _, c := range cases {
@@ -96,7 +96,6 @@ func TestClassify(t *testing.T) {
 	}
 }
 
-// TestClassifyPrecedence pins first-match-wins: critical beats a locked body beats mechanical beats tests-docs beats the structural exception.
 func TestClassifyPrecedence(t *testing.T) {
 	cfg := Config{
 		CriticalPaths: []string{"go.sum", "docs/**", "skills/land/**", "**/*_test.go"},
@@ -109,24 +108,24 @@ func TestClassifyPrecedence(t *testing.T) {
 		path string
 		want Tier
 	}{
-		{"go.sum", Critical},                              // configured beats lockfile
-		{"docs/readme.md", Critical},                      // configured beats docs
-		{"skills/land/SKILL.md", Critical},                // configured beats the skills exception
-		{"internal/a/a_test.go", Critical},                // configured beats test file
-		{"db/migrations/a_test.go", Critical},             // built-in beats test file
-		{"db/migrations/go.sum", Critical},                // built-in beats lockfile
-		{"queries/schema_gen.sql", Critical},              // built-in beats generated
-		{"test/api.pb.go", Mechanical},                    // generated beats a test directory
-		{"docs/package-lock.json", Critical},              // configured docs/** is checked first
-		{"tests/yarn.lock", Mechanical},                   // lockfile beats a test directory
-		{"skills/x/yarn.lock", Mechanical},                // lockfile beats the skills exception
-		{"skills/x/api.pb.go", Mechanical},                // generated beats the skills exception
-		{"skills/x/notes.md", Structural},                 // exception beats docs
-		{"roles/a/tests/case.txt", Structural},            // exception beats tests
-		{"skills/vendored/SKILL.md", Mechanical},          // a locked body beats the skills exception
-		{"skills/vendored/scripts/run.go", Mechanical},    // and beats the structural default
-		{"skills/vendored/__pycache__/x.pyc", Structural}, // a file the hash skipped takes the ordinary rules
-		{"skills/land/scripts/a.go", Critical},            // configured beats a locked body
+		{"go.sum", Critical},
+		{"docs/readme.md", Critical},
+		{"skills/land/SKILL.md", Critical},
+		{"internal/a/a_test.go", Critical},
+		{"db/migrations/a_test.go", Critical},
+		{"db/migrations/go.sum", Critical},
+		{"queries/schema_gen.sql", Critical},
+		{"test/api.pb.go", Mechanical},
+		{"docs/package-lock.json", Critical},
+		{"tests/yarn.lock", Mechanical},
+		{"skills/x/yarn.lock", Mechanical},
+		{"skills/x/api.pb.go", Mechanical},
+		{"skills/x/notes.md", Structural},
+		{"roles/a/tests/case.txt", Structural},
+		{"skills/vendored/SKILL.md", Mechanical},
+		{"skills/vendored/scripts/run.go", Mechanical},
+		{"skills/vendored/__pycache__/x.pyc", Structural},
+		{"skills/land/scripts/a.go", Critical},
 	}
 	for _, c := range cases {
 		if got := Classify(c.path, cfg).Tier; got != c.want {
@@ -135,7 +134,6 @@ func TestClassifyPrecedence(t *testing.T) {
 	}
 }
 
-// TestMechanicalOnlyFromRules guards the floor contract: no path the rules do not name is ever mechanical, including inside a locked folder whose body no longer matches its lock.
 func TestMechanicalOnlyFromRules(t *testing.T) {
 	cfg := Config{Locked: []Lock{
 		{Dir: "skills/edited", Name: "edited", Source: "o/r"},
@@ -148,7 +146,6 @@ func TestMechanicalOnlyFromRules(t *testing.T) {
 	}
 }
 
-// TestLockedBodiesCollapse reports a locked body as one mechanical entry that names its source and file count, without hiding the lock file or a configured critical path inside it.
 func TestLockedBodiesCollapse(t *testing.T) {
 	cfg := Config{
 		CriticalPaths: []string{"skills/vendored/hook.sh"},

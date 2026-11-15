@@ -159,9 +159,19 @@ the head's, file by file:
 A required review that is not current is a hold. A FAIL verdict is a hold
 whatever the level, until a newer verdict replaces it; a PASS+NOTES verdict
 adds a note pointing at its comment.
+
+run is the run-as-user verdict, which harness review verdict --run posts once
+an agent that did not write the change has driven it. run.required is true
+when the change reaches the behavioral tier, by the changed files or the
+Tiers line, whatever the review level. run.source, run.result, run.url, and
+run.sha read like the review's, from the newest run verdict by someone with
+admin, maintain, or write permission; a review verdict never counts as one.
+run.status compares the driven commit's patch with the head's the same way,
+except that tests-docs keeps the verdict, since those files leave the driven
+behavior as it was. A required run verdict that is missing or stale is a
+hold, and so is a FAIL one until a newer run replaces it.
 `
 
-// Command runs `harness land` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)

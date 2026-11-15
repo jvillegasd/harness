@@ -1,4 +1,3 @@
-// Package tickets reads and validates the ticket drafts `tickets` writes, and computes their ready frontier and publication.
 package tickets
 
 import (
@@ -13,34 +12,29 @@ import (
 	"strings"
 )
 
-// DraftDir is where a repository keeps its ticket drafts, one directory per feature.
 var DraftDir = filepath.Join("docs", "agents", "tickets")
 
-// Sections are the parts every draft carries, in order.
 var Sections = []string{"What to build", "Acceptance criteria", "Seam", "Blocked by", "Out of scope"}
 
-// Section is one `## ` part of a draft: the line its heading sits on and its trimmed text.
 type Section struct {
 	Line int
 	Body string
 }
 
-// Ticket is one draft file.
 type Ticket struct {
 	Number   int
-	Path     string // as reported: the feature directory joined with the file name
-	Title    string // the title line without its leading number
+	Path     string
+	Title    string
 	Sections map[string]Section
-	// BlockedBy holds the numbers the Blocked by section names, in order.
+
 	BlockedBy   []int
 	blockedLine int
-	// Done is set by a `Status: done` line.
+
 	Done bool
-	// Issue is the URL the draft records once publish created its issue.
+
 	Issue string
 }
 
-// Problem is one rule a draft breaks, printed as path:line: message.
 type Problem struct {
 	Path    string
 	Line    int
@@ -58,7 +52,6 @@ var (
 	splitRe  = regexp.MustCompile(`[\s,]+`)
 )
 
-// Features lists the feature directories under root's draft directory, sorted; none when it does not exist.
 func Features(root string) ([]string, error) {
 	entries, err := os.ReadDir(filepath.Join(root, DraftDir))
 	if errors.Is(err, fs.ErrNotExist) {
@@ -76,7 +69,6 @@ func Features(root string) ([]string, error) {
 	return names, nil
 }
 
-// Check reads the drafts in root/rel and returns them sorted by number, with every rule they break. A missing directory holds no drafts and no problems.
 func Check(root, rel string) ([]Ticket, []Problem, error) {
 	entries, err := os.ReadDir(filepath.Join(root, rel))
 	if errors.Is(err, fs.ErrNotExist) {
@@ -117,7 +109,6 @@ func Check(root, rel string) ([]Ticket, []Problem, error) {
 	return ts, problems, nil
 }
 
-// parseDraft reads one draft's title, sections, blockers, status, and recorded issue.
 func parseDraft(path string, number int, text string) (Ticket, []Problem) {
 	t := Ticket{Number: number, Path: path, Sections: map[string]Section{}}
 	var problems []Problem
@@ -189,7 +180,6 @@ func parseDraft(path string, number int, text string) (Ticket, []Problem) {
 	return t, problems
 }
 
-// firstText counts the lines before the first non-blank one, plus one for the heading.
 func firstText(lines []string) int {
 	for i, line := range lines {
 		if strings.TrimSpace(line) != "" {
@@ -199,7 +189,6 @@ func firstText(lines []string) int {
 	return 0
 }
 
-// graph reports shared numbers, blockers that are not tickets, and each blocking cycle once.
 func graph(ts []Ticket) []Problem {
 	var problems []Problem
 	byNumber := map[int][]Ticket{}
@@ -227,7 +216,6 @@ func graph(ts []Ticket) []Problem {
 	return problems
 }
 
-// cycles returns each strongly connected group of tickets that blocks itself, its numbers sorted, by Tarjan's algorithm.
 func cycles(ts []Ticket) [][]int {
 	edges := map[int][]int{}
 	for _, t := range ts {

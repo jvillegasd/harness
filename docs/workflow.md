@@ -54,6 +54,7 @@ Each skill is a separate tool. Outside work mode, using one never starts another
 | Situation | Skill |
 | --- | --- |
 | A session needs a retrospective | `/retro` |
+| Agents keep repeating the same mistakes in a repository | `/correct` |
 | Old worktrees, branches, and review scratch pile up | `/cleanup` |
 
 ### `/implement` or `/build`?
@@ -201,10 +202,10 @@ The agent brings important decisions back to you. Small choices that are easy to
 ### Before the agent hands off
 
 - It runs the repository's checks and explains what changed, what to review, and any gaps.
-- If the project has a verify skill (made with `/create-verification-skill`), a separate agent that never saw the code drives the changed features the way a user would. It returns PASS, PASS+NOTES, or FAIL. For a bugfix, it shows the bug on the old code and its absence on the new code.
+- If the project has a verify skill (made with `/create-verification-skill`), a separate agent that never saw the code drives the changed features the way a user would. It returns PASS, PASS+NOTES, or FAIL, and the agent posts that as a run-as-user verdict comment on the PR. For a bugfix, it shows the bug on the old code and its absence on the new code. A PR whose change you can observe (`critical` or `behavioral`) needs one that covers its current code: `/land merge` refuses without it until you accept that by name, which is every time in a project that has no verify skill yet.
 - [Review](review.md) runs according to your `harness review level`. At `medium` and `high`, a PR beyond docs or tests needs a review of its current changes. The readiness report shows whether it has one, and `/land merge` refuses to merge without it.
 
-A PR ends with a readiness report: required checks, whether it can merge, the review verdict and whether it covers the head, and the run-as-user verdict. The agent builds it from [`harness pr status`](cli.md#pr-commands), which you can run yourself on any PR. The review's result is its own verdict comment on the PR, never part of the PR body.
+A PR ends with a readiness report: required checks, whether it can merge, the review verdict and whether it covers the head, and the run-as-user verdict. The agent builds it from [`harness pr status`](cli.md#pr-commands), which you can run yourself on any PR. The review's result and the run-as-user result are each their own verdict comment on the PR, never part of the PR body.
 
 ### The stages
 

@@ -1,11 +1,5 @@
 package main
 
-// Regression checks for frontier promotion in reconcile-agent-lifecycle.
-//
-// Planning-only tickets carry no lifecycle label and must stay off the ready
-// frontier until explicit promotion labels them. Each case mirrors a real
-// reconcile path with an in-memory fake of the issue API.
-
 import (
 	"bytes"
 	"os"
@@ -28,7 +22,7 @@ type fakeAPI struct {
 	parents   map[int][]int
 	updates   []updateCall
 	history   map[int][]event
-	// foreign holds issues from other repositories, listed under a local issue's relation; their numbers may collide with local issues.
+
 	foreign map[int]map[string][]issue
 }
 
@@ -109,7 +103,7 @@ func (f *fakeAPI) events(number int) ([]event, error) {
 
 func (f *fakeAPI) blockerSatisfied(blocker issue) (bool, error) {
 	if blocker.Foreign {
-		// A foreign issue's evidence lives in its own repository; the fake has none, so it never counts as merged.
+
 		return false, nil
 	}
 	return blocker.State == "closed" && f.satisfied[blocker.Number], nil
@@ -520,7 +514,6 @@ func TestClosedStandaloneTicketKeepsLabels(t *testing.T) {
 	assertUpdates(t, f)
 }
 
-// TestReopenedParentIsNotReadyForAgent replays a path the statechart pilot found: a parent closed by hand and reopened before the workflow ran keeps in-progress, and the reopened run must not reset it to ready-for-agent like a ticket.
 func TestReopenedParentIsNotReadyForAgent(t *testing.T) {
 	f := newFake(
 		map[int]*issue{
@@ -535,7 +528,6 @@ func TestReopenedParentIsNotReadyForAgent(t *testing.T) {
 	assertLabels(t, f, 2, "in-progress", "feature")
 }
 
-// TestParentRunHealsAChildsFrontier replays the other path: the workflow's concurrency group keeps one pending run, so a blocker's close event can be replaced by a later event in the same tree. The later run must still unblock the dependent.
 func TestParentRunHealsAChildsFrontier(t *testing.T) {
 	f := newFake(
 		map[int]*issue{
@@ -551,7 +543,6 @@ func TestParentRunHealsAChildsFrontier(t *testing.T) {
 	assertLabels(t, f, 3, "ready-for-agent")
 }
 
-// TestReleasedParentGoesBackInProgress covers the release path: a parent that was blocked by its own blocker returns to in-progress when that blocker merges, never ready-for-agent, because it is a container rather than work.
 func TestReleasedParentGoesBackInProgress(t *testing.T) {
 	f := newFake(
 		map[int]*issue{
@@ -567,7 +558,6 @@ func TestReleasedParentGoesBackInProgress(t *testing.T) {
 	assertLabels(t, f, 2, "in-progress", "feature")
 }
 
-// TestSiblingEventHealsADependent is the common case of a dropped event: the next event is a sibling's close, and the run through the shared parent unblocks the dependent whose blocker already merged.
 func TestSiblingEventHealsADependent(t *testing.T) {
 	f := newFake(
 		map[int]*issue{
@@ -599,8 +589,6 @@ func TestDeployedCopyMatchesHarnessCopy(t *testing.T) {
 	}
 }
 
-// TestGoRunWithoutModule proves the file is standard-library only: it compiles
-// and runs through `go run` in a directory with no Go module.
 func TestGoRunWithoutModule(t *testing.T) {
 	source, err := os.ReadFile("reconcile-agent-lifecycle.go")
 	if err != nil {
@@ -632,7 +620,6 @@ func TestGoRunWithoutModule(t *testing.T) {
 	}
 }
 
-// TestSweepHealsAnUnrelatedTree replays a dropped event no later event reaches: the blocker merged, nothing in its tree moved since, and the scheduled sweep releases the dependent while a planning-only ticket stays off the frontier.
 func TestSweepHealsAnUnrelatedTree(t *testing.T) {
 	f := newFake(
 		map[int]*issue{
@@ -650,7 +637,6 @@ func TestSweepHealsAnUnrelatedTree(t *testing.T) {
 	assertNoNewUpdates(t, f, func() error { return sweep(f, defaultLabels()) })
 }
 
-// TestSweepClosesAParentWhoseChildrenMerged covers the parent half of a dropped event: the last child merged and the sweep closes the parent.
 func TestSweepClosesAParentWhoseChildrenMerged(t *testing.T) {
 	f := newFake(
 		map[int]*issue{
@@ -667,7 +653,6 @@ func TestSweepClosesAParentWhoseChildrenMerged(t *testing.T) {
 	}
 }
 
-// TestForeignIssuesAreNeverRelabeled gives a parent a sub-issue and a dependent from another repository whose numbers collide with local issues. The local issues must stay untouched, and the open foreign child keeps the parent open.
 func TestForeignIssuesAreNeverRelabeled(t *testing.T) {
 	f := newFake(
 		map[int]*issue{
@@ -695,7 +680,6 @@ func TestForeignIssuesAreNeverRelabeled(t *testing.T) {
 	}
 }
 
-// TestMarkFlagsOnlyOtherRepositories pins the foreign check on the API's repository_url, case-insensitively, with a missing URL counting as this repository.
 func TestMarkFlagsOnlyOtherRepositories(t *testing.T) {
 	g := &gitHubAPI{repository: "Owner/Repo"}
 	values := g.mark([]issue{
@@ -711,7 +695,6 @@ func TestMarkFlagsOnlyOtherRepositories(t *testing.T) {
 	}
 }
 
-// TestSteadyReadyTicketKeepsItsLabel guards the no-change shortcut: re-reconciling a ready ticket whose blockers merged, as a sibling heal or the sweep does, must leave its label alone rather than strip it off the frontier.
 func TestSteadyReadyTicketKeepsItsLabel(t *testing.T) {
 	f := newFake(
 		map[int]*issue{
@@ -727,7 +710,6 @@ func TestSteadyReadyTicketKeepsItsLabel(t *testing.T) {
 	assertLabels(t, f, 3, "ready-for-agent", "feature")
 }
 
-// TestReadyTicketThatGainsAChildGoesInProgress keeps "a parent is never ready-for-agent" when a ready ticket later gains a sub-issue: the frontier shortcut leaves its labels alone, so the parent pass must move it to in-progress.
 func TestReadyTicketThatGainsAChildGoesInProgress(t *testing.T) {
 	f := newFake(
 		map[int]*issue{
@@ -743,7 +725,6 @@ func TestReadyTicketThatGainsAChildGoesInProgress(t *testing.T) {
 	assertLabels(t, f, 2, "ready-for-agent")
 }
 
-// TestSweepReopensAParentWhoseChildReopened heals a dropped reopen: the child is open again, its parent stayed closed, and the sweep reaches the parent through the child.
 func TestSweepReopensAParentWhoseChildReopened(t *testing.T) {
 	f := newFake(
 		map[int]*issue{
@@ -762,7 +743,6 @@ func TestSweepReopensAParentWhoseChildReopened(t *testing.T) {
 	assertLabels(t, f, 1, "in-progress")
 }
 
-// TestBlockerSatisfiedReadsForeignEvidenceInItsRepository drives the gh-backed check with a stand-in gh: a foreign issue is looked up in its own repository, an unreadable one counts as unmerged without failing the run, and a failed lookup is not cached as unmerged.
 func TestBlockerSatisfiedReadsForeignEvidenceInItsRepository(t *testing.T) {
 	dir := t.TempDir()
 	calls := filepath.Join(dir, "calls")
@@ -801,7 +781,6 @@ esac
 	}
 }
 
-// TestIssueMemoRefetchesAfterUpdate pins the memo: a second read in one run is served from memory, a write drops it, and the next read fetches fresh labels, so a PATCH never starts from a label set this run did not read after its own last write.
 func TestIssueMemoRefetchesAfterUpdate(t *testing.T) {
 	dir := t.TempDir()
 	calls := filepath.Join(dir, "calls")

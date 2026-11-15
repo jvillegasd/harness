@@ -174,7 +174,7 @@ func (r *runner) discover(selected []string) []target {
 			targets = append(targets, t)
 		}
 	}
-	// Deduplicate the complete plan.
+
 	seen := map[string]bool{}
 	for i := range targets {
 		t := &targets[i]
@@ -211,7 +211,7 @@ func (r *runner) nativeClient(t target) target {
 			}
 		}
 	case "codex":
-		// npm's symlink resolves into <prefix>/lib/node_modules/@openai/codex.
+
 		marker := string(filepath.Separator) + filepath.Join("lib", "node_modules", "@openai", "codex") + string(filepath.Separator)
 		prefix, _, ok := strings.Cut(path, marker)
 		if !ok || !filepath.IsAbs(prefix) {

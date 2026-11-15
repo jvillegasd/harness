@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// branchDir writes a review directory holding two saved patches, as a review run leaves it, and returns the directory.
 func branchDir(t *testing.T, branches, name string) string {
 	t.Helper()
 	dir := filepath.Join(branches, "branches", name)
@@ -45,7 +44,6 @@ func TestRemoveBranchWithNoDirectoryIsDone(t *testing.T) {
 	}
 }
 
-// worktree.txt is review's record of an executor worktree it could not retire; deleting it would orphan that worktree and its saved patch. A record whose directory is gone holds nothing.
 func TestRemoveBranchRefusesARecordedWorktree(t *testing.T) {
 	dir := branchDir(t, t.TempDir(), "feat")
 	tree := t.TempDir()
@@ -69,7 +67,6 @@ func TestRemoveBranchRefusesARecordedWorktree(t *testing.T) {
 	}
 }
 
-// A dot segment is the one name path-escaping leaves alone, and it would point the review directory, and a removal, at a parent directory.
 func TestDirRejectsDotSegments(t *testing.T) {
 	for _, branch := range []string{".", ".."} {
 		if _, err := Dir(t.TempDir(), branch); !errors.Is(err, ErrInvalid) {
@@ -81,7 +78,7 @@ func TestDirRejectsDotSegments(t *testing.T) {
 func TestRemoveBranchRefusesOutsideTheBranchesDirectory(t *testing.T) {
 	root := t.TempDir()
 	dir := branchDir(t, root, "feat")
-	// The path a ".." branch would have resolved to: the directory holding every branch.
+
 	removed, err := RemoveBranch(filepath.Join(root, "branches"))
 	if !errors.Is(err, ErrInvalid) || removed {
 		t.Fatalf("RemoveBranch = %v, %v; want ErrInvalid and nothing removed", removed, err)
@@ -91,7 +88,6 @@ func TestRemoveBranchRefusesOutsideTheBranchesDirectory(t *testing.T) {
 	}
 }
 
-// Prune keeps every branch that still exists and every directory that records a review worktree still on disk, and a dry run deletes nothing.
 func TestPruneRemovesOnlyGoneBranches(t *testing.T) {
 	root := t.TempDir()
 	live := (branchDir(t, root, "feat%2Flive"))
@@ -100,7 +96,7 @@ func TestPruneRemovesOnlyGoneBranches(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(held, "worktree.txt"), []byte(t.TempDir()+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// A record whose worktree directory is gone, as after a retirement by path, is no hold.
+
 	stale := (branchDir(t, root, "stale"))
 	if err := os.WriteFile(filepath.Join(stale, "worktree.txt"), []byte(filepath.Join(root, "retired")+"\n"), 0o644); err != nil {
 		t.Fatal(err)

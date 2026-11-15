@@ -16,10 +16,8 @@ import (
 	"strings"
 )
 
-// The two MCP server id prefixes engram registers. A permission entry is engram's when it starts with one, never when it merely mentions the word.
 var engramToolPrefixes = []string{"mcp__engram__", "mcp__plugin_engram_engram__"}
 
-// subagentStatusline is the OpenCode built-in `engram setup opencode` enables, the one entry it writes that is not named after engram.
 const subagentStatusline = "opencode-subagent-statusline"
 
 var yoloAlias = regexp.MustCompile(`(?m)^[ \t]*alias (ccyolo|cxyolo|oyolo|ocyolo)=`)
@@ -30,9 +28,8 @@ Not touched: every tool's data (~/.engram, ~/.agent-browser, ~/.claude,
 Reinstall with: harness install
 `
 
-// uninstallSelected removes the selected components from the selected clients: the copies no client still needs, then the configuration each component wrote outside them, then the recorded tools of the named tool components. It acts on the recorded state, so a path or tool the harness never installed is never touched.
 func (in *installer) uninstallSelected() {
-	// The install's PATH, so a tool it found or put in ~/.local/bin is found here too.
+
 	in.usePATH()
 	clients := in.clients
 	if clients == nil {
@@ -61,7 +58,7 @@ func (in *installer) uninstallSelected() {
 			s.Installed[client] = kept
 		}
 	}
-	// The tools to remove, last installed first: only of a component named or under --all, never by a bare uninstall's default; only recorded ones; a client's own only for a selected client; a shared one only once no client keeps any harness config; and a package only once no recorded tool that stays was installed through it.
+
 	var removals []tool
 	var notes []string
 	for i := len(tools) - 1; i >= 0; i-- {
@@ -155,7 +152,7 @@ func (in *installer) uninstallSelected() {
 		in.removeOpenCodeMCP()
 	}
 	aliasesGone := !slices.ContainsFunc(allClients, func(c string) bool { return slices.Contains(s.Installed[c], "aliases") })
-	// The block goes once no client keeps aliases; an uninstall of every client's aliases removes it even without a recorded install.
+
 	aliasesRemoved := aliasesGone && slices.Contains(configs, "aliases") && (aliasesBefore || len(clients) == len(allClients))
 	if aliasesRemoved {
 		in.reconcileAliases(true)
@@ -163,7 +160,6 @@ func (in *installer) uninstallSelected() {
 	in.updateState(func(now *state) { now.Installed, now.Files = s.Installed, s.Files })
 	in.checkRemoved(removed, selected, aliasesRemoved)
 
-	// After the config, which a client's own CLI removes, and clients before the packages they were installed through.
 	for _, t := range removals {
 		in.removeTool(t, s.Tools[t.name])
 	}
@@ -196,7 +192,6 @@ func removeFile(path string) {
 	}
 }
 
-// removeClaudeMCP removes what Engram's claude-code setup and the agent-browser registration wrote into Claude Code. Each CLI removes its own entries, best effort, since one already gone is the state being asked for; a Claude Code already gone keeps its agent-browser entry rather than having its config hand-edited.
 func (in *installer) removeClaudeMCP() {
 	in.log("Removing Engram and agent-browser from Claude Code")
 	if _, err := exec.LookPath("claude"); err == nil {
@@ -234,7 +229,7 @@ func (in *installer) removeClaudeMCP() {
 				}
 			}
 		}
-		// A plugin id is engram@engram and a marketplace is engram, so the name is matched whole rather than as a substring of somebody else's plugin.
+
 		for _, key := range []string{"enabledPlugins", "extraKnownMarketplaces"} {
 			dropped, empty := dropNamed(doc, key, isEngramName)
 			removed = removed || dropped
@@ -247,7 +242,6 @@ func (in *installer) removeClaudeMCP() {
 	removeFile(filepath.Join(in.home, ".claude", "mcp", "engram.json"))
 }
 
-// removeCodexMCP removes what Engram's codex setup and the agent-browser registration wrote into ~/.codex, through Codex's own CLI and best effort, since one already gone is the state being asked for. Engram's files go whether or not Codex is installed; a Codex already gone keeps its config entries rather than having its config hand-edited.
 func (in *installer) removeCodexMCP() {
 	in.log("Removing Engram and agent-browser from Codex")
 	for _, name := range codexEngramFiles {
@@ -263,10 +257,8 @@ func (in *installer) removeCodexMCP() {
 	_ = in.codex("plugin", "marketplace", "remove", "engram").Run()
 }
 
-// codexEngramFiles are what `engram setup codex` writes beside config.toml.
 var codexEngramFiles = []string{"engram-instructions.md", "engram-compact-prompt.md"}
 
-// checkCodexMCPRemoved asks Codex, which reads its own config, rather than parsing the TOML; with Codex gone there is nothing to ask and the warning above stands.
 func (in *installer) checkCodexMCPRemoved() {
 	for _, name := range codexEngramFiles {
 		if path := filepath.Join(in.codexHome(), name); exists(path) {
@@ -285,7 +277,6 @@ func (in *installer) checkCodexMCPRemoved() {
 	}
 }
 
-// removeOpenCodeMCP removes what Engram's opencode setup and the agent-browser registration wrote into OpenCode, which has no CLI to delegate to. An emptied container is dropped rather than left as {}.
 func (in *installer) removeOpenCodeMCP() {
 	in.log("Removing Engram and agent-browser from OpenCode")
 	in.pruneJSON(filepath.Join(in.config, "opencode", "opencode.json"), func(doc *object) bool {
@@ -308,7 +299,6 @@ func (in *installer) removeOpenCodeMCP() {
 	in.removeAgentBrowserConfig()
 }
 
-// removeAgentBrowserConfig is the OpenCode half, which has no CLI to delegate to. Nothing to remove writes nothing, and an emptied mcp is dropped.
 func (in *installer) removeAgentBrowserConfig() {
 	path := filepath.Join(in.config, "opencode", "opencode.json")
 	if _, err := os.Stat(path); err != nil {
@@ -348,7 +338,6 @@ func isEngramName(name string) bool {
 	return name == "engram" || strings.HasPrefix(name, "engram@")
 }
 
-// dropNamed removes the matching names from the object's keys or the list's entries under key, reporting whether it removed any and whether the container is now empty. A list entry that is not a string is matched on its JSON text.
 func dropNamed(doc *object, key string, matches func(string) bool) (dropped, empty bool) {
 	raw, ok := doc.get(key)
 	if !ok {
@@ -377,7 +366,6 @@ func dropNamed(doc *object, key string, matches func(string) bool) (dropped, emp
 	return len(kept) != len(list), len(kept) == 0
 }
 
-// pruneJSON applies prune to a client config and writes it only when prune removed something, so a file with nothing of engram's is never reformatted.
 func (in *installer) pruneJSON(path string, prune func(*object) bool) {
 	if _, err := os.Stat(path); err != nil {
 		return
@@ -397,7 +385,6 @@ func (in *installer) pruneJSON(path string, prune func(*object) bool) {
 	fmt.Fprintf(in.stdout, "Removed the engram entries from %s\n", path)
 }
 
-// pruneTUI drops the subagent status line from a tui file. A file that does not parse keeps its entry with a notice: tui.jsonc may carry comments, and failing the uninstall over another tool's editor settings is worse than leaving one entry.
 func (in *installer) pruneTUI(path string) {
 	if _, err := os.Stat(path); err != nil {
 		return
@@ -434,7 +421,6 @@ func (in *installer) pruneTUI(path string) {
 	fmt.Fprintf(in.stdout, "Removed the engram entries from %s\n", path)
 }
 
-// checkRemoved confirms the uninstall the way checkInstall confirms an install: each removed copy is gone unless the user had edited it, and each selected configuration is gone.
 func (in *installer) checkRemoved(removed []entry, selected func(client, component string) bool, aliasesRemoved bool) {
 	for _, e := range removed {
 		if current := digest(e.Path); current != "" && current == e.Digest {
@@ -472,7 +458,6 @@ func (in *installer) checkRemoved(removed []entry, selected func(client, compone
 	}
 }
 
-// names lists an object's keys or a list's entries as text.
 func names(section any) []string {
 	switch s := section.(type) {
 	case map[string]any:
@@ -487,7 +472,6 @@ func names(section any) []string {
 	return nil
 }
 
-// checkClaudeMCPRemoved checks the containers removeClaudeMCP prunes, not the whole file, so an unrelated mention of the word cannot fail the run. The agent-browser and engram entries are read from the file rather than the CLI; a survivor beside a missing Claude Code is the documented consequence of not hand-editing another tool's config.
 func (in *installer) checkClaudeMCPRemoved() {
 	if path := filepath.Join(in.home, ".claude", "mcp", "engram.json"); exists(path) {
 		die("Engram file survived the uninstall: %s", path)

@@ -9,7 +9,6 @@ import (
 
 func (f *fixture) env() Env { return Env{Dir: f.dir, Forge: f.forge, State: f.state} }
 
-// writes counts the forge calls that change something.
 func (f *fixture) writes() int {
 	n := 0
 	for _, c := range f.calls {
@@ -20,7 +19,6 @@ func (f *fixture) writes() int {
 	return n
 }
 
-// TestReply covers posting a file's exact text on one thread, and the refusals that come before any write.
 func TestReply(t *testing.T) {
 	f := setup(t)
 	f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
@@ -58,7 +56,6 @@ func TestReply(t *testing.T) {
 	}
 }
 
-// TestResolve covers resolving named threads, the all-or-nothing refusal of a foreign id, an already resolved thread, and that status stops listing a resolved one.
 func TestResolve(t *testing.T) {
 	f := setup(t)
 	f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})

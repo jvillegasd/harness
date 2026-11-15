@@ -7,12 +7,10 @@ import (
 	"testing"
 )
 
-// draft renders a well-formed draft blocked by the given text.
 func draft(title, blocked string) string {
 	return "# " + title + "\n\n## What to build\n\nA thing.\n\n## Acceptance criteria\n\n- It works.\n\n## Seam\n\nThe package tests.\n\n## Blocked by\n\n" + blocked + "\n\n## Out of scope\n\nNothing.\n"
 }
 
-// feature writes the named files under root/rel and returns rel.
 func feature(t *testing.T, root string, files map[string]string) string {
 	t.Helper()
 	rel := filepath.Join("docs", "agents", "tickets", "demo")

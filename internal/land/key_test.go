@@ -7,7 +7,6 @@ import (
 	"github.com/jvillegasd/harness/internal/review"
 )
 
-// TestTargetKeyMatchesLandCheck covers that review target keys a pull request as land check does, a fork's included, so a landing removes the review directory the review made.
 func TestTargetKeyMatchesLandCheck(t *testing.T) {
 	f := setup(t)
 	f.open(1, "feature", "main", map[string]string{"a.go": "changed\n"})

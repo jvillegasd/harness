@@ -9,7 +9,6 @@ import (
 	"unicode"
 )
 
-// ReadGuard is the PreToolUse permission hook for read-search roles. It allows only the read-only commands readCommand accepts and never executes the requested command.
 func ReadGuard(input io.Reader, output io.Writer) int {
 	var request struct {
 		Tool  string `json:"tool_name"`
@@ -43,7 +42,6 @@ func readOnlyCommand(command, dir string) bool {
 	return ok && len(words) > 0 && readCommand(words, dir)
 }
 
-// literalWords splits a command the way a shell would only when the shell would do nothing but split it: outside quotes every metacharacter is refused, single quotes are fully literal, and double quotes refuse the three characters that still expand there. Message prose can then carry parentheses, semicolons, and question marks without a permission hook ever interpreting a shell program.
 func literalWords(command string) ([]string, bool) {
 	if strings.ContainsFunc(command, unicode.IsControl) {
 		return nil, false
@@ -84,10 +82,8 @@ func literalWords(command string) ([]string, bool) {
 	return words, true
 }
 
-// secretGuardReason tells the agent why the call was refused and what stays open.
 const secretGuardReason = "Env files hold secrets: no agent may read, search, edit, or name one in a command, except .env.example, .env.local, and .env.<mode>.local. Work from .env.example, or ask the human for the value."
 
-// SecretGuard is the PreToolUse hook every Claude tool call passes through, the main session and every subagent alike. It denies a call that names a secret env file (envSecret) in a file tool's path or glob, or anywhere in a Bash command, and otherwise prints nothing, so the client's own permission rules still decide. Claude Code cannot express this as rules, since a deny always beats an allow. A Bash command is also checked with its quotes, backslashes, and backticks removed, since the shell joins quoted fragments back into the one name it opens. It decodes the whole input with no size cap, because a capped decode would deny every large Write to an ordinary file. It reads names only: a command that reaches a secret without naming it, such as a recursive search of a directory or a glob like .e*, is not caught.
 func SecretGuard(input io.Reader, output io.Writer) int {
 	var request struct {
 		Tool  string         `json:"tool_name"`
@@ -116,7 +112,6 @@ func SecretGuard(input io.Reader, output io.Writer) int {
 	return 0
 }
 
-// nameParts splits text at every character a file name in a path, a git revision, or a shell word does not carry, so each piece is one candidate name.
 func nameParts(text string) []string {
 	return strings.FieldsFunc(text, func(r rune) bool {
 		return unicode.IsSpace(r) || strings.ContainsRune("/:=\"'`$;&|<>(){},\\!#~", r)

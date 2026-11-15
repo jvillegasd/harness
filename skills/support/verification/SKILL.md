@@ -38,7 +38,7 @@ Only steps 4 and 5 count as verified. A small script that imports the shipped li
 
 ## Verdict
 
-Before a pull request opens or its head changes, and at `build`'s integration, get an independent run-as-user verdict when `change-map` lists `critical` or `behavioral` items and the project has a `verify-<app>` skill from `/create-verification-skill`. Without one, report the verdict as unavailable and name `/create-verification-skill`. The author's own drive of the app is a check, not a verdict.
+Before a pull request opens or its head changes, and at `build`'s integration, get an independent run-as-user verdict when `change-map` lists `critical` or `behavioral` items and the project has a `verify-<app>` skill from `/create-verification-skill`. Without one, report the verdict as unavailable and name `/create-verification-skill`; `harness land check` then holds the pull request until the human accepts landing without one. The author's own drive of the app is a check, not a verdict.
 
 1. **Scope.** Pick the files under `verify-<app>/features/` that the `critical` and `behavioral` items touch. Each such item that no feature covers is a gap: name it, and suggest the feature map update `/maintain-verification-skill` would make.
 2. **Revisions.** A feature change is driven at the head. A bugfix is driven at the base and then the head: its reproduction must fail on the base for the reported reason and pass on the head.
@@ -51,7 +51,7 @@ Before a pull request opens or its head changes, and at `build`'s integration, g
    gaps: <unmapped items> | none
    ```
    FAIL means a driven feature missed its proving end state, or a bugfix reproduction did not fail on the base and pass on the head. PASS+NOTES means every driven feature passed and something stayed open: a gap, or a feature that could not be driven, each named. PASS means every selected feature passed with no gaps.
-5. **Use.** The verdict is bound to its head. A later commit makes it stale unless it changes only tests or documentation. Fix a FAIL and run a fresh verdict; never overrule one. Report it as one line: `Verdict: <verdict> at <sha>`, with the gaps.
+5. **Use.** The verdict is bound to its head. A later commit makes it stale unless it changes only tests or documentation. Fix a FAIL and run a fresh verdict; never overrule one. Report it as one line: `Verdict: <verdict> at <sha>`, with the gaps. Once a pull request holds that head and delivery is authorized, write the runner's report to a file and post it with `harness review verdict <pr> --run --result <verdict> --sha <head> --notes <file>`, because `harness land check` holds a `critical` or `behavioral` pull request until a run verdict covers its head. Post the runner's verdict only, since your own drive of the app is a check.
 
 ## Output
 

@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// Exit codes of `harness pr status`, one per blocker in the order address-review works them. 1 and 2 stay an operational failure and an invalid invocation.
 const (
 	ExitReady    = 0
 	ExitConflict = 3
@@ -18,22 +17,22 @@ const (
 	ExitTimeout  = 8
 )
 
-// Status is the verdict `harness pr status` prints for one pull request: whether it is ready to merge and what stands in the way. Its holds and review are the ones `harness land check --merge` reports for the same head.
 type Status struct {
 	Number int    `json:"number"`
 	URL    string `json:"url"`
 	Title  string `json:"title"`
 	Head   string `json:"head"`
 	Ready  bool   `json:"ready"`
-	// Blocker names the first blocker: conflict, thread, failing, pending, or other. Empty when ready.
-	Blocker string   `json:"blocker,omitempty"`
-	Review  *Review  `json:"review,omitempty"`
-	Threads []Thread `json:"threads"`
-	Holds   []string `json:"holds"`
-	Notes   []string `json:"notes"`
+
+	Blocker string  `json:"blocker,omitempty"`
+	Review  *Review `json:"review,omitempty"`
+
+	Run     *RunVerdict `json:"run,omitempty"`
+	Threads []Thread    `json:"threads"`
+	Holds   []string    `json:"holds"`
+	Notes   []string    `json:"notes"`
 }
 
-// Code is the exit code that names the status's first blocker.
 func (s Status) Code() int {
 	switch s.Blocker {
 	case "":
@@ -50,7 +49,6 @@ func (s Status) Code() int {
 	return ExitOther
 }
 
-// Statuses reports the pull requests in landing order, as `land check --merge` would check them, and never writes to the forge.
 func Statuses(e Env, numbers []int, stack bool) ([]Status, error) {
 	checks, err := Run(e, numbers, stack, true)
 	if err != nil {
@@ -61,7 +59,7 @@ func Statuses(e Env, numbers []int, stack bool) ([]Status, error) {
 	for _, c := range checks {
 		s := Status{
 			Number: c.Number, URL: c.URL, Title: c.Title, Head: c.Head,
-			Review: c.Review, Threads: []Thread{}, Holds: c.Holds, Notes: c.Notes,
+			Review: c.Review, Run: c.RunVerdict, Threads: []Thread{}, Holds: c.Holds, Notes: c.Notes,
 		}
 		if c.Lane == "merged" {
 			s.Holds = append([]string{"it is already merged"}, s.Holds...)
@@ -92,7 +90,6 @@ func Statuses(e Env, numbers []int, stack bool) ([]Status, error) {
 	return out, nil
 }
 
-// permission reads a user's permission on the base repository, or unknown when the forge will not say, as for a caller without push access.
 func (e Env) permission(login string) string {
 	if login == "" {
 		return "unknown"
@@ -102,7 +99,7 @@ func (e Env) permission(login string) string {
 	if err != nil || p == "" {
 		return "unknown"
 	}
-	// A --jq filter prints a string bare, but a raw response is JSON.
+
 	var quoted string
 	if json.Unmarshal(raw, &quoted) == nil {
 		p = quoted
@@ -110,7 +107,6 @@ func (e Env) permission(login string) string {
 	return p
 }
 
-// Code is the exit code of a run: the first pull request in landing order that is not ready names it.
 func Code(statuses []Status) int {
 	for _, s := range statuses {
 		if !s.Ready {
@@ -120,13 +116,11 @@ func Code(statuses []Status) int {
 	return ExitReady
 }
 
-// Clock is what a watch waits on, injected so a test never sleeps.
 type Clock struct {
 	Now   func() time.Time
 	Sleep func(time.Duration)
 }
 
-// Watch repeats the status pass until the verdict is terminal, or until timeout passes, and returns the last verdict with its exit code: ExitTimeout when time ran out first. A failed pass is retried on the next one; three in a row end the watch with the last error.
 func Watch(e Env, numbers []int, stack bool, interval, timeout time.Duration, clock Clock) ([]Status, int, error) {
 	deadline := clock.Now().Add(timeout)
 	var last []Status
@@ -154,7 +148,6 @@ func Watch(e Env, numbers []int, stack bool, interval, timeout time.Duration, cl
 	}
 }
 
-// terminal reports whether the run's first blocker, the one its exit code names, is anything but pending required checks.
 func terminal(statuses []Status) bool {
 	return Code(statuses) != ExitPending
 }

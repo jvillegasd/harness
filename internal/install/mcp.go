@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 )
 
-// ReconcileMCP refreshes one server registration for one installed client. It
-// never runs setup, installs assets, changes tracked settings, or starts clients.
 func ReconcileMCP(client, server, binary string, stdout, stderr io.Writer) (err error) {
 	defer func() {
 		if p := recover(); p != nil {

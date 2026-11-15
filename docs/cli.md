@@ -133,6 +133,8 @@ A review's result is one verdict comment on the PR, never a file on your machine
 
 Only the newest verdict from someone with write access to the repository counts. A verdict from anyone else is listed as ignored. A review of work with no PR yet posts nothing; `open-pr` opens the PR first and then runs the review that posts it.
 
+A run-as-user verdict is a second kind of comment with its own marker, posted with `--run` once an agent that did not write the change has driven it as a user would. It names the one commit that was driven and reads `PASS`, `PASS+NOTES`, or `FAIL` the same way. Neither kind counts as the other. `/land merge` holds a `critical` or `behavioral` PR until a run verdict covers its code, or you accept landing without one by name. Later edits to tests or docs keep it, and any other edit makes it stale.
+
 ### Commands the review skills run
 
 The review, `open-pr`, and `/land` skills call these instead of working the answers out by hand. You can run them to see what an agent saw:
@@ -140,13 +142,14 @@ The review, `open-pr`, and `/land` skills call these instead of working the answ
 ```sh
 harness review target 42                 # what a review of PR 42 reads: its base, commit, and key
 harness review verdict 42 --result PASS --base <base> --sha <head> --level medium --dry-run   # the comment a review would post
+harness review verdict 42 --run --result PASS --sha <head> --dry-run   # the comment a run-as-user check would post
 harness review prune --dry-run           # review scratch of branches that exist nowhere (run git fetch --prune first)
 ```
 
 | Command | What it answers or does |
 | --- | --- |
 | `target` | Resolves the current branch, a PR number or URL, another branch, or a `<base>..<sha>` range to the base, commit, and key a review reads. It fetches what it needs and creates no branch or tag. A PR from a fork is keyed `pr-<n>` |
-| `verdict` | Posts a review's verdict on an open PR as one comment and prints it. It refuses a commit that is not the PR's current head, and a `PASS+NOTES` or `FAIL` without `--notes`. `--dry-run` prints it without posting |
+| `verdict` | Posts a review's verdict on an open PR as one comment and prints it, or with `--run` a run-as-user verdict, which takes no `--base` or `--level`. It refuses a commit that is not the PR's current head, and a `PASS+NOTES` or `FAIL` without `--notes`. `--dry-run` prints it without posting |
 | `worktree add`, `worktree retire` | Creates the one temporary worktree a review may use, outside your checkout with Git hooks off, and removes it later. Anything it holds is saved as a patch in the review directory before removal |
 | `snapshot` | Saves uncommitted work under the named paths as one patch and prints its digest, so a review of work not yet committed reads exactly that content. It leaves your index and working tree as they were |
 | `remove`, `prune` | Delete a review directory, the scratch a review run leaves in the Git directory (saved patches and the worktree record). `/land` removes a merged branch's directory; `prune` removes those of branches that exist nowhere. Both leave a directory alone while the review worktree it records still exists |
@@ -201,6 +204,7 @@ It prints one JSON verdict per PR. The fields you will read most:
 | `mode` | `local` when this checkout is the PR's head, `fork` for a PR from another repository, otherwise `remote` |
 | `mine` | Whether you wrote the PR. `/land` deletes the remote branch, and rebases a PR stacked on it, only when it is yours |
 | `review` | Whether a review is required, the PR's latest verdict (its result, link, and reviewed commit), and whether it still covers the head |
+| `run` | The same for the run-as-user verdict: whether one is required, the latest one, and whether it still covers the head |
 
 Without `--merge`, an open PR reads as `stop`. Run `harness land check --help` for every field.
 
@@ -240,7 +244,7 @@ harness pr status --stack 23      # PR 23 and every open PR under it
 harness pr status --watch 19      # wait while required checks are pending
 ```
 
-It prints a JSON verdict per PR with the same holds and review coverage as `harness land check --merge`, plus every unresolved review thread and its author's permission. It writes nothing to GitHub. The exit code names the first PR's first blocker, in the order to work on them:
+It prints a JSON verdict per PR with the same holds, review coverage, and run-as-user coverage as `harness land check --merge`, plus every unresolved review thread and its author's permission. It writes nothing to GitHub. The exit code names the first PR's first blocker, in the order to work on them:
 
 | Exit code | First blocker |
 | --- | --- |
@@ -249,7 +253,7 @@ It prints a JSON verdict per PR with the same holds and review coverage as `harn
 | 4 | An unresolved review thread |
 | 5 | A failing required check |
 | 6 | A pending required check, or mergeability GitHub is still computing |
-| 7 | Any other hold, such as a draft, a missing approval, a review that is not current, or a `FAIL` verdict |
+| 7 | Any other hold, such as a draft, a missing approval, a review or run-as-user verdict that is not current, or a `FAIL` verdict |
 | 8 | `--watch` timed out (default 30 minutes) |
 
 `harness pr threads reply <pr> <thread id> --body-file <file>` posts a file's exact text as a reply, and `harness pr threads resolve <pr> <thread id>...` resolves threads. Both write to GitHub, so agents run them only under the authority they already have for that PR.

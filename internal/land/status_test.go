@@ -16,7 +16,6 @@ func (f *fixture) status(stack bool, numbers ...int) []Status {
 	return statuses
 }
 
-// TestStatusBlockers covers the verdict and the exit code that names the first blocker, in the order address-review works them.
 func TestStatusBlockers(t *testing.T) {
 	f := setup(t)
 	p := f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
@@ -67,7 +66,6 @@ func slicesContain(holds []string, want string) bool {
 	return false
 }
 
-// TestStatusThreads covers the unresolved threads the verdict lists, each located and attributed, and that resolved ones are left out.
 func TestStatusThreads(t *testing.T) {
 	f := setup(t)
 	f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
@@ -81,7 +79,7 @@ func TestStatusThreads(t *testing.T) {
 	if s.Threads[0] != want {
 		t.Errorf("thread %+v, want %+v", s.Threads[0], want)
 	}
-	// One permission read per author.
+
 	asked := 0
 	for _, c := range f.calls {
 		if strings.Contains(c, "/collaborators/") {
@@ -93,7 +91,6 @@ func TestStatusThreads(t *testing.T) {
 	}
 }
 
-// TestStatusMatchesLandCheck covers that pr status and land check --merge can never disagree about the same head.
 func TestStatusMatchesLandCheck(t *testing.T) {
 	f := setup(t)
 	f.open(1, "feature", "main", map[string]string{"a.go": "changed\n"})
@@ -110,7 +107,6 @@ func TestStatusMatchesLandCheck(t *testing.T) {
 	}
 }
 
-// TestStatusStack covers --stack reporting every open pull request under the tip, bottom-up.
 func TestStatusStack(t *testing.T) {
 	f := setup(t)
 	f.open(1, "one", "main", map[string]string{"README.md": "one\n"})
@@ -127,7 +123,6 @@ func TestStatusStack(t *testing.T) {
 	}
 }
 
-// TestStatusWritesNothing covers that a status pass only reads the forge and creates no local branch.
 func TestStatusWritesNothing(t *testing.T) {
 	f := setup(t)
 	f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})

@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// coverRepo is a throwaway repository with a base commit on main and a feature branch "feat" that changes a.go, isolated from the user's Git config.
 type coverRepo struct {
 	t    *testing.T
 	dir  string

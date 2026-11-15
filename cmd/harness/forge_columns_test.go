@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// TestWorktreeAuditForgeCommand proves --forge is wired to the pull request read: the plain audit reaches no gh, and --forge adds the PR and INTO columns.
 func TestWorktreeAuditForgeCommand(t *testing.T) {
 	dir, _, run := prRepo(t)
 	path := filepath.Join(filepath.Dir(dir), "open")

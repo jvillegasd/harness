@@ -1,4 +1,3 @@
-// Command harness is the single entry point for operating the harness.
 package main
 
 import (

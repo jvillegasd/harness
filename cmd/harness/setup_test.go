@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// TestSetupCommand proves the CLI is wired to the setup rules: probe reports the evidence, and tracker writes the configuration, labels, and automation through gh, then changes nothing on a second run.
 func TestSetupCommand(t *testing.T) {
 	dir, _, run := prRepo(t)
 	git(t, dir, "remote", "set-url", "origin", "https://github.com/o/r.git")

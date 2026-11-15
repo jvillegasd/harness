@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// fakeClock advances only when the watch sleeps, so no test waits.
 type fakeClock struct {
 	now    time.Time
 	sleeps int
@@ -16,12 +15,11 @@ func (c *fakeClock) clock() Clock {
 	return Clock{Now: func() time.Time { return c.now }, Sleep: func(d time.Duration) { c.sleeps++; c.now = c.now.Add(d) }}
 }
 
-// scripted wraps the fixture's forge so each status pass sees the next scripted change before it reads.
 func (f *fixture) watch(timeout time.Duration, before func(pass int)) ([]Status, int, error, *fakeClock) {
 	f.t.Helper()
 	pass := 0
 	forge := func(args ...string) ([]byte, error) {
-		if args[0] == "repo" { // the first read of every pass
+		if args[0] == "repo" {
 			pass++
 			before(pass)
 		}
@@ -32,7 +30,6 @@ func (f *fixture) watch(timeout time.Duration, before func(pass int)) ([]Status,
 	return statuses, code, err, c
 }
 
-// TestWatch covers waiting through pending required checks, and stopping at once on any other verdict.
 func TestWatch(t *testing.T) {
 	f := setup(t)
 	f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
@@ -54,7 +51,7 @@ func TestWatch(t *testing.T) {
 			t.Fatalf("code %d, sleeps %d, err %v", code, c.sleeps, err)
 		}
 	})
-	// Right after a push the forge is still computing mergeability, so the watch waits instead of stopping.
+
 	t.Run("still computing", func(t *testing.T) {
 		defer func() { f.pulls[1].Mergeable, f.pulls[1].MergeStateStatus = "MERGEABLE", "CLEAN" }()
 		_, code, err, c := f.watch(time.Hour, func(pass int) {
@@ -103,7 +100,6 @@ func TestWatch(t *testing.T) {
 	})
 }
 
-// TestWatchRetries covers a failed forge read retried on the next pass, and three in a row ending the watch.
 func TestWatchRetries(t *testing.T) {
 	f := setup(t)
 	f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})

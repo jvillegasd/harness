@@ -10,7 +10,6 @@ import (
 	"testing"
 )
 
-// gitIn runs git in dir isolated from the user's config, like the command tests do.
 func gitIn(t *testing.T, dir string, args ...string) string {
 	t.Helper()
 	home := filepath.Join(t.TempDir(), "home")
@@ -42,10 +41,9 @@ func write(t *testing.T, dir, name, body string) {
 	}
 }
 
-// newRepo makes a repository on main with a base commit holding the files the listing tests then change.
 func newRepo(t *testing.T) string {
 	t.Helper()
-	// Git config is isolated per call, so the environment variables must also reach Root and Changed.
+
 	home := filepath.Join(t.TempDir(), "home")
 	if err := os.MkdirAll(home, 0o755); err != nil {
 		t.Fatal(err)
@@ -72,21 +70,21 @@ func newRepo(t *testing.T) string {
 func TestChangedListsEveryKindOfChange(t *testing.T) {
 	dir := newRepo(t)
 	gitIn(t, dir, "switch", "-q", "-c", "feat")
-	// Committed on the branch.
+
 	write(t, dir, "edit.go", "package a\n// changed\n")
 	write(t, dir, "committed.go", "package a\n")
 	gitIn(t, dir, "add", "-A")
 	gitIn(t, dir, "commit", "-q", "-m", "branch work")
-	// Staged.
+
 	write(t, dir, "sub/staged.go", "package a\n// staged\n")
 	gitIn(t, dir, "add", "sub/staged.go")
-	// Unstaged.
+
 	write(t, dir, "sub/unstaged.go", "package a\n// unstaged\n")
-	// Untracked, not ignored.
+
 	write(t, dir, "new dir/untracked file.go", "package a\n")
 	write(t, dir, ".gitignore", "ignored.log\n")
 	write(t, dir, "ignored.log", "x")
-	// Deleted.
+
 	if err := os.Remove(filepath.Join(dir, "gone.sql")); err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +111,7 @@ func TestChangedUsesMergeBaseNotBaseTip(t *testing.T) {
 	write(t, dir, "feature.go", "package a\n")
 	gitIn(t, dir, "add", "-A")
 	gitIn(t, dir, "commit", "-q", "-m", "feature")
-	// The base moves on after the branch point; its work is not ours.
+
 	gitIn(t, dir, "switch", "-q", "main")
 	write(t, dir, "upstream.go", "package a\n")
 	gitIn(t, dir, "add", "-A")
@@ -183,7 +181,7 @@ func TestDefaultBase(t *testing.T) {
 	if got := DefaultBase(dir); got != "main" {
 		t.Fatalf("DefaultBase without origin/HEAD = %q, want main", got)
 	}
-	// Give the repository an origin whose HEAD resolves.
+
 	origin := t.TempDir()
 	gitIn(t, origin, "init", "-q", "--bare", "-b", "main")
 	gitIn(t, dir, "remote", "add", "origin", origin)
@@ -194,7 +192,6 @@ func TestDefaultBase(t *testing.T) {
 	}
 }
 
-// TestBaseConfigKeepsADroppedCriticalPath is the floor guarantee: a branch that removes an entry from criticalPaths cannot lower the tier of the file that entry protected, because the base commit's entries still count.
 func TestBaseConfigKeepsADroppedCriticalPath(t *testing.T) {
 	dir := newRepo(t)
 	write(t, dir, ConfigPath, `{"criticalPaths": ["POLICY.md"]}`)
@@ -219,7 +216,6 @@ func TestBaseConfigKeepsADroppedCriticalPath(t *testing.T) {
 	}
 }
 
-// TestEffectiveConfigUnionsBaseAndWorkingTree keeps entries the branch adds as well as entries the base had.
 func TestEffectiveConfigUnionsBaseAndWorkingTree(t *testing.T) {
 	dir := newRepo(t)
 	write(t, dir, ConfigPath, `{"criticalPaths": ["base/**"]}`)
@@ -236,7 +232,6 @@ func TestEffectiveConfigUnionsBaseAndWorkingTree(t *testing.T) {
 	}
 }
 
-// TestChosenBaseCannotLowerTheFloor covers a branch that drops a criticalPaths entry in its own first commit and then names that commit as the base: the default branch's entries still count.
 func TestChosenBaseCannotLowerTheFloor(t *testing.T) {
 	dir := newRepo(t)
 	write(t, dir, ConfigPath, `{"criticalPaths": ["POLICY.md"]}`)

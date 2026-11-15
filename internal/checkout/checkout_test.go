@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// write creates a file and its parent directories.
 func write(t *testing.T, path, body string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -19,7 +18,6 @@ func write(t *testing.T, path, body string) {
 	}
 }
 
-// checkoutAt lays out a checkout: the root policy marker beside the Harness module.
 func checkoutAt(t *testing.T, root string) string {
 	t.Helper()
 	write(t, filepath.Join(root, "FLOOR.md"), "# floor\n")
@@ -44,8 +42,6 @@ func TestFindResolvesRootAndNested(t *testing.T) {
 	}
 }
 
-// TestFindResolvesTheNearestCheckout is the worktree case: a checkout nested
-// inside another resolves itself, not the enclosing one.
 func TestFindResolvesTheNearestCheckout(t *testing.T) {
 	outer := checkoutAt(t, t.TempDir())
 	inner := checkoutAt(t, filepath.Join(outer, "worktree"))
@@ -64,7 +60,6 @@ func TestFindResolvesTheNearestCheckout(t *testing.T) {
 	}
 }
 
-// TestFindRejectsADifferentModule covers a marker beside a foreign module: Find stops there rather than resolving an enclosing checkout.
 func TestFindRejectsADifferentModule(t *testing.T) {
 	outer := checkoutAt(t, t.TempDir())
 	inner := filepath.Join(outer, "fork")
@@ -86,7 +81,6 @@ func TestFindRejectsADifferentModule(t *testing.T) {
 	}
 }
 
-// TestFindRejectsAMarkerWithoutTheModule pins the contract that a checkout is the marker together with the module, so a marker-only tree is not one.
 func TestFindRejectsAMarkerWithoutTheModule(t *testing.T) {
 	dir := t.TempDir()
 	write(t, filepath.Join(dir, "FLOOR.md"), "# floor\n")
@@ -110,7 +104,6 @@ func TestFindOutsideAnyCheckout(t *testing.T) {
 	}
 }
 
-// TestManagedIsExplicitNamespaces pins the ownership predicate: a managed asset and everything beneath it is the installer's, while the repository's own tooling at the promoted root is not.
 func TestManagedIsExplicitNamespaces(t *testing.T) {
 	c := Checkout{Root: "/repo"}
 	managed := []string{
@@ -153,7 +146,6 @@ func TestModuleOf(t *testing.T) {
 	}
 }
 
-// TestSkillDirsFlattensGroups lists every grouped skill by its bare name, sorted, skipping hidden entries, files, and symlinks, and keeps a folder without its SKILL.md so a caller can report it.
 func TestSkillDirsFlattensGroups(t *testing.T) {
 	c := Checkout{Root: t.TempDir()}
 	write(t, filepath.Join(c.Skills(), "workflow", "tdd", "SKILL.md"), "x\n")
@@ -185,7 +177,6 @@ func TestSkillDirsFlattensGroups(t *testing.T) {
 	}
 }
 
-// TestSkillDirsRefusesAmbiguousLayouts rejects a name two groups share and a skill outside any group, because clients see only the bare name.
 func TestSkillDirsRefusesAmbiguousLayouts(t *testing.T) {
 	for name, seed := range map[string]func(c Checkout){
 		"same name in two groups": func(c Checkout) {

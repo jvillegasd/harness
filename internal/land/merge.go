@@ -10,10 +10,8 @@ import (
 	"strings"
 )
 
-// ErrMergeRefused is a merge refused before anything was written to the forge.
 var ErrMergeRefused = errors.New("refused")
 
-// Merged is a pull request as read back after its squash merge.
 type Merged struct {
 	Number      int    `json:"number"`
 	Head        string `json:"head"`
@@ -26,7 +24,6 @@ var (
 	nextHeadRe      = regexp.MustCompile(`(?m)^## `)
 )
 
-// tradeoffs returns a description's `## Tradeoffs` section, heading included, or "" when it has none.
 func tradeoffs(body string) string {
 	loc := tradeoffsHeadRe.FindStringIndex(body)
 	if loc == nil {
@@ -39,7 +36,6 @@ func tradeoffs(body string) string {
 	return strings.TrimSpace(body[loc[0]:loc[1]] + rest)
 }
 
-// MergeBody is the squash commit body: the given text, with the description's tradeoffs appended when the text carries none.
 func MergeBody(text, description string) string {
 	text = strings.TrimSpace(text)
 	if t := tradeoffs(description); t != "" && !tradeoffsHeadRe.MatchString(text) {
@@ -48,7 +44,6 @@ func MergeBody(text, description string) string {
 	return text + "\n"
 }
 
-// Merge squash-merges one open pull request at the head the caller checked. It checks the pull request again first and refuses, writing nothing, when it is not on the open lane, its head moved, a forge gate holds it, or another hold stands without accepted. It never deletes the head branch, and it reports the merge only once the forge reads the pull request back as merged.
 func Merge(e Env, number int, head, bodyFile string, accepted bool) (Merged, error) {
 	m := Merged{Number: number, Head: head}
 	text, err := os.ReadFile(bodyFile)
@@ -86,7 +81,7 @@ func Merge(e Env, number int, head, bodyFile string, accepted bool) (Merged, err
 	if err := os.WriteFile(file, []byte(MergeBody(string(text), c.body)), 0o644); err != nil {
 		return m, err
 	}
-	// --delete-branch is left out: its local checkout fails when another worktree holds the default branch, which reads as a failed merge.
+
 	_, mergeErr := e.Forge("pr", "merge", strconv.Itoa(number), "--squash", "--match-head-commit", head, "--subject", c.Title, "--body-file", file)
 
 	var back struct {

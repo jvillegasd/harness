@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// TestWorktreeCommand proves the CLI is wired to the retirement rules: the audit names each state, a refusal exits 1 and removes nothing, and a retirement removes the worktree and its landed branch.
 func TestWorktreeCommand(t *testing.T) {
 	dir := repo(t)
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
@@ -15,7 +14,7 @@ func TestWorktreeCommand(t *testing.T) {
 	landed, open := filepath.Join(parent, "landed"), filepath.Join(parent, "open")
 	git(t, dir, "worktree", "add", "-q", "-b", "landed", landed)
 	git(t, dir, "worktree", "add", "-q", "-b", "open", open)
-	// The landed proof is by content, so the open branch needs a real change.
+
 	if err := os.WriteFile(filepath.Join(open, "work.txt"), []byte("work\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +57,7 @@ func TestWorktreeCommand(t *testing.T) {
 	if err := os.Remove(filepath.Join(landed, "scratch.txt")); err != nil {
 		t.Fatal(err)
 	}
-	// Run from inside the worktree being retired, as land does.
+
 	r := ok(t, harness(t, landed, "worktree", "retire", landed, "--into", branch), "retire")
 	if _, err := os.Stat(landed); err == nil || git(t, dir, "branch", "--list", "landed") != "" {
 		t.Errorf("worktree or branch survived: %s", r.stdout)

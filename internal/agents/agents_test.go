@@ -16,7 +16,6 @@ var outputNames = []string{
 	"opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md", "opencode/review-bugs.md", "opencode/review-risk.md", "opencode/review-spec.md",
 }
 
-// temp returns a resolved temporary directory, because macOS temp paths pass through a symlink and the renderer refuses a symlinked output ancestor.
 func temp(t *testing.T) string {
 	t.Helper()
 	resolved, err := filepath.EvalSymlinks(t.TempDir())
@@ -36,7 +35,6 @@ func repoRoot() string {
 
 func configPath() string { return filepath.Join(repoRoot(), "clients", "assignments.json") }
 
-// runCommand calls Generate, or Check when args lead with --check, with the config and output that follow.
 func runCommand(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
 	var stdout, stderr bytes.Buffer
@@ -61,7 +59,6 @@ func readConfig(t *testing.T, path string) map[string]any {
 	return data
 }
 
-// configCopy copies the canonical assignments and each role definition into dir, pointing the copy at the copied definitions, then applies edit.
 func configCopy(t *testing.T, dir string, edit func(map[string]any)) string {
 	t.Helper()
 	data := readConfig(t, configPath())
@@ -292,7 +289,6 @@ func TestCheckDetectsWidening(t *testing.T) {
 	}
 }
 
-// A control character TOML refuses never reaches a rendered Codex file.
 func TestControlCharactersInADefinitionAreRefused(t *testing.T) {
 	dir := temp(t)
 	config := configCopy(t, dir, nil)
@@ -709,7 +705,7 @@ func TestAssignments(t *testing.T) {
 		for relative := range treeOf(t, out) {
 			client := strings.Split(relative, "/")[0]
 			if client == "codex" {
-				// TOML, whose keys RestrictionsMatch already limits.
+
 				continue
 			}
 			for _, line := range head(t, filepath.Join(out, filepath.FromSlash(relative))) {
@@ -776,7 +772,6 @@ func assertHead(t *testing.T, path string, want []string) {
 	}
 }
 
-// codexSettings lists a Codex agent's model and effort lines.
 func codexSettings(t *testing.T, path string) []string {
 	t.Helper()
 	var got []string
@@ -800,7 +795,6 @@ func deepEqualStrings(a, b map[string]string) bool {
 	return true
 }
 
-// A review lens renders the reviewer's text and then its own under its own name, with the read-search controls, so the shared text exists once.
 func TestLensExtendsTheReviewer(t *testing.T) {
 	out := temp(t)
 	if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
@@ -826,7 +820,6 @@ func TestLensExtendsTheReviewer(t *testing.T) {
 	}
 }
 
-// A base that itself extends another is refused, so composition stays one level deep.
 func TestExtendsIsOneLevelDeep(t *testing.T) {
 	dir := temp(t)
 	config := configCopy(t, dir, nil)
@@ -840,7 +833,6 @@ func TestExtendsIsOneLevelDeep(t *testing.T) {
 	}
 }
 
-// A lens may extend only a base with its own access: a base granting implement, assigned to no role, is refused for what it is, not for some later role.
 func TestExtendsRequiresTheSameAccess(t *testing.T) {
 	dir := temp(t)
 	config := configCopy(t, dir, nil)

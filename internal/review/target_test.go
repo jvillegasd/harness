@@ -8,12 +8,11 @@ import (
 	"testing"
 )
 
-// targetRepo is a coverRepo cloned from a bare origin: main and feat are pushed, and feat is published as pull request 5.
 type targetRepo struct {
 	*coverRepo
-	head   string // feat's tip
+	head   string
 	pulls  map[string]string
-	forged string // a head the forge reports instead of the pushed one
+	forged string
 }
 
 func newTargetRepo(t *testing.T) *targetRepo {
@@ -59,7 +58,6 @@ func (r *targetRepo) refs() string {
 	return r.git("for-each-ref", "--format=%(refname)", "refs/heads", "refs/tags")
 }
 
-// TestTargetKinds covers each kind of target resolving to its base, commit, key, and foreignness.
 func TestTargetKinds(t *testing.T) {
 	r := newTargetRepo(t)
 	before := r.refs()
@@ -81,7 +79,7 @@ func TestTargetKinds(t *testing.T) {
 			t.Errorf("%s: got %+v, %v; want %+v", name, got, err, tc.want)
 		}
 	}
-	// The pull request of another branch is foreign.
+
 	r.git("switch", "-q", "main")
 	if got, _ := r.resolve("5"); !got.Foreign {
 		t.Errorf("a pull request of another branch was not foreign")
@@ -92,7 +90,6 @@ func TestTargetKinds(t *testing.T) {
 	}
 }
 
-// TestTargetRefusals covers a forge head the fetch does not match, an unknown branch, an unresolvable range end, and a detached head with no target.
 func TestTargetRefusals(t *testing.T) {
 	r := newTargetRepo(t)
 	r.forged = strings.Repeat("a", 40)

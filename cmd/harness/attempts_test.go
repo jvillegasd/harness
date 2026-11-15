@@ -13,7 +13,7 @@ func TestAttemptsCommandWiring(t *testing.T) {
 	if result := harness(t, dir, args...); result.code != 0 {
 		t.Fatalf("add exited %d: %s", result.code, result.stderr)
 	}
-	// Which adds are rejected, and that a rejection writes nothing, is settled in internal/attempts.
+
 	bad := append([]string(nil), args...)
 	for i := range bad {
 		if bad[i] == "pass" {

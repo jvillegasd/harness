@@ -27,7 +27,6 @@ func write(t *testing.T, path, body string) {
 	}
 }
 
-// repo creates a repository on main with one commit that ignores *.log, isolated from the user's git config.
 func repo(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
@@ -43,7 +42,6 @@ func repo(t *testing.T) string {
 	return dir
 }
 
-// branchTree adds a sibling worktree on a new branch holding one commit that edits a.txt.
 func branchTree(t *testing.T, dir, branch string) string {
 	t.Helper()
 	path := filepath.Join(filepath.Dir(dir), strings.ReplaceAll(branch, "/", "-"))
@@ -53,7 +51,6 @@ func branchTree(t *testing.T, dir, branch string) string {
 	return path
 }
 
-// squash lands a branch on main as one new commit, the way a squash merge does.
 func squash(t *testing.T, dir, branch string) {
 	t.Helper()
 	run(t, dir, "merge", "-q", "--squash", branch)
@@ -70,7 +67,6 @@ func hasBranch(t *testing.T, dir, branch string) bool {
 	return run(t, dir, "branch", "--list", branch) != ""
 }
 
-// refused asserts a retirement was refused and left the worktree in place.
 func refused(t *testing.T, path string, err error, want string) {
 	t.Helper()
 	if !errors.Is(err, ErrRefused) || !strings.Contains(err.Error(), want) {
@@ -81,7 +77,6 @@ func refused(t *testing.T, path string, err error, want string) {
 	}
 }
 
-// TestRetireRemovesALandedWorktreeFromInsideIt covers the path land takes: a squash-merged branch, retired from the worktree being removed.
 func TestRetireRemovesALandedWorktreeFromInsideIt(t *testing.T) {
 	dir := repo(t)
 	path := branchTree(t, dir, "feat/x")
@@ -94,7 +89,7 @@ func TestRetireRemovesALandedWorktreeFromInsideIt(t *testing.T) {
 	if exists(path) || hasBranch(t, dir, "feat/x") {
 		t.Fatalf("worktree or branch survived: %v", done)
 	}
-	// git reports the worktree by its real path, which on macOS is not the temp path spelling.
+
 	real, err := filepath.EvalSymlinks(filepath.Dir(path))
 	if err != nil {
 		t.Fatal(err)
@@ -104,7 +99,6 @@ func TestRetireRemovesALandedWorktreeFromInsideIt(t *testing.T) {
 	}
 }
 
-// TestRetireRefusesToLoseBranchWork covers each thing a branch worktree can hold that removal would lose, and the option that covers it.
 func TestRetireRefusesToLoseBranchWork(t *testing.T) {
 	dir := repo(t)
 	path := branchTree(t, dir, "task")
@@ -155,7 +149,6 @@ func TestRetireRefusesToLoseBranchWork(t *testing.T) {
 	}
 }
 
-// TestRetireKeepsAnUnlandedBranch removes only the worktree when asked to.
 func TestRetireKeepsAnUnlandedBranch(t *testing.T) {
 	dir := repo(t)
 	path := branchTree(t, dir, "task")
@@ -167,7 +160,6 @@ func TestRetireKeepsAnUnlandedBranch(t *testing.T) {
 	}
 }
 
-// TestRetireDetachedWorktree covers a head on a ref, a loose head still where the caller created it, and one that moved.
 func TestRetireDetachedWorktree(t *testing.T) {
 	dir := repo(t)
 	parent := filepath.Dir(dir)
@@ -203,7 +195,6 @@ func TestRetireDetachedWorktree(t *testing.T) {
 		t.Errorf("patch lacks the loose commit: %q", raw)
 	}
 
-	// The same loose commit, named as where the worktree was created, needs no patch.
 	created := filepath.Join(parent, "created")
 	run(t, dir, "worktree", "add", "-q", "--detach", created, head)
 	if _, err := Retire(dir, created, Options{At: head}); err != nil || exists(created) {
@@ -211,7 +202,6 @@ func TestRetireDetachedWorktree(t *testing.T) {
 	}
 }
 
-// TestLanded separates an ancestor, a squash, an unmerged branch, and a squash that into later edited, which stays unproven.
 func TestLanded(t *testing.T) {
 	dir := repo(t)
 	branchTree(t, dir, "merged")
@@ -233,7 +223,6 @@ func TestLanded(t *testing.T) {
 	}
 }
 
-// TestRetireBranch deletes only a landed branch no worktree holds, and a missing one is a no-op.
 func TestRetireBranch(t *testing.T) {
 	dir := repo(t)
 	path := branchTree(t, dir, "task")
@@ -255,7 +244,6 @@ func TestRetireBranch(t *testing.T) {
 	}
 }
 
-// TestRetireNeverDeletesTheIntoBranch keeps the branch a landed check compares against, which is trivially its own ancestor.
 func TestRetireNeverDeletesTheIntoBranch(t *testing.T) {
 	dir := repo(t)
 	run(t, dir, "switch", "-q", "-c", "elsewhere")

@@ -1,4 +1,3 @@
-// Package skills manages the reviewed third-party skill locks: the skills.sh calls behind add, update, and remove, and an offline verification of every locked body against its recorded folder hash.
 package skills
 
 import (
@@ -25,7 +24,6 @@ Commands:
                            and repoint its link
 `
 
-// Command runs `harness skills` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)
@@ -48,7 +46,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 			return 0
 		}
 	}
-	// The whole invocation is validated before the checkout is resolved, so a malformed one touches nothing.
+
 	if err := validateInvocation(sub, rest); err != nil {
 		fmt.Fprintf(stderr, "harness skills: %v; run harness skills --help\n", err)
 		return 2
@@ -80,7 +78,6 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// validateInvocation rejects a malformed subcommand invocation without reading the checkout.
 func validateInvocation(sub string, rest []string) error {
 	switch sub {
 	case "add":
@@ -128,7 +125,6 @@ func validateInvocation(sub string, rest []string) error {
 	return nil
 }
 
-// paths are the checkout-relative locations the lock tool reads and writes.
 type paths struct {
 	root   string
 	lock   string

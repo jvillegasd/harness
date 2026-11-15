@@ -5,7 +5,6 @@ import (
 	"sort"
 )
 
-// Frontier is which tickets of a feature are ready to start, done, and blocked.
 type Frontier struct {
 	Feature string    `json:"feature,omitempty"`
 	Ready   []int     `json:"ready"`
@@ -13,13 +12,11 @@ type Frontier struct {
 	Blocked []Waiting `json:"blocked"`
 }
 
-// Waiting is a blocked ticket and the blockers it still waits on.
 type Waiting struct {
 	Ticket    int   `json:"ticket"`
 	WaitingOn []int `json:"waiting_on"`
 }
 
-// Compute splits checked tickets into ready, done, and blocked. A ticket is done when done names it or its draft says `Status: done`, and ready when it is not done and every blocker is.
 func Compute(ts []Ticket, done []int) (Frontier, error) {
 	isDone := map[int]bool{}
 	known := map[int]bool{}

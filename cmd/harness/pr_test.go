@@ -10,7 +10,6 @@ import (
 	"testing"
 )
 
-// prRepo is a checkout on branch with one pushed docs commit, published as pull request 7, and a runner that answers gh from a case list.
 func prRepo(t *testing.T) (dir, head string, run func(forge string, args ...string) result) {
 	t.Helper()
 	dir = repo(t)
@@ -52,7 +51,6 @@ func prRepo(t *testing.T) (dir, head string, run func(forge string, args ...stri
 	return dir, head, run
 }
 
-// prForge answers the reads a status pass makes for pull request 7 at head, with the given required checks.
 func prForge(head, checks string) string {
 	return `"repo view") echo '{"defaultBranchRef":{"name":"main"}}';;
 "api user") echo me;;
@@ -64,7 +62,6 @@ func prForge(head, checks string) string {
 `
 }
 
-// TestPrStatusCommand proves the CLI is wired to the status verdict: it prints one verdict per pull request and exits with the code naming its first blocker.
 func TestPrStatusCommand(t *testing.T) {
 	_, head, run := prRepo(t)
 
@@ -84,7 +81,7 @@ func TestPrStatusCommand(t *testing.T) {
 	if r := run(prForge(head, `[{"name":"ci","bucket":"pass"}]`), "pr", "status", "--watch", "7"); r.code != 0 || !strings.Contains(r.stdout, `"ready": true`) {
 		t.Errorf("a watch over a ready pull request exited %d: %s %s", r.code, r.stdout, r.stderr)
 	}
-	// A timeout no longer than one interval gives up after the first pass, without sleeping.
+
 	if r := run(prForge(head, `[{"name":"ci","bucket":"pending"}]`), "pr", "status", "--watch", "--interval", "5", "--timeout", "5", "7"); r.code != 8 || !strings.Contains(r.stdout, `"blocker": "pending"`) {
 		t.Errorf("a timed-out watch exited %d: %s %s", r.code, r.stdout, r.stderr)
 	}
@@ -93,7 +90,6 @@ func TestPrStatusCommand(t *testing.T) {
 	}
 }
 
-// TestPrThreadsCommand proves the CLI is wired to the thread writes: a reply reaches gh as one argument and prints the thread read back, and a foreign id is refused.
 func TestPrThreadsCommand(t *testing.T) {
 	_, _, run := prRepo(t)
 	log := filepath.Join(t.TempDir(), "gh.log")
@@ -102,7 +98,7 @@ func TestPrThreadsCommand(t *testing.T) {
 	if err := os.WriteFile(body, []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// The shim records each argument on its own line, then answers with one open thread.
+
 	forge := `"api graphql") for a in "$@"; do printf '%s\n--\n' "$a" >> '` + log + `'; done; echo '{"data":{"repository":{"pullRequest":{"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{"id":"T1","isResolved":false,"comments":{"totalCount":1,"nodes":[{"body":"b","url":"u"}]}}]}}}}}';;
 `
 	r := run(forge, "pr", "threads", "reply", "7", "T1", "--body-file", body)

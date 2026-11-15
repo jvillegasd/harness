@@ -58,7 +58,7 @@ func TestLoadConfigReadsCriticalPathsAndIgnoresOtherKeys(t *testing.T) {
 func TestLoadConfigRejectsBadCriticalPaths(t *testing.T) {
 	cases := []struct {
 		name, body string
-		// mention are fragments the error must carry: the field and the bad entry.
+
 		mention []string
 	}{
 		{"not an array", `{"criticalPaths": "clients/**"}`, []string{"criticalPaths"}},
@@ -95,7 +95,6 @@ func TestLoadConfigRejectsMalformedJSON(t *testing.T) {
 	}
 }
 
-// TestLoadLocksReadsSkillFolders maps each lock entry to its skill folder and refuses an entry whose path could match outside skills.
 func TestLoadLocksReadsSkillFolders(t *testing.T) {
 	root := t.TempDir()
 	write := func(body string) {

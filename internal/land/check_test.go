@@ -14,26 +14,25 @@ import (
 	"github.com/jvillegasd/harness/internal/review"
 )
 
-// fixture is a checkout cloned from a bare origin, and a forge that answers from the pull requests the test registers.
 type fixture struct {
 	t         *testing.T
 	dir       string
 	state     string
 	pulls     map[int]*pull
-	checks    map[int]string // `gh pr checks --json` output; absent means no required checks
+	checks    map[int]string
 	checksErr map[int]error
-	threads   map[int]int       // unresolved review threads
-	resolved  map[int]int       // resolved review threads listed before the unresolved ones, beyond the one always there
-	comments  map[int]string    // pages of the pull request's comments endpoint
-	perms     map[string]string // collaborator permissions by login; absent means write
-	calls     []string          // every gh call, in order
-	// resolvedIDs and replies are what the thread mutations wrote, by thread id.
+	threads   map[int]int
+	resolved  map[int]int
+	comments  map[int]string
+	perms     map[string]string
+	calls     []string
+
 	resolvedIDs map[string]bool
 	replies     map[string][]string
-	// mergeRefused makes the forge refuse a merge; mergeBodies are the squash bodies it was sent.
+
 	mergeRefused bool
 	mergeBodies  []string
-	// readBackFails makes the read after a merge fail.
+
 	readBackFails bool
 }
 
@@ -67,7 +66,6 @@ func (f *fixture) git(dir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// commit writes files in the checkout, commits them on the current branch, and returns the commit.
 func (f *fixture) commit(files map[string]string) string {
 	f.t.Helper()
 	for name, body := range files {
@@ -80,7 +78,6 @@ func (f *fixture) commit(files map[string]string) string {
 	return f.git(f.dir, "rev-parse", "HEAD")
 }
 
-// open creates branch from base with files, pushes it, and registers it as a mergeable open pull request by the forge user.
 func (f *fixture) open(number int, branch, base string, files map[string]string) *pull {
 	f.t.Helper()
 	f.git(f.dir, "switch", "-q", "-c", branch, base)
@@ -92,7 +89,6 @@ func (f *fixture) open(number int, branch, base string, files map[string]string)
 	return p
 }
 
-// push publishes the checkout's head as the pull request's head.
 func (f *fixture) push(p *pull) {
 	f.t.Helper()
 	p.HeadRefOid = f.git(f.dir, "rev-parse", "HEAD")
@@ -151,7 +147,7 @@ func (f *fixture) forge(args ...string) ([]byte, error) {
 			return []byte(`{"data":{}}`), nil
 		}
 		number, _ := strconv.Atoi(strings.TrimPrefix(args[len(args)-1], "number="))
-		// Like the forge, a page carries at most 100 threads and says whether more follow.
+
 		nodes := make([]string, 0, 1+f.resolved[number]+f.threads[number])
 		for i := 0; i < 1+f.resolved[number]; i++ {
 			nodes = append(nodes, fmt.Sprintf(`{"id":"R%d","isResolved":true,"comments":{"totalCount":1,"nodes":[]}}`, i))
@@ -162,7 +158,7 @@ func (f *fixture) forge(args ...string) ([]byte, error) {
 			var bodies []string
 			_ = json.Unmarshal(comments, &bodies)
 			last, _ := json.Marshal(bodies[len(bodies)-1])
-			// The status query asks for the first comment, the read-back for the last.
+
 			first := `fix \"this\"`
 			if strings.Contains(args[3], "comments(last:1)") {
 				first = string(last[1 : len(last)-1])
@@ -209,13 +205,25 @@ func (f *fixture) forge(args ...string) ([]byte, error) {
 	return nil, fmt.Errorf("unexpected gh %v", args)
 }
 
-// verdict appends a verdict comment by login on pull request number, as one more page of its comments, reviewing main..sha.
 func (f *fixture) verdict(number int, result, sha, login string) {
 	f.t.Helper()
 	v := review.Verdict{Result: result, Base: f.git(f.dir, "rev-parse", "origin/main"), SHA: sha, Level: "medium"}
 	page, err := json.Marshal([]map[string]any{{
 		"body":     review.Body(v, "notes"),
 		"html_url": fmt.Sprintf("https://x/%d#%s-%d", number, login, len(f.comments[number])),
+		"user":     map[string]string{"login": login},
+	}})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	f.comments[number] += string(page)
+}
+
+func (f *fixture) runVerdict(number int, result, sha, login string) {
+	f.t.Helper()
+	page, err := json.Marshal([]map[string]any{{
+		"body":     review.Body(review.Verdict{Run: true, Result: result, SHA: sha}, "notes"),
+		"html_url": fmt.Sprintf("https://x/%d#%s-run-%d", number, login, len(f.comments[number])),
 		"user":     map[string]string{"login": login},
 	}})
 	if err != nil {
@@ -233,7 +241,6 @@ func (f *fixture) run(merge, stack bool, numbers ...int) []Check {
 	return checks
 }
 
-// one checks a single pull request with the merge requested.
 func (f *fixture) one(number int) Check {
 	f.t.Helper()
 	return f.run(true, false, number)[0]
@@ -246,7 +253,6 @@ func (f *fixture) level(level string) {
 	}
 }
 
-// holds asserts the verdict holds for exactly the reasons containing each want, in order.
 func holds(t *testing.T, c Check, want ...string) {
 	t.Helper()
 	if len(c.Holds) != len(want) {
@@ -259,7 +265,6 @@ func holds(t *testing.T, c Check, want ...string) {
 	}
 }
 
-// TestLane covers which pull request states merge, clean up, or stop, and that only an explicit merge request opens the merge lane.
 func TestLane(t *testing.T) {
 	f := setup(t)
 	p := f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
@@ -279,7 +284,6 @@ func TestLane(t *testing.T) {
 	p.IsDraft, p.State = false, "CLOSED"
 	holds(t, f.one(1), "CLOSED without a merge")
 
-	// A merged pull request is cleaned up with or without the merge request, and the forge's merge gates no longer apply to it.
 	p.State, p.Mergeable, p.MergeStateStatus = "MERGED", "UNKNOWN", "UNKNOWN"
 	f.threads[1] = 2
 	if c := f.run(false, false, 1)[0]; c.Lane != "merged" {
@@ -289,7 +293,6 @@ func TestLane(t *testing.T) {
 	}
 }
 
-// TestGates covers each forge condition that holds an open pull request.
 func TestGates(t *testing.T) {
 	f := setup(t)
 	p := f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
@@ -326,12 +329,10 @@ func TestGates(t *testing.T) {
 		})
 	}
 
-	// A branch with no required checks is not a hold.
 	delete(f.checks, 1)
 	holds(t, f.one(1))
 }
 
-// TestMode covers which checkout a landing may touch: this one only when it is the pull request's head.
 func TestMode(t *testing.T) {
 	f := setup(t)
 	p := f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
@@ -339,7 +340,6 @@ func TestMode(t *testing.T) {
 		t.Fatalf("the checkout at the head got %+v", c)
 	}
 
-	// Ahead of the forge's head, this checkout holds work the merge would not carry.
 	f.commit(map[string]string{"README.md": "unpushed\n"})
 	if c := f.one(1); c.Mode != "remote" {
 		t.Errorf("a checkout ahead of the head got mode %q", c.Mode)
@@ -350,7 +350,7 @@ func TestMode(t *testing.T) {
 	if c := f.one(1); c.Mode != "remote" || len(c.Notes) == 0 || !strings.Contains(strings.Join(c.Notes, "\n"), "left alone") {
 		t.Errorf("a merged pull request whose checkout moved on got mode %q notes %q", c.Mode, c.Notes)
 	}
-	// Behind the merged head, it is still that pull request's checkout.
+
 	f.git(f.dir, "reset", "-q", "--hard", "HEAD~2")
 	if c := f.one(1); c.Mode != "local" {
 		t.Errorf("a checkout behind the merged head got mode %q", c.Mode)
@@ -365,14 +365,12 @@ func TestMode(t *testing.T) {
 		t.Errorf("a pull request held by another worktree got mode %q worktrees %q", c.Mode, c.Worktrees)
 	}
 
-	// A fork's branch name can match a local one without being it.
 	p.IsCrossRepository = true
 	if c := f.one(1); c.Mode != "fork" || c.Key != "pr-1" || len(c.Worktrees) != 0 || len(c.Dependents) != 0 {
 		t.Errorf("a fork got %+v", c)
 	}
 }
 
-// TestReviewRequirement covers when a review is required: by level, by the changed files' tier, and by the tier the body claims.
 func TestReviewRequirement(t *testing.T) {
 	f := setup(t)
 	docs := f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
@@ -391,7 +389,7 @@ func TestReviewRequirement(t *testing.T) {
 		t.Errorf("an unreviewed code change got %+v", r)
 	}
 	holds(t, c, "required review never ran")
-	// A body cannot lower the floor the files set.
+
 	code.Body = "Tiers: critical 0, behavioral 0, structural 0, tests-docs 1, mechanical 0\n"
 	holds(t, f.one(2), "required review never ran")
 
@@ -401,7 +399,6 @@ func TestReviewRequirement(t *testing.T) {
 	}
 	f.level("medium")
 
-	// Merged with a merge commit, the head is on the base, and the change is still what that merge brought in.
 	f.git(f.dir, "switch", "-q", "main")
 	f.git(f.dir, "merge", "-q", "--no-ff", "-m", "merge", "code")
 	f.git(f.dir, "push", "-q", "origin", "main")
@@ -413,7 +410,6 @@ func TestReviewRequirement(t *testing.T) {
 	holds(t, c, "required review never ran")
 }
 
-// TestReviewCoverage covers whether the reviewed commit still stands for the head: unchanged, moved by a rebase, followed by tests, followed by code, or gone.
 func TestReviewCoverage(t *testing.T) {
 	f := setup(t)
 	edited := strings.Replace(f.read("a.go"), "line 18", "line eighteen", 1)
@@ -427,7 +423,6 @@ func TestReviewCoverage(t *testing.T) {
 	}
 	holds(t, c)
 
-	// The default branch moves under the same file and the branch is rebased: the patch is the one that was reviewed.
 	f.git(f.dir, "switch", "-q", "main")
 	f.commit(map[string]string{"a.go": "added above\n" + f.read("a.go"), "c.go": "package c\n"})
 	f.git(f.dir, "push", "-q", "origin", "main")
@@ -454,7 +449,6 @@ func TestReviewCoverage(t *testing.T) {
 	}
 	holds(t, c, "is stale: a.go, a_test.go")
 
-	// A stale review that was never required holds nothing.
 	f.level("off")
 	if c := f.one(1); c.Review.Status != "stale" || len(c.Holds) != 0 || len(c.Notes) == 0 {
 		t.Errorf("at level off a stale review got holds %q notes %q", c.Holds, c.Notes)
@@ -469,7 +463,6 @@ func TestReviewCoverage(t *testing.T) {
 	holds(t, c, "reviewed commit is gone")
 }
 
-// TestVerdictSources covers what counts as a pull request's review: only the newest verdict comment by someone who can write to the repository. A body line, a person's approval, and a verdict by a reader never do.
 func TestVerdictSources(t *testing.T) {
 	f := setup(t)
 	p := f.open(1, "code", "main", map[string]string{"b.go": "package b\n"})
@@ -495,7 +488,6 @@ func TestVerdictSources(t *testing.T) {
 	holds(t, c)
 }
 
-// TestVerdictBase covers a verdict whose range starts inside the pull request: it read only part of the change, so it is stale.
 func TestVerdictBase(t *testing.T) {
 	f := setup(t)
 	p := f.open(1, "code", "main", map[string]string{"b.go": "package b\n"})
@@ -515,7 +507,6 @@ func TestVerdictBase(t *testing.T) {
 	holds(t, c, "after the pull request's base")
 }
 
-// TestVerdictResults covers what each result does: a FAIL holds even where no review is required and whatever changed since, PASS+NOTES points the human at its notes, and a newer verdict replaces a FAIL.
 func TestVerdictResults(t *testing.T) {
 	f := setup(t)
 	p := f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
@@ -536,7 +527,70 @@ func TestVerdictResults(t *testing.T) {
 	}
 }
 
-// TestRun covers the order pull requests land in, the stack walk, and whose dependents a landing may repair.
+func TestRunVerdict(t *testing.T) {
+	f := setup(t)
+	p := f.open(1, "code", "main", map[string]string{"b.go": "package b\n", "b_test.go": "package b\n"})
+	f.verdict(1, "PASS", p.HeadRefOid, "me")
+	c := f.one(1)
+	if r := c.RunVerdict; r.Required || r.Source != "none" || r.Status != "missing" {
+		t.Fatalf("a structural change got run %+v", r)
+	}
+	holds(t, c)
+
+	p.Body = "Tiers: critical 0, behavioral 1, structural 0, tests-docs 1, mechanical 0\n"
+	c = f.one(1)
+	if r := c.RunVerdict; !r.Required || r.Source != "none" {
+		t.Fatalf("a behavioral change with only a review verdict got run %+v", r)
+	}
+	holds(t, c, "run-as-user verdict was never posted")
+	f.level("off")
+	holds(t, f.one(1), "run-as-user verdict was never posted")
+	f.level("medium")
+
+	f.perms["drive-by"] = "read"
+	f.runVerdict(1, "PASS", p.HeadRefOid, "drive-by")
+	holds(t, f.one(1), "run-as-user verdict was never posted")
+
+	driven := p.HeadRefOid
+	f.runVerdict(1, "PASS", driven, "me")
+	c = f.one(1)
+	if r := c.RunVerdict; r.Source != "verdict" || r.Result != "PASS" || r.SHA != driven || r.Status != "current" || c.Review.Result != "PASS" || c.Review.Status != "current" {
+		t.Fatalf("a head at the driven commit got run %+v review %+v", r, c.Review)
+	}
+	holds(t, c)
+
+	f.git(f.dir, "switch", "-q", "code")
+	f.commit(map[string]string{"b_test.go": "package b\n\n// more\n"})
+	f.push(p)
+	c = f.one(1)
+	if r := c.RunVerdict; r.Status != "tests-docs" {
+		t.Fatalf("a later test edit got run %+v", r)
+	}
+	holds(t, c, "Read their hunks")
+
+	f.commit(map[string]string{"b.go": "package b\n\nvar B = 1\n"})
+	f.push(p)
+	f.verdict(1, "PASS", p.HeadRefOid, "me")
+	c = f.one(1)
+	if r := c.RunVerdict; r.Status != "stale" || strings.Join(r.Changed, ",") != "b.go,b_test.go" {
+		t.Fatalf("a later code edit got run %+v", r)
+	}
+	holds(t, c, "run-as-user verdict of "+driven[:12]+" is stale: b.go, b_test.go")
+
+	f.runVerdict(1, "FAIL", p.HeadRefOid, "me")
+	holds(t, f.one(1), "latest run-as-user verdict, of "+p.HeadRefOid[:12]+", is FAIL")
+	f.runVerdict(1, "PASS+NOTES", p.HeadRefOid, "me")
+	c = f.one(1)
+	holds(t, c)
+	if len(c.Notes) != 1 || !strings.Contains(c.Notes[0], "run-as-user verdict") || !strings.Contains(c.Notes[0], "read its notes") {
+		t.Errorf("a PASS+NOTES run verdict got notes %q", c.Notes)
+	}
+
+	q := f.open(2, "docs", "main", map[string]string{"README.md": "more\n"})
+	f.runVerdict(2, "FAIL", q.HeadRefOid, "me")
+	holds(t, f.one(2), "latest run-as-user verdict")
+}
+
 func TestRun(t *testing.T) {
 	f := setup(t)
 	f.open(1, "one", "main", map[string]string{"README.md": "one\n"})
@@ -544,7 +598,6 @@ func TestRun(t *testing.T) {
 	theirs := f.open(3, "three", "one", map[string]string{"README.md": "three\n"})
 	theirs.Author.Login = "coworker"
 
-	// Alone, a pull request stacked on an open base cannot merge.
 	holds(t, f.one(2), "not the default branch")
 
 	for name, run := range map[string][]Check{"numbers": f.run(true, false, 2, 1, 2), "stack": f.run(true, true, 2)} {

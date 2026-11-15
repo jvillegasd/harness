@@ -1,4 +1,3 @@
-// Package land answers whether a pull request can land, for `harness land check`. It is the one place the land skill's lane, mode, gate, and review-coverage rules live; the command reads the forge and the repository and writes nothing but fetched refs.
 package land
 
 import (
@@ -18,92 +17,98 @@ import (
 	"github.com/jvillegasd/harness/internal/worktree"
 )
 
-// Forge runs one gh command and returns its stdout, which a caller may still read when the command failed.
 type Forge func(args ...string) ([]byte, error)
 
-// Env is what a check reads from: a directory of the repository, the forge, and the state file holding the review level.
 type Env struct {
 	Dir   string
 	Forge Forge
 	State string
 }
 
-// Check is the verdict for one pull request. A non-empty Holds stops an open pull request from merging; for a merged one it lists what the merge skipped.
 type Check struct {
 	Number      int    `json:"number"`
 	URL         string `json:"url"`
 	Title       string `json:"title"`
-	Lane        string `json:"lane"`           // open, merged, or stop
-	Mode        string `json:"mode,omitempty"` // local, remote, or fork
-	Mine        bool   `json:"mine"`           // the forge user authored it
+	Lane        string `json:"lane"`
+	Mode        string `json:"mode,omitempty"`
+	Mine        bool   `json:"mine"`
 	Head        string `json:"head"`
 	HeadRefName string `json:"headRefName"`
 	Base        string `json:"base"`
 	Default     string `json:"default"`
-	// After is the pull request earlier in this run whose head is this one's base.
+
 	After int `json:"after,omitempty"`
-	// Key names the review directory, the run's scratch: the head branch, or pr-<n> for a fork.
+
 	Key string `json:"key"`
-	// Worktrees are the other checkouts holding the head branch, which a landing leaves alone.
+
 	Worktrees  []string    `json:"worktrees"`
 	Review     *Review     `json:"review,omitempty"`
+	RunVerdict *RunVerdict `json:"run,omitempty"`
 	Dependents []Dependent `json:"dependents"`
 	Holds      []string    `json:"holds"`
 	Notes      []string    `json:"notes"`
-	// gate is what the forge gates found, which `harness pr status` ranks into its exit code.
+
 	gate gateFacts
-	// body is the pull request description, which a merge takes its tradeoffs from.
+
 	body string
 }
 
-// gateFacts sorts the forge gates' holds into the blockers `harness pr status` names, and keeps the unresolved threads it lists.
 type gateFacts struct {
 	conflict, failing, pending bool
-	// computing is a forge that has not yet worked out mergeability, as right after a push; waiting settles it.
+
 	computing bool
 	threads   []Thread
-	// holds are the forge gates' own holds, which no acceptance clears.
+
 	holds []string
 }
 
-// Thread is one unresolved review thread, located by its first comment.
 type Thread struct {
 	ID     string `json:"id"`
 	Path   string `json:"path"`
 	Line   int    `json:"line,omitempty"`
 	Author string `json:"author"`
-	// Permission is the author's permission on the base repository: admin, maintain, write, triage, read, none, or unknown when the forge would not say.
+
 	Permission string `json:"permission"`
 	Body       string `json:"body"`
 	URL        string `json:"url"`
 }
 
-// Review is whether a review is required and whether the latest verdict posted on the pull request still covers the head.
 type Review struct {
 	Required bool   `json:"required"`
 	Level    string `json:"level"`
 	Tier     string `json:"tier"`
-	Source   string `json:"source"` // verdict or none
-	// Result is the verdict's PASS, PASS+NOTES, or FAIL, Depth the level it ran at, and URL its comment.
+	Source   string `json:"source"`
+
 	Result string `json:"result,omitempty"`
 	Depth  string `json:"depth,omitempty"`
 	URL    string `json:"url,omitempty"`
-	// Base and SHA are the range the verdict read.
+
 	Base   string `json:"base,omitempty"`
 	SHA    string `json:"sha,omitempty"`
-	Status string `json:"status"` // current, tests-docs, stale, or missing
-	// Changed are the files whose patch differs between the reviewed commit and the head.
+	Status string `json:"status"`
+
 	Changed []string `json:"changed,omitempty"`
-	// Ignored are verdict comments by authors without write access, which never count.
+
 	Ignored []string `json:"ignored,omitempty"`
 }
 
-// Dependent is an open pull request based on this one's head branch.
+type RunVerdict struct {
+	Required bool   `json:"required"`
+	Source   string `json:"source"`
+
+	Result string `json:"result,omitempty"`
+	URL    string `json:"url,omitempty"`
+	SHA    string `json:"sha,omitempty"`
+	Status string `json:"status"`
+
+	Changed []string `json:"changed,omitempty"`
+}
+
 type Dependent struct {
 	Number      int    `json:"number"`
 	HeadRefName string `json:"headRefName"`
 	HeadRefOid  string `json:"headRefOid"`
-	// Mine is false for another author's or a fork's branch, which a landing reports instead of rebasing.
+
 	Mine bool `json:"mine"`
 }
 
@@ -129,7 +134,6 @@ const viewFields = "number,url,title,state,isDraft,headRefName,headRefOid,baseRe
 
 const threadsQuery = `query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){pageInfo{hasNextPage}nodes{id isResolved path line originalLine comments(first:1){nodes{author{login}body url}}}}}}}`
 
-// Gh is the Forge that runs the gh CLI in dir.
 func Gh(dir string) Forge {
 	return func(args ...string) ([]byte, error) {
 		cmd := exec.Command("gh", args...)
@@ -143,7 +147,6 @@ func Gh(dir string) Forge {
 	}
 }
 
-// Run resolves the pull requests a landing covers and checks each, in the order they land. No number means the pull request of the branch checked out in e.Dir. With stack, the one number is a stack's tip and every open pull request under it joins.
 func Run(e Env, numbers []int, stack, merge bool) ([]Check, error) {
 	run, err := e.resolve(numbers, stack)
 	if err != nil {
@@ -160,13 +163,11 @@ func Run(e Env, numbers []int, stack, merge bool) ([]Check, error) {
 	return checks, nil
 }
 
-// landing is the resolved run: the repository root, the default branch, the forge user, and the pull requests in the order they land.
 type landing struct {
 	root, def, me string
 	pulls         []pull
 }
 
-// below is the open pull request among the given ones whose head is p's base, which p lands after.
 func (landing) below(p pull, among []pull) int {
 	for _, q := range among {
 		if q.Number != p.Number && q.State == "OPEN" && !q.IsCrossRepository && q.HeadRefName == p.BaseRefName {
@@ -176,7 +177,6 @@ func (landing) below(p pull, among []pull) int {
 	return 0
 }
 
-// resolve reads the forge user, the default branch, and the pull requests a run covers, walking a stack down from its tip, and orders them bottom-up.
 func (e Env) resolve(numbers []int, stack bool) (landing, error) {
 	var run landing
 	root, err := git(e.Dir, "rev-parse", "--show-toplevel")
@@ -207,7 +207,7 @@ func (e Env) resolve(numbers []int, stack bool) (landing, error) {
 			pulls = append(pulls, p)
 		}
 	}
-	// A stack is walked down from its tip: each base that is not the default branch must be the head of an open pull request in this repository.
+
 	for p := pulls[0]; stack && p.State == "OPEN" && p.BaseRefName != def && len(pulls) < 50; {
 		var heads []struct {
 			Number            int
@@ -231,7 +231,6 @@ func (e Env) resolve(numbers []int, stack bool) (landing, error) {
 		pulls = append(pulls, p)
 	}
 
-	// A pull request lands after the open one in the run whose head is its base.
 	var ordered []pull
 	for rest := pulls; len(rest) > 0; {
 		var blocked []pull
@@ -283,7 +282,6 @@ func (e Env) check(root string, p pull, def, me string, merge bool, after int) (
 	}
 	open := c.Lane == "open"
 
-	// refs/pull/<n>/head exists for every pull request, a fork's and a merged one's included, so the forge's head is what every comparison below reads.
 	if _, err := git(root, "fetch", "--quiet", "origin", fmt.Sprintf("refs/pull/%d/head", p.Number)); err != nil {
 		return c, err
 	}
@@ -294,7 +292,7 @@ func (e Env) check(root string, p pull, def, me string, merge bool, after int) (
 	if _, err := git(root, "fetch", "--quiet", "origin", p.BaseRefName); err != nil {
 		baseRef = ""
 	} else if _, err := git(root, "merge-base", "--is-ancestor", p.HeadRefOid, baseRef); err == nil && p.MergeCommit.Oid != "" {
-		// A merge commit put the head itself on the base, so the change is read against the base as it was before that merge.
+
 		baseRef = p.MergeCommit.Oid + "^1"
 	}
 
@@ -308,7 +306,7 @@ func (e Env) check(root string, p pull, def, me string, merge bool, after int) (
 	}
 	for _, t := range trees {
 		switch {
-		// A fork's branch lives in another repository, so a local branch of its name is someone else's.
+
 		case p.IsCrossRepository || t.Branch != p.HeadRefName:
 		case t.Path != root:
 			c.Worktrees = append(c.Worktrees, t.Path)
@@ -317,7 +315,7 @@ func (e Env) check(root string, p pull, def, me string, merge bool, after int) (
 		case open:
 			hold("this checkout's %s is at %s but the pull request's head is %s: push or reset it, or land from another checkout", t.Branch, short(t.Head), short(p.HeadRefOid))
 		default:
-			// A merged head the checkout is behind is still its branch; anything else is a reused name or unpushed work.
+
 			if _, err := git(root, "merge-base", "--is-ancestor", t.Head, p.HeadRefOid); err == nil {
 				c.Mode = "local"
 			} else {
@@ -352,13 +350,12 @@ func (e Env) check(root string, p pull, def, me string, merge bool, after int) (
 	return c, nil
 }
 
-// gates adds a hold for everything the forge says stands between an open pull request and its merge.
 func (e Env) gates(p pull, c *Check, def string) {
 	hold := func(format string, args ...any) { c.Holds = append(c.Holds, fmt.Sprintf(format, args...)) }
 	if p.BaseRefName != def && c.After == 0 {
 		hold("its base %s is not the default branch, so merging would squash it into that base: land the base's pull request first, or retarget it with gh pr edit %d --base %s once that base has merged", p.BaseRefName, p.Number, def)
 	}
-	// UNSTABLE is a failing check that is not required, and HAS_HOOKS a mergeable branch with hooks.
+
 	switch {
 	case p.Mergeable == "UNKNOWN" || p.MergeStateStatus == "UNKNOWN":
 		c.gate.computing = true
@@ -379,7 +376,7 @@ func (e Env) gates(p pull, c *Check, def string) {
 
 	var checks []struct{ Name, Bucket string }
 	raw, err := e.Forge("pr", "checks", strconv.Itoa(p.Number), "--required", "--json", "name,bucket")
-	// gh exits non-zero while a check is pending or failing and still prints them, and reports a branch with no required checks as an error.
+
 	if json.Unmarshal(raw, &checks) != nil && (err == nil || !strings.Contains(err.Error(), "checks reported")) {
 		hold("its required checks are unavailable: %v", err)
 	}
@@ -427,7 +424,7 @@ func (e Env) gates(p pull, c *Check, def string) {
 			continue
 		}
 		unresolved++
-		// An outdated thread has no line on the current diff, so it is placed where it was written.
+
 		th := Thread{ID: t.ID, Path: t.Path, Line: t.Line}
 		if th.Line == 0 {
 			th.Line = t.OriginalLine
@@ -450,7 +447,6 @@ var (
 	tierRe  = regexp.MustCompile(`(critical|behavioral|structural)\s+[1-9]`)
 )
 
-// review decides whether a review is required, finds the latest verdict posted on the pull request by someone who can write to the repository, and compares what it read with the head.
 func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 	hold := func(format string, args ...any) { c.Holds = append(c.Holds, fmt.Sprintf(format, args...)) }
 	note := func(format string, args ...any) { c.Notes = append(c.Notes, fmt.Sprintf(format, args...)) }
@@ -459,27 +455,36 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 		return err
 	}
 	r := &Review{Level: level, Source: "none", Status: "missing"}
-	c.Review = r
+	run := &RunVerdict{Source: "none", Status: "missing"}
+	c.Review, c.RunVerdict = r, run
 	head := p.HeadRefOid
 
-	v, url, ignored, err := e.verdict(p.Number)
+	reviewed, drove, ignored, err := e.verdicts(p.Number)
 	if err != nil {
 		return err
 	}
 	r.Ignored = ignored
-	if v != nil {
-		r.Source, r.Result, r.Depth, r.URL, r.Base, r.SHA = "verdict", v.Result, v.Level, url, v.Base, v.SHA
+	if v := reviewed; v != nil {
+		r.Source, r.Result, r.Depth, r.URL, r.Base, r.SHA = "verdict", v.Result, v.Level, v.url, v.Base, v.SHA
 	}
-	switch r.Result {
-	case "FAIL":
-		// A FAIL stands until a newer verdict replaces it, whatever changed since.
-		hold("the latest review verdict, of %s, is FAIL: %s", short(r.SHA), url)
-	case "PASS+NOTES":
-		note("the latest review verdict, of %s, is PASS+NOTES; read its notes: %s", short(r.SHA), url)
+	if v := drove; v != nil {
+		run.Source, run.Result, run.URL, run.SHA = "verdict", v.Result, v.url, v.SHA
+	}
+
+	for _, v := range []struct{ kind, result, sha, url string }{{"review", r.Result, r.SHA, r.URL}, {"run-as-user", run.Result, run.SHA, run.URL}} {
+		switch v.result {
+		case "FAIL":
+			hold("the latest %s verdict, of %s, is FAIL: %s", v.kind, short(v.sha), v.url)
+		case "PASS+NOTES":
+			note("the latest %s verdict, of %s, is PASS+NOTES; read its notes: %s", v.kind, short(v.sha), v.url)
+		}
 	}
 
 	if baseRef == "" {
 		r.Required, r.Status = level != "off", "stale"
+		if run.Source != "none" {
+			run.Status = "stale"
+		}
 		hold("its base branch %s is gone from origin, so no review can be compared with what merged", p.BaseRefName)
 		return nil
 	}
@@ -491,7 +496,7 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 	if err != nil {
 		return err
 	}
-	// A locked skill body collapses to mechanical only while it matches its lock, which only the checkout that holds the head can prove.
+
 	if c.Mode == "local" {
 		if cfg.Locked, err = changemap.LoadLocks(root); err != nil {
 			return err
@@ -507,7 +512,7 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 			tier = t
 		}
 	}
-	// The body's own map may raise a tier above the floor; it never lowers it.
+
 	for _, m := range tierRe.FindAllStringSubmatch(tiersRe.FindString(p.Body), -1) {
 		if t := changemap.Tier(m[1]); t.Rank() > tier.Rank() {
 			tier = t
@@ -516,24 +521,28 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 	r.Tier = string(tier)
 	r.Required = level != "off" && tier.Rank() > changemap.TestsDocs.Rank()
 
+	covers := func(sha string) (status string, changed []string, err error) {
+		if _, err := git(root, "rev-parse", "--verify", "--quiet", sha+"^{commit}"); err != nil {
+			return "stale", nil, nil
+		}
+		if changed, err = changedSince(root, baseRef, sha, head, touched); err != nil {
+			return "", nil, err
+		}
+		status = "current"
+		for _, f := range changed {
+			if changemap.Classify(f, cfg).Tier != changemap.TestsDocs {
+				return "stale", changed, nil
+			}
+			status = "tests-docs"
+		}
+		return status, changed, nil
+	}
 	partial := false
 	if r.Source != "none" {
-		// A reviewed commit that is gone cannot be compared, so its review is stale.
-		r.Status = "stale"
-		if full, err := git(root, "rev-parse", "--verify", "--quiet", r.SHA+"^{commit}"); err == nil {
-			r.SHA, r.Status = full, "current"
-			if r.Changed, err = changedSince(root, baseRef, full, head, touched); err != nil {
-				return err
-			}
-			for _, f := range r.Changed {
-				if changemap.Classify(f, cfg).Tier != changemap.TestsDocs {
-					r.Status = "stale"
-					break
-				}
-				r.Status = "tests-docs"
-			}
+		if r.Status, r.Changed, err = covers(r.SHA); err != nil {
+			return err
 		}
-		// A range that starts after the pull request's base read only part of the change.
+
 		if _, err := git(root, "merge-base", "--is-ancestor", r.Base, mergeBase); err != nil && r.Status != "stale" {
 			r.Status, partial = "stale", true
 		}
@@ -552,35 +561,56 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 			say("the review verdict of %s is stale: its range starts at %s, after the pull request's base, so it read only part of the change", short(r.SHA), short(r.Base))
 			break
 		}
-		say("the review verdict of %s is stale: %s", short(r.SHA), describe(r.Changed))
+		say("the review verdict of %s is stale: %s", short(r.SHA), describe(r.Changed, "reviewed"))
 	case "tests-docs":
-		say("only test or documentation files changed after the review verdict of %s: %s. Read their hunks; the review stands when they change no shipped behavior", short(r.SHA), describe(r.Changed))
+		say("only test or documentation files changed after the review verdict of %s: %s. Read their hunks; the review stands when they change no shipped behavior", short(r.SHA), describe(r.Changed, "reviewed"))
+	}
+
+	run.Required = tier.Rank() >= changemap.Behavioral.Rank()
+	if run.Source != "none" {
+		if run.Status, run.Changed, err = covers(run.SHA); err != nil {
+			return err
+		}
+	}
+	say = note
+	if run.Required {
+		say = hold
+	}
+	switch run.Status {
+	case "missing":
+		if run.Required {
+			hold("a required run-as-user verdict was never posted (tier %s): `verification` gets one from an agent that did not write the change", tier)
+		}
+	case "stale":
+
+		say("the run-as-user verdict of %s is stale: %s", short(run.SHA), describe(run.Changed, "driven"))
 	}
 	return nil
 }
 
-// verdict returns the newest verdict comment on the pull request whose author can write to the repository, with its URL, and lists the verdict comments it ignored because their author cannot. Anyone may comment, so only a writer's verdict is evidence.
-func (e Env) verdict(number int) (*review.Verdict, string, []string, error) {
+type posted struct {
+	review.Verdict
+	url string
+}
+
+func (e Env) verdicts(number int) (reviewed, drove *posted, ignored []string, err error) {
 	raw, err := e.Forge("api", "--paginate", fmt.Sprintf("repos/{owner}/{repo}/issues/%d/comments?per_page=100", number))
 	if err != nil {
-		return nil, "", nil, err
+		return nil, nil, nil, err
 	}
 	type comment struct {
 		Body    string
 		HTMLURL string `json:"html_url"`
 		User    struct{ Login string }
 	}
-	var latest *review.Verdict
-	var url string
-	var ignored []string
 	permissions := map[string]string{}
-	// A paginated response is one JSON array per page, oldest comment first, so the last verdict kept is the newest.
+
 	for dec := json.NewDecoder(bytes.NewReader(raw)); ; {
 		var page []comment
 		if err := dec.Decode(&page); errors.Is(err, io.EOF) {
 			break
 		} else if err != nil {
-			return nil, "", nil, fmt.Errorf("unreadable pull request comments: %w", err)
+			return nil, nil, nil, fmt.Errorf("unreadable pull request comments: %w", err)
 		}
 		for _, cm := range page {
 			v, ok := review.Parse(cm.Body)
@@ -595,13 +625,16 @@ func (e Env) verdict(number int) (*review.Verdict, string, []string, error) {
 				ignored = append(ignored, fmt.Sprintf("%s by %s (permission %s)", cm.HTMLURL, login, permissions[login]))
 				continue
 			}
-			latest, url = &v, cm.HTMLURL
+			if v.Run {
+				drove = &posted{v, cm.HTMLURL}
+			} else {
+				reviewed = &posted{v, cm.HTMLURL}
+			}
 		}
 	}
-	return latest, url, ignored, nil
+	return reviewed, drove, ignored, nil
 }
 
-// The patch comparison lives in the review package beside the verdict it judges.
 var (
 	changedSince = review.ChangedSince
 	names        = review.Names
@@ -629,9 +662,9 @@ func (e Env) read(into any, args ...string) error {
 	return nil
 }
 
-func describe(files []string) string {
+func describe(files []string, covered string) string {
 	if len(files) == 0 {
-		return "its reviewed commit is gone"
+		return "its " + covered + " commit is gone"
 	}
 	return strings.Join(files, ", ")
 }

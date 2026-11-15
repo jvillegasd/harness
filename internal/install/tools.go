@@ -9,14 +9,12 @@ import (
 	"strings"
 )
 
-// tool is one program a component puts on the machine. client is the client it belongs to, or empty for a tool every client shares.
 type tool struct {
 	name, component, client string
-	// data is the directory the tool keeps its user's data in, which no uninstall deletes.
+
 	data string
 }
 
-// tools in the order an install adds them: packages first, since a client may install through one (Codex through npm on Linux), then the clients, then the MCP servers the clients register. An uninstall walks it backwards.
 var tools = []tool{
 	{name: "node", component: "packages"},
 	{name: "gh", component: "packages"},
@@ -28,18 +26,15 @@ var tools = []tool{
 	{name: "agent-browser", component: "mcps", data: ".agent-browser"},
 }
 
-// A recorded method names how a tool was installed and so how it is removed.
 const (
-	viaBrew   = "brew:"   // brew:<formula>
-	viaCask   = "cask:"   // cask:<token>
-	viaNPM    = "npm:"    // npm:<package>
-	viaNative = "native:" // native:claude, Anthropic's installer
+	viaBrew   = "brew:"
+	viaCask   = "cask:"
+	viaNPM    = "npm:"
+	viaNative = "native:"
 )
 
-// through names the package each install method runs through, which an uninstall keeps while a tool installed by that method is recorded.
 var through = map[string]string{viaNPM: "node"}
 
-// installedThrough lists, in install order, the recorded tools outside removing that were installed through the package named pkg.
 func installedThrough(pkg string, recorded map[string]string, removing []tool) []string {
 	var out []string
 	for _, t := range tools {
@@ -52,13 +47,12 @@ func installedThrough(pkg string, recorded map[string]string, removing []tool) [
 	return out
 }
 
-// method is how this machine installs a missing tool.
 func (t tool) method() string {
 	switch t.name {
 	case "claude":
 		return viaNative + "claude"
 	case "codex":
-		// Homebrew on Linux takes no casks, and Codex has no formula, so Linux gets OpenAI's npm package.
+
 		if runtime.GOOS == "darwin" {
 			return viaCask + "codex"
 		}
@@ -73,18 +67,15 @@ func (t tool) method() string {
 	return viaBrew + t.name
 }
 
-// present reports whether a tool is on PATH, however it got there. A tool already present is never installed over, so its version and source stay the user's.
 func present(name string) bool {
 	_, err := exec.LookPath(name)
 	return err == nil
 }
 
-// usePATH puts ~/.local/bin first on PATH, where this installer and a prior run's Claude Code put their binaries, so a presence check sees them.
 func (in *installer) usePATH() {
 	must(os.Setenv("PATH", filepath.Join(in.home, ".local", "bin")+string(os.PathListSeparator)+os.Getenv("PATH")))
 }
 
-// selectedTools lists the tools of the selected components that serve the target clients: a client's own tool only for that client, a shared one for any.
 func (in *installer) selectedTools() []tool {
 	var out []tool
 	for _, t := range tools {
@@ -95,7 +86,6 @@ func (in *installer) selectedTools() []tool {
 	return out
 }
 
-// installTools adds each selected tool missing from PATH and records how, and touches Homebrew and the network only for a tool that is missing.
 func (in *installer) installTools() {
 	var missing []tool
 	for _, t := range in.selectedTools() {
@@ -137,7 +127,7 @@ func (in *installer) installTools() {
 			in.run(nil, "bash", "-c", "set -o pipefail; curl -fsSL https://claude.ai/install.sh | bash")
 		}
 		in.updateState(func(s *state) { s.Tools[t.name] = method })
-		// The formula's caveat, run rather than printed: without the browser every call through the MCP fails mid-session. Linux needs its system libraries too.
+
 		if t.name == "agent-browser" {
 			in.log("Downloading Chrome for Testing for agent-browser")
 			if runtime.GOOS == "darwin" {
@@ -149,10 +139,9 @@ func (in *installer) installTools() {
 	}
 }
 
-// removeTool uninstalls a recorded tool the way it was installed and drops its record. A tool's data directory stays.
 func (in *installer) removeTool(t tool, method string) {
 	kind, target, _ := strings.Cut(method, ":")
-	// Already gone, as after a removal by hand: only the record is left to drop.
+
 	if !present(t.name) {
 		in.log("%s is already gone; dropping its record", t.name)
 		in.updateState(func(s *state) { delete(s.Tools, t.name) })
@@ -167,7 +156,7 @@ func (in *installer) removeTool(t tool, method string) {
 	case viaNPM:
 		in.run(nil, "npm", "uninstall", "--global", target)
 	case viaNative:
-		// What Anthropic's installer writes: the launcher and the versions it points into. ~/.claude is the user's data and stays.
+
 		must(os.RemoveAll(filepath.Join(in.home, ".local", "bin", "claude")))
 		must(os.RemoveAll(filepath.Join(in.home, ".local", "share", "claude")))
 	default:

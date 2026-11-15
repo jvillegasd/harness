@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-// TestReviewTargetCommand proves the CLI is wired to target resolution: a pull request resolves through gh to its head and key, and an unknown branch is refused with nothing on stdout.
 func TestReviewTargetCommand(t *testing.T) {
 	_, head, run := prRepo(t)
 	forge := `"pr view") echo '{"headRefName":"` + branch + `","headRefOid":"` + head + `","baseRefName":"main","isCrossRepository":false}';;

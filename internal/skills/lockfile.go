@@ -8,7 +8,6 @@ import (
 	"os"
 )
 
-// orderedObject preserves a JSON object's keys and their raw values in file order, so a rewrite re-encodes only what it must and drops no field.
 type orderedObject struct {
 	keys   []string
 	values map[string]json.RawMessage
@@ -85,7 +84,6 @@ func (o *orderedObject) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// lockFile is the skills-lock.json document: an ordered top level plus the skills object parsed from it.
 type lockFile struct {
 	doc    orderedObject
 	skills orderedObject
@@ -106,7 +104,6 @@ func (lf *lockFile) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON re-encodes only skills and keeps every other key and value raw, in file order, without HTML escaping, so writeLock stays byte-identical to skills.sh's JSON.stringify output.
 func (lf *lockFile) MarshalJSON() ([]byte, error) {
 	raw, err := lf.skills.MarshalJSON()
 	if err != nil {
@@ -116,7 +113,6 @@ func (lf *lockFile) MarshalJSON() ([]byte, error) {
 	return lf.doc.MarshalJSON()
 }
 
-// writeNoEscape encodes v without HTML escaping, matching JSON.stringify, and drops the newline Encode appends.
 func writeNoEscape(buf *bytes.Buffer, v any) error {
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
@@ -127,7 +123,6 @@ func writeNoEscape(buf *bytes.Buffer, v any) error {
 	return nil
 }
 
-// entry is the subset of a lock entry verify reads.
 type entry struct {
 	ComputedHash string `json:"computedHash"`
 }
@@ -144,7 +139,6 @@ func readLock(path string) (*lockFile, error) {
 	return &lf, nil
 }
 
-// writeLock reproduces skills.sh's canonical output: two-space indent, no HTML escaping, trailing newline, keys sorted.
 func writeLock(path string, lf *lockFile) error {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)

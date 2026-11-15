@@ -6,10 +6,6 @@ import (
 	"time"
 )
 
-// benchCollect isolates collection: a nil since decodes every transcript, and a
-// since date keeps only the window's sessions, reading an excluded transcript
-// no further than its first stamp. The benchmark is unchanged across the before
-// and after runs, so the delta reports the work the window now saves.
 func benchCollect(home string, since *time.Time) ([]*session, error) {
 	return collect(home, []string{"claude"}, nil, since)
 }

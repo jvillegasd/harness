@@ -280,7 +280,6 @@ func TestUpgradePreservesHomebrewRefreshPolicy(t *testing.T) {
 	}
 }
 
-// --client narrows the clients component to the named clients, so the others are neither discovered nor updated.
 func TestClientFlagNarrowsClients(t *testing.T) {
 	root := t.TempDir()
 	bin := filepath.Join(root, "bin")

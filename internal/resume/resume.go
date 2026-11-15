@@ -1,4 +1,3 @@
-// Package resume prints the task context a client's compaction hook restores: the branch, its head commit, and the state and next action of each task document the branch changed. It is the target of the SessionStart (compact) hooks in Claude Code and Codex and of the OpenCode compaction plugin.
 package resume
 
 import (
@@ -23,13 +22,10 @@ It prints nothing outside a Git checkout and always exits 0, so a hook never
 blocks compaction.
 `
 
-// tasksDir is where continuity keeps task documents.
 const tasksDir = "docs/agents/tasks/"
 
-// maxSectionLines caps each document's excerpt, so a long document cannot flood the restored context.
 const maxSectionLines = 40
 
-// Command runs `harness resume` in the current directory.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 {
 		if args[0] == "-h" || args[0] == "--help" {
@@ -47,7 +43,6 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// Context renders the restored context for the checkout holding dir, or "" when dir is not in one.
 func Context(dir string) string {
 	root, err := git(dir, "rev-parse", "--show-toplevel")
 	if err != nil {
@@ -76,7 +71,6 @@ func Context(dir string) string {
 	return b.String()
 }
 
-// changedTaskDocs runs at the top of the checkout, so its pathspecs and the paths it prints are top-relative. It lists the task documents that differ from the default branch's merge base, committed or not, plus untracked ones. On the default branch itself nothing differs, so nothing is listed.
 func changedTaskDocs(dir string) []string {
 	var docs []string
 	seen := map[string]bool{}
@@ -97,7 +91,6 @@ func changedTaskDocs(dir string) []string {
 	return docs
 }
 
-// mergeBase finds where the branch left the default branch, trying the remote's default before a local main or master.
 func mergeBase(dir string) string {
 	for _, ref := range []string{"origin/HEAD", "main", "master"} {
 		if base, err := git(dir, "merge-base", "HEAD", ref); err == nil {
@@ -107,7 +100,6 @@ func mergeBase(dir string) string {
 	return ""
 }
 
-// nextAction returns the document's "State and next action" section, heading included, capped at maxSectionLines lines.
 func nextAction(root, doc string) string {
 	data, err := os.ReadFile(filepath.Join(root, doc))
 	if err != nil {

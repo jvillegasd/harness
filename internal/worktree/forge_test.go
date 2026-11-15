@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// fakeForge answers `gh pr list --head <branch>` from a table, and fails for a branch mapped to "".
 func fakeForge(pulls map[string]string) Forge {
 	return func(args ...string) ([]byte, error) {
 		if len(args) < 4 || args[0] != "pr" || args[1] != "list" || args[2] != "--head" {
@@ -32,7 +31,7 @@ func TestReadPullNamesTheMergedHeadThatRetiresAnUnlandedBranch(t *testing.T) {
 	path := branchTree(t, dir, "feat/merged")
 	head := run(t, path, "rev-parse", "HEAD")
 	run(t, dir, "push", "-q", "origin", head+":refs/pull/7/head")
-	// The pull request merged, and main has since rewritten the same lines, so the branch no longer proves landed.
+
 	squash(t, dir, "feat/merged")
 	write(t, filepath.Join(dir, "a.txt"), "rewritten\n")
 	run(t, dir, "commit", "-q", "-am", "rewrite")

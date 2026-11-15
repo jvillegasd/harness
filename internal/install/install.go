@@ -1,4 +1,3 @@
-// Package install copies the harness the binary carries into the home directory and records each copy: the managed files, the shell alias line, the tracked Claude settings, and the Engram and agent-browser registrations.
 package install
 
 import (
@@ -20,7 +19,6 @@ import (
 )
 
 const (
-	// Fully qualified: the bare engram is ambiguous in that tap, and `brew uninstall engram` resolves it to a cask and refuses.
 	engramFormula       = "gentleman-programming/tap/engram"
 	agentBrowserFormula = "agent-browser"
 )
@@ -114,7 +112,6 @@ Standalone third-party skills were not downloaded or updated. Their committed
 bodies and skills-lock.json are the reviewed source of truth.
 `
 
-// fatal is what die panics with, and only recoverFatal recovers it, so any step can stop the run with one message instead of threading an error through each call.
 type fatal string
 
 func die(format string, args ...any) {
@@ -148,7 +145,6 @@ func (in *installer) warn(format string, args ...any) {
 	fmt.Fprintf(in.stderr, "\033[1;33mharness %s:\033[0m "+format+"\n", append([]any{in.verb}, args...)...)
 }
 
-// recoverFatal turns a die into one red error line and exit 1. It works only when deferred directly.
 func recoverFatal(verb string, stderr io.Writer, code *int) {
 	if r := recover(); r != nil {
 		msg, ok := r.(fatal)
@@ -160,7 +156,6 @@ func recoverFatal(verb string, stderr io.Writer, code *int) {
 	}
 }
 
-// resolveLocations reads the two roots every managed path hangs from and refuses a relative one before anything writes: a relative HOME turns each destination into a write inside the invocation directory. XDG_CONFIG_HOME falls back to $HOME/.config, so an absolute HOME makes it absolute too.
 func (in *installer) resolveLocations() {
 	in.home = os.Getenv("HOME")
 	in.config = os.Getenv("XDG_CONFIG_HOME")
@@ -172,7 +167,6 @@ func (in *installer) resolveLocations() {
 	}
 }
 
-// selectArg reads one selection argument at args[i], a component name or --client and its value, and returns the index of the last argument it consumed, or false after printing the diagnostic for an invalid one.
 func (in *installer) selectArg(args []string, i int, stderr io.Writer) (int, bool) {
 	arg := args[i]
 	switch {
@@ -198,7 +192,6 @@ func (in *installer) selectArg(args []string, i int, stderr io.Writer) (int, boo
 	return i, false
 }
 
-// inOrder sorts a selection into its canonical order, so logs and records read the same however it was typed.
 func inOrder(list, order []string) []string {
 	var out []string
 	for _, item := range order {
@@ -209,7 +202,6 @@ func inOrder(list, order []string) []string {
 	return out
 }
 
-// Command runs `harness install` with its arguments and returns the exit code.
 func Command(args []string, stdout, stderr io.Writer) (code int) {
 	defer recoverFatal("install", stderr, &code)
 	in := &installer{verb: "install", stdout: stdout, stderr: stderr}
@@ -234,7 +226,6 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 	return 0
 }
 
-// UninstallCommand runs `harness uninstall` with its arguments and returns the exit code.
 func UninstallCommand(args []string, stdout, stderr io.Writer) (code int) {
 	defer recoverFatal("uninstall", stderr, &code)
 	in := &installer{verb: "uninstall", stdout: stdout, stderr: stderr}
@@ -266,11 +257,11 @@ func UninstallCommand(args []string, stdout, stderr io.Writer) (code int) {
 		fmt.Fprintln(stderr, "harness uninstall: --all already names every component; drop either --all or the names.")
 		return 2
 	}
-	// An uninstall deletes rather than archives.
+
 	in.noBackup = true
 	in.resolveLocations()
 	if clearBackups {
-		// It reads only $HOME, so it runs from anywhere.
+
 		in.clearBackups()
 		return 0
 	}
@@ -279,16 +270,12 @@ func UninstallCommand(args []string, stdout, stderr io.Writer) (code int) {
 	return 0
 }
 
-// has reports whether this run selected a component.
 func (in *installer) has(component string) bool { return slices.Contains(in.components, component) }
 
-// targets reports whether this run configures a client.
 func (in *installer) targets(client string) bool { return slices.Contains(in.clients, client) }
 
-// clientNames are the clients' product names, for messages.
 var clientNames = map[string]string{"claude": "Claude Code", "codex": "Codex", "opencode": "OpenCode"}
 
-// resolveTargets settles which clients this run configures before any write: the named ones, each of which must be installed or be installed by this run; otherwise every client this run installs or that is already on PATH.
 func (in *installer) resolveTargets() {
 	installing := in.has("clients")
 	if in.clients != nil {
@@ -311,7 +298,7 @@ func (in *installer) resolveTargets() {
 }
 
 func (in *installer) install() {
-	// Before any write, so a refusal leaves HOME untouched.
+
 	unguarded, err := skills.Unguarded(in.dir)
 	if err != nil {
 		die("Checking the local skills' invocation guards failed: %v", err)
@@ -322,7 +309,7 @@ func (in *installer) install() {
 	if in.components == nil {
 		in.components = slices.Clone(allComponents)
 	}
-	// Engram's setup rewrites settings.json and opencode.json from its own template, so the harness reconciles settings after it and stays the last writer.
+
 	if in.has("mcps") && !in.has("settings") {
 		in.log("mcps: also reconciling settings, which engram setup rewrites")
 		in.components = append(in.components, "settings")
@@ -330,7 +317,7 @@ func (in *installer) install() {
 	in.components = inOrder(in.components, allComponents)
 	in.usePATH()
 	in.resolveTargets()
-	// A config this run could not rewrite is refused before any client is touched, so every registration, Engram's included, stays as it was.
+
 	if in.targets("opencode") && in.has("settings") {
 		in.openCodeConfig()
 	}
@@ -376,7 +363,6 @@ func (in *installer) install() {
 	in.summary()
 }
 
-// run executes a command on the installer's own output and dies when it fails.
 func (in *installer) run(stdin io.Reader, name string, args ...string) {
 	cmd := exec.Command(name, args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = stdin, in.stdout, in.stderr
@@ -387,7 +373,6 @@ func (in *installer) run(stdin io.Reader, name string, args ...string) {
 
 var description = regexp.MustCompile(`(?m)^description:`)
 
-// checkInstall verifies what this run installed, so each copy, setting, and tool it reconciled is confirmed in place.
 func (in *installer) checkInstall() {
 	if in.has("skills") {
 		ponytail := false
@@ -420,7 +405,6 @@ func (in *installer) checkInstall() {
 	in.checkTools()
 }
 
-// checkStatusline probes the binary the tracked statusLine runs on every draw, in every mode, because every mode writes that setting. A missing file, a lost mode bit, or a binary predating the subcommand all fail here rather than as a silently empty status line.
 func (in *installer) checkStatusline() {
 	binary := filepath.Join(in.home, ".local", "bin", "harness")
 	if info, err := os.Stat(binary); err != nil || info.Mode().Perm()&0o111 == 0 {
@@ -431,7 +415,6 @@ func (in *installer) checkStatusline() {
 	}
 }
 
-// checkTools verifies the tools this run selected are on PATH, and asks each targeted client whether it loads the registrations and skills this run reconciled.
 func (in *installer) checkTools() {
 	for _, t := range in.selectedTools() {
 		if !present(t.name) {
@@ -440,7 +423,7 @@ func (in *installer) checkTools() {
 	}
 	if in.has("mcps") && in.targets("claude") {
 		in.assertPluginCount("engram", 1)
-		// The scope too: a leftover project-scoped entry would satisfy a bare get while the user scope stayed empty. Engram reaches Claude Code as a plugin for its hooks and skill, plus this mcp entry for its tools.
+
 		for _, server := range []string{"agent-browser", "engram"} {
 			get := exec.Command("claude", "mcp", "get", server)
 			get.Stderr = in.stderr
@@ -453,7 +436,7 @@ func (in *installer) checkTools() {
 		die("agent-browser is not registered in Codex's %s.", in.codexHome())
 	}
 	if in.has("mcps") && in.targets("opencode") {
-		// Through a file: `opencode debug config` stops at the 64 KiB pipe capacity whenever stdout is not a regular file, and this config is past it.
+
 		resolved, err := os.CreateTemp("", "harness-opencode-*")
 		must(err)
 		defer os.Remove(resolved.Name())
@@ -468,7 +451,7 @@ func (in *installer) checkTools() {
 		}
 	}
 	if in.has("skills") && in.targets("claude") {
-		// The validator reads only skills/<name>/SKILL.md one level down and follows no symlink, so it gets a flat copy of the grouped tree.
+
 		flat, err := os.MkdirTemp("", "harness-skills-*")
 		must(err)
 		defer os.RemoveAll(flat)
@@ -509,7 +492,6 @@ func (in *installer) assertPluginCount(plugin string, expected int) {
 	}
 }
 
-// opencodeRegistered checks the resolved config for what OpenCode loads, and the global file for proof this installer put agent-browser there, since a project-root opencode.json would satisfy the resolved view on its own.
 func (in *installer) opencodeRegistered(resolvedPath string) bool {
 	binary, _ := exec.LookPath("agent-browser")
 	command := []any{binary, "mcp"}
@@ -534,7 +516,6 @@ func (in *installer) opencodeRegistered(resolvedPath string) bool {
 	return ok && reflect.DeepEqual(globalServer["command"], command)
 }
 
-// opencodeLoaded reads `opencode debug config` into the plugins and MCP servers OpenCode loads, with each server's state as `enabled`. OpenCode 1.x prints one merged object. 2.x prints one entry per config document, later documents winning field by field, with servers under mcp.servers, `disabled` in place of `enabled`, and file plugins loaded from the plugins directory rather than listed.
 func (in *installer) opencodeLoaded(path string) (plugins []any, servers map[string]any, ok bool) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -582,7 +563,6 @@ func (in *installer) opencodeLoaded(path string) (plugins []any, servers map[str
 	return plugins, servers, true
 }
 
-// summary prints the next steps after a full install, and after a narrowed one only what it installed and where.
 func (in *installer) summary() {
 	if len(in.components) < len(allComponents) {
 		fmt.Fprintf(in.stdout, "\n\033[1;32m✓ Harness AI installed: %s for %s.\033[0m\n", strings.Join(in.components, ", "), strings.Join(in.clients, ", "))
@@ -594,7 +574,6 @@ func (in *installer) summary() {
 	}
 }
 
-// size reports a path's disk usage the way `du -sh` prints it, or "unknown".
 func size(path string) string {
 	out, _ := exec.Command("du", "-sh", path).Output()
 	if fields := strings.Fields(string(out)); len(fields) > 0 {
@@ -603,7 +582,6 @@ func size(path string) string {
 	return "unknown"
 }
 
-// clearBackups deletes every archive an install left under ~/.dotfiles-backups/harness and nothing beside it. Each root goes separately so the log names what was deleted, the only record left afterwards.
 func (in *installer) clearBackups() {
 	root := filepath.Join(in.home, ".dotfiles-backups", "harness")
 	if !isDir(root) {
@@ -617,15 +595,13 @@ func (in *installer) clearBackups() {
 		in.log("Deleted %s", path)
 		count++
 	}
-	// Only when empty, and never the parent: refusing a non-empty directory is the guard.
+
 	_ = os.Remove(root)
 	in.log("Deleted %d harness backup(s), %s reclaimed.", count, reclaimed)
 }
 
-// binaryPath is where an install copies this binary and the status line runs it.
 func (in *installer) binaryPath() string { return filepath.Join(in.home, ".local", "bin", "harness") }
 
-// installBinary copies the running binary to ~/.local/bin/harness, where the status line runs it, unless it already is that file.
 func (in *installer) installBinary() {
 	bin := filepath.Join(in.home, ".local", "bin", "harness")
 	self, err := os.Executable()
@@ -648,7 +624,7 @@ func (in *installer) installBinary() {
 		die("Copying harness to %s failed: %v", bin, err)
 	}
 	must(dst.Close())
-	// A rename, so a status line drawing mid-install runs the old binary or the new one, never a partial file.
+
 	must(os.Rename(tmp, bin))
 	in.log("Installed %s", bin)
 }

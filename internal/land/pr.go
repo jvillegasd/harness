@@ -54,6 +54,8 @@ Each verdict carries:
   ready     true when nothing holds the merge
   blocker   the first blocker: conflict, thread, failing, pending, or other
   review    the review coverage and verdict, as harness land check reports it
+  run       the run-as-user verdict and its coverage, as harness land check
+            reports it
   threads   every unresolved review thread: id, path, line, author, the
             author's permission on the base repository, the first comment's
             text, and its url
@@ -65,12 +67,11 @@ The exit code names the first pull request's first blocker, in the order to
 work them: 0 ready, 3 merge conflict, 4 unresolved review thread, 5 failing
 required check, 6 pending required check or mergeability the forge is still
 computing, 7 any other hold (a draft, a merged
-or closed pull request, a missing approval, a required review that is not
-current, a FAIL review verdict). 1 is an operational failure and 2 an invalid
+or closed pull request, a missing approval, a required review or run-as-user
+verdict that is not current, a FAIL verdict of either kind). 1 is an operational failure and 2 an invalid
 invocation.
 `
 
-// PrCommand runs `harness pr` and returns the process exit code.
 func PrCommand(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, prUsage)
@@ -161,7 +162,6 @@ func status(args []string, stdout, stderr io.Writer) int {
 	return code
 }
 
-// cwdEnv is the Env for the repository the command runs in, reading the forge through gh.
 func cwdEnv() (Env, error) {
 	cwd, err := os.Getwd()
 	if err != nil {

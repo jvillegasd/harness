@@ -12,7 +12,6 @@ import (
 
 var statusLineRe = regexp.MustCompile(`(?i)^status:\s*(.*?)\s*$`)
 
-// status finds a file's Status: line before its first section: the line's index and its value, or -1 when it has none.
 func status(lines []string) (int, string) {
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -26,7 +25,6 @@ func status(lines []string) (int, string) {
 	return -1, ""
 }
 
-// setStatus gives the file at path the Status: value, replacing its Status: line or adding one under the title, and reports whether the file changed.
 func setStatus(path, value string) (bool, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -49,7 +47,6 @@ func setStatus(path, value string) (bool, error) {
 	return true, os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644)
 }
 
-// Close applies a local-markdown tracker's transitions after the named tickets merged: each becomes done, each ticket the mapped blocked label held whose blockers are now all done moves to the mapped ready_for_agent label, and the feature's spec.md becomes done once every ticket is. dir is the feature's issues directory under root. It returns each path it changed, relative to root; a second run changes nothing.
 func Close(c Config, root, dir string, ts []Ticket, merged []int) ([]string, error) {
 	f, err := Compute(ts, merged)
 	if err != nil {
@@ -81,7 +78,7 @@ func Close(c Config, root, dir string, ts []Ticket, merged []int) ([]string, err
 			if rerr != nil {
 				return changed, rerr
 			}
-			// Only a ticket held as blocked advances; one claimed or handed off keeps its state.
+
 			if _, current := status(strings.Split(string(raw), "\n")); strings.EqualFold(current, blocked) {
 				err = set(t.Path, ready)
 			}
@@ -103,7 +100,6 @@ func Close(c Config, root, dir string, ts []Ticket, merged []int) ([]string, err
 	return changed, nil
 }
 
-// errNotLocal refuses a tracker whose state does not live in committed files.
 func errNotLocal(c Config) error {
 	if c.Tracker == "local-markdown" {
 		return nil

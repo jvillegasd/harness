@@ -29,7 +29,6 @@ const usage = `usage: harness models [show|set|reset|resolve]
 The choice is stored in ~/.harness/state.json; ` + "`harness install`" + ` renders it into each client's role agents.
 `
 
-// Command runs `harness models`.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 1 && args[0] == "read-guard" {
 		return ReadGuard(os.Stdin, stdout)
@@ -41,7 +40,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stdout, usage)
 		return 0
 	}
-	// Without a terminal the picker would wait on input that never comes, so a script gets the usage instead.
+
 	if len(args) == 0 && (!term.IsTerminal(os.Stdin.Fd()) || !term.IsTerminal(os.Stdout.Fd())) {
 		fmt.Fprint(stderr, usage)
 		return 2
@@ -66,7 +65,6 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// pickAndSave runs the picker, saves what it collected, and reports the result through show.
 func pickAndSave(path string, stdout io.Writer) error {
 	if _, err := Load(path); err != nil {
 		return err
@@ -88,7 +86,7 @@ func pickAndSave(path string, stdout io.Writer) error {
 
 func run(path string, args []string, stdout io.Writer) error {
 	sub, rest := args[0], args[1:]
-	// reset is the recovery for a stored choice Load refuses, so it reads the block without validating it.
+
 	if sub == "reset" {
 		return reset(path, rest)
 	}
@@ -123,7 +121,6 @@ func run(path string, args []string, stdout io.Writer) error {
 	return fmt.Errorf("unknown subcommand %q\n%s", sub, usage)
 }
 
-// apply validates one set invocation's arguments and returns the choice with it applied. The picker saves through it too, so both paths accept exactly the same values.
 func apply(choice Choice, args []string) (Choice, error) {
 	var role string
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
@@ -143,7 +140,7 @@ func apply(choice Choice, args []string) (Choice, error) {
 		if _, ok := Presets[*preset]; !ok {
 			return choice, fmt.Errorf("unknown preset %q; choose %s", *preset, strings.Join(presetNames(), ", "))
 		}
-		// A built-in preset is well formed by construction; whether this machine can run its Codex or OpenCode models is the install's fallback to judge.
+
 		choice.Preset = *preset
 		return choice, nil
 	}

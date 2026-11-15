@@ -13,10 +13,8 @@ import (
 	"github.com/jvillegasd/harness/internal/worktree"
 )
 
-// ErrRepairRefused marks a repair that cannot prove the dependent's own change survives, so nothing was rebased or pushed.
 var ErrRepairRefused = errors.New("refused")
 
-// Repair is a rebased dependent waiting for its push: the commit it was built on, its head when the repair read it, which the push leases, and its rebased head, with where that head sits.
 type Repair struct {
 	Number    int    `json:"number"`
 	Branch    string `json:"branch"`
@@ -28,7 +26,6 @@ type Repair struct {
 	Temporary bool   `json:"temporary"`
 }
 
-// repairFile is where a repair waits between its two steps, in the Git directory every worktree shares.
 func repairFile(root string, number int) (string, error) {
 	common, err := git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
@@ -37,7 +34,6 @@ func repairFile(root string, number int) (string, error) {
 	return filepath.Join(common, "harness-land", "repair", strconv.Itoa(number)+".json"), nil
 }
 
-// RepairDependent moves one open dependent of a squash-merged pull request onto the default branch, locally. Every refusal that reading can decide comes before the dependent is retargeted; the rebase runs where its branch is checked out, or in a temporary detached worktree, and its own change must come out non-empty and identical, or the branch is put back.
 func RepairDependent(e Env, dependent, landed int) (Repair, error) {
 	refuse := func(format string, a ...any) (Repair, error) {
 		return Repair{}, fmt.Errorf("%w: #%d: %s", ErrRepairRefused, dependent, fmt.Sprintf(format, a...))
@@ -81,7 +77,7 @@ func RepairDependent(e Env, dependent, landed int) (Repair, error) {
 			return Repair{}, fmt.Errorf("the fetched pull requests do not hold %s; run again", sha)
 		}
 	}
-	// A merge such as the forge's "Update branch" can make the landed head an ancestor while its old commits still sit underneath.
+
 	if merges, err := git(root, "rev-list", "--merges", onto+".."+lease); err != nil {
 		return Repair{}, err
 	} else if merges != "" {
@@ -95,7 +91,7 @@ func RepairDependent(e Env, dependent, landed int) (Repair, error) {
 	if boundary == "" {
 		return refuse("none of its commits are already in #%d's head, so the commit it was built on is unknown", landed)
 	}
-	// Everything up to the boundary must already be on the default branch, or a rebase from there drops the dependent's own work.
+
 	merged, err := git(root, "merge-tree", "--write-tree", onto, boundary)
 	tree, _ := git(root, "rev-parse", onto+"^{tree}")
 	if first, _, _ := strings.Cut(merged, "\n"); err != nil || first != tree {
@@ -109,7 +105,6 @@ func RepairDependent(e Env, dependent, landed int) (Repair, error) {
 		return refuse("it changes nothing past %s", short(boundary))
 	}
 
-	// Where the rebase runs: the worktree holding the dependent's branch, which must hold nothing else, or a temporary one.
 	trees, err := worktree.List(root)
 	if err != nil {
 		return Repair{}, err
@@ -142,7 +137,7 @@ func RepairDependent(e Env, dependent, landed int) (Repair, error) {
 			return Repair{}, err
 		}
 	}
-	// A refusal after the retarget puts the base back, so the dependent still reads as built on the landed branch, which keeps that branch.
+
 	undo := func() {
 		e.Forge("pr", "edit", strconv.Itoa(dependent), "--base", d.BaseRefName)
 		if r.Temporary {
@@ -186,7 +181,6 @@ func RepairDependent(e Env, dependent, landed int) (Repair, error) {
 	return r, nil
 }
 
-// findBoundary is the commit the dependent was built on: the landed head when it is an ancestor, otherwise the last of the dependent's commits whose patch the landed head already holds, or empty when there is none.
 func findBoundary(root, landedHead, lease string) (string, error) {
 	if _, err := git(root, "merge-base", "--is-ancestor", landedHead, lease); err == nil {
 		return landedHead, nil
@@ -204,7 +198,6 @@ func findBoundary(root, landedHead, lease string) (string, error) {
 	return boundary, nil
 }
 
-// filePatches maps each file a range changes to its patch id, so two ranges compare file by file.
 func filePatches(root, from, to string) (map[string]string, error) {
 	files, err := names(root, from, to)
 	if err != nil {
@@ -235,7 +228,6 @@ func differing(a, b map[string]string) []string {
 	return out
 }
 
-// PushRepair publishes a repaired dependent's rebased head with a lease pinned to the head the repair read, so a push by anyone since then fails instead of being overwritten, then removes any temporary worktree and the waiting record.
 func PushRepair(e Env, dependent int) (Repair, error) {
 	root, err := git(e.Dir, "rev-parse", "--show-toplevel")
 	if err != nil {

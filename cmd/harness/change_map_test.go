@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// changeMapRepo is a repository on main with a base commit and one branch commit, plus an untracked and a deleted file.
 func changeMapRepo(t *testing.T) string {
 	t.Helper()
 	dir := repo(t)
@@ -48,7 +47,7 @@ func TestChangeMapText(t *testing.T) {
 	if r.code != 0 {
 		t.Fatalf("exit %d: %s", r.code, r.stderr)
 	}
-	// Files are ordered by tier descending, then path; each line carries a reason, whose wording the package tests own.
+
 	wantFiles := []string{
 		"critical\tdocs/agents/harness.json",
 		"critical\told.sql",

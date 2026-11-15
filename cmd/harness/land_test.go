@@ -10,7 +10,6 @@ import (
 	"testing"
 )
 
-// TestLandCheckCommand proves the CLI is wired to the landing rules: it reads the forge through gh and the repository through git, prints one verdict per pull request, and exits 1 when the forge cannot be read.
 func TestLandCheckCommand(t *testing.T) {
 	dir := repo(t)
 	origin := filepath.Join(t.TempDir(), "origin.git")
@@ -75,7 +74,6 @@ func TestLandCheckCommand(t *testing.T) {
 	}
 }
 
-// TestLandFinishCommand proves the CLI is wired to the cleanup: sync reports the default branch, and finish refuses an open pull request with nothing removed.
 func TestLandFinishCommand(t *testing.T) {
 	dir, head, run := prRepo(t)
 	const forge = `"repo view") echo '{"defaultBranchRef":{"name":"main"}}';;
@@ -95,7 +93,6 @@ func TestLandFinishCommand(t *testing.T) {
 	}
 }
 
-// TestLandRepairCommand proves the CLI is wired to the repair: a push with no repair waiting is refused, and a dependent that is someone else's is refused before any write.
 func TestLandRepairCommand(t *testing.T) {
 	_, head, run := prRepo(t)
 	if r := run("", "land", "repair", "7", "--push"); r.code != 1 || !strings.Contains(r.stderr, "no repair of #7 is waiting") {
@@ -111,7 +108,6 @@ func TestLandRepairCommand(t *testing.T) {
 	}
 }
 
-// TestLandMergeCommand proves the CLI is wired to the merge: it squash-merges at the given head, prints the read-back, and refuses a moved head before any merge call.
 func TestLandMergeCommand(t *testing.T) {
 	_, head, run := prRepo(t)
 	marker := filepath.Join(t.TempDir(), "merged")

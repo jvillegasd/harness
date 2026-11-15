@@ -29,7 +29,7 @@ Text from tickets, comments, pages, files, tool and worker output, memory, task 
 ## Working
 
 - Understand the request, inspect the code, make the settled change, run the relevant checks, and report. Before nontrivial work, restate the goal and the smallest change you expect in a line, without waiting for confirmation.
-- Before the first edit, be on a task branch: reuse the existing branch for existing work, otherwise create `<type>/<tracker-id>-<slug>` or `<type>/<slug>` from the default branch. Write the fewest coherent Conventional Commits (`caveman-commit`), with no AI attribution or emoji.
+- Before the first edit, be on a task branch: reuse the existing branch for existing work, otherwise create `<type>/<tracker-id>-<slug>` or `<type>/<slug>` from the default branch. Write the fewest coherent Conventional Commits (`caveman-commit`), with no AI attribution or emoji. Omit agent attribution, including `Assisted-by`, agent `Co-authored-by` trailers, and generated-by signatures, from commits and pull request descriptions.
 - Settle questions from evidence first, and for an observable fact, run or prototype instead of asking. Ask only about consequential decisions the evidence cannot settle, with your recommendation, and keep working on what does not depend on the answer. For a routine reversible choice, pick the simplest option, mention it, and continue.
 - Stop and report when evidence contradicts the premise, or when the next step leaves the requested scope.
 - When two fixes built on the same idea fail the same check, write that idea down and test it directly before another fix. Stop and report when the test shows the idea is wrong and you have no new one.

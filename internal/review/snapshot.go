@@ -11,7 +11,6 @@ import (
 	"strings"
 )
 
-// Snapshot saves the tracked and untracked changes under owned, paths relative to root, as one binary patch against base in the key's review directory, and returns its path and sha256 digest. It builds a temporary index, so the repository's real index is never read or written.
 func Snapshot(root, base, branchKey string, owned []string) (path, digest string, err error) {
 	if len(owned) == 0 {
 		return "", "", fmt.Errorf("%w: at least one owned path is required", ErrInvalid)

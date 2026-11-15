@@ -1,4 +1,3 @@
-// Package worktree audits and retires a repository's linked worktrees for `harness worktree`, the one place the checks that make a removal lossless live.
 package worktree
 
 import (
@@ -11,20 +10,17 @@ import (
 	"strings"
 )
 
-// ErrRefused marks a retirement that would lose work, or that names something that is not a retirable worktree or branch.
 var ErrRefused = errors.New("refused")
 
-// Tree is one worktree as `git worktree list --porcelain` reports it.
 type Tree struct {
 	Path     string
-	Branch   string // empty when detached
+	Branch   string
 	Head     string
-	Main     bool // the first entry, which a linked worktree is removed from
+	Main     bool
 	Locked   bool
-	Prunable bool // its directory is gone
+	Prunable bool
 }
 
-// List returns the repository's worktrees, the main one first.
 func List(dir string) ([]Tree, error) {
 	out, err := git(dir, "worktree", "list", "--porcelain")
 	if err != nil {
@@ -56,17 +52,15 @@ func List(dir string) ([]Tree, error) {
 	return trees, nil
 }
 
-// Status is what retiring a worktree would lose, and the state that follows from it.
 type Status struct {
 	Tree
-	Changes []string // tracked and untracked entries of `git status --porcelain`
-	Ignored []string // ignored paths, which removal deletes too
-	Landed  bool     // a branch whose content is on the into ref
-	Loose   bool     // a detached head no branch, remote-tracking branch, or tag holds
-	State   string   // safe, dirty, loose, unlanded, ignored, locked, or missing
+	Changes []string
+	Ignored []string
+	Landed  bool
+	Loose   bool
+	State   string
 }
 
-// Inspect reads what a worktree holds and names the first reason it is not safe to retire.
 func Inspect(t Tree, into string) (Status, error) {
 	s := Status{Tree: t}
 	if t.Prunable {
@@ -110,7 +104,6 @@ func Inspect(t Tree, into string) (Status, error) {
 	return s, nil
 }
 
-// Landed reports whether everything rev holds is already on into: rev is an ancestor of it, or merging rev into it changes nothing, which is how a squash merge reads. A later edit of the same lines on into leaves it unproven.
 func Landed(dir, rev, into string) bool {
 	if _, err := git(dir, "merge-base", "--is-ancestor", rev, into); err == nil {
 		return true
@@ -124,7 +117,6 @@ func Landed(dir, rev, into string) bool {
 	return err == nil && first == tree
 }
 
-// DefaultInto is the ref a landed check compares against when none is given: the remote's default branch.
 func DefaultInto(dir string) (string, error) {
 	head, _ := git(dir, "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
 	for _, ref := range []string{head, "origin/main", "origin/master"} {
@@ -138,16 +130,14 @@ func DefaultInto(dir string) (string, error) {
 	return "", errors.New("no default branch ref (origin/HEAD, origin/main, origin/master); pass --into <ref>")
 }
 
-// Options are the caller's answers to what a retirement may do with the work it finds.
 type Options struct {
-	Into         string // ref the branch must have landed on
-	At           string // full SHA a detached worktree was created at
-	SavePatch    string // file that receives the worktree's work before removal
-	AllowIgnored bool   // the caller checked every ignored path is regenerable
-	KeepBranch   bool   // remove only the worktree
+	Into         string
+	At           string
+	SavePatch    string
+	AllowIgnored bool
+	KeepBranch   bool
 }
 
-// Retire removes the linked worktree at path and, unless told to keep it, its landed branch, and returns one line per thing it did. It refuses, changing nothing, whenever the removal would lose work the options do not cover.
 func Retire(dir, path string, o Options) ([]string, error) {
 	trees, err := List(dir)
 	if err != nil {
@@ -171,7 +161,7 @@ func Retire(dir, path string, o Options) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	// The branch --into names is always an ancestor of it, which proves nothing about finished work.
+
 	o.KeepBranch = o.KeepBranch || isInto(s.Branch, o.Into)
 	if s.Locked {
 		return nil, fmt.Errorf("%w: %s is locked; unlock it first", ErrRefused, path)
@@ -182,7 +172,7 @@ func Retire(dir, path string, o Options) ([]string, error) {
 	if s.Branch != "" && !o.KeepBranch && !s.Landed {
 		return nil, fmt.Errorf("%w: branch %s is not proven landed on %s; pass --keep-branch to remove only the worktree", ErrRefused, s.Branch, o.Into)
 	}
-	// A loose head is safe only where the caller created the worktree, or once a patch from there carries its commits.
+
 	moved := s.Loose && s.Head != o.At
 	if moved && o.At == "" {
 		return nil, fmt.Errorf("%w: detached at %s, which no ref holds; pass --at <sha> naming the commit the worktree was created at", ErrRefused, s.Head)
@@ -221,7 +211,7 @@ func Retire(dir, path string, o Options) ([]string, error) {
 		done = append(done, "saved patch "+o.SavePatch)
 		remove = []string{"worktree", "remove", "--force", s.Path}
 	}
-	// A worktree cannot remove itself, so the main one does it.
+
 	if _, err := git(trees[0].Path, remove...); err != nil {
 		return done, err
 	}
@@ -238,7 +228,6 @@ func Retire(dir, path string, o Options) ([]string, error) {
 	return append(done, "deleted branch "+s.Branch), nil
 }
 
-// RetireBranch deletes a local branch no worktree holds, once its content is proven landed on into.
 func RetireBranch(dir, branch, into string) ([]string, error) {
 	trees, err := List(dir)
 	if err != nil {
@@ -264,12 +253,10 @@ func RetireBranch(dir, branch, into string) ([]string, error) {
 	return []string{"deleted branch " + branch}, nil
 }
 
-// isInto reports whether branch is the one the into ref names, locally or on a remote.
 func isInto(branch, into string) bool {
 	return branch != "" && (into == branch || strings.HasSuffix(into, "/"+branch))
 }
 
-// samePath compares two paths after resolving symlinks, since git prints the real path.
 func samePath(a, b string) bool {
 	resolve := func(p string) string {
 		if abs, err := filepath.Abs(p); err == nil {

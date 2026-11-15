@@ -10,7 +10,6 @@ import (
 	"github.com/jvillegasd/harness/internal/review"
 )
 
-// advance puts a new commit on origin's main that no checkout has.
 func (f *fixture) advance() string {
 	f.t.Helper()
 	f.git(f.dir, "fetch", "-q", "origin")
@@ -19,7 +18,6 @@ func (f *fixture) advance() string {
 	return sha
 }
 
-// TestSync covers fast-forwarding the default branch where a worktree holds it, where none does, and refusing a diverged one.
 func TestSync(t *testing.T) {
 	f := setup(t)
 	env := f.env()
@@ -43,7 +41,6 @@ func TestSync(t *testing.T) {
 	}
 }
 
-// landed opens a pull request on branch from main, squash-merges it on origin, and returns its review directory holding a saved patch, as a review run leaves it. The checkout is left on main.
 func (f *fixture) landed(number int, branch string) (*pull, string) {
 	f.t.Helper()
 	f.git(f.dir, "switch", "-q", "main")
@@ -57,7 +54,6 @@ func (f *fixture) landed(number int, branch string) (*pull, string) {
 	return p, f.scratch(branch)
 }
 
-// scratch writes a saved patch into key's review directory and returns the directory.
 func (f *fixture) scratch(key string) string {
 	f.t.Helper()
 	dir, err := review.Dir(f.dir, key)
@@ -73,7 +69,6 @@ func (f *fixture) scratch(key string) string {
 	return dir
 }
 
-// worktreeOn moves branch from the main checkout into a linked worktree and returns its path.
 func (f *fixture) worktreeOn(branch string) string {
 	f.t.Helper()
 	path := filepath.Join(realTemp(f.t), branch)
@@ -81,7 +76,6 @@ func (f *fixture) worktreeOn(branch string) string {
 	return path
 }
 
-// realTemp is a temporary directory by its real path, as git worktree list prints it.
 func realTemp(t *testing.T) string {
 	dir, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
@@ -114,7 +108,6 @@ func said(actions []Action, done bool, want string) bool {
 	return false
 }
 
-// TestFinish covers the full cleanup of the forge user's merged pull request from its own checkout, the refusal of an open one, and a second run changing nothing.
 func TestFinish(t *testing.T) {
 	f := setup(t)
 	f.open(2, "open", "main", map[string]string{"o.txt": "o\n"})
@@ -154,7 +147,6 @@ func TestFinish(t *testing.T) {
 	}
 }
 
-// TestFinishKeeps covers what stays: a remote branch with a dependent, someone else's branch, a fork's branches, and a review directory that records a worktree.
 func TestFinishKeeps(t *testing.T) {
 	f := setup(t)
 
@@ -188,7 +180,6 @@ func TestFinishKeeps(t *testing.T) {
 		t.Errorf("a held review directory: %v %v", err, actions)
 	}
 
-	// A remote branch that gained commits after its pull request merged stays.
 	f.landed(6, "moved")
 	moved := f.git(f.dir, "commit-tree", "moved^{tree}", "-p", "moved", "-m", "more")
 	f.git(f.dir, "push", "-q", "origin", moved+":refs/heads/moved")
@@ -196,7 +187,6 @@ func TestFinishKeeps(t *testing.T) {
 		t.Errorf("a moved remote branch: %v %v", err, actions)
 	}
 
-	// A remote branch that heads another open pull request stays.
 	p, _ = f.landed(7, "again")
 	reopened := *p
 	reopened.Number, reopened.State = 8, "OPEN"
@@ -206,7 +196,6 @@ func TestFinishKeeps(t *testing.T) {
 	}
 }
 
-// TestFinishOrder covers a refused retirement of this checkout, and that with two pull requests this checkout goes last.
 func TestFinishOrder(t *testing.T) {
 	f := setup(t)
 	f.landed(1, "one")

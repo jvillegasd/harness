@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-// TestReviewWorktreeCommand proves the CLI is wired to the review worktree lifecycle: add prints a new worktree's path, and retire removes it and its record.
 func TestReviewWorktreeCommand(t *testing.T) {
 	dir, data := repo(t), t.TempDir()
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
