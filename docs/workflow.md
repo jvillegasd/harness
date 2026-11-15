@@ -54,6 +54,7 @@ Each skill is a separate tool. Outside work mode, using one never starts another
 | Situation | Skill |
 | --- | --- |
 | A session needs a retrospective | `/retro` |
+| Agents keep repeating the same mistakes in a repository | `/correct` |
 | Old worktrees, branches, and review scratch pile up | `/cleanup` |
 
 ### `/implement` or `/build`?
