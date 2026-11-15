@@ -21,6 +21,24 @@ Commands:
   check     Validate the drafts of one feature, or of every feature
   frontier  Print which tickets of a feature are ready, done, and blocked
   publish   Publish a feature's drafts as GitHub issues
+  close     Apply a local-markdown tracker's transitions after tickets merged
+`
+
+const closeUsage = `Usage: harness tickets close --dir <issues dir> <NN>...
+
+Apply a local-markdown tracker's transitions once the named tickets merged
+and the default branch holds them: each named ticket's Status: line becomes
+done; each ticket whose Status: is the mapped blocked label and whose
+blockers are now all done becomes the mapped ready_for_agent label; and the
+feature's spec.md, beside the issues directory, becomes done once every
+ticket is. A ticket in any other state keeps it. It prints each file it
+changed and commits nothing. A second run changes nothing.
+
+It refuses, before any write, a repository whose docs/agents/harness.json
+does not select local-markdown, tickets that fail harness tickets check, and
+a number that is not a ticket of the feature (exit 2).
+
+  --dir  The feature's issues directory, <spec_home>/<feature-slug>/issues
 `
 
 const checkUsage = `Usage: harness tickets check [<feature-slug>]
@@ -90,6 +108,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return frontier(args[1:], stdout, stderr)
 	case "publish":
 		return publish(args[1:], stdout, stderr)
+	case "close":
+		return closeCommand(args[1:], stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "harness tickets: unknown command %q; run harness tickets --help\n", args[0])
 	return 2
@@ -373,4 +393,72 @@ func list(items []string) string {
 		return "none"
 	}
 	return strings.Join(items, ", ")
+}
+
+func closeCommand(args []string, stdout, stderr io.Writer) int {
+	usage := func(format string, a ...any) int {
+		fmt.Fprintf(stderr, "harness tickets close: "+format+"; run harness tickets close --help\n", a...)
+		return 2
+	}
+	dir := ""
+	var merged []int
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; a {
+		case "-h", "--help":
+			fmt.Fprint(stdout, closeUsage)
+			return 0
+		case "--dir":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return usage("--dir takes the issues directory")
+			}
+			i++
+			dir = args[i]
+		default:
+			ns, err := numbers(a)
+			if err != nil || len(ns) == 0 || strings.HasPrefix(a, "-") {
+				return usage("%q is not a ticket number or a flag", a)
+			}
+			merged = append(merged, ns...)
+		}
+	}
+	if dir == "" || len(merged) == 0 {
+		return usage("give --dir and the merged ticket numbers")
+	}
+	top, ok := root("close", stderr)
+	if !ok {
+		return 2
+	}
+	c, err := ReadConfig(top)
+	if err == nil {
+		err = errNotLocal(c)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness tickets close: %v\n", err)
+		return 1
+	}
+	r, rel, err := featureDir(top, "", dir)
+	if err != nil || r == "" {
+		return usage("%s is not inside this checkout", dir)
+	}
+	ts, code := load("close", r, rel, stderr)
+	if code != 0 {
+		return code
+	}
+	if len(ts) == 0 {
+		fmt.Fprintf(stderr, "harness tickets close: no tickets in %s\n", rel)
+		return 1
+	}
+	if _, err := Compute(ts, merged); err != nil {
+		fmt.Fprintf(stderr, "harness tickets close: %v\n", err)
+		return 2
+	}
+	changed, err := Close(c, r, rel, ts, merged)
+	for _, p := range changed {
+		fmt.Fprintln(stdout, p)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness tickets close: %v\n", err)
+		return 1
+	}
+	return 0
 }

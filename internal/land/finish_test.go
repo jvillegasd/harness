@@ -175,7 +175,7 @@ func TestFinishKeeps(t *testing.T) {
 	}
 
 	_, ledger := f.landed(5, "held")
-	if err := os.WriteFile(filepath.Join(filepath.Dir(ledger), "worktree.txt"), []byte("/somewhere\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(filepath.Dir(ledger), "worktree.txt"), []byte(f.t.TempDir()+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	actions, err = f.finish(f.dir, 5)

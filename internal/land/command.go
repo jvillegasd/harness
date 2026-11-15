@@ -11,6 +11,7 @@ const usage = `Usage: harness land <command> [arguments]
 
 Commands:
   check   Report whether pull requests can land, and how
+  merge   Squash-merge one open pull request at the head a check read
   sync    Fetch from origin and fast-forward the local default branch
   finish  Clean up after merged pull requests
   repair  Move a stacked dependent onto the default branch after a squash merge
@@ -40,6 +41,33 @@ can run.
 With --push, it publishes the rebased head with a lease pinned to the
 recorded head, so a push by anyone since fails instead of being overwritten,
 and removes any temporary worktree.
+`
+
+const mergeUsage = `Usage: harness land merge <pr> --head <sha> --body-file <file> [--accepted]
+
+Squash-merge one open pull request, only when the human asked for the merge.
+It writes to the forge and grants no authority.
+
+It runs harness land check --merge on the pull request again first, and
+refuses, writing nothing, when it is not on the open lane, when its head is
+not --head, when a forge gate holds it (a conflict, a failing or pending
+required check, a missing approval, a requested change, an unresolved
+thread, a base that is not the default branch), or when any other hold
+stands and --accepted is absent.
+
+The squash commit's subject is the pull request title and its body the
+file's text, with the description's ## Tradeoffs section appended when the
+text has none. It merges with --match-head-commit <sha>, so a push since the
+check fails the merge, and never deletes the head branch. It then reads the
+pull request back and exits 1 unless the forge reports it MERGED, whatever
+the merge command returned. It prints the number, head, state, and merge
+commit as JSON.
+
+  --head       The head the check printed
+  --body-file  The squash body: the resulting behavior and material
+               assumptions
+  --accepted   The human accepted, by name in this session, every hold that
+               is not a forge gate
 `
 
 const syncUsage = `Usage: harness land sync
@@ -141,6 +169,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return 0
 	case "check":
 		return check(args[1:], stdout, stderr)
+	case "merge":
+		return merge(args[1:], stdout, stderr)
 	case "sync":
 		return syncCommand(args[1:], stdout, stderr)
 	case "finish":
@@ -311,5 +341,56 @@ func repair(args []string, stdout, stderr io.Writer) int {
 	}
 	out, _ := json.MarshalIndent(r, "", "  ")
 	fmt.Fprintln(stdout, string(out))
+	return 0
+}
+
+func merge(args []string, stdout, stderr io.Writer) int {
+	usage := func(format string, a ...any) int {
+		fmt.Fprintf(stderr, "harness land merge: "+format+"; run harness land merge --help\n", a...)
+		return 2
+	}
+	number, head, body, accepted := 0, "", "", false
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; a {
+		case "-h", "--help":
+			fmt.Fprint(stdout, mergeUsage)
+			return 0
+		case "--accepted":
+			accepted = true
+		case "--head", "--body-file":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return usage("%s takes a value", a)
+			}
+			i++
+			if a == "--head" {
+				head = args[i]
+			} else {
+				body = args[i]
+			}
+		default:
+			n, err := strconv.Atoi(a)
+			if err != nil || n <= 0 || number != 0 {
+				return usage("%q is not the one pull request number or a flag", a)
+			}
+			number = n
+		}
+	}
+	if number == 0 || head == "" || body == "" {
+		return usage("give the pull request, --head, and --body-file")
+	}
+	e, err := cwdEnv()
+	if err != nil {
+		fmt.Fprintf(stderr, "harness land merge: %v\n", err)
+		return 1
+	}
+	m, err := Merge(e, number, head, body, accepted)
+	if m.State != "" {
+		out, _ := json.MarshalIndent(m, "", "  ")
+		fmt.Fprintln(stdout, string(out))
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness land merge: %v\n", err)
+		return 1
+	}
 	return 0
 }

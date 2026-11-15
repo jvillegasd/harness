@@ -129,7 +129,7 @@ func BranchesDir(root string) (string, error) {
 	return filepath.Join(common, "harness-review", "branches"), nil
 }
 
-// Prune removes each branch directory under dir whose branch live does not report, as after a pull request merged without `land` or was closed. It returns the directories removed, or that would be with dryRun, and those held because worktree.txt still records a review worktree. A name that does not unescape is left alone.
+// Prune removes each branch directory under dir whose branch live does not report, as after a pull request merged without `land` or was closed. It returns the directories removed, or that would be with dryRun, and those held because worktree.txt records a review worktree that still exists. A name that does not unescape is left alone.
 func Prune(dir string, live func(branch string) bool, dryRun bool) (removed, held []string, err error) {
 	names, err := os.ReadDir(dir)
 	if errors.Is(err, os.ErrNotExist) {
@@ -144,11 +144,11 @@ func Prune(dir string, live func(branch string) bool, dryRun bool) (removed, hel
 			continue
 		}
 		path := filepath.Join(dir, n.Name())
-		if _, err := os.Stat(filepath.Join(path, "worktree.txt")); err == nil {
+		if live, err := recordLive(path); err != nil {
+			return removed, held, err
+		} else if live {
 			held = append(held, path)
 			continue
-		} else if !errors.Is(err, os.ErrNotExist) {
-			return removed, held, err
 		}
 		if !dryRun {
 			if err := os.RemoveAll(path); err != nil {
@@ -160,7 +160,7 @@ func Prune(dir string, live func(branch string) bool, dryRun bool) (removed, hel
 	return removed, held, nil
 }
 
-// RemoveBranch deletes the branch directory that holds the ledger file, with its patches, and reports whether there was one. It refuses while worktree.txt is there: that file is the only record of an executor worktree review could not retire, and of where its work was saved.
+// RemoveBranch deletes the branch directory that holds the ledger file, with its patches, and reports whether there was one. It refuses while worktree.txt records a worktree that still exists: that file is the only record of an executor worktree review could not retire, and of where its work was saved.
 func RemoveBranch(file string) (bool, error) {
 	dir := filepath.Dir(file)
 	// Only a directory directly under branches/ is one branch's; anything else holds more than this removal owns.
@@ -172,10 +172,10 @@ func RemoveBranch(file string) (bool, error) {
 	} else if err != nil {
 		return false, err
 	}
-	if _, err := os.Stat(filepath.Join(dir, "worktree.txt")); err == nil {
-		return false, fmt.Errorf("%w in %s; retire it with harness review worktree retire, then remove again", ErrHeld, filepath.Join(dir, "worktree.txt"))
-	} else if !errors.Is(err, os.ErrNotExist) {
+	if live, err := recordLive(dir); err != nil {
 		return false, err
+	} else if live {
+		return false, fmt.Errorf("%w in %s; retire it with harness review worktree retire, then remove again", ErrHeld, filepath.Join(dir, "worktree.txt"))
 	}
 	return true, os.RemoveAll(dir)
 }

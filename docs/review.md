@@ -39,7 +39,7 @@ stateDiagram-v2
 
 ## Review something other than your branch
 
-Ask for a review of a PR number or URL, another branch, or a commit range such as `abc123..def456`, and you don't need it checked out. The agent fetches it, gives the reviewers a temporary copy of it, and deletes that copy when the review ends. Such a review only reports: it fixes nothing and pushes nothing, and you send the findings to the PR's branch with `/address-review`. When the target has an open PR, the agent asks at the end whether to post the result there, unless your request already said to post it. Say yes and it posts one comment with the confirmed findings and how each was proven. It never approves the PR or requests changes on it; that stays with you. Say no and nothing appears on the PR. A PR from a fork is reviewed without running any of its code, so only findings that need no run can be proven.
+Ask for a review of a PR number or URL, another branch, or a commit range such as `abc123..def456`, and you don't need it checked out. The agent fetches it, gives the reviewers a temporary copy of it, and deletes that copy when the review ends. Such a review only reports: it fixes nothing and pushes nothing, and you send the findings to the PR's branch with `/address-review`. When the target has an open PR, the agent asks at the end whether to post the result there, unless your request already said to post it. Say yes and it posts one comment with the confirmed findings and how each was proven. `harness review comment` builds that comment from the review record, so dropped findings never reach it, and `--dry-run` shows you the text without posting. It never approves the PR or requests changes on it; that stays with you. Say no and nothing appears on the PR. A PR from a fork is reviewed without running any of its code, so only findings that need no run can be proven.
 
 A clean review of a PR by number counts for `/land` even though nothing is written on the PR, because `/land` also reads the review record on your machine.
 
@@ -95,7 +95,7 @@ stateDiagram-v2
 
 ### Why unproven findings are dropped
 
-Dropping unproven findings means some real bugs slip through. In exchange, every finding you read has been run, so you can trust the report. The review evals count the real bugs this rule drops, so the cost of the trade stays measured.
+Dropping unproven findings means some real bugs slip through. In exchange, every finding you read has been run, so you can trust the report. The review evals count the real bugs this rule drops, so the cost of the trade stays measured. They only run when you ask. `harness review evals seed` suggests cases from past fixes: for each `fix:` or revert commit, it finds the commit that introduced the lines it fixed. A case counts only once you confirm it. `harness review evals score` grades a run against the confirmed cases and says whether recall dropped or false positives rose since the last run on the same cases.
 
 ## What you get at the end
 

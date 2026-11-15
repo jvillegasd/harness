@@ -33,14 +33,62 @@ Commands:
   stamp   Print the review line a pull request body carries
   target  Resolve what a review reads: its base, commit, and ledger key
   worktree  Add or retire the one worktree a review may create
+  comment   Post a foreign review's result on its pull request
+  evals     Seed candidate eval cases and score an eval run
+`
+
+const evalsUsage = `Usage: harness review evals seed [<revision range>] [--max <n>]
+       harness review evals score <run file> [--depth <level>] [--model <role>=<model>]... [--revision <rev>] [--date <date>]
+
+The review evals live in <git-common-dir>/harness-review/evals: evals.jsonl
+holds the cases and runs/<date>.jsonl the runs. Only a case with
+confirmed_by set counts.
+
+seed prints, as JSON lines, one candidate bug case per commit that
+introduced lines a fix or revert commit in the range (default HEAD) changed,
+for the newest --max fixes (default 20). It blames each fix's changed lines
+at its parent, so the expected lines are those lines as they stood in the
+introducing commit, and a pure insertion is placed by the lines around it.
+It writes nothing: show each candidate to the human, and add a confirmed one
+to evals.jsonl with confirmed_by set.
+
+score reads the run file's findings, one JSON line each with case, path,
+lines, severity, and disposition (confirmed or dropped). A bug case is
+caught when a confirmed bug or risk overlaps one of its expected path and
+line ranges, each confirmed bug or risk on a clean case is a false positive,
+and a dropped finding inside a bug case's expected range is a dropped catch.
+It appends the summary line to the run file, refuses a run file already
+scored, and prints the summary beside the last run on the same cases, with
+regression true when recall dropped or false positives rose.
+
+  --max       The newest fix commits seed reads (default 20)
+  --depth     The review depth the run used
+  --model     A hunter's resolved model, as role=model; repeatable
+  --revision  The harness revision of skills/workflow/review (default: the
+              last commit that touched it)
+  --date      The run's date (default: today)
+`
+
+const commentUsage = `Usage: harness review comment --branch <key> <pr> [--dry-run]
+
+Post the ledger's latest review of <key> as one comment on pull request <pr>:
+the reviewed <base>..<sha>, the level, and each finding confirmed in that
+review with its path, lines, severity, summary, and the run that proved it,
+or that none was confirmed. Dropped findings, nits, and the ledger itself
+stay local. It writes to the forge, so run it only when the human asked for
+the result to be posted; it grants no authority, and approving or requesting
+changes stays with the human.
+
+  --branch   The review's ledger key, as harness review target printed it
+  --dry-run  Print the comment and post nothing
 `
 
 const worktreeUsage = `Usage: harness review worktree add [--branch <key>] [--patch <file>] <sha>
        harness review worktree retire [--branch <key>] [--allow-ignored]
 
 Own the one worktree a review may create, recorded in worktree.txt in the
-key's review directory (default key: the current branch). While that record
-exists, harness review remove and prune leave the directory alone.
+key's review directory (default key: the current branch). While the worktree
+it names exists, harness review remove and prune leave the directory alone.
 
 add picks a fresh sibling directory outside the checkout, records it before
 anything else, creates a detached worktree there at <sha> with Git hooks
@@ -172,8 +220,9 @@ const removeUsage = `Usage: harness review remove [--branch <name>]
 
 Delete the branch's review directory, its ledger and saved patches (default:
 the current branch), and print the directory removed. A branch with nothing
-recorded prints nothing and exits 0. A directory that still holds worktree.txt,
-review's record of a worktree it could not retire, is refused untouched.
+recorded prints nothing and exits 0. A directory whose worktree.txt, review's
+record of a worktree it could not retire, names a directory that still exists
+is refused untouched; one whose recorded directory is gone is removed.
 `
 
 const pruneUsage = `Usage: harness review prune [--dry-run [--forge]]
@@ -181,7 +230,9 @@ const pruneUsage = `Usage: harness review prune [--dry-run [--forge]]
 Delete the review directory of every branch that exists neither as a local
 branch nor as a remote-tracking branch, and print each directory removed. Run
 git fetch --prune first so a branch deleted on the remote counts as gone. A
-directory that still holds worktree.txt is kept and named on stderr. A review
+directory whose worktree.txt names a directory that still exists is kept and
+named on stderr; once that worktree is retired, by path or by harness review
+worktree retire, the directory goes like any other. A review
 keyed pr-<n> (a fork's pull request) or range-<base>-<sha> has no branch and is
 always pruned, even while that pull request is open, so run --dry-run first and
 prune only once each listed directory is approved for removal.
@@ -223,6 +274,10 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return stamp(args[1:], stdout, stderr)
 	case "target":
 		return target(args[1:], stdout, stderr)
+	case "comment":
+		return comment(args[1:], stdout, stderr)
+	case "evals":
+		return evals(args[1:], stdout, stderr)
 	case "worktree":
 		return worktreeCommand(args[1:], stdout, stderr)
 	}
@@ -532,7 +587,7 @@ func prune(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, d)
 	}
 	for _, d := range held {
-		fmt.Fprintf(stderr, "harness review prune: kept %s: worktree.txt still records a review worktree\n", d)
+		fmt.Fprintf(stderr, "harness review prune: kept %s: worktree.txt records a review worktree that still exists\n", d)
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness review prune: %v\n", err)
@@ -736,5 +791,172 @@ func worktreeCommand(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness review %s: %v\n", name, err)
 		return 1
 	}
+	return 0
+}
+
+func comment(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("comment", flag.ContinueOnError)
+	var branch string
+	flags.StringVar(&branch, "branch", "", "")
+	dryRun := flags.Bool("dry-run", false, "")
+	// The pull request number is the one argument that is neither a flag nor --branch's value.
+	var rest, positional []string
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; {
+		case a == "--branch" && i+1 < len(args):
+			rest = append(rest, a, args[i+1])
+			i++
+		case strings.HasPrefix(a, "-"):
+			rest = append(rest, a)
+		default:
+			positional = append(positional, a)
+		}
+	}
+	if code := parse(flags, rest, commentUsage, stdout, stderr); code >= 0 {
+		return code
+	}
+	number, err := 0, error(nil)
+	if len(positional) == 1 {
+		number, err = strconv.Atoi(positional[0])
+	}
+	if len(positional) != 1 || err != nil || number <= 0 || branch == "" {
+		fmt.Fprintf(stderr, "harness review comment: give --branch and one pull request number; run harness review comment --help\n")
+		return 2
+	}
+	root, branch, file, code := ledger("comment", branch, stderr)
+	if code >= 0 {
+		return code
+	}
+	entries, err := Read(file)
+	if err != nil {
+		fmt.Fprintf(stderr, "harness review comment: %v\n", err)
+		return 1
+	}
+	body, err := CommentBody(entries, branch)
+	if err != nil {
+		fmt.Fprintf(stderr, "harness review comment: %v\n", err)
+		return 1
+	}
+	fmt.Fprint(stdout, body)
+	if *dryRun {
+		return 0
+	}
+	if err := PostComment(Gh(root), number, body); err != nil {
+		fmt.Fprintf(stderr, "harness review comment: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
+type models map[string]string
+
+func (m models) String() string { return "" }
+
+func (m models) Set(v string) error {
+	role, model, ok := strings.Cut(v, "=")
+	if !ok || role == "" || model == "" {
+		return fmt.Errorf("--model takes role=model, not %q", v)
+	}
+	m[role] = model
+	return nil
+}
+
+func evals(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" || args[0] == "help" {
+		w := stdout
+		if len(args) == 0 {
+			w = stderr
+		}
+		fmt.Fprint(w, evalsUsage)
+		if len(args) == 0 {
+			return 2
+		}
+		return 0
+	}
+	sub, args := args[0], args[1:]
+	if sub != "seed" && sub != "score" {
+		fmt.Fprintf(stderr, "harness review evals: unknown command %q; run harness review evals --help\n", sub)
+		return 2
+	}
+	flags := flag.NewFlagSet("evals "+sub, flag.ContinueOnError)
+	maxFixes := flags.Int("max", 20, "")
+	depth := flags.String("depth", "", "")
+	revision := flags.String("revision", "", "")
+	date := flags.String("date", "", "")
+	byRole := models{}
+	flags.Var(byRole, "model", "")
+	var positional []string
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		positional, args = args[:1], args[1:]
+	}
+	if code := parse(flags, args, evalsUsage, stdout, stderr); code >= 0 {
+		return code
+	}
+	usage := func(format string, a ...any) int {
+		fmt.Fprintf(stderr, "harness review evals %s: "+format+"; run harness review evals --help\n", append([]any{sub}, a...)...)
+		return 2
+	}
+	switch {
+	case sub == "seed" && (*depth != "" || *revision != "" || *date != "" || len(byRole) > 0):
+		return usage("seed takes only a revision range and --max")
+	case sub == "seed" && *maxFixes <= 0:
+		return usage("--max takes a positive number")
+	case sub == "score" && len(positional) != 1:
+		return usage("score takes the run file")
+	case *depth != "" && oneOf("depth", *depth, depths) != nil:
+		return usage("--depth is none, medium, or high")
+	}
+	cwd, err := os.Getwd()
+	root := ""
+	if err == nil {
+		root, err = git(cwd, "rev-parse", "--show-toplevel")
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness review evals %s: not inside a git repository\n", sub)
+		return 2
+	}
+	fail := func(err error) int {
+		fmt.Fprintf(stderr, "harness review evals %s: %v\n", sub, err)
+		return 1
+	}
+	if sub == "seed" {
+		rev := "HEAD"
+		if len(positional) == 1 {
+			rev = positional[0]
+		}
+		cases, err := Seed(root, rev, *maxFixes)
+		if err != nil {
+			return fail(err)
+		}
+		for _, c := range cases {
+			line, _ := json.Marshal(c)
+			fmt.Fprintln(stdout, string(line))
+		}
+		return 0
+	}
+	dir, err := EvalsDir(root)
+	if err != nil {
+		return fail(err)
+	}
+	if *revision == "" {
+		*revision, _ = git(root, "log", "-1", "--format=%h", "--", "skills/workflow/review")
+	}
+	if *date == "" {
+		*date = time.Now().Format("2006-01-02")
+	}
+	run, err := filepath.Abs(positional[0])
+	if err != nil {
+		return fail(err)
+	}
+	c, err := ScoreRun(filepath.Join(dir, "evals.jsonl"), run, Summary{Date: *date, Revision: *revision, Depth: *depth, Models: byRole})
+	if errors.Is(err, ErrInvalid) {
+		fmt.Fprintf(stderr, "harness review evals score: %v\n", err)
+		return 2
+	}
+	if err != nil {
+		return fail(err)
+	}
+	out, _ := json.MarshalIndent(c, "", "  ")
+	fmt.Fprintln(stdout, string(out))
 	return 0
 }

@@ -138,7 +138,7 @@ harness review prune --dry-run --forge  # also mark each pr-<n> ledger whose PR 
 - **`open: true`:** the finding still needs attention. This covers confirmed findings and fixes whose commit is not in the branch yet.
 - **`rewritten: true`:** the reviewed commit is no longer in the branch history, for example after a rebase. The finding still counts.
 
-The findings live in a ledger file inside the Git directory. Git never tracks it, and every worktree of the repository shares it. `/land` deletes it once the branch merges, with `harness review remove`. A pull request merged on GitHub, closed, or only reviewed by number never reaches `/land`, so `harness review prune` deletes every ledger whose branch exists neither locally nor on a remote. A fork's `pr-<n>` ledger has no local branch and goes even while that pull request is open, so run `--dry-run --forge` first, which marks each one whose pull request is still open. Both commands leave a directory alone while it still records a review worktree.
+The findings live in a ledger file inside the Git directory. Git never tracks it, and every worktree of the repository shares it. `/land` deletes it once the branch merges, with `harness review remove`. A pull request merged on GitHub, closed, or only reviewed by number never reaches `/land`, so `harness review prune` deletes every ledger whose branch exists neither locally nor on a remote. A fork's `pr-<n>` ledger has no local branch and goes even while that pull request is open, so run `--dry-run --forge` first, which marks each one whose pull request is still open. Both commands leave a directory alone while the review worktree it records still exists.
 
 ### What each disposition means
 
@@ -180,6 +180,8 @@ harness review stamp                     # the review line this branch's PR body
 | `stamp` | Prints `Reviewed: <base>..<sha>` when a clean review covers the head and nothing is open, or `Review: not run (level <level>)` when the level skipped review. Otherwise it prints nothing, names the reason, and exits 1. This is the line `harness land check` reads back |
 | `worktree add`, `worktree retire` | Creates the one temporary worktree a review may use, outside your checkout with Git hooks off, and removes it later. Anything it holds is saved as a patch in the review directory before removal |
 | `snapshot` | Saves uncommitted work under the named paths as one patch and prints its digest, so a review of work not yet committed can be matched to exactly that content. It leaves your index and working tree as they were |
+| `comment` | Posts a review of someone else's PR as one comment, built from the ledger: the reviewed range, the level, and each confirmed finding with the run that proved it. Dropped findings and nits stay local. `--dry-run` prints it without posting |
+| `evals seed`, `evals score` | The review skill's own evals. `seed` lists candidate bug cases from past `fix:` and revert commits, with the lines each introducing commit got wrong, for you to confirm. `score` grades a run against the confirmed cases (recall, false positives, dropped findings) and says whether it regressed against the last run on the same cases |
 
 ## Worktree commands
 
@@ -233,6 +235,16 @@ It prints one JSON verdict per PR. The fields you will read most:
 | `findings` | Open review findings and the ones you dismissed, each of which holds the merge |
 
 Without `--merge`, an open PR reads as `stop`. Run `harness land check --help` for every field.
+
+### Merge
+
+`/land merge` merges through `harness land merge`, which writes to GitHub, so run it only when you mean to merge:
+
+```sh
+harness land merge 19 --head <sha> --body-file body.md   # squash-merge PR 19 at the head check printed
+```
+
+It runs the check again and refuses, changing nothing, when the PR is not on the open lane, its head moved, or a GitHub gate holds it (a conflict, a red or pending required check, a missing approval, an unresolved thread). It also refuses any other hold, such as an open review finding, unless you pass `--accepted`. The squash commit takes the PR title as its subject and the file as its body, plus the description's `## Tradeoffs` section when the file has none. It never deletes the branch, and it succeeds only once GitHub reports the PR merged.
 
 ### After the merge
 
@@ -303,11 +315,13 @@ harness tickets frontier my-feature        # which tickets are ready, done, and 
 harness tickets frontier my-feature --done 1,2
 harness tickets publish my-feature --dry-run
 harness tickets publish my-feature
+harness tickets close --dir docs/specs/my-feature/issues 3   # local markdown: ticket 3 merged
 ```
 
 - **`check`** prints each problem as `path:line: message`: a missing or empty section, a reused number, a blocker that is not in the feature, or a cycle. A draft needs a title and five sections: What to build, Acceptance criteria, Seam, Blocked by, and Out of scope.
 - **`frontier`** is how `/build` picks the next tickets. A ticket is done when `--done` names it or its draft says `Status: done`, and ready once every ticket blocking it is done.
 - **`publish`** creates GitHub issues, blockers first, with the ready or blocked label and native dependency links. It records each issue in its draft as it goes, so a rerun after a failure creates no duplicates, and removes a draft once its issue reads back correctly. It refuses a repository whose tracker is not GitHub. It writes to GitHub, so agents run it only when you ask to publish. `--dry-run` shows every issue, link, and label and writes nothing.
+- **`close`** is `/land`'s tracker update for a local-markdown tracker. It marks each merged ticket `Status: done`, moves each ticket waiting on the blocked label to the ready label once its blockers are all done, and marks the feature's `spec.md` done after its last ticket. It leaves a claimed ticket alone, commits nothing, refuses any other tracker, and changes nothing on a second run.
 
 ## Tracker setup commands
 

@@ -33,7 +33,7 @@ Local drafting stays local. Publishing tracker state needs explicit scope coveri
 | Explicitly authorized claim | Re-read current state; claim `ready_for_agent` as `in_progress`. Reuse an existing claim only with evidence it belongs to this work. Do not overwrite another run's claim. |
 | Authorized PR handoff | Set `ready_for_human` once required checks and any required review settle. Skip if already set. |
 | Explicitly authorized release | Set an open claimed item to `blocked` or `ready_for_agent` by current dependencies; preserve scope. Never release a live PR. |
-| `/land` closes | After confirmed merge and default-branch update, set ticket `done`, advance satisfied dependents, and close a parent only when every required child merged. |
+| `/land` closes | After confirmed merge and default-branch update, run `harness tickets close --dir <spec_home>/<feature-slug>/issues <NN>...`, which sets each `done`, advances satisfied dependents, and closes the parent `spec.md` only when every ticket is done. |
 
 Commit only changed tracker files under the existing authority, using `docs(tracker):` or `chore(tracker):` intent. Read back each publication. On partial failure preserve completed writes and report what remains; do not blindly retry. No claim, handoff, or ticket publication is a prerequisite for coding.
 

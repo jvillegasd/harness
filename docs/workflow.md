@@ -192,7 +192,7 @@ stateDiagram-v2
 
 Publishing a PR never allows merging. You merge, then run `/land` to clean up.
 
-`/land` asks [`harness land check`](cli.md#land-commands) whether each PR can land and stops on anything it holds. After the merge, `harness land finish` updates the default branch and removes the branch, worktree, and review records, and `harness land repair` moves a PR of yours that was stacked on a squash-merged one onto the default branch. On a PR someone else wrote, it merges and cleans up your side only: their remote branch stays, and a PR of theirs stacked on it is reported for them to rebase.
+`/land` asks [`harness land check`](cli.md#land-commands) whether each PR can land and stops on anything it holds. On `/land merge`, it merges through `harness land merge`, which checks the PR again and refuses to merge if its head moved or a GitHub gate holds it, such as a red or pending required check. A hold only you can clear, such as an open review finding, goes ahead only after you accept that hold by name. The merge never deletes the branch, and `/land` counts it done only once GitHub reports the PR merged. After the merge, `harness land finish` updates the default branch and removes the branch, worktree, and review records, and `harness land repair` moves a PR of yours that was stacked on a squash-merged one onto the default branch. On a PR someone else wrote, it merges and cleans up your side only: their remote branch stays, and a PR of theirs stacked on it is reported for them to rebase.
 
 `/land` cleans up the PR it lands. For everything else that piles up (a PR someone merged on GitHub, an abandoned branch, a run that died), run `/cleanup`. It lists every worktree with what removing it would delete, and removes only the ones you name.
 
@@ -239,7 +239,7 @@ Use it when the work is settled enough to hand off. Resolve missing acceptance c
 Ordinary coding needs no tracker. To set one up for a repository, run `setup-harness`. It gathers the evidence with `harness setup probe`, settles the mode with you, and writes it with `harness setup tracker`. It offers two modes:
 
 - **GitHub mode** installs labels and a workflow that moves tickets through their lifecycle.
-- **Local mode** keeps ticket status in Markdown files.
+- **Local mode** keeps ticket status in Markdown files. After a merge, `/land` runs `harness tickets close`, which marks the merged tickets done, moves each ticket whose blockers are now all done to ready, and marks the spec done after its last ticket. A ticket someone claimed keeps its state.
 
 Tracker writes and publishing tickets always need your explicit request. When you ask to publish, `harness tickets publish` creates the issues, blockers first, and is safe to rerun after a failure. The [command-line reference](cli.md#tracker-setup-commands) covers both commands.
 
