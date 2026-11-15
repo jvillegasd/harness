@@ -33,14 +33,29 @@ Commands:
   stamp   Print the review line a pull request body carries
   target  Resolve what a review reads: its base, commit, and ledger key
   worktree  Add or retire the one worktree a review may create
+  comment   Post a foreign review's result on its pull request
+`
+
+const commentUsage = `Usage: harness review comment --branch <key> <pr> [--dry-run]
+
+Post the ledger's latest review of <key> as one comment on pull request <pr>:
+the reviewed <base>..<sha>, the level, and each finding confirmed in that
+review with its path, lines, severity, summary, and the run that proved it,
+or that none was confirmed. Dropped findings, nits, and the ledger itself
+stay local. It writes to the forge, so run it only when the human asked for
+the result to be posted; it grants no authority, and approving or requesting
+changes stays with the human.
+
+  --branch   The review's ledger key, as harness review target printed it
+  --dry-run  Print the comment and post nothing
 `
 
 const worktreeUsage = `Usage: harness review worktree add [--branch <key>] [--patch <file>] <sha>
        harness review worktree retire [--branch <key>] [--allow-ignored]
 
 Own the one worktree a review may create, recorded in worktree.txt in the
-key's review directory (default key: the current branch). While that record
-exists, harness review remove and prune leave the directory alone.
+key's review directory (default key: the current branch). While the worktree
+it names exists, harness review remove and prune leave the directory alone.
 
 add picks a fresh sibling directory outside the checkout, records it before
 anything else, creates a detached worktree there at <sha> with Git hooks
@@ -226,6 +241,8 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return stamp(args[1:], stdout, stderr)
 	case "target":
 		return target(args[1:], stdout, stderr)
+	case "comment":
+		return comment(args[1:], stdout, stderr)
 	case "worktree":
 		return worktreeCommand(args[1:], stdout, stderr)
 	}
@@ -737,6 +754,60 @@ func worktreeCommand(args []string, stdout, stderr io.Writer) int {
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness review %s: %v\n", name, err)
+		return 1
+	}
+	return 0
+}
+
+func comment(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("comment", flag.ContinueOnError)
+	var branch string
+	flags.StringVar(&branch, "branch", "", "")
+	dryRun := flags.Bool("dry-run", false, "")
+	// The pull request number is the one argument that is neither a flag nor --branch's value.
+	var rest, positional []string
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; {
+		case a == "--branch" && i+1 < len(args):
+			rest = append(rest, a, args[i+1])
+			i++
+		case strings.HasPrefix(a, "-"):
+			rest = append(rest, a)
+		default:
+			positional = append(positional, a)
+		}
+	}
+	if code := parse(flags, rest, commentUsage, stdout, stderr); code >= 0 {
+		return code
+	}
+	number, err := 0, error(nil)
+	if len(positional) == 1 {
+		number, err = strconv.Atoi(positional[0])
+	}
+	if len(positional) != 1 || err != nil || number <= 0 || branch == "" {
+		fmt.Fprintf(stderr, "harness review comment: give --branch and one pull request number; run harness review comment --help\n")
+		return 2
+	}
+	root, branch, file, code := ledger("comment", branch, stderr)
+	if code >= 0 {
+		return code
+	}
+	entries, err := Read(file)
+	if err != nil {
+		fmt.Fprintf(stderr, "harness review comment: %v\n", err)
+		return 1
+	}
+	body, err := CommentBody(entries, branch)
+	if err != nil {
+		fmt.Fprintf(stderr, "harness review comment: %v\n", err)
+		return 1
+	}
+	fmt.Fprint(stdout, body)
+	if *dryRun {
+		return 0
+	}
+	if err := PostComment(Gh(root), number, body); err != nil {
+		fmt.Fprintf(stderr, "harness review comment: %v\n", err)
 		return 1
 	}
 	return 0

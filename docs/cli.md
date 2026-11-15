@@ -180,6 +180,7 @@ harness review stamp                     # the review line this branch's PR body
 | `stamp` | Prints `Reviewed: <base>..<sha>` when a clean review covers the head and nothing is open, or `Review: not run (level <level>)` when the level skipped review. Otherwise it prints nothing, names the reason, and exits 1. This is the line `harness land check` reads back |
 | `worktree add`, `worktree retire` | Creates the one temporary worktree a review may use, outside your checkout with Git hooks off, and removes it later. Anything it holds is saved as a patch in the review directory before removal |
 | `snapshot` | Saves uncommitted work under the named paths as one patch and prints its digest, so a review of work not yet committed can be matched to exactly that content. It leaves your index and working tree as they were |
+| `comment` | Posts a review of someone else's PR as one comment, built from the ledger: the reviewed range, the level, and each confirmed finding with the run that proved it. Dropped findings and nits stay local. `--dry-run` prints it without posting |
 
 ## Worktree commands
 

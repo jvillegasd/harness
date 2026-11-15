@@ -237,3 +237,19 @@ func TestReviewLevelCommand(t *testing.T) {
 		t.Error("level --help printed nothing")
 	}
 }
+
+// TestReviewCommentCommand proves the CLI is wired to the comment body: a dry run prints it and posts nothing, and a key with no review is refused.
+func TestReviewCommentCommand(t *testing.T) {
+	dir, data := repo(t), t.TempDir()
+	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
+	if r := reviewRun(t, dir, data, "comment", "--branch", "pr-7", "7", "--dry-run"); r.code != 1 || !strings.Contains(r.stderr, "no review of pr-7") {
+		t.Errorf("no review exited %d with %q", r.code, r.stderr)
+	}
+	if r := reviewRun(t, dir, data, "record", "--branch", "pr-7", "--depth", "medium", "--disposition", "clean", "--summary", "s"); r.code != 0 {
+		t.Fatalf("record exited %d: %s", r.code, r.stderr)
+	}
+	r := reviewRun(t, dir, data, "comment", "7", "--branch", "pr-7", "--dry-run")
+	if r.code != 0 || !strings.Contains(r.stdout, "at level medium") || !strings.HasSuffix(r.stdout, "No finding was confirmed.\n") {
+		t.Errorf("dry run exited %d with %q: %s", r.code, r.stdout, r.stderr)
+	}
+}
