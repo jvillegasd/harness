@@ -26,7 +26,7 @@ Read and search the repository to follow callers and context, and load a skill y
 ## Output
 
 ```
-loaded: <absolute path>, ... | none
+principles: <principle name>: <the decision it changed>; ... | none
 revision: <the supplied revision/content identity>
 axis: <your lens (bugs, spec, risk) or recheck>
 findings: <N> (bug <n>, risk <n>, q <n>, pre-existing <n>, nit <n>)
@@ -34,7 +34,7 @@ summary: <what you checked, and the one fact your verdict rests on>
 path:Lline: <severity>: <class>: <problem, with the trace>. <fix>.
 ```
 
-- `loaded:` names every standards file you opened with a tool.
+- `principles:` names only principles whose skill files you read this session and that shaped a review decision, with the specific choice each changed. Use `none` when none did.
 - `findings:` and `summary:` come before any finding, even when you find nothing, and the finding lines follow it sorted by severity in the order shown.
 - `<class>` is a short kebab-case name for the kind of defect, such as `missing-guard` or `stale-instruction`. List every instance of a class you find, so one fix can cover them all.
 

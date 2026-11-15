@@ -58,7 +58,7 @@ When a diff is too large for one hunter, split it into coherent slices (by modul
 
 Launch one fresh lens role per hunter, all in parallel: its lens is in its definition, so give it only the requirements, the diff, and the revision identity, plus `review-risk`'s categories. Withhold conversation history, implementation rationale, plans that carry rationale, continuity documents, the pull request body (its tradeoffs are rationale), worker results, and prior findings.
 
-Each report must open with `loaded:` naming the standards files it opened, or `none`, and `revision:` matching the snapshot. Retry once with the input repaired if the cap permits, then report that hunter unverified.
+Each report must open with `principles:` as the reviewer role defines and `revision:` matching the snapshot. Retry once with the input repaired if the cap permits, then report that hunter unverified.
 
 ## Verify
 
@@ -99,7 +99,7 @@ The verdict names the head that holds the reviewed content: the repaired head wh
 
 - The target, its key, and whether it was foreign (no fixes) or a fork (no runs).
 - Level, coverage, selected specialists with their reasons, and calls used against the cap.
-- The reviewed revision and content identity, and the standards each hunter loaded.
+- The reviewed revision and content identity, and each hunter's `principles:` report.
 - Each axis's confirmed findings side by side, sorted by severity within the axis and never reranked across axes, each with its disposition and the run that proved it.
 - Each hunter's raised, confirmed, and dropped counts, with the reasons findings were dropped.
 - What stayed unverified: hunters, slices, any worktree left in place.
