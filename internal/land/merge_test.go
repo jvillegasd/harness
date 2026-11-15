@@ -57,6 +57,13 @@ func TestMerge(t *testing.T) {
 		t.Errorf("body %q repeats or replaces the given tradeoffs", got)
 	}
 
+	// A read-back that fails proves nothing, so the merge is not reported done.
+	p.State, f.readBackFails = "OPEN", true
+	if m, err := f.merge(1, p.HeadRefOid, "x\n", false); err == nil || m.State != "" {
+		t.Errorf("a failed read-back got %+v, %v", m, err)
+	}
+	f.readBackFails = false
+
 	// The forge's word alone is not a merge: a pull request still open on read-back fails.
 	p.State, f.mergeRefused = "OPEN", true
 	if m, err := f.merge(1, p.HeadRefOid, "x\n", false); err == nil || m.State != "OPEN" {

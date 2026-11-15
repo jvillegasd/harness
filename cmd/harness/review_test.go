@@ -253,3 +253,45 @@ func TestReviewCommentCommand(t *testing.T) {
 		t.Errorf("dry run exited %d with %q: %s", r.code, r.stdout, r.stderr)
 	}
 }
+
+// TestReviewEvalsCommand proves the CLI is wired to the evals: seed prints candidates and writes nothing, and score reads evals.jsonl from the Git directory, appends its summary, and refuses a second scoring.
+func TestReviewEvalsCommand(t *testing.T) {
+	dir, data := repo(t), t.TempDir()
+	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
+	if err := os.WriteFile(filepath.Join(dir, "f.txt"), []byte("a\nb\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git(t, dir, "add", "f.txt")
+	git(t, dir, "commit", "-q", "-m", "feat: f")
+	if err := os.WriteFile(filepath.Join(dir, "f.txt"), []byte("a\nB\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git(t, dir, "commit", "-q", "-am", "fix: b")
+	status := git(t, dir, "status", "--porcelain")
+	r := reviewRun(t, dir, data, "evals", "seed")
+	if r.code != 0 || !strings.Contains(r.stdout, `"lines":"2"`) || git(t, dir, "status", "--porcelain") != status {
+		t.Errorf("seed exited %d with %q: %s", r.code, r.stdout, r.stderr)
+	}
+
+	common := git(t, dir, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	evals := filepath.Join(common, "harness-review", "evals")
+	if err := os.MkdirAll(filepath.Join(evals, "runs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(evals, "evals.jsonl"), []byte(`{"id":"b1","kind":"bug","expected":[{"path":"f.txt","lines":"2"}],"confirmed_by":"human"}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run := filepath.Join(evals, "runs", "2026-11-01.jsonl")
+	if err := os.WriteFile(run, []byte(`{"case":"b1","path":"f.txt","lines":"2","severity":"bug","disposition":"confirmed"}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if r := reviewRun(t, dir, data, "evals", "score", run, "--depth", "medium", "--model", "review-bugs=sonnet"); r.code != 0 || !strings.Contains(r.stdout, `"recall": 1`) {
+		t.Errorf("score exited %d with %q: %s", r.code, r.stdout, r.stderr)
+	}
+	if raw, _ := os.ReadFile(run); !strings.Contains(string(raw), `"summary":true`) || !strings.Contains(string(raw), `"review-bugs":"sonnet"`) {
+		t.Errorf("run file holds %q", raw)
+	}
+	if r := reviewRun(t, dir, data, "evals", "score", run); r.code != 2 {
+		t.Errorf("a second scoring exited %d: %s", r.code, r.stderr)
+	}
+}

@@ -135,3 +135,25 @@ func TestSeedTracesABlankLastLine(t *testing.T) {
 		t.Errorf("got %+v", cases)
 	}
 }
+
+// TestScoreRunComparesTheSameCases covers the comparison: a run on other cases is never the previous one, and false positives rising at equal recall is a regression.
+func TestScoreRunComparesTheSameCases(t *testing.T) {
+	dir := t.TempDir()
+	casesFile := filepath.Join(dir, "evals.jsonl")
+	writeLines(t, casesFile, bugCase("b1", "a.go", "1-5"), Case{ID: "c1", Kind: "clean", ConfirmedBy: "human"})
+	runs := filepath.Join(dir, "runs")
+	hit := RunFinding{Case: "b1", Path: "a.go", Lines: "3", Severity: "bug", Disposition: "confirmed"}
+	// An earlier run on another case set, with a better score, is not this one's baseline.
+	writeLines(t, filepath.Join(runs, "2026-10-01.jsonl"), Summary{Summary: true, Date: "2026-10-01", Cases: []string{"b1"}, Recall: 1})
+
+	writeLines(t, filepath.Join(runs, "2026-11-01.jsonl"), hit)
+	first, err := ScoreRun(casesFile, filepath.Join(runs, "2026-11-01.jsonl"), Summary{Date: "2026-11-01"})
+	if err != nil || first.Previous != nil || first.Regression {
+		t.Fatalf("first run on these cases got %+v, %v", first, err)
+	}
+	writeLines(t, filepath.Join(runs, "2026-11-02.jsonl"), hit, RunFinding{Case: "c1", Path: "x.go", Lines: "1", Severity: "bug", Disposition: "confirmed"})
+	second, err := ScoreRun(casesFile, filepath.Join(runs, "2026-11-02.jsonl"), Summary{Date: "2026-11-02"})
+	if err != nil || second.Previous == nil || second.Previous.Date != "2026-11-01" || second.Summary.Recall != 1 || second.Summary.FalsePositives != 1 || !second.Regression {
+		t.Fatalf("a false positive at equal recall got %+v, %v", second, err)
+	}
+}

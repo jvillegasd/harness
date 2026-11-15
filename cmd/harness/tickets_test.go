@@ -122,6 +122,16 @@ func TestTicketsCloseCommand(t *testing.T) {
 	if r := harness(t, dir, "tickets", "close", "--dir", issues, "9"); r.code != 2 {
 		t.Errorf("an unknown ticket exited %d with %q", r.code, r.stderr)
 	}
+	broken := filepath.Join(dir, issues, "03-c.md")
+	if err := os.WriteFile(broken, []byte("# 03 C\n\n## What to build\n\nx\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if r := harness(t, dir, "tickets", "close", "--dir", issues, "1"); r.code != 1 || !strings.Contains(r.stderr, "fail harness tickets check") {
+		t.Errorf("drafts failing the check exited %d with %q", r.code, r.stderr)
+	}
+	if err := os.Remove(broken); err != nil {
+		t.Fatal(err)
+	}
 	before, _ := os.ReadFile(filepath.Join(dir, issues, "01-a.md"))
 	if !strings.Contains(string(before), "# 01 A") || strings.Contains(string(before), "Status:") {
 		t.Fatalf("a refused close wrote %q", before)

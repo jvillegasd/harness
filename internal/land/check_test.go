@@ -32,6 +32,8 @@ type fixture struct {
 	// mergeRefused makes the forge refuse a merge; mergeBodies are the squash bodies it was sent.
 	mergeRefused bool
 	mergeBodies  []string
+	// readBackFails makes the read after a merge fail.
+	readBackFails bool
 }
 
 func setup(t *testing.T) *fixture {
@@ -121,6 +123,9 @@ func (f *fixture) forge(args ...string) ([]byte, error) {
 	case "api user":
 		return []byte("me\n"), nil
 	case "pr view":
+		if f.readBackFails && strings.Contains(strings.Join(args, " "), "state,mergeCommit") {
+			return nil, errors.New("HTTP 502")
+		}
 		number, _ := strconv.Atoi(args[2])
 		for _, p := range f.pulls {
 			if p.Number == number || number == 0 && p.HeadRefName == f.git(f.dir, "branch", "--show-current") {

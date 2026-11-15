@@ -107,3 +107,32 @@ func TestLandRepairCommand(t *testing.T) {
 		t.Errorf("someone else's dependent exited %d: %q %q", r.code, r.stdout, r.stderr)
 	}
 }
+
+// TestLandMergeCommand proves the CLI is wired to the merge: it squash-merges at the given head, prints the read-back, and refuses a moved head before any merge call.
+func TestLandMergeCommand(t *testing.T) {
+	_, head, run := prRepo(t)
+	marker := filepath.Join(t.TempDir(), "merged")
+	body := filepath.Join(t.TempDir(), "body.md")
+	if err := os.WriteFile(body, []byte("Adds docs.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	forge := `"pr merge") echo "$*" > '` + marker + `';;
+"pr view") if [ -f '` + marker + `' ]; then echo '{"state":"MERGED","mergeCommit":{"oid":"abc123"}}'; else echo '{"number":7,"title":"docs","state":"OPEN","headRefName":"` + branch + `","headRefOid":"` + head + `","baseRefName":"main","author":{"login":"me"},"mergeable":"MERGEABLE","mergeStateStatus":"CLEAN"}'; fi;;
+` + prForge(head, `[{"name":"ci","bucket":"pass"}]`)
+
+	if r := run(forge, "land", "merge", "7", "--head", "0000000", "--body-file", body); r.code != 1 || !strings.Contains(r.stderr, "not the checked") {
+		t.Errorf("a moved head exited %d: %s", r.code, r.stderr)
+	}
+	if _, err := os.Stat(marker); err == nil {
+		t.Fatal("a refused merge called gh pr merge")
+	}
+	r := run(forge, "land", "merge", "7", "--head", head, "--body-file", body)
+	var m struct{ State, MergeCommit string }
+	if r.code != 0 || json.Unmarshal([]byte(r.stdout), &m) != nil || m.State != "MERGED" || m.MergeCommit != "abc123" {
+		t.Fatalf("merge exited %d with %q: %s", r.code, r.stdout, r.stderr)
+	}
+	call, _ := os.ReadFile(marker)
+	if !strings.HasPrefix(string(call), "pr merge 7 --squash --match-head-commit "+head+" --subject docs --body-file ") {
+		t.Errorf("gh got %q", call)
+	}
+}
