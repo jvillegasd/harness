@@ -98,7 +98,7 @@ Dropping unproven findings means some real bugs slip through. In exchange, every
 ## What you get at the end
 
 - The level used, which reviewers ran and why, and how many agents it took.
-- The exact commit that was reviewed, and which standards the reviewers read.
+- The exact commit that was reviewed, and which principles shaped review decisions, with the specific choice each changed.
 - The proven findings, grouped by reviewer and worst first within each group, each marked confirmed or fixed.
 - How many findings each reviewer had dropped, and why.
 - Anything the review could not cover, such as a reviewer that failed or a part of the change too large to fit.
