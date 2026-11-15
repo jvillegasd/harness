@@ -60,7 +60,9 @@ func TestReadGuardAllowsReadsInsideTheWorkingDirectory(t *testing.T) {
 		{`cat .env.local`, true},
 		{`cat .env.example`, true},
 		{`cat .env.development.local`, true},
-		{`cat .env.test`, true},
+		{`cat .env.test`, false},
+		{`cat .ENV`, false},
+		{`cat .env.development`, false},
 		{`cat .env.production`, false},
 		{`cat .env.local.bak`, false},
 		{`git show --no-ext-diff --no-textconv HEAD:.env`, false},
@@ -120,6 +122,72 @@ func TestReadGuardDeniesMalformedInput(t *testing.T) {
 	for _, input := range []string{"malformed", `{"tool_name":"Write","tool_input":{"command":"cat a.go"}}`} {
 		var output bytes.Buffer
 		if code := ReadGuard(strings.NewReader(input), &output); code != 0 || !strings.Contains(output.String(), `"permissionDecision":"deny"`) {
+			t.Fatalf("%s => %d %s", input, code, output.String())
+		}
+	}
+}
+
+// Every Claude tool is refused a secret env file by name, in any directory, while the example template and explicitly local files stay open; a call naming none gets no decision, so the client's own rules still apply.
+func TestSecretGuardDeniesSecretEnvFilesOnEveryTool(t *testing.T) {
+	for _, tc := range []struct {
+		tool  string
+		input map[string]any
+		deny  bool
+	}{
+		{"Read", map[string]any{"file_path": "/elsewhere/repo/.env"}, true},
+		{"Read", map[string]any{"file_path": "/repo/.env.production"}, true},
+		{"Read", map[string]any{"file_path": "/repo/.env.test"}, true},
+		{"Read", map[string]any{"file_path": "/repo/.env.local.bak"}, true},
+		{"Read", map[string]any{"file_path": "/repo/.env.example"}, false},
+		{"Read", map[string]any{"file_path": "/repo/.env.local"}, false},
+		{"Read", map[string]any{"file_path": "/repo/.env.development.local"}, false},
+		{"Read", map[string]any{"file_path": "/repo/app/env.py"}, false},
+		{"Read", map[string]any{"file_path": "/repo/.ENV"}, true},
+		{"Read", map[string]any{"file_path": "/repo/.Env.Production"}, true},
+		{"Read", map[string]any{"file_path": "/repo/.ENV.EXAMPLE"}, false},
+		{"Edit", map[string]any{"file_path": "/repo/.env", "old_string": "a", "new_string": "b"}, true},
+		{"Edit", map[string]any{"file_path": "/repo/.env.local", "old_string": "a", "new_string": "b"}, false},
+		{"Write", map[string]any{"file_path": "/repo/.env.staging", "content": "x"}, true},
+		{"Write", map[string]any{"file_path": "/repo/notes.md", "content": "mentions .env freely"}, false},
+		{"Write", map[string]any{"file_path": "/repo/notes.md", "content": strings.Repeat("x", 1<<20+1)}, false},
+		{"Grep", map[string]any{"pattern": "TOKEN", "path": "/repo/.env"}, true},
+		{"Grep", map[string]any{"pattern": "TOKEN", "glob": ".env*"}, true},
+		{"Grep", map[string]any{"pattern": `\.env`, "path": "/repo"}, false},
+		{"Glob", map[string]any{"pattern": "**/.env*"}, true},
+		{"Glob", map[string]any{"pattern": "**/.env.example"}, false},
+		{"Bash", map[string]any{"command": "cat .env"}, true},
+		{"Bash", map[string]any{"command": "sed -n 1p ../other/.env.production"}, true},
+		{"Bash", map[string]any{"command": "git show HEAD:.env"}, true},
+		{"Bash", map[string]any{"command": "git diff -- .env.prod"}, true},
+		{"Bash", map[string]any{"command": "grep TOKEN .env*"}, true},
+		{"Bash", map[string]any{"command": "printf x > .env"}, true},
+		{"Bash", map[string]any{"command": `python3 -c "print(open('.env').read())"`}, true},
+		{"Bash", map[string]any{"command": "cat .Env.Production"}, true},
+		{"Bash", map[string]any{"command": "cat .en''v"}, true},
+		{"Bash", map[string]any{"command": `cat ".e"nv`}, true},
+		{"Bash", map[string]any{"command": `cat .e\nv`}, true},
+		{"Bash", map[string]any{"command": "cat .env.example .env.local"}, false},
+		{"Bash", map[string]any{"command": "git diff .env.example"}, false},
+		{"Bash", map[string]any{"command": "uv run pytest -q"}, false},
+		{"mcp__other__tool", map[string]any{"path": "/repo/.env"}, true},
+		{"mcp__other__tool", map[string]any{"query": ".env"}, false},
+	} {
+		input, _ := json.Marshal(map[string]any{"tool_name": tc.tool, "tool_input": tc.input})
+		var output bytes.Buffer
+		if code := SecretGuard(bytes.NewReader(input), &output); code != 0 {
+			t.Fatal(code)
+		}
+		if denied := strings.Contains(output.String(), `"permissionDecision":"deny"`); denied != tc.deny || (!tc.deny && output.Len() != 0) {
+			t.Errorf("%s %v => %q, want deny %v", tc.tool, tc.input, output.String(), tc.deny)
+		}
+	}
+}
+
+// A request the guard cannot read is denied rather than waved through.
+func TestSecretGuardDeniesMalformedInput(t *testing.T) {
+	for _, input := range []string{"malformed", `{"tool_input":{"file_path":"a.go"}}`} {
+		var output bytes.Buffer
+		if code := SecretGuard(strings.NewReader(input), &output); code != 0 || !strings.Contains(output.String(), `"permissionDecision":"deny"`) {
 			t.Fatalf("%s => %d %s", input, code, output.String())
 		}
 	}

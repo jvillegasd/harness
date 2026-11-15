@@ -34,6 +34,9 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 1 && args[0] == "read-guard" {
 		return ReadGuard(os.Stdin, stdout)
 	}
+	if len(args) == 1 && args[0] == "secret-guard" {
+		return SecretGuard(os.Stdin, stdout)
+	}
 	if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
 		fmt.Fprint(stdout, usage)
 		return 0

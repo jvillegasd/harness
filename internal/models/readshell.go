@@ -106,11 +106,11 @@ func refusedFlag(arg string, refused []string) bool {
 	return false
 }
 
-// credentialShaped follows the tracked Read denies in clients/claude.json, applied to every path-like piece of an argument, including a git revision's path after ":". For env files it is the stricter allowlist form OpenCode's read rules take: every `.env*` name is refused unless it is a local, development, test, or example one, where Claude Code can only deny named variants.
+// credentialShaped follows the tracked Read denies in clients/claude.json, applied to every path-like piece of an argument, including a git revision's path after ":". For env files it applies envSecret, the rule the secret guard enforces for every Claude tool.
 func credentialShaped(arg string) bool {
 	for _, part := range strings.FieldsFunc(arg, func(r rune) bool { return r == '/' || r == ':' || r == '=' }) {
 		switch {
-		case strings.HasPrefix(part, ".env") && !readableEnv(part), strings.HasPrefix(part, ".dev.vars"),
+		case envSecret(part), strings.HasPrefix(part, ".dev.vars"),
 			strings.HasSuffix(part, ".pem"), strings.HasSuffix(part, ".key"),
 			slices.Contains([]string{"secrets", "credentials", ".aws", ".ssh", ".npmrc", ".pypirc", "database.yml", "credentials.json"}, part):
 			return true
@@ -119,7 +119,12 @@ func credentialShaped(arg string) bool {
 	return false
 }
 
-// readableEnv reports whether an env file name holds local, development, test, or example values rather than a deployed environment's secrets.
-func readableEnv(name string) bool {
-	return name == ".env.local" || name == ".env.example" || strings.HasPrefix(name, ".env.dev") || strings.HasPrefix(name, ".env.test")
+// envSecret reports whether a name is an env file agents may not touch: every `.env*` name except the example template and the files explicitly named local (.env.local and .env.<mode>.local). It compares the lowercased name, because a case-insensitive file system such as macOS's opens the same file for an uppercase or mixed-case spelling.
+func envSecret(name string) bool {
+	name = strings.ToLower(name)
+	if !strings.HasPrefix(name, ".env") {
+		return false
+	}
+	local := name == ".env.local" || (strings.HasPrefix(name, ".env.") && strings.HasSuffix(name, ".local") && len(name) > len(".env..local"))
+	return !local && name != ".env.example"
 }
