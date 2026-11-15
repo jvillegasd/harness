@@ -230,7 +230,7 @@ Many skill steps are `harness` commands rather than written instructions, so the
 | `harness land check`, `merge`, `sync`, `finish`, `repair` | Whether a PR can land, the merge itself, then the cleanup after it | `/land` |
 | `harness review target`, `covers`, `stamp` | What a review reads, whether a past review still covers the change, and the PR's review line | `review`, `open-pr` |
 | `harness worktree audit`, `retire` | List worktrees and remove one without losing work | `/land`, `/cleanup`, `/build` |
-| `harness tickets check`, `frontier`, `publish` | Validate ticket drafts, pick the ready ones, publish them to GitHub | `/tickets`, `/build` |
+| `harness tickets check`, `frontier`, `publish`, `close` | Validate ticket drafts, pick the ready ones, publish them to GitHub, and update a local-markdown tracker after a merge | `/tickets`, `/build`, `/land` |
 | `harness setup probe`, `tracker` | Gather the evidence for a tracker mode and write it | `setup-harness` |
 | `harness eval plant`, `run`, `clean` | Blinded comparisons of two versions of a skill | `/work`'s eval playbook |
 | `harness attempts add`, `list` | The log of measured attempts | `/work`'s hillclimb playbook |

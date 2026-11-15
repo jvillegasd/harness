@@ -101,3 +101,33 @@ func TestTicketsPublishCommand(t *testing.T) {
 		t.Errorf("the kept draft does not record its issue:\n%s", raw)
 	}
 }
+
+// TestTicketsCloseCommand proves the CLI is wired to the local-markdown transitions: it refuses another tracker and an unknown number before any write, and prints each file it changed.
+func TestTicketsCloseCommand(t *testing.T) {
+	dir := repo(t)
+	issues := filepath.Join("docs", "agents", "tickets", "demo")
+	writeDraft(t, dir, "demo", "01-a.md", "01 A", "none")
+	writeDraft(t, dir, "demo", "02-b.md", "02 B", "01")
+	config := filepath.Join(dir, "docs", "agents", "harness.json")
+	write := func(tracker string) {
+		if err := os.WriteFile(config, []byte(`{"tracker":"`+tracker+`"}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("github")
+	if r := harness(t, dir, "tickets", "close", "--dir", issues, "1"); r.code != 1 || !strings.Contains(r.stderr, "not local-markdown") {
+		t.Errorf("a github tracker exited %d with %q", r.code, r.stderr)
+	}
+	write("local-markdown")
+	if r := harness(t, dir, "tickets", "close", "--dir", issues, "9"); r.code != 2 {
+		t.Errorf("an unknown ticket exited %d with %q", r.code, r.stderr)
+	}
+	before, _ := os.ReadFile(filepath.Join(dir, issues, "01-a.md"))
+	if !strings.Contains(string(before), "# 01 A") || strings.Contains(string(before), "Status:") {
+		t.Fatalf("a refused close wrote %q", before)
+	}
+	r := ok(t, harness(t, dir, "tickets", "close", "--dir", issues, "1"), "close")
+	if r.stdout != filepath.Join(issues, "01-a.md")+"\n" {
+		t.Errorf("close printed %q", r.stdout)
+	}
+}
