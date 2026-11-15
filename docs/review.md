@@ -39,9 +39,7 @@ stateDiagram-v2
 
 ## Review something other than your branch
 
-Ask for a review of a PR number or URL, another branch, or a commit range such as `abc123..def456`, and you don't need it checked out. The agent fetches it, gives the reviewers a temporary copy of it, and deletes that copy when the review ends. Such a review only reports: it fixes nothing and pushes nothing, and you send the findings to the PR's branch with `/address-review`. When the target has an open PR, the agent asks at the end whether to post the result there, unless your request already said to post it. Say yes and it posts one comment with the confirmed findings and how each was proven. `harness review comment` builds that comment from the review record, so dropped findings never reach it, and `--dry-run` shows you the text without posting. It never approves the PR or requests changes on it; that stays with you. Say no and nothing appears on the PR. A PR from a fork is reviewed without running any of its code, so only findings that need no run can be proven.
-
-A clean review of a PR by number counts for `/land` even though nothing is written on the PR, because `/land` also reads the review record on your machine.
+Ask for a review of a PR number or URL, another branch, or a commit range such as `abc123..def456`, and you don't need it checked out. The agent fetches it, gives the reviewers a temporary copy of it, and deletes that copy when the review ends. Such a review fixes nothing and pushes nothing, and you send the findings to the PR's branch with `/address-review`. When the target has an open PR, the review posts its verdict there like any other, with the confirmed findings and how each was proven: asking for the review is asking for the verdict. It never approves the PR or requests changes on it; that stays with you. A PR from a fork is reviewed without running any of its code, so only findings that need no run can be proven.
 
 ## Who reviews
 
@@ -105,24 +103,23 @@ Dropping unproven findings means some real bugs slip through. In exchange, every
 - How many findings each reviewer had dropped, and why.
 - Anything the review could not cover, such as a reviewer that failed or a part of the change too large to fit.
 
-Your own decisions are recorded too. When you say "this is intended" or "not worth fixing", your words are kept as the reason. `/land` asks you to reconfirm any finding you dismissed.
-
 ## Where results live
 
-Findings stay on your machine, in a ledger for each branch inside the Git directory. They never go into commits. When a skill calls for a review and `harness review covers` finds one in the ledger that covers the same change at that level or deeper, the agent reports that review and does not run a second one. A rebase that changes no file's patch keeps its review. A review you ask for by name always runs.
+The result is one verdict comment on the PR, posted with `harness review verdict`, and nothing is kept on your machine. Like a verifier's verdict, it reads `PASS`, `PASS+NOTES` (it may land, and the notes say what to read), or `FAIL` (a proven problem is unfixed, or part of the change went unreviewed). Below the verdict come the reviewed range, the level, the proven findings with how each was proven, and how many findings each reviewer dropped. A review of work that has no PR yet posts nothing; `open-pr` opens the PR first, then runs the review that posts it.
 
-A PR carries only one line, printed by `harness review stamp`: `Reviewed: <base>..<sha>` when a clean review covers its head with nothing open, or `Review: not run (level <level>)` when your level skipped review. `/land` deletes the ledger once the branch merges. The [`harness review` commands](cli.md#review-commands) show you how to read it.
+`/land` and the readiness report read the newest verdict from someone with write access to the repository, and ignore any other. They compare the commit it read with the PR's head file by file, so a rebase that changes no file's patch keeps it. When a skill calls for a review and the PR already has a current `PASS` or `PASS+NOTES` verdict at that level or deeper, the agent reports it and does not run a second one. A review you ask for by name always runs.
 
 At `medium` and `high`:
 
-- The PR's readiness report says whether a review covers its latest commit.
-- `/land merge` refuses to merge a PR beyond docs or tests until one does. For a PR someone else wrote, a person's approval on GitHub counts as that review, as long as the changes are still the ones they approved. Your own PRs always need the agent's review.
-- `/land` after your own merge tells you when no review covered it.
+- The PR's readiness report says whether a verdict covers its latest commit.
+- `/land merge` refuses to merge a PR beyond docs or tests until one does. A GitHub approval does not count as a review, for anyone's PR.
+- A `FAIL` verdict holds `/land merge` at any level until a newer verdict replaces it, or until you accept it by name.
+- `/land` after your own merge tells you when no verdict covered it.
 
 Review never pushes or merges on its own.
 
 ## Limits
 
 - **Agent counts are caps, not cost guarantees.** Retries, delegated fixes, and splitting a large change all count against the same cap. Whatever does not fit is reported as unreviewed.
-- **A clean review covers only the commit it read.** New commits need the affected parts rechecked.
+- **A verdict covers only the change it read.** New commits that change a file's patch need the affected parts rechecked.
 - **This page explains, it does not prove.** The [review skill](../skills/workflow/review/SKILL.md) is the exact procedure agents follow. The diagrams here describe it, but they do not prove how agents behave in practice.

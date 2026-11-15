@@ -51,6 +51,7 @@ func TestLandCheckCommand(t *testing.T) {
 
 	const forge = `"repo view") echo '{"defaultBranchRef":{"name":"main"}}';;
 "api user") echo me;;
+"api --paginate") echo "[]";;
 "pr list") echo '[]';;
 `
 	view := `"pr view") echo '{"number":7,"state":"MERGED","headRefName":"` + branch + `","headRefOid":"` + head + `","baseRefName":"main","author":{"login":"me"}}';;` + "\n"
@@ -79,6 +80,7 @@ func TestLandFinishCommand(t *testing.T) {
 	dir, head, run := prRepo(t)
 	const forge = `"repo view") echo '{"defaultBranchRef":{"name":"main"}}';;
 "api user") echo me;;
+"api --paginate") echo "[]";;
 `
 	if r := run(forge, "land", "sync"); r.code != 0 || !strings.Contains(r.stdout, "main") {
 		t.Errorf("sync exited %d: %s %s", r.code, r.stdout, r.stderr)
@@ -101,6 +103,7 @@ func TestLandRepairCommand(t *testing.T) {
 	}
 	forge := `"repo view") echo '{"defaultBranchRef":{"name":"main"}}';;
 "api user") echo me;;
+"api --paginate") echo "[]";;
 "pr view") if [ "$3" = 7 ]; then echo '{"number":7,"state":"OPEN","headRefName":"` + branch + `","headRefOid":"` + head + `","baseRefName":"x","author":{"login":"someone"}}'; else echo '{"number":6,"state":"MERGED","headRefName":"x","headRefOid":"` + head + `","baseRefName":"main","author":{"login":"me"}}'; fi;;
 `
 	if r := run(forge, "land", "repair", "7", "--landed", "6"); r.code != 1 || !strings.Contains(r.stderr, "someone") || r.stdout != "" {
@@ -117,6 +120,7 @@ func TestLandMergeCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 	forge := `"pr merge") echo "$*" > '` + marker + `';;
+"api --paginate") echo "[]";;
 "pr view") if [ -f '` + marker + `' ]; then echo '{"state":"MERGED","mergeCommit":{"oid":"abc123"}}'; else echo '{"number":7,"title":"docs","state":"OPEN","headRefName":"` + branch + `","headRefOid":"` + head + `","baseRefName":"main","author":{"login":"me"},"mergeable":"MERGEABLE","mergeStateStatus":"CLEAN"}'; fi;;
 ` + prForge(head, `[{"name":"ci","bucket":"pass"}]`)
 

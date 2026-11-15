@@ -16,7 +16,7 @@ Keep one pull request when no such cut exists, or when the cuts would leave piec
 
 The root pull request targets the default branch. Each child branch starts from its parent's exact tip, and its pull request targets the parent branch: `gh pr create --base <parent-branch>`.
 
-Run `open-pr`'s steps for each pull request from the root up, each with its own `change-map` and its own `Reviewed:` line, since each is reviewed and merged on its own.
+Run `open-pr`'s steps for each pull request from the root up, each with its own `change-map` and its own review verdict, since each is reviewed and merged on its own.
 
 ## After opening
 

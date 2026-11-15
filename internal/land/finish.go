@@ -3,10 +3,9 @@ package land
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
 
-	"github.com/jvillegasd/harness/internal/reviewledger"
+	"github.com/jvillegasd/harness/internal/review"
 	"github.com/jvillegasd/harness/internal/worktree"
 )
 
@@ -142,17 +141,17 @@ func Finish(e Env, numbers []int, o FinishOptions) ([]Action, error) {
 		if p.IsCrossRepository {
 			key = fmt.Sprintf("pr-%d", p.Number)
 		}
-		file, err := reviewledger.File(root, key)
+		dir, err := review.Dir(root, key)
 		if err != nil {
 			return actions, err
 		}
-		switch removed, err := reviewledger.RemoveBranch(file); {
-		case errors.Is(err, reviewledger.ErrHeld):
+		switch removed, err := review.RemoveBranch(dir); {
+		case errors.Is(err, review.ErrHeld):
 			actions = append(actions, Action{false, fmt.Sprintf("#%d review directory: %v", p.Number, err)})
 		case err != nil:
 			return actions, err
 		case removed:
-			actions = append(actions, Action{true, fmt.Sprintf("#%d removed review directory %s", p.Number, filepath.Dir(file))})
+			actions = append(actions, Action{true, fmt.Sprintf("#%d removed review directory %s", p.Number, dir)})
 		}
 		if p.IsCrossRepository {
 			actions = append(actions, Action{false, fmt.Sprintf("#%d comes from a fork, so its branches are not this repository's", p.Number)})

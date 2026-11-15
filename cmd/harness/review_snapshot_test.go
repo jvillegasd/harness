@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// TestReviewSnapshotCommand proves the CLI is wired to the snapshot: it prints the saved patch and its digest, and an empty snapshot exits 1. That the index and working tree are left byte for byte is settled in internal/reviewledger.
+// TestReviewSnapshotCommand proves the CLI is wired to the snapshot: it prints the saved patch and its digest, and an empty snapshot exits 1. That the index and working tree are left byte for byte is settled in internal/review.
 func TestReviewSnapshotCommand(t *testing.T) {
 	dir, data := repo(t), t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "owned.txt"), []byte("base\n"), 0o644); err != nil {

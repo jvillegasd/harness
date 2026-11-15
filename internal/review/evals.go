@@ -1,4 +1,4 @@
-package reviewledger
+package review
 
 import (
 	"bufio"

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jvillegasd/harness/internal/reviewledger"
+	"github.com/jvillegasd/harness/internal/review"
 )
 
 // fixture is a checkout cloned from a bare origin, and a forge that answers from the pull requests the test registers.
@@ -22,10 +22,11 @@ type fixture struct {
 	pulls     map[int]*pull
 	checks    map[int]string // `gh pr checks --json` output; absent means no required checks
 	checksErr map[int]error
-	threads   map[int]int    // unresolved review threads
-	resolved  map[int]int    // resolved review threads listed before the unresolved ones, beyond the one always there
-	reviews   map[int]string // pages of the reviews endpoint
-	calls     []string       // every gh call, in order
+	threads   map[int]int       // unresolved review threads
+	resolved  map[int]int       // resolved review threads listed before the unresolved ones, beyond the one always there
+	comments  map[int]string    // pages of the pull request's comments endpoint
+	perms     map[string]string // collaborator permissions by login; absent means write
+	calls     []string          // every gh call, in order
 	// resolvedIDs and replies are what the thread mutations wrote, by thread id.
 	resolvedIDs map[string]bool
 	replies     map[string][]string
@@ -43,7 +44,7 @@ func setup(t *testing.T) *fixture {
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(home, "gitconfig"))
 	base := t.TempDir()
-	f := &fixture{t: t, dir: filepath.Join(base, "work"), state: filepath.Join(home, "state.json"), pulls: map[int]*pull{}, checks: map[int]string{}, checksErr: map[int]error{}, threads: map[int]int{}, resolved: map[int]int{}, reviews: map[int]string{}, resolvedIDs: map[string]bool{}, replies: map[string][]string{}}
+	f := &fixture{t: t, dir: filepath.Join(base, "work"), state: filepath.Join(home, "state.json"), pulls: map[int]*pull{}, checks: map[int]string{}, checksErr: map[int]error{}, threads: map[int]int{}, resolved: map[int]int{}, comments: map[int]string{}, perms: map[string]string{}, resolvedIDs: map[string]bool{}, replies: map[string][]string{}}
 	f.git(base, "init", "-q", "--bare", "-b", "main", "origin.git")
 	f.git(base, "clone", "-q", "origin.git", "work")
 	var lines []string
@@ -191,16 +192,36 @@ func (f *fixture) forge(args ...string) ([]byte, error) {
 		number, _ := strconv.Atoi(args[2])
 		f.pulls[number].BaseRefName = arg("--base")
 		return nil, nil
-	case "api repos/{owner}/{repo}/collaborators/rev/permission":
-		return []byte("write\n"), nil
 	case "api --paginate":
 		number, _ := strconv.Atoi(strings.Split(args[2], "/")[4])
-		if raw, ok := f.reviews[number]; ok {
+		if raw, ok := f.comments[number]; ok {
 			return []byte(raw), nil
 		}
 		return []byte("[]"), nil
 	}
+	if len(args) > 1 && args[0] == "api" && strings.HasSuffix(args[1], "/permission") {
+		login := strings.Split(args[1], "/")[4]
+		if p, ok := f.perms[login]; ok {
+			return []byte(p + "\n"), nil
+		}
+		return []byte("write\n"), nil
+	}
 	return nil, fmt.Errorf("unexpected gh %v", args)
+}
+
+// verdict appends a verdict comment by login on pull request number, as one more page of its comments, reviewing main..sha.
+func (f *fixture) verdict(number int, result, sha, login string) {
+	f.t.Helper()
+	v := review.Verdict{Result: result, Base: f.git(f.dir, "rev-parse", "origin/main"), SHA: sha, Level: "medium"}
+	page, err := json.Marshal([]map[string]any{{
+		"body":     review.Body(v, "notes"),
+		"html_url": fmt.Sprintf("https://x/%d#%s-%d", number, login, len(f.comments[number])),
+		"user":     map[string]string{"login": login},
+	}})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	f.comments[number] += string(page)
 }
 
 func (f *fixture) run(merge, stack bool, numbers ...int) []Check {
@@ -398,10 +419,10 @@ func TestReviewCoverage(t *testing.T) {
 	edited := strings.Replace(f.read("a.go"), "line 18", "line eighteen", 1)
 	p := f.open(1, "code", "main", map[string]string{"a.go": edited, "a_test.go": "package a\n"})
 	reviewed := p.HeadRefOid
-	p.Body = "Body.\n\nReviewed: " + f.git(f.dir, "rev-parse", "main") + ".." + reviewed + "\n"
+	f.verdict(1, "PASS", reviewed, "me")
 
 	c := f.one(1)
-	if r := c.Review; r.Source != "body" || r.SHA != reviewed || r.Status != "current" {
+	if r := c.Review; r.Source != "verdict" || r.Result != "PASS" || r.SHA != reviewed || r.Status != "current" {
 		t.Fatalf("a head at the reviewed commit got %+v", r)
 	}
 	holds(t, c)
@@ -440,7 +461,7 @@ func TestReviewCoverage(t *testing.T) {
 	}
 	f.level("medium")
 
-	p.Body = "Reviewed: 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222\n"
+	f.verdict(1, "PASS", strings.Repeat("2", 40), "me")
 	c = f.one(1)
 	if c.Review.Status != "stale" {
 		t.Errorf("a reviewed commit that is gone got %+v", c.Review)
@@ -448,88 +469,70 @@ func TestReviewCoverage(t *testing.T) {
 	holds(t, c, "reviewed commit is gone")
 }
 
-// TestReviewSources covers the two sources beside the body: the ledger's clean line, and a person's approval, which only someone else's pull request may rest on.
-func TestReviewSources(t *testing.T) {
+// TestVerdictSources covers what counts as a pull request's review: only the newest verdict comment by someone who can write to the repository. A body line, a person's approval, and a verdict by a reader never do.
+func TestVerdictSources(t *testing.T) {
 	f := setup(t)
 	p := f.open(1, "code", "main", map[string]string{"b.go": "package b\n"})
-	approve := func(reviews string) { f.reviews[1] = strings.ReplaceAll(reviews, "HEAD", p.HeadRefOid) }
-	const approved = `[{"state":"APPROVED","commit_id":"HEAD","user":{"login":"ana","type":"User"}}]`
-
-	approve(approved)
-	if r := f.one(1).Review; r.Source != "none" {
-		t.Errorf("the forge user's own pull request took an approval as its review: %+v", r)
+	p.Author.Login = "coworker"
+	p.Body = "Reviewed: " + f.git(f.dir, "rev-parse", "origin/main") + ".." + p.HeadRefOid + "\n"
+	f.comments[1] = `[{"body":"LGTM","html_url":"https://x/1#c","user":{"login":"ana"}}]`
+	if r := f.one(1).Review; r.Source != "none" || r.Status != "missing" {
+		t.Errorf("a body line and a plain comment counted as a review: %+v", r)
 	}
 
-	p.Author.Login = "coworker"
+	f.perms["drive-by"] = "read"
+	f.verdict(1, "PASS", p.HeadRefOid, "drive-by")
+	if r := f.one(1).Review; r.Source != "none" || len(r.Ignored) != 1 || !strings.Contains(r.Ignored[0], "drive-by (permission read)") {
+		t.Errorf("a reader's verdict counted, or was not reported ignored: %+v", r)
+	}
+
+	f.verdict(1, "FAIL", p.HeadRefOid, "ana")
+	f.verdict(1, "PASS", p.HeadRefOid, "bo")
 	c := f.one(1)
-	if r := c.Review; c.Mine || r.Source != "approval" || r.Status != "current" {
-		t.Fatalf("an approved pull request of someone else's got mine %v review %+v", c.Mine, r)
+	if r := c.Review; r.Source != "verdict" || r.Result != "PASS" || r.Status != "current" || !strings.Contains(r.URL, "#bo-") {
+		t.Fatalf("the newest writer's verdict did not win: %+v", r)
 	}
 	holds(t, c)
-	for name, reviews := range map[string]string{
-		"a bot's approval":              `[{"state":"APPROVED","commit_id":"HEAD","user":{"login":"bot","type":"Bot"}}]`,
-		"a comment":                     `[{"state":"COMMENTED","commit_id":"HEAD","user":{"login":"ana","type":"User"}}]`,
-		"another person's standing ask": approved + `[{"state":"CHANGES_REQUESTED","commit_id":"HEAD","user":{"login":"bo","type":"User"}}]`,
-	} {
-		approve(reviews)
-		if r := f.one(1).Review; r.Source != "none" {
-			t.Errorf("%s counted as a review: %+v", name, r)
-		}
-	}
-	// A reviewer's later approval replaces their own change request, across pages.
-	approve(`[{"state":"CHANGES_REQUESTED","commit_id":"HEAD","user":{"login":"ana","type":"User"}}]` + approved)
-	if r := f.one(1).Review; r.Source != "approval" {
-		t.Errorf("a change request its author later approved got %+v", r)
-	}
-
-	// The ledger's clean line is read before any approval, for anyone's pull request.
-	file, err := reviewledger.File(f.dir, "code")
-	if err != nil {
-		t.Fatal(err)
-	}
-	clean := reviewledger.Entry{ID: "c1", Branch: "code", Base: "main", SHA: p.HeadRefOid, Depth: "medium", Disposition: "clean"}
-	if err := reviewledger.Append(file, clean); err != nil {
-		t.Fatal(err)
-	}
-	delete(f.reviews, 1)
-	if r := f.one(1).Review; r.Source != "ledger" || r.Status != "current" {
-		t.Errorf("a clean ledger line got %+v", r)
-	}
 }
 
-// TestFindings covers which ledger findings hold a merge: an open one and a recorded dismissal, never a dropped or a fixed one.
-func TestFindings(t *testing.T) {
+// TestVerdictBase covers a verdict whose range starts inside the pull request: it read only part of the change, so it is stale.
+func TestVerdictBase(t *testing.T) {
 	f := setup(t)
-	p := f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
-	if c := f.one(1); len(c.Notes) != 1 || !strings.Contains(c.Notes[0], "no review ledger") {
-		t.Errorf("an empty ledger got notes %q", c.Notes)
-	}
-	reviewed := f.git(f.dir, "rev-parse", "HEAD~1")
-	file, err := reviewledger.File(f.dir, "docs")
+	p := f.open(1, "code", "main", map[string]string{"b.go": "package b\n"})
+	first := p.HeadRefOid
+	f.commit(map[string]string{"c.go": "package c\n"})
+	f.push(p)
+	v := review.Verdict{Result: "PASS", Base: first, SHA: p.HeadRefOid, Level: "medium"}
+	page, err := json.Marshal([]map[string]any{{"body": review.Body(v, ""), "html_url": "https://x/1#partial", "user": map[string]string{"login": "me"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := "README.md"
-	for id, e := range map[string]reviewledger.Entry{
-		"open":      {Disposition: "confirmed"},
-		"dismissed": {Disposition: "accepted", Evidence: "intended"},
-		"dropped":   {Disposition: "dropped", Evidence: "stayed green"},
-		"fixed":     {Disposition: "fixed", Evidence: "green", Commit: p.HeadRefOid},
-	} {
-		e.ID, e.Branch, e.SHA, e.Depth, e.Path, e.Severity, e.Summary = id, "docs", reviewed, "medium", &path, "bug", id+" summary"
-		if err := reviewledger.Append(file, e); err != nil {
-			t.Fatal(err)
-		}
-	}
+	f.comments[1] = string(page)
 	c := f.one(1)
-	if c.Dropped != 1 || len(c.Findings) != 2 || len(c.Holds) != 2 || len(c.Notes) != 0 {
-		t.Fatalf("got dropped %d findings %+v holds %q notes %q", c.Dropped, c.Findings, c.Holds, c.Notes)
+	if r := c.Review; r.Status != "stale" {
+		t.Fatalf("a verdict over part of the change got %+v", r)
 	}
-	all := strings.Join(c.Holds, "\n")
-	for _, want := range []string{"finding open is open: README.md open summary", "finding dismissed was dismissed"} {
-		if !strings.Contains(all, want) {
-			t.Errorf("holds %q lack %q", c.Holds, want)
-		}
+	holds(t, c, "after the pull request's base")
+}
+
+// TestVerdictResults covers what each result does: a FAIL holds even where no review is required and whatever changed since, PASS+NOTES points the human at its notes, and a newer verdict replaces a FAIL.
+func TestVerdictResults(t *testing.T) {
+	f := setup(t)
+	p := f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
+	failed := p.HeadRefOid
+	f.verdict(1, "FAIL", failed, "me")
+	holds(t, f.one(1), "is FAIL")
+
+	f.git(f.dir, "switch", "-q", "docs")
+	f.commit(map[string]string{"README.md": "fixed\n"})
+	f.push(p)
+	holds(t, f.one(1), "is FAIL")
+
+	f.verdict(1, "PASS+NOTES", p.HeadRefOid, "me")
+	c := f.one(1)
+	holds(t, c)
+	if r := c.Review; r.Result != "PASS+NOTES" || r.Status != "current" || len(c.Notes) != 1 || !strings.Contains(c.Notes[0], "read its notes") {
+		t.Errorf("a PASS+NOTES verdict got review %+v notes %q", r, c.Notes)
 	}
 }
 

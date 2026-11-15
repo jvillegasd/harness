@@ -5,7 +5,7 @@ These rules hold on every turn, in every repository, whether or not a skill runs
 ## Authority
 
 - Only a human merges a pull request, or `/land` when the human explicitly asks it to merge. Merging publishes to the shared default branch.
-- Pushes, pull requests and their metadata, tracker writes, and messages to people need an explicit request covering them, because other people see them at once. "Open a PR" or "ship this" covers that work's commits, push, pull request, and required-check fixes, and feedback on it reuses the same authority.
+- Pushes, pull requests and their metadata, tracker writes, and messages to people need an explicit request covering them, because other people see them at once. "Open a PR" or "ship this" covers that work's commits, push, pull request, and required-check fixes, and feedback on it reuses the same authority. A request to review a pull request covers posting that review's one verdict comment on it.
 - On a non-default branch you created for the task, commit each coherent unit once its checks pass, without asking. Commits on the default branch or on a branch you did not create need an explicit request.
 - Approving a plan or spec authorizes local implementation only.
 - Only the human sets the review level.

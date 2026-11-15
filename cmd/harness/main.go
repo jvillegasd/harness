@@ -14,7 +14,7 @@ import (
 	"github.com/jvillegasd/harness/internal/land"
 	"github.com/jvillegasd/harness/internal/models"
 	"github.com/jvillegasd/harness/internal/resume"
-	"github.com/jvillegasd/harness/internal/reviewledger"
+	"github.com/jvillegasd/harness/internal/review"
 	"github.com/jvillegasd/harness/internal/setup"
 	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/statusline"
@@ -38,7 +38,7 @@ Commands:
   statusline Print the Claude Code status line for the payload on stdin
   models     Choose each delegated role's client, model, and effort
   change-map Classify this branch's changed files into review tiers
-  review     Record and read the local review ledger
+  review     Post review verdicts and keep review scratch
   worktree   Audit and retire linked worktrees without losing work
   land       Report whether pull requests can land, and how
   pr         Report a pull request's readiness and what blocks it
@@ -73,7 +73,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case "change-map":
 		return changemap.Command(args[1:], stdout, stderr)
 	case "review":
-		return reviewledger.Command(args[1:], stdout, stderr)
+		return review.Command(args[1:], stdout, stderr)
 	case "worktree":
 		return worktree.Command(args[1:], stdout, stderr)
 	case "land":

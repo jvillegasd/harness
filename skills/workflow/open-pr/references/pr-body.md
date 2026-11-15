@@ -48,6 +48,4 @@ Merge danger: <one-way or two-way> door. Blast radius: <a few words>.
 <Material unresolved risks other than review findings, or "None".>
 
 <Closes #N, only for scope actually completed. Omit otherwise.>
-
-<The line `harness review stamp` prints. When it prints nothing, write no line and name its reason under Risks.>
 ```

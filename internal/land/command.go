@@ -141,20 +141,24 @@ thread, and a base that is the default branch.
 
 review.required is true when the review level is not off and the change
 reaches above the tests-docs tier, by the changed files or by the Tiers line
-of the pull request body. review.source is where the reviewed commit came
-from: the body's "Reviewed:" line, else the ledger's latest clean line, else,
-for a pull request someone else wrote, a person's approval with no person's
-change request standing. review.status compares that commit's patch with the
-head's, file by file:
+of the pull request body. review.source is verdict when the pull request
+carries a verdict comment that harness review verdict posted, and none
+otherwise. Only the newest verdict by someone with admin, maintain, or write
+permission counts; review.ignored lists the others. review.result is its PASS,
+PASS+NOTES, or FAIL, review.depth its level (reported, never compared), review.url its comment,
+and review.base and review.sha the range it read. A verdict whose base is not
+an ancestor of the pull request's merge base read only part of the change, so
+it is stale. review.status compares that commit's patch with
+the head's, file by file:
 
   current     the head carries the reviewed patch
   tests-docs  only the test or documentation files in review.changed differ
   stale       another file differs, or the reviewed commit is gone
-  missing     no source exists
+  missing     no verdict exists
 
-A required review that is not current is a hold. findings lists the ledger's
-open findings and its recorded dismissals, each a hold; dropped counts the
-rest.
+A required review that is not current is a hold. A FAIL verdict is a hold
+whatever the level, until a newer verdict replaces it; a PASS+NOTES verdict
+adds a note pointing at its comment.
 `
 
 // Command runs `harness land` and returns the process exit code.

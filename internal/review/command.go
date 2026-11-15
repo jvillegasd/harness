@@ -1,4 +1,4 @@
-package reviewledger
+package review
 
 import (
 	"encoding/json"
@@ -8,32 +8,27 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/jvillegasd/harness/internal/statefile"
 )
 
 const usage = `Usage: harness review <command> [arguments]
 
-Record and read a branch's local review ledger, kept at
-<git-common-dir>/harness-review/branches/<branch>/ledger.jsonl. Git never
-tracks it, and /land removes the branch directory with the branch.
+Post a review's verdict on its pull request and keep a review run's scratch.
+Findings and verdicts live on the pull request as one verdict comment per
+review, which harness land check and harness pr status read; nothing about a
+review's result is kept on this machine.
 
 Commands:
-  record  Append a new finding, or a new disposition for an existing one
+  verdict   Post a review's verdict comment on its pull request
+  level     Print or set the review level: off, medium (default), or high
+  target    Resolve what a review reads: its base, commit, and key
   snapshot  Save owned uncommitted work as a patch and print its digest
-  list    Print the latest line of each finding on a branch as JSON
-  path    Print the ledger file's path
-  remove  Delete a branch's ledger and patches, once the branch has merged
-  prune   Delete the review directories of branches that exist nowhere
-  level   Print or set the review level: off, medium (default), or high
-  covers  Say whether a recorded review already covers a patch
-  stamp   Print the review line a pull request body carries
-  target  Resolve what a review reads: its base, commit, and ledger key
   worktree  Add or retire the one worktree a review may create
-  comment   Post a foreign review's result on its pull request
+  remove    Delete a key's review directory, its worktree record and patches
+  prune     Delete the review directories of branches that exist nowhere
   evals     Seed candidate eval cases and score an eval run
 `
 
@@ -69,18 +64,24 @@ regression true when recall dropped or false positives rose.
   --date      The run's date (default: today)
 `
 
-const commentUsage = `Usage: harness review comment --branch <key> <pr> [--dry-run]
+const verdictUsage = `Usage: harness review verdict <pr> --result <PASS|PASS+NOTES|FAIL> --base <base> --sha <sha> --level <medium|high> [--notes <file>] [--dry-run]
 
-Post the ledger's latest review of <key> as one comment on pull request <pr>:
-the reviewed <base>..<sha>, the level, and each finding confirmed in that
-review with its path, lines, severity, summary, and the run that proved it,
-or that none was confirmed. Dropped findings, nits, and the ledger itself
-stay local. It writes to the forge, so run it only when the human asked for
-the result to be posted; it grants no authority, and approving or requesting
-changes stays with the human.
+Post one review's verdict on pull request <pr> as one comment, and print it.
+The comment starts with a hidden marker naming the result, the reviewed
+<base>..<sha> as full commit ids, and the level, which harness land check
+parses; only a verdict by someone with write access to the repository counts
+there. --sha must be the pull request's current head, so a verdict always
+names a commit the pull request holds.
 
-  --branch   The review's ledger key, as harness review target printed it
-  --dry-run  Print the comment and post nothing
+  PASS        nothing left to report
+  PASS+NOTES  the change may land; the notes say what the human should read
+  FAIL        a confirmed finding is unfixed, or part of the change went
+              unreviewed
+
+  --notes    A Markdown file with the confirmed findings, each with its path,
+             lines, severity, and the run that proved it, plus coverage and
+             dropped counts; required for PASS+NOTES and FAIL
+  --dry-run  Check everything, print the comment, and post nothing
 `
 
 const worktreeUsage = `Usage: harness review worktree add [--branch <key>] [--patch <file>] <sha>
@@ -120,85 +121,10 @@ from origin without tags, and creates no branch or tag.
                   without the remote
   <base>..<sha>   a range; the key is range-<base>-<sha>, each cut to 12
 
-Fields: kind (branch, pr, or range), base and sha as full commit ids, key,
+Fields: kind (branch, pr, or range), base and sha as full commit ids, key
+(the review directory's name),
 foreign (anything but the current task branch: the review is report-only),
 and fork (a fork's pull request: nothing from it is run).
-`
-
-const stampUsage = `Usage: harness review stamp [--branch <key>] [--head <rev>] [--base <rev>]
-
-Print the one review line a pull request body carries for --head (default:
-HEAD), taken from the branch's ledger, so the line harness land check parses
-is never composed by hand:
-
-  Reviewed: <base>..<sha>          the latest clean record still covers the
-                                   head, compared file by file by patch, and
-                                   no finding is open
-  Review: not run (level <level>)  the latest whole-review record is
-                                   no-review
-
-Otherwise it prints nothing on stdout, names the reason on stderr (a finding
-still open, no clean record, a change the review never read, or no review
-recorded), and exits 1.
-
-  --base  The pull request's base the change is compared against (default:
-          origin/HEAD, then origin/main, then origin/master, then the
-          record's own base)
-`
-
-const coversUsage = `Usage: harness review covers --base <base> --sha <sha> --level <medium|high> [--branch <key>] [--digest <hash>]
-
-Print, as JSON, whether a recorded review already covers the change
-<base>..<sha>, and write nothing. A whole-review clean record is the one
-marker of a complete review. The branch's latest clean record at --level or
-deeper covers the change when it is the same change file by file, compared by
-patch as harness land check compares a reviewed commit with a head, so a
-rebase that changes no file's patch keeps its review. A record made with
---digest covers only a request with that same --digest, and one made without
-covers only committed work.
-
-  covered  true when the record covers the change
-  depth    the covering review's depth
-  base     the covering review's recorded base
-  sha      its reviewed commit
-  open     each finding still open at --sha
-`
-
-const recordUsage = `Usage: harness review record [flags]
-
-Without --id, append a new line and print its id. A finding needs --depth,
---disposition, --severity, --path, and --summary; a whole-review line
-(--disposition clean or no-review) takes no --path.
-
-With --id, append a new state for that finding: only --disposition,
---evidence, and --commit are accepted, and the rest is copied from its latest
-line. A fixed, dropped, or accepted disposition needs --evidence; fixed also
-needs --commit. The nit disposition fits only a nit or pre-existing finding.
-
-  --id           Existing finding to update
-  --branch       Branch (default: the current branch)
-  --base         Base revision
-  --sha          Reviewed commit (default: HEAD)
-  --digest       Snapshot patch hash when the reviewed work is uncommitted
-  --depth        none, medium, or high
-  --path         File the finding cites
-  --lines        A line or range, such as 40 or 40-52
-  --severity     bug, risk, q, pre-existing, or nit
-  --summary      One-line description
-  --disposition  confirmed, fixed, dropped, accepted, nit, clean, or
-                 no-review. A confirmed or fixed finding cannot be dropped.
-  --evidence     The run's output, what a dropped finding's run showed, or
-                 the human's words
-  --commit       The fixing commit, for --disposition fixed
-`
-
-const listUsage = `Usage: harness review list [--branch <name>] [--head <rev>]
-
-Print, as a JSON array, the latest line of each finding and whole-review line
-on the branch (default: the current branch); [] means nothing is recorded for
-it here. "open" is true for confirmed, and for fixed until the
-fixing commit is in --head (default: HEAD). "rewritten" marks a reviewed commit
-no longer in --head's history, as after a rebase; the finding still counts.
 `
 
 const snapshotUsage = `Usage: harness review snapshot --base <base> [--branch <key>] -- <owned paths>...
@@ -206,42 +132,33 @@ const snapshotUsage = `Usage: harness review snapshot --base <base> [--branch <k
 Save tracked and untracked changes under the owned paths, given relative to
 the repository root, as one binary patch against base in the key's review
 directory (default key: the current branch). Print the patch path and its
-sha256 digest on separate lines: the digest is the content identity review
-records with --digest. The index and working tree are left as they were. With
+sha256 digest on separate lines: the digest is the content identity of the
+reviewed work. The index and working tree are left as they were. With
 no change under the owned paths it writes nothing and exits 1.
 `
 
-const pathUsage = `Usage: harness review path [--branch <name>]
+const removeUsage = `Usage: harness review remove [--branch <key>]
 
-Print the ledger file path for the branch (default: the current branch).
-`
-
-const removeUsage = `Usage: harness review remove [--branch <name>]
-
-Delete the branch's review directory, its ledger and saved patches (default:
-the current branch), and print the directory removed. A branch with nothing
-recorded prints nothing and exits 0. A directory whose worktree.txt, review's
+Delete the key's review directory, its worktree record and saved patches
+(default: the current branch), and print the directory removed. A key with no
+directory prints nothing and exits 0. A directory whose worktree.txt, review's
 record of a worktree it could not retire, names a directory that still exists
 is refused untouched; one whose recorded directory is gone is removed.
 `
 
-const pruneUsage = `Usage: harness review prune [--dry-run [--forge]]
+const pruneUsage = `Usage: harness review prune [--dry-run]
 
 Delete the review directory of every branch that exists neither as a local
 branch nor as a remote-tracking branch, and print each directory removed. Run
 git fetch --prune first so a branch deleted on the remote counts as gone. A
 directory whose worktree.txt names a directory that still exists is kept and
 named on stderr; once that worktree is retired, by path or by harness review
-worktree retire, the directory goes like any other. A review
-keyed pr-<n> (a fork's pull request) or range-<base>-<sha> has no branch and is
-always pruned, even while that pull request is open, so run --dry-run first and
-prune only once each listed directory is approved for removal.
+worktree retire, the directory goes like any other. A review keyed pr-<n> (a
+fork's pull request) or range-<base>-<sha> has no branch and is always
+pruned; a review directory holds only scratch, so nothing a landing reads is
+lost.
 
   --dry-run  Print what would be removed, and remove nothing
-  --forge    With --dry-run, read each listed pr-<n> directory's pull request
-             with gh and mark the ones still open, after a tab, since that
-             ledger is what land check reads; a failed read is marked
-             unavailable
 `
 
 // Command runs `harness review` and returns the process exit code.
@@ -254,28 +171,18 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	case "-h", "--help", "help":
 		fmt.Fprint(stdout, usage)
 		return 0
-	case "record":
-		return record(args[1:], stdout, stderr)
 	case "snapshot":
 		return snapshot(args[1:], stdout, stderr)
-	case "list":
-		return list(args[1:], stdout, stderr)
-	case "path":
-		return printPath(args[1:], stdout, stderr)
 	case "remove":
 		return remove(args[1:], stdout, stderr)
 	case "prune":
 		return prune(args[1:], stdout, stderr)
+	case "verdict":
+		return verdict(args[1:], stdout, stderr)
 	case "level":
 		return level(args[1:], stdout, stderr)
-	case "covers":
-		return covers(args[1:], stdout, stderr)
-	case "stamp":
-		return stamp(args[1:], stdout, stderr)
 	case "target":
 		return target(args[1:], stdout, stderr)
-	case "comment":
-		return comment(args[1:], stdout, stderr)
 	case "evals":
 		return evals(args[1:], stdout, stderr)
 	case "worktree":
@@ -317,7 +224,7 @@ func snapshot(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness review snapshot: --base is required\n%s", snapshotUsage)
 		return 2
 	}
-	root, branch, _, code := ledger("snapshot", branch, stderr)
+	root, branch, _, code := reviewDir("snapshot", branch, stderr)
 	if code >= 0 {
 		return code
 	}
@@ -351,8 +258,8 @@ func parse(flags *flag.FlagSet, args []string, text string, stdout, stderr io.Wr
 	return -1
 }
 
-// ledger resolves the repository root, the branch (default: the current one), and the branch's ledger file.
-func ledger(name, branch string, stderr io.Writer) (root, resolved, file string, code int) {
+// reviewDir resolves the repository root, the key (default: the current branch), and the key's review directory.
+func reviewDir(name, key string, stderr io.Writer) (root, resolved, dir string, code int) {
 	cwd, err := os.Getwd()
 	if err == nil {
 		root, err = git(cwd, "rev-parse", "--show-toplevel")
@@ -361,10 +268,10 @@ func ledger(name, branch string, stderr io.Writer) (root, resolved, file string,
 		fmt.Fprintf(stderr, "harness review %s: not inside a git repository\n", name)
 		return "", "", "", 2
 	}
-	if branch == "" {
-		branch, _ = git(root, "branch", "--show-current")
+	if key == "" {
+		key, _ = git(root, "branch", "--show-current")
 	}
-	file, err = File(root, branch)
+	dir, err = Dir(root, key)
 	if errors.Is(err, ErrInvalid) {
 		fmt.Fprintf(stderr, "harness review %s: %v\n", name, err)
 		return "", "", "", 2
@@ -373,146 +280,7 @@ func ledger(name, branch string, stderr io.Writer) (root, resolved, file string,
 		fmt.Fprintf(stderr, "harness review %s: %v\n", name, err)
 		return "", "", "", 1
 	}
-	return root, branch, file, -1
-}
-
-func record(args []string, stdout, stderr io.Writer) int {
-	flags := flag.NewFlagSet("record", flag.ContinueOnError)
-	var e Entry
-	var id, digest, path string
-	flags.StringVar(&id, "id", "", "")
-	flags.StringVar(&e.Branch, "branch", "", "")
-	flags.StringVar(&e.Base, "base", "", "")
-	flags.StringVar(&e.SHA, "sha", "", "")
-	flags.StringVar(&digest, "digest", "", "")
-	flags.StringVar(&e.Depth, "depth", "", "")
-	flags.StringVar(&path, "path", "", "")
-	flags.StringVar(&e.Lines, "lines", "", "")
-	flags.StringVar(&e.Severity, "severity", "", "")
-	flags.StringVar(&e.Summary, "summary", "", "")
-	flags.StringVar(&e.Disposition, "disposition", "", "")
-	flags.StringVar(&e.Evidence, "evidence", "", "")
-	flags.StringVar(&e.Commit, "commit", "", "")
-	if code := parse(flags, args, recordUsage, stdout, stderr); code >= 0 {
-		return code
-	}
-	if id != "" {
-		// An update changes a finding's state, never what the finding says, so its severity cannot be relabelled to close it.
-		var other []string
-		flags.Visit(func(f *flag.Flag) {
-			if f.Name != "id" && f.Name != "branch" && f.Name != "disposition" && f.Name != "evidence" && f.Name != "commit" {
-				other = append(other, "--"+f.Name)
-			}
-		})
-		if len(other) > 0 {
-			fmt.Fprintf(stderr, "harness review record: an update with --id takes only --branch, --disposition, --evidence, and --commit, not %s\n", strings.Join(other, ", "))
-			return 2
-		}
-	}
-	root, branch, file, code := ledger("record", e.Branch, stderr)
-	if code >= 0 {
-		return code
-	}
-	if id != "" {
-		entries, err := Read(file)
-		if err != nil {
-			fmt.Fprintf(stderr, "harness review record: %v\n", err)
-			return 1
-		}
-		prior, ok := Find(entries, id)
-		if !ok {
-			fmt.Fprintf(stderr, "harness review record: no finding %q in %s\n", id, file)
-			return 2
-		}
-		// A proven finding stays proven: dropping is for findings no run proved, so it cannot close a confirmed or fixed one on an agent's word.
-		if e.Disposition == "dropped" && (prior.Disposition == "confirmed" || prior.Disposition == "fixed") {
-			fmt.Fprintf(stderr, "harness review record: finding %s is %s, and a proven finding cannot be dropped; record the human's decision as accepted instead\n", id, prior.Disposition)
-			return 2
-		}
-		prior.Disposition, prior.Evidence, prior.Commit = e.Disposition, e.Evidence, e.Commit
-		e = prior
-	} else {
-		e.Digest, e.Path = optional(digest), optional(path)
-		e.Branch = branch
-		if e.SHA == "" {
-			e.SHA, _ = git(root, "rev-parse", "HEAD")
-		}
-	}
-	if err := Validate(e); err != nil {
-		fmt.Fprintf(stderr, "harness review record: %v\n", err)
-		return 2
-	}
-	if e.Disposition == "fixed" {
-		// Store the fixing commit as a full SHA after the reviewed one, so a name like HEAD or the reviewed commit itself cannot close a finding.
-		commit, err := git(root, "rev-parse", "--verify", "--end-of-options", e.Commit+"^{commit}")
-		if err != nil {
-			fmt.Fprintf(stderr, "harness review record: --commit %q does not name a commit\n", e.Commit)
-			return 2
-		}
-		if _, err := git(root, "merge-base", "--is-ancestor", e.SHA, commit); err != nil || strings.HasPrefix(commit, e.SHA) {
-			fmt.Fprintf(stderr, "harness review record: --commit %s does not come after the reviewed commit %s\n", commit, e.SHA)
-			return 2
-		}
-		e.Commit = commit
-	}
-	if id == "" {
-		short := e.SHA
-		if len(short) > 7 {
-			short = short[:7]
-		}
-		id = short + "-" + strconv.FormatInt(time.Now().UnixNano(), 36)
-	}
-	e.ID = id
-	if err := Append(file, e); err != nil {
-		fmt.Fprintf(stderr, "harness review record: %v\n", err)
-		return 1
-	}
-	fmt.Fprintln(stdout, id)
-	return 0
-}
-
-func list(args []string, stdout, stderr io.Writer) int {
-	flags := flag.NewFlagSet("list", flag.ContinueOnError)
-	var branch, head string
-	flags.StringVar(&branch, "branch", "", "")
-	flags.StringVar(&head, "head", "HEAD", "")
-	if code := parse(flags, args, listUsage, stdout, stderr); code >= 0 {
-		return code
-	}
-	root, branch, file, code := ledger("list", branch, stderr)
-	if code >= 0 {
-		return code
-	}
-	entries, err := Read(file)
-	if err != nil {
-		fmt.Fprintf(stderr, "harness review list: %v\n", err)
-		return 1
-	}
-	latest := Latest(entries, branch, func(sha string) bool {
-		_, err := git(root, "merge-base", "--is-ancestor", sha, head)
-		return err == nil
-	})
-	if latest == nil {
-		latest = []Finding{}
-	}
-	out, _ := json.MarshalIndent(latest, "", "  ")
-	fmt.Fprintln(stdout, string(out))
-	return 0
-}
-
-func printPath(args []string, stdout, stderr io.Writer) int {
-	flags := flag.NewFlagSet("path", flag.ContinueOnError)
-	var branch string
-	flags.StringVar(&branch, "branch", "", "")
-	if code := parse(flags, args, pathUsage, stdout, stderr); code >= 0 {
-		return code
-	}
-	_, _, file, code := ledger("path", branch, stderr)
-	if code >= 0 {
-		return code
-	}
-	fmt.Fprintln(stdout, file)
-	return 0
+	return root, key, dir, -1
 }
 
 func remove(args []string, stdout, stderr io.Writer) int {
@@ -522,17 +290,17 @@ func remove(args []string, stdout, stderr io.Writer) int {
 	if code := parse(flags, args, removeUsage, stdout, stderr); code >= 0 {
 		return code
 	}
-	_, _, file, code := ledger("remove", branch, stderr)
+	_, _, dir, code := reviewDir("remove", branch, stderr)
 	if code >= 0 {
 		return code
 	}
-	removed, err := RemoveBranch(file)
+	removed, err := RemoveBranch(dir)
 	if err != nil {
 		fmt.Fprintf(stderr, "harness review remove: %v\n", err)
 		return 1
 	}
 	if removed {
-		fmt.Fprintln(stdout, filepath.Dir(file))
+		fmt.Fprintln(stdout, dir)
 	}
 	return 0
 }
@@ -540,13 +308,8 @@ func remove(args []string, stdout, stderr io.Writer) int {
 func prune(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("prune", flag.ContinueOnError)
 	dryRun := flags.Bool("dry-run", false, "")
-	withForge := flags.Bool("forge", false, "")
 	if code := parse(flags, args, pruneUsage, stdout, stderr); code >= 0 {
 		return code
-	}
-	if *withForge && !*dryRun {
-		fmt.Fprintln(stderr, "harness review prune: --forge needs --dry-run")
-		return 2
 	}
 	cwd, err := os.Getwd()
 	root := ""
@@ -575,15 +338,7 @@ func prune(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	removed, held, err := Prune(dir, func(b string) bool { return live[b] }, *dryRun)
-	marks := map[string]string{}
-	if *withForge {
-		marks = PruneMarks(removed, Gh(root))
-	}
 	for _, d := range removed {
-		if m := marks[d]; m != "" {
-			fmt.Fprintf(stdout, "%s\t%s\n", d, m)
-			continue
-		}
 		fmt.Fprintln(stdout, d)
 	}
 	for _, d := range held {
@@ -593,86 +348,6 @@ func prune(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness review prune: %v\n", err)
 		return 1
 	}
-	return 0
-}
-
-func optional(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
-func covers(args []string, stdout, stderr io.Writer) int {
-	flags := flag.NewFlagSet("covers", flag.ContinueOnError)
-	var branch, base, sha, depth, digest string
-	flags.StringVar(&branch, "branch", "", "")
-	flags.StringVar(&base, "base", "", "")
-	flags.StringVar(&sha, "sha", "", "")
-	flags.StringVar(&depth, "level", "", "")
-	flags.StringVar(&digest, "digest", "", "")
-	if code := parse(flags, args, coversUsage, stdout, stderr); code >= 0 {
-		return code
-	}
-	if base == "" || sha == "" || depth == "" {
-		fmt.Fprintf(stderr, "harness review covers: --base, --sha, and --level are required\n%s", coversUsage)
-		return 2
-	}
-	root, branch, _, code := ledger("covers", branch, stderr)
-	if code >= 0 {
-		return code
-	}
-	c, err := Covers(root, branch, base, sha, depth, digest)
-	if errors.Is(err, ErrInvalid) {
-		fmt.Fprintf(stderr, "harness review covers: %v\n", err)
-		return 2
-	}
-	if err != nil {
-		fmt.Fprintf(stderr, "harness review covers: %v\n", err)
-		return 1
-	}
-	out, _ := json.MarshalIndent(c, "", "  ")
-	fmt.Fprintln(stdout, string(out))
-	return 0
-}
-
-func stamp(args []string, stdout, stderr io.Writer) int {
-	flags := flag.NewFlagSet("stamp", flag.ContinueOnError)
-	var branch, head, base string
-	flags.StringVar(&branch, "branch", "", "")
-	flags.StringVar(&head, "head", "HEAD", "")
-	flags.StringVar(&base, "base", "", "")
-	if code := parse(flags, args, stampUsage, stdout, stderr); code >= 0 {
-		return code
-	}
-	root, branch, _, code := ledger("stamp", branch, stderr)
-	if code >= 0 {
-		return code
-	}
-	if base == "" {
-		for _, ref := range []string{"refs/remotes/origin/HEAD", "refs/remotes/origin/main", "refs/remotes/origin/master"} {
-			if _, err := git(root, "rev-parse", "--verify", "--quiet", ref+"^{commit}"); err == nil {
-				base = ref
-				break
-			}
-		}
-	}
-	level := "medium"
-	if home, err := os.UserHomeDir(); err == nil {
-		if l, _, err := LoadLevel(statefile.Path(home)); err == nil {
-			level = l
-		}
-	}
-	line, err := Stamp(root, branch, head, base, level)
-	if errors.Is(err, ErrInvalid) {
-		fmt.Fprintf(stderr, "harness review stamp: %v\n", err)
-		return 2
-	}
-	if err != nil {
-		fmt.Fprintf(stderr, "harness review stamp: %v\n", err)
-		return 1
-	}
-	fmt.Fprintln(stdout, line)
 	return 0
 }
 
@@ -767,7 +442,7 @@ func worktreeCommand(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness review %s: takes %d argument(s), got %d; run harness review worktree --help\n", name, want, len(positional))
 		return 2
 	}
-	root, key, _, code := ledger(name, branch, stderr)
+	root, key, _, code := reviewDir(name, branch, stderr)
 	if code >= 0 {
 		return code
 	}
@@ -794,16 +469,21 @@ func worktreeCommand(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func comment(args []string, stdout, stderr io.Writer) int {
-	flags := flag.NewFlagSet("comment", flag.ContinueOnError)
-	var branch string
-	flags.StringVar(&branch, "branch", "", "")
+func verdict(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("verdict", flag.ContinueOnError)
+	var v Verdict
+	var notesFile string
+	flags.StringVar(&v.Result, "result", "", "")
+	flags.StringVar(&v.Base, "base", "", "")
+	flags.StringVar(&v.SHA, "sha", "", "")
+	flags.StringVar(&v.Level, "level", "", "")
+	flags.StringVar(&notesFile, "notes", "", "")
 	dryRun := flags.Bool("dry-run", false, "")
-	// The pull request number is the one argument that is neither a flag nor --branch's value.
+	// The pull request number is the one argument that is not a flag or a flag's value.
 	var rest, positional []string
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; {
-		case a == "--branch" && i+1 < len(args):
+		case strings.HasPrefix(a, "-") && !strings.Contains(a, "=") && a != "--dry-run" && a != "-h" && a != "--help" && i+1 < len(args):
 			rest = append(rest, a, args[i+1])
 			i++
 		case strings.HasPrefix(a, "-"):
@@ -812,37 +492,72 @@ func comment(args []string, stdout, stderr io.Writer) int {
 			positional = append(positional, a)
 		}
 	}
-	if code := parse(flags, rest, commentUsage, stdout, stderr); code >= 0 {
+	if code := parse(flags, rest, verdictUsage, stdout, stderr); code >= 0 {
 		return code
 	}
 	number, err := 0, error(nil)
 	if len(positional) == 1 {
 		number, err = strconv.Atoi(positional[0])
 	}
-	if len(positional) != 1 || err != nil || number <= 0 || branch == "" {
-		fmt.Fprintf(stderr, "harness review comment: give --branch and one pull request number; run harness review comment --help\n")
+	if len(positional) != 1 || err != nil || number <= 0 || v.Result == "" || v.Base == "" || v.SHA == "" || v.Level == "" {
+		fmt.Fprintf(stderr, "harness review verdict: give one pull request number, --result, --base, --sha, and --level; run harness review verdict --help\n")
 		return 2
 	}
-	root, branch, file, code := ledger("comment", branch, stderr)
-	if code >= 0 {
-		return code
+	notes := ""
+	if notesFile != "" {
+		raw, err := os.ReadFile(notesFile)
+		if err != nil {
+			fmt.Fprintf(stderr, "harness review verdict: %v\n", err)
+			return 2
+		}
+		notes = string(raw)
 	}
-	entries, err := Read(file)
+	cwd, err := os.Getwd()
+	root := ""
+	if err == nil {
+		root, err = git(cwd, "rev-parse", "--show-toplevel")
+	}
 	if err != nil {
-		fmt.Fprintf(stderr, "harness review comment: %v\n", err)
+		fmt.Fprintln(stderr, "harness review verdict: not inside a git repository")
+		return 2
+	}
+	for _, rev := range []*string{&v.Base, &v.SHA} {
+		full, err := git(root, "rev-parse", "--verify", "--quiet", "--end-of-options", *rev+"^{commit}")
+		if err != nil {
+			fmt.Fprintf(stderr, "harness review verdict: %q does not name a commit here; fetch it first\n", *rev)
+			return 2
+		}
+		*rev = full
+	}
+	if err := v.Validate(notes); err != nil {
+		fmt.Fprintf(stderr, "harness review verdict: %v\n", err)
+		return 2
+	}
+	forge := Gh(root)
+	raw, err := forge("pr", "view", strconv.Itoa(number), "--json", "state,headRefOid")
+	var pull struct{ State, HeadRefOid string }
+	if err == nil {
+		err = json.Unmarshal(raw, &pull)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "harness review verdict: %v\n", err)
 		return 1
 	}
-	body, err := CommentBody(entries, branch)
-	if err != nil {
-		fmt.Fprintf(stderr, "harness review comment: %v\n", err)
+	switch {
+	case pull.State != "OPEN":
+		fmt.Fprintf(stderr, "harness review verdict: pull request #%d is %s, and a verdict is posted only on an open one\n", number, strings.ToLower(pull.State))
+		return 1
+	case pull.HeadRefOid != v.SHA:
+		fmt.Fprintf(stderr, "harness review verdict: pull request #%d's head is %s, not the reviewed %s; push the reviewed commit, or review the new head\n", number, pull.HeadRefOid, v.SHA)
 		return 1
 	}
+	body := Body(v, notes)
 	fmt.Fprint(stdout, body)
 	if *dryRun {
 		return 0
 	}
-	if err := PostComment(Gh(root), number, body); err != nil {
-		fmt.Fprintf(stderr, "harness review comment: %v\n", err)
+	if err := PostVerdict(forge, number, body); err != nil {
+		fmt.Fprintf(stderr, "harness review verdict: %v\n", err)
 		return 1
 	}
 	return 0
@@ -903,7 +618,7 @@ func evals(args []string, stdout, stderr io.Writer) int {
 		return usage("--max takes a positive number")
 	case sub == "score" && len(positional) != 1:
 		return usage("score takes the run file")
-	case *depth != "" && oneOf("depth", *depth, depths) != nil:
+	case *depth != "" && !slices.Contains([]string{"none", "medium", "high"}, *depth):
 		return usage("--depth is none, medium, or high")
 	}
 	cwd, err := os.Getwd()

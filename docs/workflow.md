@@ -54,7 +54,7 @@ Each skill is a separate tool. Outside work mode, using one never starts another
 | Situation | Skill |
 | --- | --- |
 | A session needs a retrospective | `/retro` |
-| Old worktrees, branches, and review records pile up | `/cleanup` |
+| Old worktrees, branches, and review scratch pile up | `/cleanup` |
 
 ### `/implement` or `/build`?
 
@@ -192,7 +192,7 @@ stateDiagram-v2
 
 Publishing a PR never allows merging. You merge, then run `/land` to clean up.
 
-`/land` asks [`harness land check`](cli.md#land-commands) whether each PR can land and stops on anything it holds. On `/land merge`, it merges through `harness land merge`, which checks the PR again and refuses to merge if its head moved or a GitHub gate holds it, such as a red or pending required check. A hold only you can clear, such as an open review finding, goes ahead only after you accept that hold by name. The merge never deletes the branch, and `/land` counts it done only once GitHub reports the PR merged. After the merge, `harness land finish` updates the default branch and removes the branch, worktree, and review records, and `harness land repair` moves a PR of yours that was stacked on a squash-merged one onto the default branch. On a PR someone else wrote, it merges and cleans up your side only: their remote branch stays, and a PR of theirs stacked on it is reported for them to rebase.
+`/land` asks [`harness land check`](cli.md#land-commands) whether each PR can land and stops on anything it holds. On `/land merge`, it merges through `harness land merge`, which checks the PR again and refuses to merge if its head moved or a GitHub gate holds it, such as a red or pending required check. A hold only you can clear, such as a `FAIL` review verdict, goes ahead only after you accept that hold by name. The merge never deletes the branch, and `/land` counts it done only once GitHub reports the PR merged. After the merge, `harness land finish` updates the default branch and removes the branch, worktree, and review scratch, and `harness land repair` moves a PR of yours that was stacked on a squash-merged one onto the default branch. On a PR someone else wrote, it merges and cleans up your side only: their remote branch stays, and a PR of theirs stacked on it is reported for them to rebase.
 
 `/land` cleans up the PR it lands. For everything else that piles up (a PR someone merged on GitHub, an abandoned branch, a run that died), run `/cleanup`. It lists every worktree with what removing it would delete, and removes only the ones you name.
 
@@ -204,7 +204,7 @@ The agent brings important decisions back to you. Small choices that are easy to
 - If the project has a verify skill (made with `/create-verification-skill`), a separate agent that never saw the code drives the changed features the way a user would. It returns PASS, PASS+NOTES, or FAIL. For a bugfix, it shows the bug on the old code and its absence on the new code.
 - [Review](review.md) runs according to your `harness review level`. At `medium` and `high`, a PR beyond docs or tests needs a review of its current changes. The readiness report shows whether it has one, and `/land merge` refuses to merge without it.
 
-A PR ends with a readiness report: required checks, whether it can merge, review coverage, the run-as-user verdict, and open findings. The agent builds it from [`harness pr status`](cli.md#pr-commands), which you can run yourself on any PR. The PR body carries the review line `harness review stamp` prints, never one the agent wrote by hand.
+A PR ends with a readiness report: required checks, whether it can merge, the review verdict and whether it covers the head, and the run-as-user verdict. The agent builds it from [`harness pr status`](cli.md#pr-commands), which you can run yourself on any PR. The review's result is its own verdict comment on the PR, never part of the PR body.
 
 ### The stages
 

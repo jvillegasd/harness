@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jvillegasd/harness/internal/reviewledger"
+	"github.com/jvillegasd/harness/internal/review"
 )
 
 // advance puts a new commit on origin's main that no checkout has.
@@ -43,7 +43,7 @@ func TestSync(t *testing.T) {
 	}
 }
 
-// landed opens a pull request on branch from main, squash-merges it on origin, and returns its review ledger file with one finding recorded. The checkout is left on main.
+// landed opens a pull request on branch from main, squash-merges it on origin, and returns its review directory holding a saved patch, as a review run leaves it. The checkout is left on main.
 func (f *fixture) landed(number int, branch string) (*pull, string) {
 	f.t.Helper()
 	f.git(f.dir, "switch", "-q", "main")
@@ -54,15 +54,23 @@ func (f *fixture) landed(number int, branch string) (*pull, string) {
 	f.git(f.dir, "commit", "-q", "-m", "squash "+branch)
 	f.git(f.dir, "push", "-q", "origin", "main")
 	p.State = "MERGED"
-	file, err := reviewledger.File(f.dir, branch)
+	return p, f.scratch(branch)
+}
+
+// scratch writes a saved patch into key's review directory and returns the directory.
+func (f *fixture) scratch(key string) string {
+	f.t.Helper()
+	dir, err := review.Dir(f.dir, key)
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	path := "a.go"
-	if err := reviewledger.Append(file, reviewledger.Entry{ID: "x", Branch: branch, SHA: p.HeadRefOid, Depth: "medium", Path: &path, Severity: "nit", Summary: "s", Disposition: "nit"}); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		f.t.Fatal(err)
 	}
-	return p, file
+	if err := os.WriteFile(filepath.Join(dir, "review.patch"), []byte("x\n"), 0o644); err != nil {
+		f.t.Fatal(err)
+	}
+	return dir
 }
 
 // worktreeOn moves branch from the main checkout into a linked worktree and returns its path.
@@ -110,10 +118,10 @@ func said(actions []Action, done bool, want string) bool {
 func TestFinish(t *testing.T) {
 	f := setup(t)
 	f.open(2, "open", "main", map[string]string{"o.txt": "o\n"})
-	_, ledger := f.landed(1, "feat")
+	_, scratch := f.landed(1, "feat")
 	wt := f.worktreeOn("feat")
 
-	if _, err := f.finish(wt, 1, 2); err == nil || !exists(ledger) || !exists(wt) {
+	if _, err := f.finish(wt, 1, 2); err == nil || !exists(scratch) || !exists(wt) {
 		t.Fatalf("an open pull request was not refused before any removal: %v", err)
 	}
 
@@ -122,7 +130,7 @@ func TestFinish(t *testing.T) {
 		t.Fatalf("finish: %v %v", err, actions)
 	}
 	switch {
-	case exists(filepath.Dir(ledger)):
+	case exists(scratch):
 		t.Error("the review directory stayed")
 	case f.has("refs/remotes/origin/feat") || strings.Contains(f.git(f.dir, "ls-remote", "--heads", "origin"), "refs/heads/feat"):
 		t.Error("the remote branch stayed")
@@ -166,20 +174,17 @@ func TestFinishKeeps(t *testing.T) {
 
 	p, _ = f.landed(4, "forked")
 	p.IsCrossRepository = true
-	forkLedger, _ := reviewledger.File(f.dir, "pr-4")
-	if err := reviewledger.Append(forkLedger, reviewledger.Entry{ID: "y", Branch: "pr-4", SHA: p.HeadRefOid, Depth: "none", Disposition: "no-review"}); err != nil {
-		t.Fatal(err)
-	}
-	if actions, err := f.finish(f.dir, 4); err != nil || exists(forkLedger) || !f.has("refs/remotes/origin/forked") || !f.has("refs/heads/forked") {
+	forkScratch := f.scratch("pr-4")
+	if actions, err := f.finish(f.dir, 4); err != nil || exists(forkScratch) || !f.has("refs/remotes/origin/forked") || !f.has("refs/heads/forked") {
 		t.Errorf("a fork: %v %v", err, actions)
 	}
 
-	_, ledger := f.landed(5, "held")
-	if err := os.WriteFile(filepath.Join(filepath.Dir(ledger), "worktree.txt"), []byte(f.t.TempDir()+"\n"), 0o644); err != nil {
+	_, held := f.landed(5, "held")
+	if err := os.WriteFile(filepath.Join(held, "worktree.txt"), []byte(f.t.TempDir()+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	actions, err = f.finish(f.dir, 5)
-	if err != nil || !exists(ledger) || !said(actions, false, "review directory") || f.has("refs/remotes/origin/held") || f.has("refs/heads/held") {
+	if err != nil || !exists(held) || !said(actions, false, "review directory") || f.has("refs/remotes/origin/held") || f.has("refs/heads/held") {
 		t.Errorf("a held review directory: %v %v", err, actions)
 	}
 
