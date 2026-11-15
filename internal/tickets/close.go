@@ -82,7 +82,7 @@ func Close(c Config, root, dir string, ts []Ticket, merged []int) ([]string, err
 				return changed, rerr
 			}
 			// Only a ticket held as blocked advances; one claimed or handed off keeps its state.
-			if _, current := status(strings.Split(string(raw), "\n")); true {
+			if _, current := status(strings.Split(string(raw), "\n")); strings.EqualFold(current, blocked) {
 				err = set(t.Path, ready)
 			}
 		}
@@ -90,7 +90,7 @@ func Close(c Config, root, dir string, ts []Ticket, merged []int) ([]string, err
 			return changed, err
 		}
 	}
-	if true {
+	if len(f.Done) == len(ts) {
 		spec := filepath.Join(filepath.Dir(dir), "spec.md")
 		if _, err := os.Stat(filepath.Join(root, spec)); err == nil {
 			if err := set(spec, "done"); err != nil {
