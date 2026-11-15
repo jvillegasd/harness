@@ -11,10 +11,8 @@ import (
 	"github.com/jvillegasd/harness/internal/statefile"
 )
 
-// Levels are the review levels a human may choose, cheapest first. The level caps the reviews an agent starts on its own; a human's explicit request for a review runs whatever the level says.
 var Levels = []string{"off", "medium", "high"}
 
-// DefaultLevel applies when no level is stored.
 const DefaultLevel = "medium"
 
 const levelUsage = `Usage: harness review level [--json]
@@ -45,7 +43,6 @@ type reviewBlock struct {
 	Level string `json:"level"`
 }
 
-// LoadLevel returns the stored level and its source, "global" or "default".
 func LoadLevel(path string) (level, source string, err error) {
 	doc, err := statefile.Read(path)
 	if err != nil {
@@ -62,7 +59,6 @@ func LoadLevel(path string) (level, source string, err error) {
 	return b.Level, "global", nil
 }
 
-// SaveLevel stores level and keeps every other key.
 func SaveLevel(path, level string) error {
 	if !slices.Contains(Levels, level) {
 		return fmt.Errorf("unknown level %q; choose %s", level, strings.Join(Levels, ", "))
@@ -93,7 +89,7 @@ func level(args []string, stdout, stderr io.Writer) int {
 			value = append(value, a)
 		}
 	}
-	// Setting takes the bare value alone, so the setting forms are exactly the prefixes a client can deny.
+
 	if len(value) > 1 || (len(value) == 1 && (asJSON || !slices.Contains(Levels, value[0]))) {
 		fmt.Fprintf(stderr, "harness review level: expected one of %s\n%s", strings.Join(Levels, ", "), levelUsage)
 		return 2

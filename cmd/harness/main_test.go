@@ -10,10 +10,9 @@ import (
 
 var binary string
 
-// TestMain builds the real binary once, so every test drives the command boundary a caller sees.
 func TestMain(m *testing.M) {
 	if os.Getenv("HARNESS_FIXTURE_CONTROL") != "" {
-		os.Exit(m.Run()) // Local acceptance service; no CLI build or model launch.
+		os.Exit(m.Run())
 	}
 	dir, err := os.MkdirTemp("", "harness-bin")
 	if err != nil {
@@ -30,7 +29,6 @@ func TestMain(m *testing.M) {
 
 const branch = "feat/1-x"
 
-// repo creates a throwaway git repository on branch.
 func repo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -38,7 +36,6 @@ func repo(t *testing.T) string {
 	return dir
 }
 
-// env isolates git from the user's config; each directory gets its own HOME and global config file.
 func env(dir string) []string {
 	home := filepath.Join(dir, ".home")
 	return []string{"HOME=" + home, "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=" + filepath.Join(home, "gitconfig")}
@@ -61,7 +58,6 @@ type result struct {
 	code           int
 }
 
-// runBinary runs the built harness in dir with the inherited environment.
 func runBinary(t *testing.T, dir string, args ...string) result {
 	t.Helper()
 	cmd := exec.Command(binary, args...)
@@ -79,7 +75,6 @@ func runBinary(t *testing.T, dir string, args ...string) result {
 	return result{stdout.String(), stderr.String(), code}
 }
 
-// harness runs the built binary with isolated Git on PATH.
 func harness(t *testing.T, dir string, args ...string) result {
 	t.Helper()
 	shims := t.TempDir()

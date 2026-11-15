@@ -1,4 +1,3 @@
-// Package setup gathers the evidence a repository's tracker mode is chosen from, and writes the chosen mode's configuration, labels, and lifecycle automation, for `harness setup`.
 package setup
 
 import (
@@ -16,10 +15,8 @@ import (
 	harness "github.com/jvillegasd/harness"
 )
 
-// Forge runs one gh command and returns its stdout.
 type Forge func(args ...string) ([]byte, error)
 
-// Paths the setup reads and writes, relative to the repository root.
 var (
 	ConfigPath     = filepath.Join("docs", "agents", "harness.json")
 	WorkflowPath   = filepath.Join(".github", "workflows", "agent-lifecycle.yml")
@@ -27,22 +24,17 @@ var (
 	supersededPath = filepath.Join(".github", "scripts", "reconcile-agent-lifecycle.py")
 )
 
-// The harness's own copies the GitHub mode installs.
 const (
 	workflowAsset   = "skills/ops/setup-harness/assets/agent-lifecycle.yml"
 	reconcilerAsset = "skills/ops/setup-harness/scripts/reconcile-agent-lifecycle.go"
 )
 
-// Assets holds the copies installed; tests may point it elsewhere.
 var Assets fs.FS = harness.Assets
 
-// labelKeys are the four mapped label keys, in the stable order, with their default values.
 var labelKeys = [][2]string{{"blocked", "blocked"}, {"ready_for_agent", "ready-for-agent"}, {"in_progress", "in-progress"}, {"ready_for_human", "ready-for-human"}}
 
-// specTrees are the local spec directories that point to local markdown.
 var specTrees = []string{filepath.Join("docs", "specs"), "specs"}
 
-// Evidence is what `harness setup probe` reports.
 type Evidence struct {
 	GitHubRemote   bool     `json:"github_remote"`
 	Remote         string   `json:"remote,omitempty"`
@@ -62,7 +54,6 @@ func git(dir string, args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
-// Probe reads the evidence from the repository at root and, for a GitHub remote, from the forge. It writes nothing.
 func Probe(root string, forge Forge) Evidence {
 	e := Evidence{LocalSpecTrees: []string{}}
 	remotes, _ := git(root, "remote")
@@ -114,7 +105,6 @@ func Probe(root string, forge Forge) Evidence {
 	return e
 }
 
-// config is the tracker configuration as raw values, so keys setup does not know survive a rewrite.
 type config map[string]json.RawMessage
 
 func (c config) str(key string) string {
@@ -135,7 +125,6 @@ func readConfig(root string) (config, error) {
 	return c, nil
 }
 
-// object writes keys in the given order, then the rest sorted, each value indented one level.
 func object(c map[string]json.RawMessage, first []string, indent string) ([]byte, error) {
 	var keys []string
 	placed := map[string]bool{}
@@ -170,13 +159,11 @@ func object(c map[string]json.RawMessage, first []string, indent string) ([]byte
 	return b.Bytes(), nil
 }
 
-// Options is the mode `harness setup tracker` writes.
 type Options struct {
-	Mode     string // github or local-markdown
-	SpecHome string // local-markdown only; default docs/specs
+	Mode     string
+	SpecHome string
 }
 
-// Tracker writes the chosen mode. GitHub mode checks forge credentials before any write, creates the mapped labels the repository lacks, installs the lifecycle workflow and reconciler, and removes the superseded script. It returns each path or label it created, updated, or removed; a second run with the same options returns none.
 func Tracker(root string, o Options, forge Forge) ([]string, error) {
 	switch o.Mode {
 	case "github":
@@ -261,7 +248,6 @@ func Tracker(root string, o Options, forge Forge) ([]string, error) {
 	return done, nil
 }
 
-// write replaces a file only when its content differs, recording created or updated.
 func write(root, rel string, body []byte, done *[]string) error {
 	path := filepath.Join(root, rel)
 	old, err := os.ReadFile(path)
@@ -285,7 +271,6 @@ func write(root, rel string, body []byte, done *[]string) error {
 	return nil
 }
 
-// ensureLabels creates each mapped label the repository lacks.
 func ensureLabels(forge Forge, mapped []string, done *[]string) error {
 	out, err := forge("label", "list", "--limit", "1000", "--json", "name")
 	if err != nil {

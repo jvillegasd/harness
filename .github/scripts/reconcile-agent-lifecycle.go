@@ -1,10 +1,3 @@
-// Command reconcile-agent-lifecycle reconciles native GitHub issue
-// dependencies and parent/sub-issue state.
-//
-// It is one standard-library file so `go run` works in a repository with no Go
-// module. setup-harness copies it, and the harness copy and the deployed copy
-// must stay byte-identical; reconcile_agent_lifecycle_test.go fails when they
-// drift.
 package main
 
 import (
@@ -19,24 +12,20 @@ import (
 	"strings"
 )
 
-// issue is the subset of the GitHub issue payload the reconciler reads.
 type issue struct {
 	Number        int             `json:"number"`
 	State         string          `json:"state"`
 	Labels        labelList       `json:"labels"`
 	RepositoryURL string          `json:"repository_url"`
 	PullRequest   json.RawMessage `json:"pull_request"`
-	// Foreign marks an issue from another repository, such as a cross-repository sub-issue or blocker. Its number names a different issue here, and this repository's token cannot relabel it, so the reconciler reads its merge evidence from its own repository and never updates it.
+
 	Foreign bool `json:"-"`
 }
 
-// label is one entry of the API's label objects.
 type label struct {
 	Name string `json:"name"`
 }
 
-// labelList is an issue's labels. The REST API returns each as a label object;
-// a label update carries bare names and never round-trips through this type.
 type labelList []string
 
 func (l *labelList) UnmarshalJSON(data []byte) error {
@@ -52,14 +41,11 @@ func (l *labelList) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// event is the subset of the issue timeline the parent enrollment check reads.
 type event struct {
 	Event string `json:"event"`
 	Label label  `json:"label"`
 }
 
-// issueAPI is the reconciler's issue-API boundary. GitHubAPI backs it with gh
-// in production and the tests back it with an in-memory fake.
 type issueAPI interface {
 	issue(number int) (issue, error)
 	related(number int, relation string) ([]issue, error)
@@ -69,12 +55,11 @@ type issueAPI interface {
 	openIssues(label string) ([]issue, error)
 }
 
-// gitHubAPI backs issueAPI with the gh CLI, which supplies the runner's token.
 type gitHubAPI struct {
 	repository string
 	binary     string
 	merged     map[string]bool
-	// issues memoizes issue reads within one run, so the frontier and parent passes over one issue share a fetch; update drops the entry it changes. The sweep's listing never seeds it: a label set read minutes earlier would make the full-replacement PATCH wipe labels added since.
+
 	issues map[int]issue
 }
 
@@ -108,7 +93,6 @@ func (g *gitHubAPI) get(path string, paginate bool, fields ...string) ([]byte, e
 	return g.gh(args...)
 }
 
-// repositoryOf returns the owner/name an API repository_url points at, or "" when the URL has no /repos/ segment.
 func repositoryOf(url string) string {
 	_, name, ok := strings.Cut(url, "/repos/")
 	if !ok {
@@ -117,7 +101,6 @@ func repositoryOf(url string) string {
 	return name
 }
 
-// mark flags the issues that belong to another repository. An issue without a repository_url is this repository's, as in an event payload.
 func (g *gitHubAPI) mark(values []issue) []issue {
 	for i := range values {
 		if name := repositoryOf(values[i].RepositoryURL); name != "" && !strings.EqualFold(name, g.repository) {
@@ -127,7 +110,6 @@ func (g *gitHubAPI) mark(values []issue) []issue {
 	return values
 }
 
-// openIssues lists this repository's open issues carrying one label, without pull requests, which the issues endpoint also returns.
 func (g *gitHubAPI) openIssues(label string) ([]issue, error) {
 	out, err := g.get("issues", true, "state=open", "labels="+label)
 	if err != nil {
@@ -195,7 +177,6 @@ func (g *gitHubAPI) related(number int, relation string) ([]issue, error) {
 	return g.mark(values), err
 }
 
-// getIssues flattens a paginated issue list; --slurp returns an array of pages.
 func (g *gitHubAPI) getIssues(path string) ([]issue, error) {
 	out, err := g.get(path, true)
 	if err != nil {
@@ -228,11 +209,6 @@ func (g *gitHubAPI) events(number int) ([]event, error) {
 	return result, nil
 }
 
-// blockerSatisfied reports whether a merged pull request closed the issue;
-// a hand-closed issue does not satisfy the frontier. A foreign issue's
-// evidence is read from its own repository; when that repository cannot be
-// read, it counts as unmerged, so a dependent stays blocked and a parent open
-// rather than released or closed on evidence nobody saw.
 func (g *gitHubAPI) blockerSatisfied(value issue) (bool, error) {
 	if value.State != "closed" {
 		return false, nil
@@ -265,7 +241,7 @@ func (g *gitHubAPI) blockerSatisfied(value issue) (bool, error) {
 	if err := json.Unmarshal(out, &view); err != nil {
 		return false, err
 	}
-	// Cache only a complete answer: a failed lookup must not leave "unmerged" behind for the next issue in a sweep, which would block its dependents on evidence nobody read.
+
 	satisfied := false
 	for _, reference := range view.ClosedByPullRequestsReferences {
 		out, err := g.gh("pr", "view", reference.URL, "--json", "state,mergedAt")
@@ -315,7 +291,6 @@ func isNotFound(err error) bool {
 	return strings.Contains(message, "HTTP 404") || strings.Contains(message, "Not Found")
 }
 
-// labelSet is a set of label names.
 type labelSet map[string]bool
 
 func labelNames(value issue) labelSet {
@@ -422,11 +397,11 @@ func reconcileFrontier(api issueAPI, number int, labels map[string]string, reset
 		ticket := desired.minus(active)
 		ticket[labels["ready_for_agent"]] = true
 		if ticket.equals(current) {
-			// Already on the frontier: keep the labels as they are. desired has the released labels stripped, so leaving the switch without restoring it would take the ticket off the frontier.
+
 			desired = current
 			break
 		}
-		// A parent is a container, not work an agent picks up: a reopen does not reset it, and a release returns it to in-progress. Any sub-issue makes it a parent, as in reconcileParent. The lookup runs only when the labels would change, so a steady frontier costs no extra call.
+
 		children, err := api.related(number, "sub_issues")
 		if err != nil {
 			return err
@@ -435,7 +410,7 @@ func reconcileFrontier(api issueAPI, number int, labels map[string]string, reset
 		case len(children) == 0:
 			desired = ticket
 		case resetActive && current.intersects(active) && !current.intersects(released):
-			// A reopened parent keeps its active label.
+
 		default:
 			desired = desired.minus(active)
 			desired[labels["in_progress"]] = true
@@ -461,7 +436,7 @@ func reconcileParent(api issueAPI, number int, labels map[string]string) (bool, 
 	}
 	lifecycle := lifecycleSet(labels)
 	current := labelNames(parent)
-	// Label history preserves enrollment after completed parents shed status labels.
+
 	if !current.intersects(lifecycle) {
 		events, err := api.events(number)
 		if err != nil {
@@ -501,7 +476,7 @@ func reconcileParent(api issueAPI, number int, labels map[string]string) (bool, 
 		changes["state"] = target
 	}
 	if target == "open" {
-		// An open parent keeps its lifecycle label, except ready-for-agent: a parent is a container, so one that gained a sub-issue while ready goes back to in-progress.
+
 		if len(changes) == 0 && current.intersects(lifecycle) && !current[labels["ready_for_agent"]] {
 			return false, nil
 		}
@@ -581,7 +556,6 @@ func reconcile(api issueAPI, eventNumber int, labels map[string]string, eventAct
 	return nil
 }
 
-// sweep reconciles every open issue that carries a lifecycle label, in number order, and the parent of each, so an event the workflow's one-slot queue dropped heals on the next scheduled run: a merged blocker releases its dependents, a parent whose last child merged closes, and a closed parent whose child reopened reopens. A closed issue with no open enrolled child is not visited. Each swept issue costs about four REST calls (a fresh read of the issue, its blockers, its sub-issues, and its parent), so a repository with a few hundred enrolled issues stays well inside the token's hourly budget. One issue's failure does not stop the others; the errors are returned together.
 func sweep(api issueAPI, labels map[string]string) error {
 	seen := map[int]bool{}
 	var numbers []int
@@ -623,7 +597,6 @@ func sweep(api issueAPI, labels map[string]string) error {
 	return errors.Join(failures...)
 }
 
-// sweepParent settles one issue as a parent, then its frontier when that changed it, as reconcile does.
 func sweepParent(api issueAPI, number int, labels map[string]string) error {
 	changed, err := reconcileParent(api, number, labels)
 	if err != nil || !changed {
@@ -632,7 +605,6 @@ func sweepParent(api issueAPI, number int, labels map[string]string) error {
 	return reconcileFrontier(api, number, labels, false)
 }
 
-// reconcileChildren recomputes the frontier of a parent's open, enrolled children. The workflow's concurrency group keeps at most one pending run, so a newer event can replace a blocker's close event; reconciling the event issue's children and siblings on each run heals a dropped event within that family at once, and the scheduled sweep heals deeper and unrelated trees. Closed, planning-only, and foreign children are skipped from the listed payload so a large tree costs no extra calls for them.
 func reconcileChildren(api issueAPI, parent int, labels map[string]string) error {
 	children, err := api.related(parent, "sub_issues")
 	if err != nil {

@@ -20,7 +20,6 @@ import (
 	"github.com/jvillegasd/harness/internal/models"
 )
 
-// object is a JSON object that keeps its key order, so rewriting a client config moves only what changed.
 type object struct {
 	keys []string
 	vals map[string]json.RawMessage
@@ -30,7 +29,6 @@ func newObject() *object {
 	return &object{vals: map[string]json.RawMessage{}}
 }
 
-// parseObject reads a JSON object in key order. A repeated key keeps its first position and its last value.
 func parseObject(data []byte) (*object, error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	tok, err := dec.Token()
@@ -98,7 +96,6 @@ func (o *object) MarshalJSON() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// encode marshals without HTML escaping, so <, >, and & stay as the user wrote them.
 func encode(v any) json.RawMessage {
 	var b bytes.Buffer
 	enc := json.NewEncoder(&b)
@@ -107,7 +104,6 @@ func encode(v any) json.RawMessage {
 	return bytes.TrimSuffix(b.Bytes(), []byte("\n"))
 }
 
-// render formats a document with two-space indents and non-ASCII escaped as \uXXXX, matching the configs earlier installs wrote, with one trailing newline.
 func render(v any) []byte {
 	var b bytes.Buffer
 	must(json.Indent(&b, encode(v), "", "  "))
@@ -125,7 +121,6 @@ func render(v any) []byte {
 	return []byte(out.String())
 }
 
-// same reports whether two JSON texts hold the same document, so a file that only differs in formatting is never rewritten.
 func same(a, b []byte) bool {
 	var x, y any
 	return json.Unmarshal(a, &x) == nil && json.Unmarshal(b, &y) == nil && reflect.DeepEqual(x, y)
@@ -144,7 +139,6 @@ func (in *installer) settingsPath() string {
 	return filepath.Join(in.home, ".claude", "settings.json")
 }
 
-// readSettings parses the live settings and then clients/claude.json, naming whichever file is broken: the user's own, or the repository's.
 func (in *installer) readSettings(path string) (live *object, before []byte, tracked *object) {
 	before, err := os.ReadFile(path)
 	if err == nil {
@@ -164,7 +158,6 @@ func (in *installer) readSettings(path string) (live *object, before []byte, tra
 	return live, before, tracked
 }
 
-// writeIfChanged writes a reconciled document, after a backup, only when it differs from what the file held.
 func (in *installer) writeIfChanged(path string, before, after []byte, message string) {
 	if same(before, after) {
 		return
@@ -174,10 +167,8 @@ func (in *installer) writeIfChanged(path string, before, after []byte, message s
 	in.log(message, path)
 }
 
-// harnessCommand marks a hook the harness owns: one that runs the installed harness binary.
 const harnessCommand = `.local/bin/harness"`
 
-// harnessGroup reports whether a hook matcher group runs the installed harness, which is how a reconcile tells the harness's group from one the user or another tool wrote under the same event.
 func harnessGroup(raw json.RawMessage) bool {
 	var group struct {
 		Hooks []struct {
@@ -194,7 +185,6 @@ func harnessGroup(raw json.RawMessage) bool {
 	})
 }
 
-// mergeHooks returns the live hooks with every harness group under the tracked events replaced by the tracked groups, or with add false, only removed. Other events and other groups under the same event stay, in order. An event or a hooks object left empty by a removal goes.
 func mergeHooks(live, tracked json.RawMessage, add bool) json.RawMessage {
 	merged, err := parseObject(live)
 	if err != nil {
@@ -225,7 +215,6 @@ func mergeHooks(live, tracked json.RawMessage, add bool) json.RawMessage {
 	return encode(merged)
 }
 
-// reconcileClaudeSettings merges clients/claude.json into the live settings and leaves every other key alone, because other tools, engram setup, and the client all write machine state there. A tracked key replaces the live value, so deleting one from the tracked file deletes it from the machine. permissions merges one level down: deny and ask stay owned, and allow gains the tracked rules beside the ones engram setup and the user write. hooks keeps every hook the harness does not run, so the user's and other tools' hooks under the same event survive.
 func (in *installer) reconcileClaudeSettings() {
 	path := in.settingsPath()
 	must(os.MkdirAll(filepath.Dir(path), 0o755))
@@ -258,7 +247,6 @@ func (in *installer) reconcileClaudeSettings() {
 	in.writeIfChanged(path, before, render(live), "Reconciled the tracked Claude settings in %s")
 }
 
-// mergeAllow adds the tracked allow rules to the live ones, keeping the live order and every rule engram setup or the user wrote, or with add false, removes only the tracked rules. A removal that leaves nothing returns nil, so the class goes. Live entries that are not a list are replaced on add and dropped on removal.
 func mergeAllow(live, tracked json.RawMessage, add bool) json.RawMessage {
 	var have, want []json.RawMessage
 	_ = json.Unmarshal(live, &have)
@@ -276,7 +264,6 @@ func mergeAllow(live, tracked json.RawMessage, add bool) json.RawMessage {
 	return encode(kept)
 }
 
-// removeClaudeSettings deletes exactly what reconcileClaudeSettings writes: the tracked keys, and within permissions only the tracked classes. A permissions the harness emptied goes too.
 func (in *installer) removeClaudeSettings() {
 	path := in.settingsPath()
 	if !isFile(path) {
@@ -316,7 +303,6 @@ func (in *installer) removeClaudeSettings() {
 	in.writeIfChanged(path, before, render(live), "Removed the tracked Claude settings from %s")
 }
 
-// trackedSettingsHold reports whether every tracked key reached the live settings, or with removed, whether every one is gone while the untracked keys beside them stay.
 func (in *installer) trackedSettingsHold(removed bool) bool {
 	live, liveOK := decodeFile(in.settingsPath())
 	tracked, trackedOK := decodeFile(filepath.Join(in.dir.Clients(), "claude.json"))
@@ -363,7 +349,6 @@ func (in *installer) trackedSettingsHold(removed bool) bool {
 	return true
 }
 
-// hooksHold reports whether every tracked hook group sits under its event in the live hooks, or with removed, whether no harness group is left under a tracked event.
 func hooksHold(live, tracked any, removed bool) bool {
 	have, _ := live.(map[string]any)
 	events, _ := tracked.(map[string]any)
@@ -390,7 +375,6 @@ func (in *installer) codexHooksPath() string {
 	return filepath.Join(in.codexHome(), "hooks.json")
 }
 
-// reconcileCodexHooks merges the hooks in clients/codex/hooks.json into ~/.codex/hooks.json, which the user and other tools may also write, the way reconcileClaudeSettings merges Claude Code's: only the harness's own groups are replaced, and every other key and hook stays. With remove it takes the harness's groups out, and deletes a file left with nothing in it.
 func (in *installer) reconcileCodexHooks(remove bool) {
 	path := in.codexHooksPath()
 	if remove && !isFile(path) {
@@ -426,7 +410,6 @@ func (in *installer) reconcileCodexHooks(remove bool) {
 	in.writeIfChanged(path, data, render(live), "Reconciled the harness compaction hook in %s")
 }
 
-// codexHooksHold reports whether the tracked hook groups are in ~/.codex/hooks.json, or with removed, whether no harness group is left there.
 func (in *installer) codexHooksHold(removed bool) bool {
 	tracked, ok := decodeFile(filepath.Join(in.dir.Clients(), "codex", "hooks.json"))
 	if !ok {
@@ -443,7 +426,6 @@ func (in *installer) openCodeConfigPath() string {
 	return filepath.Join(in.config, "opencode", "opencode.json")
 }
 
-// trackedOpenCodePermission reads clients/opencode/permission.json: one object per permission class (read, edit, bash), each mapping a pattern to its action.
 func (in *installer) trackedOpenCodePermission() *object {
 	path := filepath.Join(in.dir.Clients(), "opencode", "permission.json")
 	data, err := os.ReadFile(path)
@@ -457,7 +439,6 @@ func (in *installer) trackedOpenCodePermission() *object {
 	return tracked
 }
 
-// reconcileOpenCodePermission merges the tracked permission rules into opencode.json, which Engram, the agent-browser registration, and the user also write, so every other key and rule stays. OpenCode applies the last rule that matches, so within each class the harness's patterns are moved to the end, after the user's, keeping the user's action where it is stricter; a class or a whole permission the user set to one action becomes {"*": action} first, which OpenCode reads the same way. With remove it takes out only the tracked patterns that still hold their tracked action, and drops a class or permission that leaves empty.
 func (in *installer) reconcileOpenCodePermission(remove bool) {
 	path := in.openCodeConfigPath()
 	if remove && !isFile(path) {
@@ -483,7 +464,7 @@ func (in *installer) reconcileOpenCodePermission(remove bool) {
 	} else {
 		live.set("permission", merged)
 	}
-	// Compared in key order, not with writeIfChanged's same: moving the harness's rules behind a rule the user added later changes only the order, and in OpenCode the order decides which rule applies.
+
 	before, _ := parseObject(data)
 	after := render(live)
 	if before != nil && bytes.Equal(render(before), after) {
@@ -495,7 +476,6 @@ func (in *installer) reconcileOpenCodePermission(remove bool) {
 	in.log("Reconciled the harness permission rules in %s", path)
 }
 
-// actionRules reads a permission value as pattern rules: an object as it is, a single action string as {"*": action}, and an absent or null value as no rules.
 func actionRules(raw json.RawMessage) (*object, error) {
 	if len(raw) == 0 || string(raw) == "null" {
 		return newObject(), nil
@@ -509,14 +489,12 @@ func actionRules(raw json.RawMessage) (*object, error) {
 	return parseObject(raw)
 }
 
-// strictness ranks an OpenCode action, so a rule the user made stricter than the harness's is never weakened: allow, then ask, then deny. Anything else ranks below allow.
 func strictness(raw json.RawMessage) int {
 	var action string
 	_ = json.Unmarshal(raw, &action)
 	return slices.Index([]string{"allow", "ask", "deny"}, action)
 }
 
-// mergePermission returns the live permission with every tracked pattern moved to the end of its class in the tracked order, keeping the user's action where it is stricter than the tracked one; or with add false, with only the tracked patterns that still hold their tracked action removed, so a rule the user set differently stays. It returns nil when nothing is left.
 func mergePermission(live json.RawMessage, tracked *object, add bool) (json.RawMessage, error) {
 	permission, err := actionRules(live)
 	if err != nil {
@@ -563,7 +541,6 @@ func mergePermission(live json.RawMessage, tracked *object, add bool) (json.RawM
 	return encode(permission), nil
 }
 
-// openCodePermissionHold reports whether every tracked pattern ends its class in opencode.json, in order, with its tracked action or a stricter one, so no rule of the user's comes after it; or with removed, whether no tracked pattern still holds its tracked action there.
 func (in *installer) openCodePermissionHold(removed bool) bool {
 	path := in.openCodeConfigPath()
 	data, err := os.ReadFile(path)
@@ -613,7 +590,6 @@ var (
 	lineBreak = regexp.MustCompile(`\r\n|\r|\n`)
 )
 
-// aliasRCs are every startup file an install may have written the managed line into, which an uninstall clears.
 func (in *installer) aliasRCs() []string {
 	var out []string
 	for _, name := range []string{".zshrc", ".bashrc", ".bash_profile", ".bash_login", ".profile"} {
@@ -622,7 +598,6 @@ func (in *installer) aliasRCs() []string {
 	return out
 }
 
-// aliasRC is the startup file the login shell reads, chosen by $SHELL or, when it is unset, by the OS default shell: zsh on macOS, bash on Linux. It is empty for a shell that cannot source aliases.sh, such as fish.
 func (in *installer) aliasRC() string {
 	shell := filepath.Base(os.Getenv("SHELL"))
 	if os.Getenv("SHELL") == "" {
@@ -638,7 +613,7 @@ func (in *installer) aliasRC() string {
 		if runtime.GOOS != "darwin" {
 			return filepath.Join(in.home, ".bashrc")
 		}
-		// macOS terminals open login shells, which read only the first of these that exists, so a new ~/.bash_profile would hide an existing ~/.profile.
+
 		for _, name := range []string{".bash_profile", ".bash_login", ".profile"} {
 			if path := filepath.Join(in.home, name); isFile(path) {
 				return path
@@ -649,10 +624,9 @@ func (in *installer) aliasRC() string {
 	return ""
 }
 
-// reconcileAliases writes the one managed line that sources the installed aliases.sh into the login shell's startup file, or with remove strips it from every startup file that carries it, so the committed file stays the only definition.
 func (in *installer) reconcileAliases(remove bool) {
 	if remove {
-		// Only a file carrying the marker is the harness's to edit; a hand-written alias elsewhere is the user's.
+
 		for _, rc := range in.aliasRCs() {
 			if text, err := os.ReadFile(rc); err == nil && strings.Contains(string(text), aliasMarker) {
 				in.reconcileAliasesIn(rc, true)
@@ -669,7 +643,6 @@ func (in *installer) reconcileAliases(remove bool) {
 	in.reconcileAliasesIn(rc, false)
 }
 
-// reconcileAliasesIn writes or strips the managed line in one startup file. Hand-written copies of the managed aliases go either way, the retired oyolo included. A removal never creates a missing file, and one that finds nothing writes nothing.
 func (in *installer) reconcileAliasesIn(rc string, remove bool) {
 	if !isFile(rc) {
 		if remove {
@@ -685,7 +658,7 @@ func (in *installer) reconcileAliasesIn(rc string, remove bool) {
 	}
 	current := string(data)
 	source := in.aliasesPath()
-	// No empty entry after a final line break.
+
 	lines := lineBreak.Split(current, -1)
 	if lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
@@ -695,7 +668,7 @@ func (in *installer) reconcileAliasesIn(rc string, remove bool) {
 	for i, line := range lines {
 		alias := aliasLine.FindStringSubmatch(line)
 		managed := alias != nil && (alias[1] == "ccyolo" || alias[1] == "cxyolo" || alias[1] == "oyolo" || alias[1] == "ocyolo")
-		// The line after the marker is the managed source line whatever path an earlier install wrote into it.
+
 		afterMarker := i > 0 && strings.Contains(lines[i-1], aliasMarker)
 		if managed || afterMarker || strings.Contains(line, aliasMarker) || strings.Contains(line, source) {
 			dropped = true
@@ -710,7 +683,7 @@ func (in *installer) reconcileAliasesIn(rc string, remove bool) {
 		kept = kept[:len(kept)-1]
 	}
 	if !remove {
-		// The POSIX dot, because ~/.profile is also read by sh, which has no source.
+
 		kept = append(kept, aliasMarker, fmt.Sprintf(`[ -f "%s" ] && . "%s"`, source, source))
 	}
 	text := strings.Join(append(kept, ""), "\n")
@@ -726,7 +699,6 @@ func (in *installer) reconcileAliasesIn(rc string, remove bool) {
 	}
 }
 
-// installEngram runs one `engram setup <agent>` per client, exactly as engram's docs/AGENT-SETUP.md documents. The claude-code setup is answered yes to allowlist engram's tools, because declining prompts on every memory call; the codex and opencode setups get a closed stdin, since a blind yes to a future question is not the same answer. Setup registers and pins OpenCode's MCP server and Codex's plugin; Claude Code's MCP is registerEngramClaudeMCP's job.
 func (in *installer) installEngram() {
 	in.log("Reconciling Engram")
 	if !present("engram") {
@@ -748,7 +720,6 @@ func (in *installer) installEngram() {
 	}
 }
 
-// registerEngramClaudeMCP registers Engram's Claude Code MCP server, which engram's own claude-code setup does not leave anywhere Claude Code reads. Remove then add, so a re-run rewrites the pinned path. README's MCP servers section records why setup is not enough.
 func (in *installer) registerEngramClaudeMCP() {
 	in.log("Reconciling Engram's Claude Code MCP")
 	binary, err := exec.LookPath("engram")
@@ -761,7 +732,6 @@ func (in *installer) registerEngramClaudeMCP() {
 	must(in.registerMCP("claude", "engram", binary))
 }
 
-// openCodeConfig reads opencode.json and its mcp object, refusing a file this run could not rewrite. install calls it before any client is touched, so a config this run refuses leaves every registration, Engram's included, as it was.
 func (in *installer) openCodeConfig() (string, *object, *object) {
 	path := filepath.Join(in.config, "opencode", "opencode.json")
 	doc := newObject()
@@ -783,7 +753,6 @@ func (in *installer) openCodeConfig() (string, *object, *object) {
 	return path, doc, servers
 }
 
-// installAgentBrowser registers agent-browser in every client, since it ships no registrar of its own. Remove then add, so a re-run rewrites the pinned path; OpenCode takes a JSON edit because `opencode mcp add` is interactive.
 func (in *installer) installAgentBrowser() {
 	in.log("Reconciling agent-browser")
 	binary, err := exec.LookPath("agent-browser")

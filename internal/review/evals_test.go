@@ -14,16 +14,15 @@ func bugCase(id, path, lines string) Case {
 	return Case{ID: id, Kind: "bug", Expected: []Expected{{Path: path, Lines: lines}}, ConfirmedBy: "human"}
 }
 
-// TestScore covers the scoring rules: a confirmed bug or risk overlapping an expected range catches a bug case, one on a clean case is a false positive, a dropped one inside an expected range is a dropped catch, and a nit or a miss counts for nothing.
 func TestScore(t *testing.T) {
 	cases := []Case{bugCase("b1", "a.go", "40-52"), bugCase("b2", "b.go", "10"), {ID: "c1", Kind: "clean", ConfirmedBy: "human"}}
 	s, err := Score(cases, []RunFinding{
-		{Case: "b1", Path: "a.go", Lines: "50-60", Severity: "risk", Disposition: "confirmed"}, // overlaps: caught
-		{Case: "b2", Path: "b.go", Lines: "11", Severity: "bug", Disposition: "confirmed"},     // misses by a line
-		{Case: "b2", Path: "b.go", Lines: "10", Severity: "nit", Disposition: "confirmed"},     // a nit catches nothing
-		{Case: "b2", Path: "b.go", Lines: "9-10", Severity: "bug", Disposition: "dropped"},     // a dropped catch
-		{Case: "c1", Path: "x.go", Lines: "1", Severity: "bug", Disposition: "confirmed"},      // a false positive
-		{Case: "c1", Path: "x.go", Lines: "2", Severity: "q", Disposition: "confirmed"},        // a question is not one
+		{Case: "b1", Path: "a.go", Lines: "50-60", Severity: "risk", Disposition: "confirmed"},
+		{Case: "b2", Path: "b.go", Lines: "11", Severity: "bug", Disposition: "confirmed"},
+		{Case: "b2", Path: "b.go", Lines: "10", Severity: "nit", Disposition: "confirmed"},
+		{Case: "b2", Path: "b.go", Lines: "9-10", Severity: "bug", Disposition: "dropped"},
+		{Case: "c1", Path: "x.go", Lines: "1", Severity: "bug", Disposition: "confirmed"},
+		{Case: "c1", Path: "x.go", Lines: "2", Severity: "q", Disposition: "confirmed"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +51,6 @@ func writeLines(t *testing.T, path string, values ...any) {
 	}
 }
 
-// TestScoreRun covers a run's scoring: only confirmed cases count, the summary is appended once, and it is compared with the last run on the same cases.
 func TestScoreRun(t *testing.T) {
 	dir := t.TempDir()
 	casesFile := filepath.Join(dir, "evals.jsonl")
@@ -71,7 +69,6 @@ func TestScoreRun(t *testing.T) {
 		t.Errorf("rescoring a run returned %v", err)
 	}
 
-	// A later run that misses the case is a regression against the first.
 	writeLines(t, filepath.Join(runs, "2026-11-02.jsonl"), RunFinding{Case: "b1", Path: "a.go", Lines: "9", Severity: "bug", Disposition: "confirmed"})
 	second, err := ScoreRun(casesFile, filepath.Join(runs, "2026-11-02.jsonl"), Summary{Date: "2026-11-02", Depth: "high", Models: map[string]string{"review-bugs": "opus"}})
 	if err != nil || second.Previous == nil || second.Previous.Date != "2026-11-01" || !second.Regression || second.Summary.Recall != 0 {
@@ -95,7 +92,6 @@ func (r *coverRepo) commitMsg(msg string, files map[string]string) string {
 	return r.git("rev-parse", "HEAD")
 }
 
-// TestSeed covers seeding: each fix's changed lines are traced to the commit that introduced them, at that commit's line numbers; a pure insertion is placed by its neighbors; a line from the root commit makes no case; other commits are not read.
 func TestSeed(t *testing.T) {
 	r := newCoverRepo(t)
 	c := func(lines ...string) string { return strings.Join(lines, "\n") + "\n" }
@@ -122,7 +118,6 @@ func TestSeed(t *testing.T) {
 	}
 }
 
-// A fix whose blamed range ends on a blank line still traces that line.
 func TestSeedTracesABlankLastLine(t *testing.T) {
 	r := newCoverRepo(t)
 	intro := r.commitMsg("feat: add f", map[string]string{"f.txt": "a\nb\n\n"})
@@ -136,14 +131,13 @@ func TestSeedTracesABlankLastLine(t *testing.T) {
 	}
 }
 
-// TestScoreRunComparesTheSameCases covers the comparison: a run on other cases is never the previous one, and false positives rising at equal recall is a regression.
 func TestScoreRunComparesTheSameCases(t *testing.T) {
 	dir := t.TempDir()
 	casesFile := filepath.Join(dir, "evals.jsonl")
 	writeLines(t, casesFile, bugCase("b1", "a.go", "1-5"), Case{ID: "c1", Kind: "clean", ConfirmedBy: "human"})
 	runs := filepath.Join(dir, "runs")
 	hit := RunFinding{Case: "b1", Path: "a.go", Lines: "3", Severity: "bug", Disposition: "confirmed"}
-	// An earlier run on another case set, with a better score, is not this one's baseline.
+
 	writeLines(t, filepath.Join(runs, "2026-10-01.jsonl"), Summary{Summary: true, Date: "2026-10-01", Cases: []string{"b1"}, Recall: 1})
 
 	writeLines(t, filepath.Join(runs, "2026-11-01.jsonl"), hit)

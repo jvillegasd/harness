@@ -10,7 +10,6 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-// localCheckout is a Git checkout with the support and ops groups and an empty lock.
 func localCheckout(t *testing.T) checkout.Checkout {
 	t.Helper()
 	home := t.TempDir()
@@ -41,7 +40,6 @@ func gitIn(t *testing.T, dir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// linksResolve asserts both bookkeeping links of name reach body.
 func linksResolve(t *testing.T, c checkout.Checkout, name, body string) {
 	t.Helper()
 	for _, link := range []string{filepath.Join(c.AgentSkills(), name), filepath.Join(c.ClaudeSkills(), name)} {

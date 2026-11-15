@@ -1,6 +1,3 @@
-// Package changemap classifies a branch's changed files into review tiers so a
-// human knows what to read. It assigns only a floor from deterministic signals:
-// a model may raise a tier but never lower it.
 package changemap
 
 import (
@@ -29,16 +26,14 @@ Set repo-relative globs in "criticalPaths" in docs/agents/harness.json for
 files that always need human review.
 `
 
-// File is one classified changed file.
 type File struct {
 	Path   string `json:"path"`
 	Tier   Tier   `json:"tier"`
 	Reason string `json:"reason"`
-	// Files counts the changed files a grouped entry stands for, such as a locked skill body; it is omitted for a single file.
+
 	Files int `json:"files,omitempty"`
 }
 
-// Report is the JSON shape of the command's output.
 type Report struct {
 	Base      string       `json:"base"`
 	MergeBase string       `json:"mergeBase"`
@@ -46,7 +41,6 @@ type Report struct {
 	Totals    map[Tier]int `json:"totals"`
 }
 
-// Command runs `harness change-map` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("change-map", flag.ContinueOnError)
 	flags.SetOutput(stderr)
@@ -96,7 +90,6 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// The floor counts the merge base's criticalPaths too, so the branch under review cannot lower it.
 	cfg, err = EffectiveConfig(root, changes.MergeBase)
 	if err != nil {
 		fmt.Fprintf(stderr, "harness change-map: %v\n", err)
@@ -120,7 +113,6 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// Build classifies every changed file and orders the result by tier, highest first, then path.
 func Build(changes Changes, cfg Config) Report {
 	report := Report{Base: changes.Base, MergeBase: changes.MergeBase, Files: []File{}, Totals: map[Tier]int{}}
 	for _, tier := range Tiers {
@@ -152,7 +144,6 @@ func Build(changes Changes, cfg Config) Report {
 	return report
 }
 
-// Text renders one tab-separated line per file, then one totals line per tier, highest first.
 func (r Report) Text() string {
 	var out strings.Builder
 	for _, f := range r.Files {

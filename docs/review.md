@@ -116,6 +116,8 @@ At `medium` and `high`:
 - A `FAIL` verdict holds `/land merge` at any level until a newer verdict replaces it, or until you accept it by name.
 - `/land` after your own merge tells you when no verdict covered it.
 
+A review reads the change. Running it as a user is a separate check with its own verdict comment, which `/land merge` also requires for a change you can observe; [the workflow guide](workflow.md) covers it.
+
 Review never pushes or merges on its own.
 
 ## Limits

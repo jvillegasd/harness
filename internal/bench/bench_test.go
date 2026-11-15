@@ -2,8 +2,6 @@ package bench
 
 import "testing"
 
-// TestParseStamp covers every layout the parser accepts, so the fallbacks that
-// match Python's datetime.fromisoformat are exercised rather than assumed.
 func TestParseStamp(t *testing.T) {
 	cases := []struct {
 		name  string

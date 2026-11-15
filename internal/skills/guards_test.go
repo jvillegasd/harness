@@ -9,7 +9,6 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-// TestGuardedCountsAGuardOnlyWhereItsClientReadsIt covers the frontmatter shapes at the parser, so the install and verify commands need one wiring case each rather than this table.
 func TestGuardedCountsAGuardOnlyWhereItsClientReadsIt(t *testing.T) {
 	both := "---\ndisable-model-invocation: true\nmetadata:\n  opencode/autoinvoke: \"false\"\n---\n"
 	for name, c := range map[string]struct {
@@ -57,7 +56,6 @@ func TestCodexGuardCountsOnlyUnderPolicy(t *testing.T) {
 	}
 }
 
-// writeSkill writes one skill body under the checkout's "g" skill group, with the Codex guard beside it when the body carries both other guards.
 func writeSkill(t *testing.T, c checkout.Checkout, name, body string) {
 	t.Helper()
 	dir := filepath.Join(c.Skills(), "g", name)
@@ -74,7 +72,6 @@ func writeSkill(t *testing.T, c checkout.Checkout, name, body string) {
 	}
 }
 
-// TestUnguardedNamesEachLocalSkillAndKey reports the skill and the missing key, exempts locked bodies and an unguarded skill outside mustGuard, and reports a skill folder without its SKILL.md.
 func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 	c := checkout.Checkout{Root: t.TempDir()}
 	if err := os.MkdirAll(c.Skills(), 0o755); err != nil {
@@ -133,7 +130,6 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 	}
 }
 
-// TestShippedLocalSkillsCarryAllGuards runs the shipped parser over the shipped skills, so a local skill added without every guard fails here rather than in a client.
 func TestShippedLocalSkillsCarryAllGuards(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -148,7 +144,6 @@ func TestShippedLocalSkillsCarryAllGuards(t *testing.T) {
 	}
 }
 
-// TestShippedSkillLinksResolve keeps the checkout's bookkeeping links in step with the groups: every skill has .agents/skills/<name> pointing at its grouped body and .claude/skills/<name> pointing through that link, and neither directory holds a link for a skill that no longer exists.
 func TestShippedSkillLinksResolve(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// evalRun runs the built binary with its own HOME and scratch root.
 func evalRun(t *testing.T, home, root string, args ...string) result {
 	t.Helper()
 	cmd := exec.Command(binary, append([]string{"eval"}, args...)...)
@@ -23,7 +22,6 @@ func evalRun(t *testing.T, home, root string, args ...string) result {
 	return result{stdout.String(), stderr.String(), code}
 }
 
-// TestEvalPlantAndCleanCommand proves the CLI is wired to planting and cleaning: plant prints a run id and fills the scratch root from the environment, clean empties it, and an unknown run id exits 1.
 func TestEvalPlantAndCleanCommand(t *testing.T) {
 	base := t.TempDir()
 	home, root, skill := filepath.Join(base, "home"), filepath.Join(base, "scratch"), filepath.Join(base, "tidy")
@@ -54,7 +52,6 @@ func TestEvalPlantAndCleanCommand(t *testing.T) {
 	}
 }
 
-// TestEvalRunCommand proves the CLI is wired to the runs: a dry run prints each command and starts nothing, and a run starts the stand-in client in each planted directory and prints its label.
 func TestEvalRunCommand(t *testing.T) {
 	base := t.TempDir()
 	home, root, skill, bin := filepath.Join(base, "home"), filepath.Join(base, "scratch"), filepath.Join(base, "tidy"), filepath.Join(base, "bin")

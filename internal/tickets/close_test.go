@@ -11,7 +11,6 @@ import (
 
 const issuesRel = "docs/specs/export/issues"
 
-// localFeature writes a local-markdown feature: spec.md and one issue per status, each blocked as edges says.
 func localFeature(t *testing.T, statuses map[int]string, edges map[int][]int) string {
 	t.Helper()
 	root := t.TempDir()
@@ -63,7 +62,6 @@ func statusOf(t *testing.T, root, rel string) string {
 	return s
 }
 
-// TestCloseAdvancesTheFrontier covers the /land transitions: the merged ticket is done, a blocked dependent whose blockers are all done moves to the mapped ready label, one still waiting or in another state keeps its state, and a rerun changes nothing.
 func TestCloseAdvancesTheFrontier(t *testing.T) {
 	root := localFeature(t,
 		map[int]string{1: "in-progress", 2: "waiting", 3: "waiting", 4: "in-progress"},
@@ -86,7 +84,6 @@ func TestCloseAdvancesTheFrontier(t *testing.T) {
 	}
 }
 
-// TestCloseFinishesTheParent covers the parent: spec.md becomes done only when its last ticket merges.
 func TestCloseFinishesTheParent(t *testing.T) {
 	root := localFeature(t, map[int]string{1: "done", 2: "in-progress"}, map[int][]int{2: {1}})
 	got := closeRun(t, root, 2)
@@ -98,7 +95,6 @@ func TestCloseFinishesTheParent(t *testing.T) {
 	}
 }
 
-// A ticket with no Status: line gains one under its title.
 func TestSetStatusAddsAMissingLine(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "01-x.md")
 	if err := os.WriteFile(path, []byte("# 01 X\n\n## What to build\n\nx\n"), 0o644); err != nil {

@@ -11,7 +11,6 @@ import (
 	wt "github.com/jvillegasd/harness/internal/worktree"
 )
 
-// recordName is the file in a key's review directory that records the one worktree a review may create. Its first line is the worktree's path and its second the commit it was created at. While the worktree it names exists, `remove` and `prune` leave the directory alone.
 const recordName = "worktree.txt"
 
 func readRecord(dir string) (path, sha string, ok bool, err error) {
@@ -30,7 +29,6 @@ func readRecord(dir string) (path, sha string, ok bool, err error) {
 	return path, sha, true, nil
 }
 
-// recordLive reports whether dir's worktree.txt names a worktree whose directory still exists. A record whose directory is gone, as after the worktree was retired without `harness review worktree retire`, holds no work and so holds nothing.
 func recordLive(dir string) (bool, error) {
 	path, _, ok, err := readRecord(dir)
 	if err != nil || !ok {
@@ -39,7 +37,6 @@ func recordLive(dir string) (bool, error) {
 	return path != "" && exists(path), nil
 }
 
-// findTree returns the worktree of the repository at path, if any.
 func findTree(root, path string) (*wt.Tree, error) {
 	trees, err := wt.List(root)
 	if err != nil {
@@ -59,7 +56,6 @@ func findTree(root, path string) (*wt.Tree, error) {
 	return nil, nil
 }
 
-// AddWorktree creates the review worktree for key: a detached checkout of sha in a fresh sibling directory outside the checkout, with Git hooks disabled, and the saved patch applied when one is given. The record is written before the worktree exists, so a failed creation still names where it was meant to be. Run again while that worktree exists at the same commit, it returns the same path and changes nothing.
 func AddWorktree(root, key, sha, patch string) (string, error) {
 	dir, err := Dir(root, key)
 	if err != nil {
@@ -79,7 +75,7 @@ func AddWorktree(root, key, sha, patch string) (string, error) {
 			return "", err
 		}
 		switch {
-		// A patch cannot be told apart from what the worktree already holds, so it goes only into a fresh one.
+
 		case tree != nil && patch != "":
 			return "", fmt.Errorf("%w: the review worktree %s already exists, so the patch was not applied; retire it first", ErrHeld, path)
 		case tree != nil && tree.Head == full:
@@ -89,7 +85,7 @@ func AddWorktree(root, key, sha, patch string) (string, error) {
 		case recorded != full:
 			return "", fmt.Errorf("%w: %s records %s at %s, which is not %s; retire it first", ErrHeld, filepath.Join(dir, recordName), path, recorded, full)
 		}
-		// The recorded worktree was never created, so creation resumes at the recorded path.
+
 	} else {
 		parent, base := filepath.Dir(root), filepath.Base(root)+"-review-"+full[:12]
 		path = filepath.Join(parent, base)
@@ -123,7 +119,6 @@ func exists(path string) bool {
 	return err == nil
 }
 
-// RetireWorktree retires the review worktree recorded for key without losing work: whatever it holds is saved as a patch in the review directory first, and the record is deleted only once the worktree is gone. A refusal leaves both. It returns one line per thing it did; with no record it does nothing.
 func RetireWorktree(root, key string, allowIgnored bool) ([]string, error) {
 	dir, err := Dir(root, key)
 	if err != nil {

@@ -17,7 +17,6 @@ import (
 	"github.com/jvillegasd/harness/internal/models"
 )
 
-// exists is true for anything at a path, a dangling symlink included.
 func exists(path string) bool {
 	_, err := os.Lstat(path)
 	return err == nil
@@ -43,7 +42,6 @@ func readlink(path string) string {
 	return target
 }
 
-// entries lists a directory as full paths, sorted, hidden names skipped, and nothing for a missing directory.
 func entries(dir string) []string {
 	list, err := os.ReadDir(dir)
 	if err != nil {
@@ -73,9 +71,8 @@ func (in *installer) skillRoots() []string {
 	return []string{filepath.Join(in.home, ".agents", "skills"), filepath.Join(in.home, ".claude", "skills"), filepath.Join(in.config, "opencode", "skills")}
 }
 
-// assigned is this machine's `harness models` choice, which the role agents are rendered from. A Codex or OpenCode model this machine cannot run falls back to the client default with a warning, so a routine install never writes an agent that cannot start.
 func (in *installer) assigned() map[string]agents.Assigned {
-	// Resolved once per run, so generation and the check render the same choice.
+
 	if in.assignments != nil {
 		return in.assignments
 	}
@@ -88,7 +85,7 @@ func (in *installer) assigned() map[string]agents.Assigned {
 	for _, role := range models.AllRoles {
 		a := assigned[role]
 		err := catalog.Runnable(models.Assignment{Client: a.Client, Model: a.Model, Effort: a.Effort})
-		// A lens that follows the reviewer falls back with it, and the reviewer's own warning already names the fix.
+
 		quiet := a.Source == "reviewer"
 		switch {
 		case err != nil && quiet:
@@ -105,17 +102,14 @@ func (in *installer) assigned() map[string]agents.Assigned {
 	return assigned
 }
 
-// agentOut is this checkout's own untracked directory of rendered role agents. A client link's text pointing into it is what proves this checkout wrote the link.
 func (in *installer) agentOut() string {
 	return filepath.Join(in.dir.Generated(), "agents")
 }
 
-// agentRoots pairs each client with the directory its role agents are linked into.
 func (in *installer) agentRoots() [][2]string {
 	return [][2]string{{"claude", filepath.Join(in.home, ".claude", "agents")}, {"codex", filepath.Join(in.codexHome(), "agents")}, {"opencode", filepath.Join(in.config, "opencode", "agents")}}
 }
 
-// skills are the real directories inside the checkout's skill groups, flattened to their bare names; a symlink there is not a skill this harness ships, and a name in two groups stops the install.
 func (in *installer) skills() []checkout.Skill {
 	skills, err := in.dir.SkillDirs()
 	if err != nil {
@@ -131,7 +125,6 @@ func (in *installer) ensureBackupRoot() {
 	}
 }
 
-// backupExisting moves whatever is at path into this run's backup root, or deletes it under --no-backup. A directory symlink is parked under a suffixed name, because at the plain path a later backup expecting a directory would write through it into the link's target.
 func (in *installer) backupExisting(path, suffix string) {
 	if !exists(path) {
 		return
@@ -145,7 +138,7 @@ func (in *installer) backupExisting(path, suffix string) {
 	backup := filepath.Join(in.backupRoot, strings.TrimPrefix(path, in.home+"/")+suffix)
 	must(os.MkdirAll(filepath.Dir(backup), 0o755))
 	if err := os.Rename(path, backup); errors.Is(err, syscall.EXDEV) {
-		// A rename cannot cross filesystems, and mv copies then deletes. mv would move path inside a backup that already exists, where a rename refuses, so it refuses too.
+
 		if exists(backup) {
 			die("Backup path already exists: %s", backup)
 		}
@@ -158,7 +151,6 @@ func (in *installer) backupExisting(path, suffix string) {
 	in.log("Backed up %s -> %s", path, backup)
 }
 
-// backupCopy archives a file about to be rewritten in place. The first copy in a run wins, so a second writer never archives the first one's output in place of the original.
 func (in *installer) backupCopy(path string) {
 	if !isFile(path) || in.noBackup {
 		return
@@ -177,7 +169,6 @@ func (in *installer) backupCopy(path string) {
 	must(os.Chtimes(backup, info.ModTime(), info.ModTime()))
 }
 
-// ensureManagedDir makes a managed root a real directory, so harness links and private entries sit side by side. A symlink standing in for one is moved aside, because linking into someone else's directory would write entries the orphan sweep never covers. Without create, a root the harness only sweeps is normalized but never created.
 func (in *installer) ensureManagedDir(dest string, create bool) {
 	if info, err := os.Lstat(dest); err == nil {
 		if info.Mode()&fs.ModeSymlink != 0 {
@@ -191,18 +182,16 @@ func (in *installer) ensureManagedDir(dest string, create bool) {
 	}
 }
 
-// inScope reports whether this run owns a copy: its component is selected and it serves a targeted client.
 func (in *installer) inScope(e entry) bool {
 	return in.has(e.Component) && slices.ContainsFunc(e.Clients, in.targets)
 }
 
-// installFiles copies the selected managed assets into the targeted clients and records each copy. A copy in scope that an earlier run recorded and this one no longer ships is removed; anything unrecorded or edited in the way is archived first, so neither a private entry nor a user's edit is overwritten unseen. Records outside this run's scope stay as they were.
 func (in *installer) installFiles() {
 	if in.has("skills") {
 		for _, root := range []string{filepath.Join(in.home, ".agents", "skills"), filepath.Join(in.home, ".claude", "skills")} {
 			in.ensureManagedDir(root, true)
 		}
-		// OpenCode reads ~/.agents/skills, so this root exists only to be cleared of duplicates.
+
 		in.ensureManagedDir(filepath.Join(in.config, "opencode", "skills"), false)
 	}
 	if in.has("agents") {
@@ -238,7 +227,7 @@ func (in *installer) installFiles() {
 	}
 	for i, e := range want {
 		if e.Component == "skills" {
-			// OpenCode reads ~/.agents/skills, so a second copy would double-list.
+
 			in.backupExisting(filepath.Join(in.config, "opencode", "skills", filepath.Base(e.Path)), "")
 		}
 		current, source := digest(e.Path), digest(e.source)
@@ -251,14 +240,13 @@ func (in *installer) installFiles() {
 		}
 		want[i].Digest = source
 	}
-	// The SEO group is gone, and its launcher sits outside the managed roots.
+
 	in.backupExisting(filepath.Join(in.home, ".local", "bin", "claude-seo"), "")
 
 	in.updateState(func(s *state) { s.Files = append(kept, want...) })
 	in.installed = want
 }
 
-// checkFiles verifies every copy this run recorded is in place and unchanged, and that the rendered agents are neither drifted nor widened.
 func (in *installer) checkFiles() {
 	for _, e := range in.installed {
 		if digest(e.Path) != e.Digest {

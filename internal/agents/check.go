@@ -9,7 +9,6 @@ import (
 	"strings"
 )
 
-// RestrictionsMatch checks the complete rendered permission configuration.
 func RestrictionsMatch(relative, text, level string) bool {
 	lines := splitLines(text)
 	if strings.HasPrefix(relative, "claude/") {
@@ -45,7 +44,7 @@ func RestrictionsMatch(relative, text, level string) bool {
 		return true
 	}
 	if strings.HasPrefix(relative, "codex/") {
-		// Identity and model keys before the instructions, and exactly the level's controls after them.
+
 		start := strings.Index(text, "\n"+codexInstructions)
 		if start < 0 {
 			return false
@@ -76,7 +75,6 @@ func RestrictionsMatch(relative, text, level string) bool {
 	return kept == "mode: all\n"+opencodeControls[level]
 }
 
-// CodexInstructions returns a rendered Codex agent's developer_instructions body.
 func CodexInstructions(text string) (string, bool) {
 	start := strings.Index(text, "\n"+codexInstructions)
 	if start < 0 {
@@ -84,7 +82,7 @@ func CodexInstructions(text string) (string, bool) {
 	}
 	rest := text[start+1+len(codexInstructions):]
 	end := strings.Index(rest, codexClose)
-	// TOML ends the literal string at any triple quote, so a body holding one would hide keys inside what looks like instructions.
+
 	if end < 0 || strings.Contains(rest[:end], "'''") {
 		return "", false
 	}
@@ -130,7 +128,6 @@ func checkSymlinks(outputs map[string]string, output string, stderr io.Writer) i
 	return 0
 }
 
-// parents lists path's ancestors from its parent up to the filesystem root.
 func parents(path string) []string {
 	var out []string
 	for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
@@ -142,7 +139,6 @@ func parents(path string) []string {
 	return out
 }
 
-// checkOutputs reports each output that is missing, drifted, unmanaged, or widened, returning 1 when it found any.
 func checkOutputs(outputs, accesses map[string]string, output string, stdout io.Writer) int {
 	present := existing(output)
 	var findings []string

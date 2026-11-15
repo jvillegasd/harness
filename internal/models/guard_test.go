@@ -9,7 +9,6 @@ import (
 	"testing"
 )
 
-// A read-only role may read and search inside its working directory, and nothing else: no writes, no other program, no path or link leading out, and no credential-shaped file.
 func TestReadGuardAllowsReadsInsideTheWorkingDirectory(t *testing.T) {
 	base := t.TempDir()
 	dir := filepath.Join(base, "repo")
@@ -102,7 +101,6 @@ func TestReadGuardAllowsReadsInsideTheWorkingDirectory(t *testing.T) {
 	}
 }
 
-// A hook request without a cwd falls back to the guard's own working directory.
 func TestReadCommandFallsBackToTheProcessDirectory(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "a.go"), nil, 0o644); err != nil {
@@ -117,7 +115,6 @@ func TestReadCommandFallsBackToTheProcessDirectory(t *testing.T) {
 	}
 }
 
-// Anything that is not a well-formed Bash request is denied.
 func TestReadGuardDeniesMalformedInput(t *testing.T) {
 	for _, input := range []string{"malformed", `{"tool_name":"Write","tool_input":{"command":"cat a.go"}}`} {
 		var output bytes.Buffer
@@ -127,7 +124,6 @@ func TestReadGuardDeniesMalformedInput(t *testing.T) {
 	}
 }
 
-// Every Claude tool is refused a secret env file by name, in any directory, while the example template and explicitly local files stay open; a call naming none gets no decision, so the client's own rules still apply.
 func TestSecretGuardDeniesSecretEnvFilesOnEveryTool(t *testing.T) {
 	for _, tc := range []struct {
 		tool  string
@@ -183,7 +179,6 @@ func TestSecretGuardDeniesSecretEnvFilesOnEveryTool(t *testing.T) {
 	}
 }
 
-// A request the guard cannot read is denied rather than waved through.
 func TestSecretGuardDeniesMalformedInput(t *testing.T) {
 	for _, input := range []string{"malformed", `{"tool_input":{"file_path":"a.go"}}`} {
 		var output bytes.Buffer

@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-// readFlags lists, per allowed read command, the flags that would write, run another program, follow a link out of the tree, read outside it, or never exit. A short-flag cluster is refused when it holds any of the letters after "-".
 var readFlags = map[string][]string{
 	"cat":  nil,
 	"head": nil,
@@ -19,13 +18,11 @@ var readFlags = map[string][]string{
 	"git":  {"--output", "--ext-diff", "--textconv", "--no-index", "--open-files-in-pager", "-O"},
 }
 
-// gitReads are the git subcommands that only read the repository, each with the flags it must carry. Git runs a configured external diff driver or textconv filter that .gitattributes selects, so a subcommand that prints diffs or blame must turn both off.
 var gitReads = map[string][]string{
 	"show": {"--no-ext-diff", "--no-textconv"}, "diff": {"--no-ext-diff", "--no-textconv"}, "log": {"--no-ext-diff", "--no-textconv"},
 	"blame": {"--no-textconv"}, "status": nil, "ls-files": nil, "rev-parse": nil, "merge-base": nil, "grep": nil,
 }
 
-// readCommand allows a read-only command whose every argument stays inside dir: no refused flag, no credential-shaped name, and no existing path that resolves outside dir. It runs nothing; a path that does not exist is left to the command to reject.
 func readCommand(words []string, dir string) bool {
 	refused, ok := readFlags[words[0]]
 	if !ok || dir == "" {
@@ -64,7 +61,6 @@ func readCommand(words []string, dir string) bool {
 	return true
 }
 
-// operands lists every piece of an argument a command could read as a path: the argument itself, a long flag's value after "=", and every tail of a short-flag cluster, since a short flag may take its value attached (rg -f/etc/hosts).
 func operands(arg string) []string {
 	if !strings.HasPrefix(arg, "-") {
 		return []string{arg}
@@ -82,7 +78,6 @@ func operands(arg string) []string {
 	return tails
 }
 
-// staysInside reports whether an existing path resolves inside root; a path that does not exist is left to the command to reject.
 func staysInside(path, dir, root string) bool {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(dir, path)
@@ -106,7 +101,6 @@ func refusedFlag(arg string, refused []string) bool {
 	return false
 }
 
-// credentialShaped follows the tracked Read denies in clients/claude.json, applied to every path-like piece of an argument, including a git revision's path after ":". For env files it applies envSecret, the rule the secret guard enforces for every Claude tool.
 func credentialShaped(arg string) bool {
 	for _, part := range strings.FieldsFunc(arg, func(r rune) bool { return r == '/' || r == ':' || r == '=' }) {
 		switch {
@@ -119,7 +113,6 @@ func credentialShaped(arg string) bool {
 	return false
 }
 
-// envSecret reports whether a name is an env file agents may not touch: every `.env*` name except the example template and the files explicitly named local (.env.local and .env.<mode>.local). It compares the lowercased name, because a case-insensitive file system such as macOS's opens the same file for an uppercase or mixed-case spelling.
 func envSecret(name string) bool {
 	name = strings.ToLower(name)
 	if !strings.HasPrefix(name, ".env") {

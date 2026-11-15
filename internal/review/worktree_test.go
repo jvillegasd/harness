@@ -21,7 +21,6 @@ func (r *coverRepo) worktrees() int {
 	return len(strings.Split(r.git("worktree", "list", "--porcelain"), "\n\n"))
 }
 
-// TestAddWorktree covers creating the review worktree outside the checkout at the commit, recording it, running no hook, applying a patch, and a second add changing nothing.
 func TestAddWorktree(t *testing.T) {
 	r := newCoverRepo(t)
 	head := r.git("rev-parse", "HEAD")
@@ -69,7 +68,6 @@ func (r *coverRepo) gitIn(dir string, args ...string) string {
 	return r.git(args...)
 }
 
-// TestAddWorktreePatch covers applying a saved patch, binary content included, in the new worktree, refusing a patch that does not apply, and refusing a patch over an existing worktree rather than returning it without the patch.
 func TestAddWorktreePatch(t *testing.T) {
 	r := newCoverRepo(t)
 	bad := filepath.Join(t.TempDir(), "bad.patch")
@@ -102,7 +100,6 @@ func TestAddWorktreePatch(t *testing.T) {
 	}
 }
 
-// TestAddWorktreeRecordFirst covers the record naming the intended path when creation fails.
 func TestAddWorktreeRecordFirst(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores the read-only directory this test relies on")
@@ -122,7 +119,6 @@ func TestAddWorktreeRecordFirst(t *testing.T) {
 	}
 }
 
-// TestRetireWorktree covers retiring a clean worktree, saving a dirty one's work first, and refusing over ignored paths until allowed.
 func TestRetireWorktree(t *testing.T) {
 	r := newCoverRepo(t)
 	r.commit(map[string]string{".gitignore": "build/\n"})

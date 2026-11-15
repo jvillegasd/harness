@@ -18,12 +18,10 @@ func (f *fixture) merge(number int, head, text string, accepted bool) (Merged, e
 	return Merge(f.env(), number, head, file, accepted)
 }
 
-// merges counts the merge calls sent to the forge.
 func (f *fixture) merges() int {
 	return len(slices.DeleteFunc(slices.Clone(f.calls), func(c string) bool { return !strings.HasPrefix(c, "pr merge") }))
 }
 
-// TestMerge covers the squash merge: its exact forge call, the tradeoffs carried into the body, and success only on a MERGED read-back.
 func TestMerge(t *testing.T) {
 	f := setup(t)
 	p := f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
@@ -46,7 +44,6 @@ func TestMerge(t *testing.T) {
 		t.Errorf("body %q, want %q", got, want)
 	}
 
-	// A body that already carries tradeoffs is sent as written.
 	p.State = "OPEN"
 	if _, err := f.merge(1, p.HeadRefOid, "Adds docs.\n\n## Tradeoffs\n\nNone\n", false); err != nil {
 		t.Fatal(err)
@@ -55,21 +52,18 @@ func TestMerge(t *testing.T) {
 		t.Errorf("body %q repeats or replaces the given tradeoffs", got)
 	}
 
-	// A read-back that fails proves nothing, so the merge is not reported done.
 	p.State, f.readBackFails = "OPEN", true
 	if m, err := f.merge(1, p.HeadRefOid, "x\n", false); err == nil || m.State != "" {
 		t.Errorf("a failed read-back got %+v, %v", m, err)
 	}
 	f.readBackFails = false
 
-	// The forge's word alone is not a merge: a pull request still open on read-back fails.
 	p.State, f.mergeRefused = "OPEN", true
 	if m, err := f.merge(1, p.HeadRefOid, "x\n", false); err == nil || m.State != "OPEN" {
 		t.Errorf("a refused merge got %+v, %v", m, err)
 	}
 }
 
-// TestMergeRefusals covers every refusal that writes nothing to the forge.
 func TestMergeRefusals(t *testing.T) {
 	f := setup(t)
 	p := f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
@@ -88,14 +82,12 @@ func TestMergeRefusals(t *testing.T) {
 	refused("draft", p.HeadRefOid, "x\n", true, "stop lane")
 	p.IsDraft = false
 
-	// A forge gate is never accepted past.
 	f.checks[1] = `[{"name":"ci","bucket":"pending"}]`
 	f.checksErr[1] = errors.New("exit status 8")
 	refused("pending check", p.HeadRefOid, "x\n", true, "held by the forge")
 	delete(f.checks, 1)
 	delete(f.checksErr, 1)
 
-	// Any other hold needs the human's acceptance, and merges with it.
 	f.verdict(1, "FAIL", p.HeadRefOid, "me")
 	refused("failed verdict", p.HeadRefOid, "x\n", false, "--accepted")
 	if m, err := f.merge(1, p.HeadRefOid, "x\n", true); err != nil || m.State != "MERGED" {

@@ -69,7 +69,6 @@ and session record, and nothing else. An unknown run id exits 1 and removes
 nothing.
 `
 
-// Command runs `harness eval` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)
@@ -199,7 +198,7 @@ func runCommand(args []string, stdout, stderr io.Writer) int {
 		return nil
 	})
 	flags.BoolVar(&o.DryRun, "dry-run", false, "")
-	// The run id may come before the flags.
+
 	run := ""
 	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
 		run, args = args[0], args[1:]

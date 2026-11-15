@@ -14,19 +14,15 @@ import (
 	"strings"
 )
 
-// Forge runs one gh command and returns its stdout.
 type Forge func(args ...string) ([]byte, error)
 
-// Config is the part of docs/agents/harness.json publishing reads.
 type Config struct {
 	Tracker string            `json:"tracker"`
 	Labels  map[string]string `json:"labels"`
 }
 
-// ConfigPath is the repository's tracker configuration.
 var ConfigPath = filepath.Join("docs", "agents", "harness.json")
 
-// ReadConfig reads the tracker configuration at root.
 func ReadConfig(root string) (Config, error) {
 	var c Config
 	raw, err := os.ReadFile(filepath.Join(root, ConfigPath))
@@ -49,7 +45,6 @@ func (c Config) label(key, fallback string) string {
 	return fallback
 }
 
-// Order returns the tickets blockers first, ties by number. The tickets have passed Check, so the edges form no cycle.
 func Order(ts []Ticket) []Ticket {
 	byNumber := map[int]Ticket{}
 	for _, t := range ts {
@@ -79,7 +74,6 @@ func Order(ts []Ticket) []Ticket {
 	return out
 }
 
-// Body renders a draft's five sections as an issue body, with Blocked by naming the published issues.
 func Body(t Ticket, issues map[int]int) string {
 	var parts []string
 	for _, name := range Sections {
@@ -99,7 +93,6 @@ func Body(t Ticket, issues map[int]int) string {
 	return strings.Join(parts, "\n\n") + "\n"
 }
 
-// Label is the mapped label a new issue takes: ready only with no blocker, since every blocker is a ticket this run publishes open.
 func Label(c Config, t Ticket) string {
 	if len(t.BlockedBy) == 0 {
 		return c.label("ready_for_agent", "ready-for-agent")
@@ -107,7 +100,6 @@ func Label(c Config, t Ticket) string {
 	return c.label("blocked", "blocked")
 }
 
-// Plan prints the exact write set: each issue to create with its label, and each blocking edge.
 func Plan(c Config, ts []Ticket, out io.Writer) {
 	for _, t := range Order(ts) {
 		if t.Issue != "" {
@@ -133,17 +125,15 @@ func issueNumber(url string) (int, error) {
 	return strconv.Atoi(m[1])
 }
 
-// Published is what a publish run did.
 type Published struct {
-	Created  []string // issue URLs this run created
-	Issues   []string // every ticket's issue URL, in publish order
-	Kept     []string // draft paths whose issue did not match on read-back
-	Removed  []string // draft paths removed once their issue matched
-	Remains  []string // draft paths not yet published when the run stopped
-	Mismatch []string // why each kept draft did not match
+	Created  []string
+	Issues   []string
+	Kept     []string
+	Removed  []string
+	Remains  []string
+	Mismatch []string
 }
 
-// Publish creates each draft's issue blockers first, records it in the draft at once, adds each missing blocking edge, reads every issue back, and removes the drafts whose issue matched. It stops at the first forge failure, leaving every draft in place, and a rerun skips the issues the drafts already record.
 func Publish(c Config, root string, ts []Ticket, forge Forge) (Published, error) {
 	var p Published
 	issues := map[int]int{}
@@ -191,7 +181,7 @@ func Publish(c Config, root string, ts []Ticket, forge Forge) (Published, error)
 		}
 		matched[t.Number] = true
 	}
-	// A kept draft still names its blockers by draft number, so their drafts stay until it is published too.
+
 	needed := map[int]bool{}
 	byNumber := make(map[int]Ticket, len(order))
 	for _, t := range order {
@@ -223,12 +213,11 @@ func Publish(c Config, root string, ts []Ticket, forge Forge) (Published, error)
 		}
 	}
 	if len(order) > 0 && len(p.Removed) == len(order) {
-		os.Remove(filepath.Dir(filepath.Join(root, order[0].Path))) // only when now empty
+		os.Remove(filepath.Dir(filepath.Join(root, order[0].Path)))
 	}
 	return p, nil
 }
 
-// record writes the issue URL into the draft under its title line.
 func record(path, url string) error {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -249,7 +238,6 @@ func record(path, url string) error {
 
 const repoPath = "repos/{owner}/{repo}/issues/"
 
-// blockedBy reads the issue numbers an issue is natively blocked by.
 func blockedBy(forge Forge, n int) (map[int]bool, error) {
 	out, err := forge("api", repoPath+strconv.Itoa(n)+"/dependencies/blocked_by")
 	if err != nil {
@@ -266,7 +254,6 @@ func blockedBy(forge Forge, n int) (map[int]bool, error) {
 	return have, nil
 }
 
-// edges adds each blocking edge the issue lacks, sending the blocker's database id.
 func edges(forge Forge, n int, blockers []int, issues map[int]int) error {
 	if len(blockers) == 0 {
 		return nil
@@ -295,7 +282,6 @@ func edges(forge Forge, n int, blockers []int, issues map[int]int) error {
 	return nil
 }
 
-// readBack compares the issue on the forge with what was written, returning why it differs or "" when it matches.
 func readBack(forge Forge, n int, title, body, label string, blockers []int, issues map[int]int) (string, error) {
 	out, err := forge("issue", "view", strconv.Itoa(n), "--json", "title,body,labels")
 	if err != nil {

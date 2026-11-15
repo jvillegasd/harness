@@ -1,4 +1,3 @@
-// Package attempts keeps the attempt log of a measured loop for `harness attempts`: one tab-separated row per attempt, with the id, time, and delta computed rather than typed.
 package attempts
 
 import (
@@ -59,7 +58,6 @@ type row struct {
 	Note       string   `json:"note"`
 }
 
-// Command runs `harness attempts` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)

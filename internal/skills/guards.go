@@ -11,14 +11,12 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-// mustGuard are the local skills only a human may start. Some act with authority or at budget scale: merging, discarding work, sweeping worktrees, provisioning a repository, unattended building, and work mode, whose start is the human's opt-in to its rigor and its autopilot grant. The rest are workflow entry points whose Matt Pocock or pstack equivalent is explicit-only (specifying, ticketing, triage, and targeted E2E runs), and local-tracker, which every caller reads by path. Helpers that other skills or `/work` call stay model-invoked, because nothing can invoke a guarded skill.
 var mustGuard = map[string]bool{
 	"land": true, "setup-harness": true, "build": true, "work": true,
 	"spec": true, "tickets": true, "triage": true, "e2e-verification": true, "local-tracker": true,
 	"cleanup": true,
 }
 
-// Unguarded reports every skill absent from the lock whose invocation guard is required or partly present, as "<name>: missing <key>". A skill in mustGuard needs all three guards, and any other local skill carrying one needs the others, because a guard only one client reads fires in the rest. Claude Code reads `disable-model-invocation: true` at the top level, OpenCode reads `opencode/autoinvoke: "false"` under `metadata:`, and Codex reads `allow_implicit_invocation: false` under `policy:` in the skill's agents/openai.yaml, so a guard anywhere else does not count. Locked bodies are exempt, because their frontmatter is upstream content.
 func Unguarded(c checkout.Checkout) ([]string, error) {
 	lf, err := readLock(c.Lock())
 	if err != nil {
@@ -66,7 +64,6 @@ func Unguarded(c checkout.Checkout) ([]string, error) {
 	return problems, nil
 }
 
-// guarded reads the frontmatter line by line: the Claude guard must be a top-level line, and the OpenCode guard a direct child of the top-level `metadata:` block, at the indent of that block's first child.
 func guarded(text string) (claude, opencode bool) {
 	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
 	if lines[0] != "---" {
@@ -81,7 +78,7 @@ func guarded(text string) (claude, opencode bool) {
 		if topLevel {
 			inMetadata = line == "metadata:"
 			if inMetadata {
-				// A later metadata block replaces the earlier one, so its guard must be restated.
+
 				opencode, childIndent = false, ""
 			}
 			if strings.HasPrefix(line, "disable-model-invocation:") {
@@ -100,11 +97,10 @@ func guarded(text string) (claude, opencode bool) {
 			opencode = line[len(indent):] == `opencode/autoinvoke: "false"`
 		}
 	}
-	// No closing delimiter: there is no frontmatter to trust.
+
 	return false, false
 }
 
-// codexGuarded reads agents/openai.yaml, where the guard must be a direct child of the top-level `policy:` block, at the indent of that block's first child. A tab indent or a repeated policy key is not YAML a strict parser takes, so either one counts as unguarded.
 func codexGuarded(text string) bool {
 	guard, inPolicy, childIndent, policies := false, false, "", 0
 	for _, line := range strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {

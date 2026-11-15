@@ -7,10 +7,8 @@ import (
 	"testing"
 )
 
-// codexListing is what the codex shim prints for `codex debug models`: two listed models and a hidden one.
 const codexListing = `{"models":[{"slug":"gpt-6-luna","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"}]},{"slug":"gpt-6.1-sol","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"high"},{"effort":"ultra"}]},{"slug":"gpt-reserve","visibility":"hide","supported_reasoning_levels":[{"effort":"low"}]}]}`
 
-// listingPath puts `opencode models` and `codex debug models` shims on PATH, so validation sees fixed model lists rather than this machine's. The codex shim answers only with CODEX_HOME at ~/.codex, which is where the harness keeps Codex.
 func listingPath(t *testing.T) {
 	t.Helper()
 	dir := t.TempDir()
@@ -29,7 +27,6 @@ func listingPath(t *testing.T) {
 	t.Setenv("PATH", dir)
 }
 
-// TestSetRejectsInvalidValuesWithoutWriting settles which assignments are refused at the package seam; models_test.go keeps one command wiring case.
 func TestSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
 	listingPath(t)
 	const seed = `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}` + "\n"
@@ -63,7 +60,6 @@ func TestSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
 	}
 }
 
-// TestSetAcceptsValidValues covers the catalog path, a listed Codex model at a supported effort and inherit, which needs no listing, and Sonnet 5's effort range, which Claude Code's docs list with xhigh.
 func TestSetAcceptsValidValues(t *testing.T) {
 	listingPath(t)
 	path := filepath.Join(t.TempDir(), "state.json")
@@ -78,7 +74,6 @@ func TestSetAcceptsValidValues(t *testing.T) {
 	}
 }
 
-// TestShowRejectsAStaleChoice names the reset when a stored block no longer resolves.
 func TestShowRejectsAStaleChoice(t *testing.T) {
 	listingPath(t)
 	for name, block := range map[string]string{
@@ -103,7 +98,6 @@ func TestShowRejectsAStaleChoice(t *testing.T) {
 	}
 }
 
-// TestLoadDropsRetiredRoleOverrides keeps an install working after the reviewers merged: an override for a retired role is dropped, and a live one is kept.
 func TestLoadDropsRetiredRoleOverrides(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "state.json")
 	block := `{"roles": {"reviewer-b": {"client": "claude", "model": "opus"}, "review-refuter": {"client": "claude", "model": "opus"}, "reviewer": {"client": "claude", "model": "sonnet"}}}`
@@ -119,7 +113,6 @@ func TestLoadDropsRetiredRoleOverrides(t *testing.T) {
 	}
 }
 
-// A review lens follows the reviewer's assignment until it is set on its own, and a reset returns it to the reviewer's.
 func TestLensFollowsTheReviewerUntilSet(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "state.json")
 	show := func() string {

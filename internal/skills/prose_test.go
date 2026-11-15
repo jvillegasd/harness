@@ -10,7 +10,6 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-// TestShippedProseHasNoEmDash holds the floor's prose rule where a file check can enforce it exactly: no Markdown the harness authors (the floor, the role definitions, and every local skill) carries an em-dash. Locked skill bodies are upstream content and are exempt.
 func TestShippedProseHasNoEmDash(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

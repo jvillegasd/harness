@@ -11,14 +11,13 @@ import (
 	"testing"
 )
 
-// fakeForge is an in-memory GitHub repository answering the gh calls Publish makes. Issue n has database id 1000+n, so a number sent where an id belongs is caught.
 type fakeForge struct {
 	issues     map[int]*fakeIssue
 	next       int
 	calls      []string
-	failCreate int // fail the nth create from now (1-based); 0 never
+	failCreate int
 	creates    int
-	retitle    int // after creating this issue number, change its title on the forge
+	retitle    int
 }
 
 type fakeIssue struct {
@@ -100,7 +99,6 @@ func (f *fakeForge) creatTitles() []string {
 
 var config = Config{Tracker: "github", Labels: map[string]string{"ready_for_agent": "go", "blocked": "wait"}}
 
-// threeDrafts writes 01 and 02 free and 03 blocked by both, and returns them checked.
 func threeDrafts(t *testing.T) (string, string) {
 	t.Helper()
 	root := t.TempDir()
@@ -221,7 +219,6 @@ func TestPlanListsEveryIssueEdgeAndLabel(t *testing.T) {
 	}
 }
 
-// A kept draft whose blocker chain is matched keeps every draft it reaches, so the rerun still passes the check.
 func TestPublishKeepsTheWholeBlockerChainOfAKeptDraft(t *testing.T) {
 	root := t.TempDir()
 	rel := feature(t, root, map[string]string{

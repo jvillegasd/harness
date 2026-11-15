@@ -11,17 +11,14 @@ import (
 	"time"
 )
 
-// shimTools are the external tools a harness command could reach for. Every one is replaced by a logging shim on the controlled PATH, so a run that spawns any of them is caught.
 var shimTools = []string{"codex", "npm", "engram", "agent-browser", "node", "uv", "zed", "git", "gh", "npx", "brew", "wt", "go", "claude", "opencode", "bash", "sh", "mv", "du", "security", "secret-tool", "curl"}
 
-// cliResult is what one harness invocation produced, with timedOut set when holding stdin open stopped it.
 type cliResult struct {
 	stdout, stderr string
 	code           int
 	timedOut       bool
 }
 
-// runCLI runs the built binary with every external tool replaced by a logging shim, stdin held open so a read hangs, and a private HOME and cwd. The caller asserts the shim log stayed empty and neither directory gained a file.
 func runCLI(t *testing.T, cwd, home, shims, log string, args ...string) cliResult {
 	t.Helper()
 	if err := os.MkdirAll(shims, 0o755); err != nil {
@@ -61,7 +58,6 @@ func runCLI(t *testing.T, cwd, home, shims, log string, args ...string) cliResul
 	return result
 }
 
-// matrixCase runs one invocation in a disposable tree and returns the result beside the paths the caller checks for writes.
 type matrixCase struct {
 	result cliResult
 	cwd    string
@@ -81,7 +77,6 @@ func runMatrixCase(t *testing.T, args []string) matrixCase {
 	return matrixCase{runCLI(t, cwd, home, shims, log, args...), cwd, home, log}
 }
 
-// assertClean fails when a run spawned a shimmed tool or wrote into its cwd or home.
 func (c matrixCase) assertClean(t *testing.T) {
 	t.Helper()
 	if raw, err := os.ReadFile(c.log); err == nil && strings.TrimSpace(string(raw)) != "" {
@@ -94,7 +89,6 @@ func (c matrixCase) assertClean(t *testing.T) {
 	}
 }
 
-// TestCommandHelpMatrix drives every command and leaf command's help, in both spellings, through the real executable and asserts status 0, usage on stdout, an untouched stderr, no subprocess, no write, and no stdin read.
 func TestCommandHelpMatrix(t *testing.T) {
 	commands := [][]string{
 		{},
@@ -184,7 +178,6 @@ func TestCommandHelpMatrix(t *testing.T) {
 	}
 }
 
-// TestCommandInvocationMatrix drives the invalid invocations through the real executable and asserts status 2, a diagnostic on stderr, an empty stdout, no subprocess, and no write.
 func TestCommandInvocationMatrix(t *testing.T) {
 	args := [][]string{
 		{"bogus"},
@@ -353,7 +346,6 @@ func TestCommandInvocationMatrix(t *testing.T) {
 	}
 }
 
-// TestOperationalFailuresExitOne covers the third status: a command that ran and failed exits 1, not 2.
 func TestOperationalFailuresExitOne(t *testing.T) {
 	outside := t.TempDir()
 	for _, args := range [][]string{

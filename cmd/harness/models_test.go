@@ -10,7 +10,6 @@ import (
 	"github.com/jvillegasd/harness/internal/models"
 )
 
-// modelsBase is a sandbox whose shims list available OpenCode and Codex models.
 func modelsBase(t *testing.T) string {
 	t.Helper()
 	base := sandbox(t)
@@ -39,7 +38,6 @@ func TestModelsShowDefaultsToBalanced(t *testing.T) {
 	}
 }
 
-// TestModelsWithoutTTYPrintsUsage keeps a script from hanging on the picker: with piped stdin the bare command prints the show and set usage and exits nonzero.
 func TestModelsWithoutTTYPrintsUsage(t *testing.T) {
 	r := runModels(t, modelsBase(t))
 	if r.code == 0 {
@@ -81,7 +79,6 @@ func TestModelsSetRoleOverridesOnlyThatRole(t *testing.T) {
 	}
 }
 
-// TestModelsSetRejectsAnInvalidValue is the command wiring for a refused set: which values are refused is settled in internal/models.
 func TestModelsSetRejectsAnInvalidValue(t *testing.T) {
 	base := modelsBase(t)
 	seed := `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}` + "\n"
@@ -111,7 +108,6 @@ func TestModelsResetRemovesOverrideThenBlock(t *testing.T) {
 	}
 }
 
-// TestModelsResolveReportsTheAssignment covers what resolve is for: the client, model, effort, and source a parent maps onto a native subagent or a T3 Code delegate_task target.
 func TestModelsResolveReportsTheAssignment(t *testing.T) {
 	base := modelsBase(t)
 	resolved := func(role string) map[string]string {
@@ -126,7 +122,7 @@ func TestModelsResolveReportsTheAssignment(t *testing.T) {
 	if got := resolved("executor"); got["client"] != "codex" || got["model"] != "gpt-6-luna" || got["source"] != "preset:balanced" {
 		t.Errorf("executor: %v", got)
 	}
-	// A role on the session's own client is reported the same way, because it is launched the same way.
+
 	if got := resolved("reviewer"); got["client"] != "claude" || got["route"] != "" {
 		t.Errorf("reviewer: %v", got)
 	}
@@ -172,7 +168,6 @@ func TestInstallRendersTheResolvedAssignments(t *testing.T) {
 	}
 }
 
-// TestModelsSetBeforeTheFirstInstall keeps a choice made on a never-installed machine, and installs over it.
 func TestModelsSetBeforeTheFirstInstall(t *testing.T) {
 	base := modelsBase(t)
 	ok(t, runModels(t, base, "set", "--preset", "performance"), "set before install")
@@ -184,7 +179,6 @@ func TestModelsSetBeforeTheFirstInstall(t *testing.T) {
 	ok(t, runInstaller(t, base, "agents"), "install over a reset state")
 }
 
-// TestModelsRejectsAStaleChoice keeps the installer refusing a stored choice it cannot resolve, and naming the reset that clears it. Which stored blocks are stale is settled in internal/models.
 func TestModelsRejectsAStaleChoice(t *testing.T) {
 	base := modelsBase(t)
 	writeMode(t, stateFile(base), `{"version": 1, "installed": {}, "files": [], "models": {"preset": "lavish"}}`+"\n", 0o644)
@@ -194,7 +188,6 @@ func TestModelsRejectsAStaleChoice(t *testing.T) {
 	ok(t, runModels(t, base, "reset"), "the recommended reset")
 	ok(t, runInstaller(t, base, "agents"), "install after reset")
 
-	// A per-role reset drops only that role, leaving the preset to answer for it.
 	writeMode(t, stateFile(base), `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy", "roles": {"executor": {"client": "claude", "model": "claudius"}}}}`+"\n", 0o644)
 	ok(t, runModels(t, base, "reset", "executor"), "reset the malformed role")
 	if r := ok(t, runModels(t, base, "show"), "show after role reset"); !strings.Contains(r.stdout, "executor client=codex model=gpt-5.6-luna effort=inherit (preset:economy)") {
@@ -202,7 +195,6 @@ func TestModelsRejectsAStaleChoice(t *testing.T) {
 	}
 }
 
-// TestModelsPresetNeedsNoCatalog lets any built-in preset be chosen while Codex cannot list its models, and show marks what install will fall back on.
 func TestModelsPresetNeedsNoCatalog(t *testing.T) {
 	base := sandbox(t)
 	writeShim(t, base, "codex", `case "$*" in "debug models") exit 1 ;; esac`)
@@ -216,7 +208,6 @@ func TestModelsPresetNeedsNoCatalog(t *testing.T) {
 	}
 }
 
-// TestInstallFallsBackForAnUnlistedModel keeps the client default and warns when this machine cannot run the assigned Codex or OpenCode model.
 func TestInstallFallsBackForAnUnlistedModel(t *testing.T) {
 	base := modelsBase(t)
 	ok(t, runModels(t, base, "set", "reviewer", "--client", "opencode", "--model", "openai/gpt-5.6-sol"), "assign the reviewer to OpenCode")
@@ -234,7 +225,7 @@ func TestInstallFallsBackForAnUnlistedModel(t *testing.T) {
 	if strings.Contains(readFile(t, filepath.Join(base, "home", ".config", "opencode", "agents", "reviewer.md")), "model:") {
 		t.Error("the OpenCode reviewer carries a model this machine cannot run")
 	}
-	// The lenses follow the reviewer, so they fall back with it, silently and without the model.
+
 	if strings.Contains(r.stderr+r.stdout, "review-bugs is assigned") {
 		t.Errorf("a lens that follows the reviewer warned on its own:\n%s%s", r.stdout, r.stderr)
 	}
@@ -243,7 +234,6 @@ func TestInstallFallsBackForAnUnlistedModel(t *testing.T) {
 	}
 }
 
-// TestInstallRefusesATrackedPerRoleAssignment keeps the machine choice the only per-role source.
 func TestInstallRefusesATrackedPerRoleAssignment(t *testing.T) {
 	base := modelsBase(t)
 	path := filepath.Join(base, "checkout", "clients", "assignments.json")
@@ -262,7 +252,6 @@ func TestInstallRefusesATrackedPerRoleAssignment(t *testing.T) {
 	}
 }
 
-// TestEveryAssignedRoleIsDispatchable ties rendered roles to the CLI registry and preset assignments.
 func TestEveryAssignedRoleIsDispatchable(t *testing.T) {
 	var config struct {
 		Roles map[string]struct{} `json:"roles"`
@@ -275,7 +264,7 @@ func TestEveryAssignedRoleIsDispatchable(t *testing.T) {
 		if !slices.Contains(models.AllRoles, role) {
 			t.Errorf("clients/assignments.json assigns %q but models.AllRoles omits it, so the role cannot be resolved", role)
 		}
-		// A review lens follows the reviewer's assignment, so no preset names it.
+
 		if slices.Contains(models.Lenses, role) {
 			continue
 		}

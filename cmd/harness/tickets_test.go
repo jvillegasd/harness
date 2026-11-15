@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// writeDraft writes one draft under the repository's draft directory.
 func writeDraft(t *testing.T, dir, feature, name, title, blocked string) {
 	t.Helper()
 	path := filepath.Join(dir, "docs", "agents", "tickets", feature, name)
@@ -20,7 +19,6 @@ func writeDraft(t *testing.T, dir, feature, name, title, blocked string) {
 	}
 }
 
-// TestTicketsCheckCommand proves the CLI is wired to the draft rules: a clean feature exits 0 silently, a broken one prints path:line problems and exits 1, and no draft directory is not a failure.
 func TestTicketsCheckCommand(t *testing.T) {
 	dir := repo(t)
 	ok(t, harness(t, dir, "tickets", "check"), "check with no drafts")
@@ -39,7 +37,6 @@ func TestTicketsCheckCommand(t *testing.T) {
 	}
 }
 
-// TestTicketsFrontierCommand proves the CLI is wired to the frontier: --done and a Status: done draft move a dependent to ready, an unknown number exits 2, and a feature failing the check is refused.
 func TestTicketsFrontierCommand(t *testing.T) {
 	dir := repo(t)
 	writeDraft(t, dir, "demo", "01-a.md", "01 A", "none")
@@ -66,7 +63,6 @@ func TestTicketsFrontierCommand(t *testing.T) {
 	}
 }
 
-// TestTicketsPublishCommand proves the CLI is wired to publishing: a dry run and a non-GitHub tracker reach no gh, and a publish creates the issue through gh, records it in the draft, and reports a read-back mismatch by keeping the draft.
 func TestTicketsPublishCommand(t *testing.T) {
 	dir, _, run := prRepo(t)
 	writeDraft(t, dir, "demo", "01-a.md", "01 Alpha", "none")
@@ -102,7 +98,6 @@ func TestTicketsPublishCommand(t *testing.T) {
 	}
 }
 
-// TestTicketsCloseCommand proves the CLI is wired to the local-markdown transitions: it refuses another tracker and an unknown number before any write, and prints each file it changed.
 func TestTicketsCloseCommand(t *testing.T) {
 	dir := repo(t)
 	issues := filepath.Join("docs", "agents", "tickets", "demo")

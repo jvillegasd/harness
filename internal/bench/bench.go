@@ -1,7 +1,3 @@
-// Package bench reports whether a harness change moved cost and friction by
-// comparing the real session population before and after its commit date,
-// reading each client's own session store. Cost and friction only; quality
-// stays a human read of the transcripts.
 package bench
 
 import (
@@ -30,7 +26,6 @@ Compare sessions before and after a harness change.
 Run inside the checkout. Work patterns come from bench/cohorts.json.
 `
 
-// Command runs `harness bench` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("bench", flag.ContinueOnError)
 	flags.SetOutput(stderr)
@@ -93,10 +88,6 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// Options is the resolved population request behind one benchmark run: the
-// inputs after flag parsing, with Work already read from a checkout. Split
-// partitions the report and is ignored for a row export; Since and Split are
-// dates whose time of day is ignored.
 type Options struct {
 	Home    string
 	Clients []string
@@ -106,9 +97,6 @@ type Options struct {
 	Rows    bool
 }
 
-// Report collects the requested population and renders it. It is the narrow
-// operation the command shares with any other consumer, so a caller reaches
-// reporting without re-entering argument parsing.
 func Report(opts Options) (string, error) {
 	if !opts.Rows && opts.Split == nil {
 		return "", errors.New("a report needs a split date")
@@ -124,10 +112,8 @@ func Report(opts Options) (string, error) {
 	return renderReport(sessions, split, opts.Since) + "\n", nil
 }
 
-// clientList is the repeatable --client flag, restricted to the supported readers.
 type clientList []string
 
-// defaultClients is the population the command reads when no selection is given.
 var defaultClients = []string{"claude", "codex", "opencode"}
 
 func (c *clientList) String() string { return strings.Join(*c, ",") }

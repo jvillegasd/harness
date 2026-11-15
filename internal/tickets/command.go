@@ -92,7 +92,6 @@ created and what remains, and leaves the remaining drafts as they are.
              nothing
 `
 
-// Command runs `harness tickets` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)
@@ -115,7 +114,6 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	return 2
 }
 
-// parse handles help and usage errors before any read, returning -1 to continue.
 func parse(flags *flag.FlagSet, args []string, text string, stdout, stderr io.Writer) int {
 	flags.SetOutput(io.Discard)
 	if err := flags.Parse(args); err != nil {
@@ -129,7 +127,6 @@ func parse(flags *flag.FlagSet, args []string, text string, stdout, stderr io.Wr
 	return -1
 }
 
-// root returns the top of the checkout holding the working directory.
 func root(name string, stderr io.Writer) (string, bool) {
 	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
@@ -139,7 +136,6 @@ func root(name string, stderr io.Writer) (string, bool) {
 	return strings.TrimSpace(string(out)), true
 }
 
-// slug validates a feature slug so it names one directory under the draft directory.
 func slug(name string) error {
 	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\`) {
 		return fmt.Errorf("invalid feature slug %q", name)
@@ -192,7 +188,6 @@ func check(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// featureDir resolves one feature's directory from its slug, or from dir, as the root and path Check takes.
 func featureDir(top, name, dir string) (string, string, error) {
 	if dir == "" {
 		return top, filepath.Join(DraftDir, name), nil
@@ -207,7 +202,6 @@ func featureDir(top, name, dir string) (string, string, error) {
 	return "", abs, nil
 }
 
-// load reads a feature's drafts and refuses them, printing the check's problems, when any rule fails.
 func load(name, root, rel string, stderr io.Writer) ([]Ticket, int) {
 	ts, problems, err := Check(root, rel)
 	if err != nil {
@@ -224,7 +218,6 @@ func load(name, root, rel string, stderr io.Writer) ([]Ticket, int) {
 	return ts, 0
 }
 
-// numbers parses a comma-separated list of ticket numbers, each optionally prefixed with #.
 func numbers(text string) ([]int, error) {
 	var ns []int
 	for _, field := range splitRe.Split(strings.TrimSpace(text), -1) {
@@ -240,7 +233,6 @@ func numbers(text string) ([]int, error) {
 	return ns, nil
 }
 
-// target reads the one feature a command names, by slug or --dir, refusing both or neither.
 func target(name string, flags *flag.FlagSet, dir string, stderr io.Writer) (string, bool) {
 	switch {
 	case flags.NArg() > 1:
@@ -307,7 +299,6 @@ func frontier(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// interspersed moves a leading positional argument after the flags, so `frontier <slug> --done 1` parses as `frontier --done 1 <slug>`.
 func interspersed(args []string) []string {
 	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
 		return append(append([]string{}, args[1:]...), args[0])
@@ -315,7 +306,6 @@ func interspersed(args []string) []string {
 	return args
 }
 
-// gh is the Forge that runs the gh CLI in dir.
 func gh(dir string) Forge {
 	return func(args ...string) ([]byte, error) {
 		cmd := exec.Command("gh", args...)

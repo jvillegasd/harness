@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// fixture sets up a home, a scratch root through the environment, a variant and a baseline of skill "tidy", and a skeleton.
 type fixture struct {
 	home, root, variant, baseline, skeleton string
 }

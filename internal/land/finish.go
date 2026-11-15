@@ -9,7 +9,6 @@ import (
 	"github.com/jvillegasd/harness/internal/worktree"
 )
 
-// Action is one step of a cleanup: done, or kept with the reason.
 type Action struct {
 	Done bool
 	Text string
@@ -22,10 +21,8 @@ func (a Action) String() string {
 	return "kept  " + a.Text
 }
 
-// ErrDiverged marks a local default branch that cannot fast-forward to the remote's.
 var ErrDiverged = errors.New("cannot fast-forward")
 
-// defaultBranch reads the repository root and the forge's default branch.
 func (e Env) defaultBranch() (root, def string, err error) {
 	root, err = git(e.Dir, "rev-parse", "--show-toplevel")
 	if err != nil {
@@ -41,7 +38,6 @@ func (e Env) defaultBranch() (root, def string, err error) {
 	return root, repo.DefaultBranchRef.Name, nil
 }
 
-// Sync fetches from origin with pruning and fast-forwards the local default branch: in the worktree that holds it, or by moving the branch when none does. A default branch that cannot fast-forward is left as it is and reported as ErrDiverged.
 func Sync(e Env) (Action, error) {
 	root, def, err := e.defaultBranch()
 	if err != nil {
@@ -80,20 +76,18 @@ func sync(root, def string) (Action, error) {
 			return Action{true, fmt.Sprintf("fast-forwarded %s to %s in %s", def, short(remote), t.Path)}, nil
 		}
 	}
-	// No checkout holds it, so the ref moves alone, and only from the value just read.
+
 	if _, err := git(root, "update-ref", "refs/heads/"+def, remote, local); err != nil {
 		return Action{}, err
 	}
 	return Action{true, fmt.Sprintf("fast-forwarded %s to %s", def, short(remote))}, nil
 }
 
-// FinishOptions are the caller's answers for retiring the checkout: whether its ignored paths may go, and whether its branch stays.
 type FinishOptions struct {
 	AllowIgnored bool
 	KeepBranch   bool
 }
 
-// Finish cleans up after merged pull requests: it syncs the default branch, then for each removes its review directory, deletes its remote head branch when that is safe, and retires its local branch, retiring this checkout once, last. It returns every action taken or kept; an error after the first action still returns them. A pull request that is not merged is refused before anything is removed.
 func Finish(e Env, numbers []int, o FinishOptions) ([]Action, error) {
 	root, def, err := e.defaultBranch()
 	if err != nil {
@@ -119,7 +113,7 @@ func Finish(e Env, numbers []int, o FinishOptions) ([]Action, error) {
 	var actions []Action
 	a, err := sync(root, def)
 	actions = append(actions, a)
-	// A diverged default branch is reported and the cleanup goes on, since nothing below reads it.
+
 	if err != nil && !errors.Is(err, ErrDiverged) {
 		return actions, err
 	}
@@ -179,7 +173,6 @@ func Finish(e Env, numbers []int, o FinishOptions) ([]Action, error) {
 		}
 	}
 
-	// Retiring this checkout removes the directory the session runs in, so it comes once, after everything else.
 	if last != nil {
 		retired, err := e.retireHere(root, *here, def, into, o)
 		for _, d := range retired {
@@ -193,7 +186,6 @@ func Finish(e Env, numbers []int, o FinishOptions) ([]Action, error) {
 	return actions, nil
 }
 
-// deleteRemote deletes the pull request's head branch on origin when it is the forge user's and no open pull request is based on it, and says why when it stays.
 func (e Env) deleteRemote(root string, p pull, me string) (Action, error) {
 	if _, err := git(root, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+p.HeadRefName); err != nil {
 		return Action{}, nil
@@ -227,7 +219,6 @@ func (e Env) deleteRemote(root string, p pull, me string) (Action, error) {
 	return Action{true, fmt.Sprintf("#%d deleted remote branch %s", p.Number, p.HeadRefName)}, nil
 }
 
-// retireHere retires this checkout and its branch. The main worktree is never removed, so there the branch goes once the checkout switches to the default branch.
 func (e Env) retireHere(root string, here worktree.Tree, def, into string, o FinishOptions) ([]string, error) {
 	if !here.Main {
 		return worktree.Retire(root, root, worktree.Options{Into: into, AllowIgnored: o.AllowIgnored, KeepBranch: o.KeepBranch})

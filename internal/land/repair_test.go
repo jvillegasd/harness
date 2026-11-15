@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// stack builds #1 feat on main and #2 child on feat, each pushed, and returns them with the checkout on main.
 func (f *fixture) stack() (*pull, *pull) {
 	f.t.Helper()
 	feat := f.open(1, "feat", "main", map[string]string{"feat.txt": "feat\n"})
@@ -16,7 +15,6 @@ func (f *fixture) stack() (*pull, *pull) {
 	return feat, child
 }
 
-// squash lands p's head on origin's main as one new commit, as a squash merge does.
 func (f *fixture) squash(p *pull) {
 	f.t.Helper()
 	f.git(f.dir, "switch", "-q", "main")
@@ -33,7 +31,6 @@ func (f *fixture) repair(dependent, landed int) (Repair, error) {
 	return RepairDependent(f.env(), dependent, landed)
 }
 
-// own lists the commit subjects a branch holds above origin/main.
 func (f *fixture) own(rev string) string {
 	f.git(f.dir, "fetch", "-q", "origin")
 	return f.git(f.dir, "log", "--format=%s", "origin/main.."+rev)
@@ -49,11 +46,10 @@ func (f *fixture) edits() int {
 	return n
 }
 
-// TestRepair covers a dependent built directly on the landed head: it ends with only its own commit on the default branch, and the push publishes it.
 func TestRepair(t *testing.T) {
 	f := setup(t)
 	feat, child := f.stack()
-	f.git(f.dir, "branch", "-q", "-D", "child") // no checkout holds it, so a temporary worktree does the rebase
+	f.git(f.dir, "branch", "-q", "-D", "child")
 	f.squash(feat)
 	lease := child.HeadRefOid
 
@@ -82,17 +78,16 @@ func TestRepair(t *testing.T) {
 	}
 }
 
-// TestRepairRewritten covers a dependent still on the landed branch's pre-rewrite commits, repaired from the boundary found by patch.
 func TestRepairRewritten(t *testing.T) {
 	f := setup(t)
 	feat, child := f.stack()
-	// feat is rebased onto a moved main after child branched, so child's base commit is no longer feat's.
+
 	f.advance()
 	f.git(f.dir, "switch", "-q", "feat")
 	f.git(f.dir, "rebase", "-q", "origin/main")
 	f.push(feat)
 	f.squash(feat)
-	wt := f.worktreeOn("child") // the checkout holding the dependent's branch does the rebase
+	wt := f.worktreeOn("child")
 
 	r, err := f.repair(2, 1)
 	if err != nil {
@@ -109,7 +104,6 @@ func TestRepairRewritten(t *testing.T) {
 	}
 }
 
-// TestRepairRefusals covers each refusal decided by reading, made before the retarget, and a conflict that leaves the branch as it was.
 func TestRepairRefusals(t *testing.T) {
 	t.Run("merge commit", func(t *testing.T) {
 		f := setup(t)
@@ -137,7 +131,7 @@ func TestRepairRefusals(t *testing.T) {
 		child := f.open(2, "child", "feat", map[string]string{"own.txt": "own\n"})
 		f.commit(map[string]string{"shared.txt": "shared\n"})
 		f.push(child)
-		// feat is rewritten to carry the same patch as child's last commit, so a cherry boundary would sit above child's own first commit.
+
 		f.git(f.dir, "switch", "-q", "feat")
 		f.git(f.dir, "commit", "-q", "--amend", "-m", "feat again")
 		f.commit(map[string]string{"shared.txt": "shared\n"})
@@ -162,14 +156,13 @@ func TestRepairRefusals(t *testing.T) {
 		if head := f.git(wt, "rev-parse", "HEAD"); head != child.HeadRefOid || f.git(wt, "status", "--porcelain") != "" {
 			t.Errorf("the checkout is at %s with %q", head, f.git(wt, "status", "--porcelain"))
 		}
-		// The dependent's base is put back, so finish keeps the landed branch it still sits on.
+
 		if child.BaseRefName != "feat" {
 			t.Errorf("the dependent's base is %s after a conflicted repair", child.BaseRefName)
 		}
 	})
 }
 
-// TestRepairPushLease covers a push that finds the remote moved since the repair read it, and leaves the remote alone.
 func TestRepairPushLease(t *testing.T) {
 	f := setup(t)
 	feat, _ := f.stack()

@@ -8,7 +8,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// presetNotes are the one-line descriptions the picker shows beside each preset.
 var presetNotes = map[string]string{
 	"balanced":    "Codex GPT-6 Luna implements; Haiku searches; Sonnet reviews at medium (default)",
 	"performance": "Opus implements at medium; Sonnet searches; Fable reviews at medium",
@@ -16,11 +15,8 @@ var presetNotes = map[string]string{
 	"diversity":   "Sonnet implements at medium; Haiku searches; Codex GPT-6.1 Sol reviews at low",
 }
 
-// claudeModels is the picker's order for the aliases claudeEfforts supports.
 var claudeModels = []string{"inherit", "fable", "opus", "sonnet", "haiku"}
 
-// visibleRows caps the rendered list, since `opencode models` and Codex's catalog can list more ids than a terminal is tall.
-// ponytail: fixed height, so a terminal under about 21 rows still clips; size it from tea.WindowSizeMsg if that bites.
 const visibleRows = 15
 
 const (
@@ -31,7 +27,6 @@ const (
 	stepEffort
 )
 
-// picker is the interactive form of `harness models set`. It collects set arguments and writes nothing itself; save applies them.
 type picker struct {
 	step         int
 	cursor       int
@@ -42,12 +37,10 @@ type picker struct {
 	done         bool
 }
 
-// newPicker takes the catalog the client and model steps list, so tests supply the machine's lists.
 func newPicker(catalog *Catalog) picker {
 	return picker{catalog: catalog}
 }
 
-// options lists what the current step offers. An effort of "" inherits the session's.
 func (p picker) options() []string {
 	switch p.step {
 	case stepRole:
@@ -172,7 +165,6 @@ func (p picker) View() tea.View {
 	return tea.NewView(b.String())
 }
 
-// save applies the collected set arguments through apply and writes once, so a cancelled picker or one rejected value writes nothing. It reports whether it wrote.
 func (p picker) save(path string) (bool, error) {
 	if !p.done || len(p.sets) == 0 {
 		return false, nil

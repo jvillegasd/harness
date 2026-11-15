@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-// metrics is the report's row order: three cost, then the two the harness
-// claims to move, then three friction.
 var metrics = []string{"turns", "tool_calls", "minutes", "commands", "delegation", "interrupts", "denials", "errors"}
 
 const thin = 20
@@ -75,14 +73,13 @@ func block(label string, cohort []*session, split time.Time) []string {
 }
 
 func renderReport(sessions []*session, split time.Time, since *time.Time) string {
-	// The population is already filtered to the window; since only labels it.
+
 	header := fmt.Sprintf("split %s", split.Format("2006-01-02"))
 	if since != nil {
 		header += fmt.Sprintf("  since %s", since.Format("2006-01-02"))
 	}
 	lines := []string{header}
-	// Split by cohort only once one is configured. Unconfigured, every session
-	// is personal, and a "personal" heading would draw a distinction nobody made.
+
 	groups := []string{""}
 	for _, s := range sessions {
 		if s.cohort == "work" {
@@ -171,8 +168,6 @@ func valueJSON(value any) string {
 	return "null"
 }
 
-// floatJSON matches Python's json.dumps, which keeps a decimal point on an
-// integer-valued float (9.0, not 9).
 func floatJSON(value float64) string {
 	text := strconv.FormatFloat(value, 'g', -1, 64)
 	if !strings.ContainsAny(text, ".eE") {

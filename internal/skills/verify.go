@@ -16,14 +16,12 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-// LockResult is one locked skill's offline verification. Status is match, drift, or unverifiable; Detail carries the two hashes for drift.
 type LockResult struct {
 	Name   string
 	Status string
 	Detail string
 }
 
-// Verify recomputes every locked body's folder hash offline and reports each skill's status in lock order. It reads only and never rewrites a lock.
 func Verify(c checkout.Checkout) ([]LockResult, error) {
 	p := pathsFor(c)
 	lf, err := readLock(p.lock)
@@ -90,7 +88,6 @@ func verify(c checkout.Checkout, stdout, stderr io.Writer) error {
 	return nil
 }
 
-// isLocalHash reports whether s is the bare lowercase sha256 hex skills.sh records for a folder it hashed locally. A snapshot hash from a blob install, such as a git tree sha, is not, so verify calls it unverifiable rather than drift.
 func isLocalHash(s string) bool {
 	if len(s) != 64 {
 		return false
@@ -99,10 +96,8 @@ func isLocalHash(s string) bool {
 	return err == nil
 }
 
-// FolderHash is the folder hash a lock entry's computedHash records, with the forward-slash paths of the files it covered, for callers outside this package such as change-map. A path the hash skipped is not in the list, so no caller can treat it as verified.
 func FolderHash(dir string) (string, []string, error) { return hashFolder(dir) }
 
-// folderHash reimplements the computeSkillFolderHash of skills.sh's version 2 lock: sha256 over each file's forward-slash path, NUL, its length, NUL, and its bytes, files in byte order of path. Text files hash with CRLF folded to LF. metadata.json files and .git, __pycache__, and __pypackages__ directories are skipped, and a symlink is followed only while it resolves inside the folder.
 func folderHash(dir string) (string, error) {
 	hash, _, err := hashFolder(dir)
 	return hash, err
@@ -147,7 +142,6 @@ func hashFolder(dir string) (string, []string, error) {
 	return hex.EncodeToString(h.Sum(nil)), rels, nil
 }
 
-// collectHashed walks dir the way skills.sh's collectFiles does, tracking the real directories above it so a symlink loop ends instead of recursing.
 func collectHashed(dir, prefix, root string, ancestors map[string]bool, files *[]hashedFile) error {
 	real, err := filepath.EvalSymlinks(dir)
 	if err != nil {

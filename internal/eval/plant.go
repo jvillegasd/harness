@@ -1,4 +1,3 @@
-// Package eval plants the blinded directories a skill comparison runs in, runs the candidates in them, and cleans them up, for `harness eval`. Everything a candidate can see looks like an ordinary project; the label key and the records live outside every candidate directory.
 package eval
 
 import (
@@ -17,38 +16,30 @@ import (
 	"time"
 )
 
-// RootEnv names the scratch-projects root; unset, it is ~/.scratch-projects, which `harness bench` leaves out of its population.
 const RootEnv = "HARNESS_SCRATCH_ROOT"
 
-// Banned are the words nothing a candidate sees may contain.
 var Banned = []string{"eval", "test", "judge", "rubric", "score", "benchmark", "candidate", "compare"}
 
-// projectWords name candidate directories like ordinary projects. None contains a banned word.
 var projectWords = []string{"orchard", "harbor", "copper", "meadow", "lantern", "summit", "willow", "granite", "beacon", "cedar", "juniper", "marble", "pebble", "quarry", "saffron", "tundra", "violet", "walnut", "maple", "ember"}
 
-// skillPaths is where each client loads skills from its working directory.
 var skillPaths = map[string]string{
 	"claude":   filepath.Join(".claude", "skills"),
 	"codex":    filepath.Join(".agents", "skills"),
 	"opencode": filepath.Join(".agents", "skills"),
 }
 
-// opencodeConfig keeps an OpenCode session's edits inside its own directory.
 const opencodeConfig = "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"external_directory\": \"deny\"\n  }\n}\n"
 
-// Arms of a comparison.
 const (
 	Variant  = "variant"
 	Baseline = "baseline"
 )
 
-// Planted is one candidate directory and its neutral label.
 type Planted struct {
 	Label string `json:"label"`
 	Dir   string `json:"dir"`
 }
 
-// Manifest is a run's record of its candidate directories, kept outside every one of them.
 type Manifest struct {
 	Run    string    `json:"run"`
 	Client string    `json:"client"`
@@ -57,13 +48,11 @@ type Manifest struct {
 	Dirs   []Planted `json:"dirs"`
 }
 
-// Key maps each neutral label to its arm. The judge never sees it.
 type Key struct {
 	Run    string            `json:"run"`
 	Labels map[string]string `json:"labels"`
 }
 
-// Root is the scratch-projects root candidates are planted under.
 func Root(home string) string {
 	if dir := os.Getenv(RootEnv); dir != "" {
 		return dir
@@ -71,7 +60,6 @@ func Root(home string) string {
 	return filepath.Join(home, ".scratch-projects")
 }
 
-// MetaDir holds a run's manifest, label key, outputs, and session record, outside the scratch root.
 func MetaDir(home, run string) string { return filepath.Join(home, ".harness", "eval", run) }
 
 var (
@@ -79,7 +67,6 @@ var (
 	skillNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
 )
 
-// ValidRun reports whether a run id has the shape Plant gives one, so it can never name a path outside the meta directory.
 func ValidRun(run string) bool { return runIDRe.MatchString(run) }
 
 func randomHex(n int) string {
@@ -90,7 +77,6 @@ func randomHex(n int) string {
 	return hex.EncodeToString(b)
 }
 
-// skillName reads the name: line of a skill's SKILL.md frontmatter.
 func skillName(dir string) (string, error) {
 	f, err := os.Open(filepath.Join(dir, "SKILL.md"))
 	if err != nil {
@@ -115,14 +101,12 @@ func skillName(dir string) (string, error) {
 	return "", fmt.Errorf("%s/SKILL.md names no skill", dir)
 }
 
-// PlantOptions is what `harness eval plant` takes.
 type PlantOptions struct {
 	Variant, Baseline, Skeleton string
 	Client                      string
 	Runs                        int
 }
 
-// Plant creates runs directories per arm under the scratch root, each holding the skeleton and its arm's skill at the client's working-directory skill path, and writes the manifest and the label key outside them. The manifest is written before any directory, so a failed plant can still be cleaned.
 func Plant(home string, o PlantOptions) (Manifest, error) {
 	m := Manifest{Client: o.Client, Root: Root(home)}
 	skillDir, ok := skillPaths[o.Client]
@@ -212,7 +196,6 @@ func Plant(home string, o PlantOptions) (Manifest, error) {
 	return m, nil
 }
 
-// freshDir picks an unused ordinary project name under root.
 func freshDir(root string) (string, error) {
 	for range 100 {
 		dir := filepath.Join(root, projectWords[mrand.IntN(len(projectWords))]+"-"+randomHex(2))
@@ -223,7 +206,6 @@ func freshDir(root string) (string, error) {
 	return "", fmt.Errorf("no free directory name under %s", root)
 }
 
-// ReadRun loads a run's manifest and key, refusing an unknown run.
 func ReadRun(home, run string) (Manifest, Key, error) {
 	var m Manifest
 	var k Key
@@ -248,7 +230,6 @@ func ReadRun(home, run string) (Manifest, Key, error) {
 	return m, k, json.Unmarshal(raw, &k)
 }
 
-// Clean deletes every directory in a run's manifest, then the run's key, manifest, and records, and nothing else. A directory outside the manifest's root is refused before any removal.
 func Clean(home, run string) ([]string, error) {
 	m, _, err := ReadRun(home, run)
 	if err != nil {
@@ -285,7 +266,6 @@ func writeJSON(path string, v any) error {
 	return os.WriteFile(path, append(raw, '\n'), 0o600)
 }
 
-// copyTree copies the regular files and directories under src to dst, keeping each file's mode; symlinks are skipped so nothing outside src is reached.
 func copyTree(src, dst string) error {
 	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

@@ -9,7 +9,6 @@ import (
 	"testing"
 )
 
-// statuslineEnv builds the throwaway home and repository the recorded payloads render against: one effort level in the tracked settings, a repository named `project` on a known branch with one uncommitted file, and shims that keep the macOS keychain out of the run.
 func statuslineEnv(t *testing.T) (base, home, work string) {
 	t.Helper()
 	base = t.TempDir()
@@ -32,7 +31,6 @@ func statuslineEnv(t *testing.T) (base, home, work string) {
 	return base, home, work
 }
 
-// TestStatuslineFixtures drives the binary the way Claude Code does: a recorded payload on stdin, the rendered line on stdout, compared byte for byte against the output captured from the shell renderer before it was deleted.
 func TestStatuslineFixtures(t *testing.T) {
 	base, home, work := statuslineEnv(t)
 	fixtures, err := filepath.Glob(filepath.Join("testdata", "statusline", "fixtures", "*.json"))
@@ -49,7 +47,7 @@ func TestStatuslineFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// A recorded cache beside the payload seeds the rate-limit bars; its fresh mtime is what keeps the renderer from fetching.
+
 			cachePath := filepath.Join(base, "tmp", "claude", "statusline-usage-cache.json")
 			if cache, err := os.ReadFile(filepath.Join("testdata", "statusline", name+"-cache.json")); err == nil {
 				writeMode(t, cachePath, string(cache), 0o644)
@@ -82,7 +80,6 @@ func TestStatuslineFixtures(t *testing.T) {
 	}
 }
 
-// TestStatuslineEmptyPayloadTouchesNeitherKeychainNorCache keeps the empty payload from doing any work, as the shell returned on it before the cache, keychain, or network.
 func TestStatuslineEmptyPayloadTouchesNeitherKeychainNorCache(t *testing.T) {
 	base, home, work := statuslineEnv(t)
 	log := filepath.Join(base, "security.log")

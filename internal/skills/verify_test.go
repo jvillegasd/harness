@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// TestFolderHashMatchesSkillsSh pins the hash to the value skills.sh 1.8.1's computeSkillFolderHash gave for this exact tree, so verify and change-map agree with the computedHash skills.sh writes into a version 2 lock.
 func TestFolderHashMatchesSkillsSh(t *testing.T) {
 	base := t.TempDir()
 	root := filepath.Join(base, "skill")

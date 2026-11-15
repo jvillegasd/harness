@@ -20,7 +20,6 @@ var (
 	keyEsc   = tea.KeyPressMsg{Code: tea.KeyEscape}
 )
 
-// drive feeds key messages through Update, as the running program would.
 func drive(t *testing.T, p picker, keys ...tea.KeyPressMsg) picker {
 	t.Helper()
 	for _, k := range keys {
@@ -30,7 +29,6 @@ func drive(t *testing.T, p picker, keys ...tea.KeyPressMsg) picker {
 	return p
 }
 
-// choose moves the cursor onto opt and presses enter, failing when the current step does not offer it.
 func choose(t *testing.T, p picker, opt string) picker {
 	t.Helper()
 	i := slices.Index(p.options(), opt)
@@ -52,12 +50,10 @@ func show(t *testing.T, path string) string {
 	return out.String()
 }
 
-// catalogOf is a catalog listing the given OpenCode models and no Codex, so a picker test never asks this machine's clients.
 func catalogOf(opencode []string, err error) *Catalog {
 	return &Catalog{opencode: opencode, opencodeErr: err, opencodeDone: true, codexErr: errors.New("codex missing"), codexDone: true}
 }
 
-// statePath is a fresh state file, with PATH emptied so show and Validate never reach this machine's opencode.
 func statePath(t *testing.T) string {
 	t.Setenv("PATH", t.TempDir())
 	return filepath.Join(t.TempDir(), "state.json")
@@ -205,7 +201,6 @@ func TestPickerViewKeepsCursorOnScreen(t *testing.T) {
 	}
 }
 
-// TestPickerTablesMatch fails when a preset lacks its note or a Claude alias is missing from either table, which would leave the picker a blank line or an empty effort step.
 func TestPickerTablesMatch(t *testing.T) {
 	for name := range Presets {
 		if presetNotes[name] == "" {

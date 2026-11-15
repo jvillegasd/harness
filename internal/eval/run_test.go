@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// stubs puts stand-in claude, codex, and opencode programs first on PATH. Each records its arguments, working directory, and stdin under log, writes a Codex rollout naming its directory, and exits 3 in a directory holding stop.txt.
 func stubs(t *testing.T, home string) string {
 	t.Helper()
 	bin, log := t.TempDir(), t.TempDir()

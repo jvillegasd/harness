@@ -107,7 +107,6 @@ func TestParseUsageReducesTheResponse(t *testing.T) {
 	}
 }
 
-// TestRateLinesRenderTheWholeBlock pins the current, weekly, and extra-usage lines byte for byte, the extra reset included.
 func TestRateLinesRenderTheWholeBlock(t *testing.T) {
 	now := time.Date(2026, 9, 15, 0, 0, 0, 0, time.UTC)
 	bar0 := green + dim + "○○○○○○○○○○" + reset
@@ -125,7 +124,6 @@ func TestRateLinesRenderTheWholeBlock(t *testing.T) {
 	}
 }
 
-// TestRenderPinsTheSessionSegment builds the whole line for a payload with a session clock, because the fixtures cannot carry a start time without becoming time-dependent.
 func TestRenderPinsTheSessionSegment(t *testing.T) {
 	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
 	env := environment{ConfigDir: t.TempDir(), Now: now}
@@ -148,7 +146,6 @@ func TestRenderPinsTheSessionSegment(t *testing.T) {
 	}
 }
 
-// TestProfileFollowsClaudeConfigDir keeps the keychain item and usage cache on the active profile, so switching accounts through CLAUDE_CONFIG_DIR never shows another account's bars.
 func TestProfileFollowsClaudeConfigDir(t *testing.T) {
 	t.Setenv("CLAUDE_CONFIG_DIR", "")
 	if got := profileSuffix(); got != "" {
@@ -167,7 +164,6 @@ func TestProfileFollowsClaudeConfigDir(t *testing.T) {
 	}
 }
 
-// TestProfileReadsItsOwnLogin drives the real lookups under a CLAUDE_CONFIG_DIR profile: the keychain is asked for the profile's suffixed item, the credentials file and settings come from the profile directory, and the default login is never used.
 func TestProfileReadsItsOwnLogin(t *testing.T) {
 	profile := t.TempDir()
 	shims := t.TempDir()

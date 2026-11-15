@@ -11,7 +11,6 @@ var (
 	headSHA = strings.Repeat("b", 40)
 )
 
-// A posted verdict reads back as the same verdict, whatever notes follow the marker.
 func TestVerdictBodyRoundTrips(t *testing.T) {
 	for _, result := range Results {
 		v := Verdict{Result: result, Base: baseSHA, SHA: headSHA, Level: "high"}
@@ -26,7 +25,6 @@ func TestVerdictBodyRoundTrips(t *testing.T) {
 	}
 }
 
-// Only a comment that starts with the marker is a verdict, so quoting one in another comment, or a malformed marker, forges nothing.
 func TestParseRefusesAnythingButALeadingMarker(t *testing.T) {
 	good := Body(Verdict{Result: "PASS", Base: baseSHA, SHA: headSHA, Level: "medium"}, "")
 	for name, body := range map[string]string{
@@ -45,20 +43,49 @@ func TestParseRefusesAnythingButALeadingMarker(t *testing.T) {
 	}
 }
 
+func TestRunVerdictBodyRoundTrips(t *testing.T) {
+	for _, result := range Results {
+		v := Verdict{Run: true, Result: result, SHA: headSHA}
+		body := Body(v, "- login: pass, evidence at shots/login.png\n")
+		got, ok := Parse(body)
+		if !ok || got != v {
+			t.Errorf("Parse(Body(%+v)) = %+v, %v", v, got, ok)
+		}
+		if !strings.Contains(body, "## Run-as-user verdict: "+result) || !strings.Contains(body, "shots/login.png") {
+			t.Errorf("body lacks its heading or notes:\n%s", body)
+		}
+	}
+	run := Body(Verdict{Run: true, Result: "PASS", SHA: headSHA}, "")
+	if v, ok := Parse(strings.Replace(run, "harness-run", "harness-review", 1)); ok {
+		t.Errorf("a run marker renamed to a review's parsed as %+v", v)
+	}
+	if v, ok := Parse("> " + run); ok {
+		t.Errorf("a quoted run verdict parsed as %+v", v)
+	}
+}
+
 func TestVerdictValidate(t *testing.T) {
 	ok := Verdict{Result: "PASS", Base: baseSHA, SHA: headSHA, Level: "medium"}
 	if err := ok.Validate(""); err != nil {
 		t.Errorf("a PASS needs no notes: %v", err)
 	}
+	if err := (Verdict{Run: true, Result: "PASS", SHA: headSHA}).Validate(""); err != nil {
+		t.Errorf("a run PASS needs only its commit: %v", err)
+	}
 	for name, c := range map[string]struct {
 		v     Verdict
 		notes string
 	}{
-		"unknown result":     {Verdict{Result: "OK", Base: baseSHA, SHA: headSHA, Level: "medium"}, "n"},
-		"off level":          {Verdict{Result: "PASS", Base: baseSHA, SHA: headSHA, Level: "off"}, ""},
-		"short sha":          {Verdict{Result: "PASS", Base: baseSHA, SHA: "bbbb", Level: "medium"}, ""},
-		"FAIL without notes": {Verdict{Result: "FAIL", Base: baseSHA, SHA: headSHA, Level: "high"}, " \n"},
-		"notes without text": {Verdict{Result: "PASS+NOTES", Base: baseSHA, SHA: headSHA, Level: "high"}, ""},
+		"unknown result":      {Verdict{Result: "OK", Base: baseSHA, SHA: headSHA, Level: "medium"}, "n"},
+		"off level":           {Verdict{Result: "PASS", Base: baseSHA, SHA: headSHA, Level: "off"}, ""},
+		"short sha":           {Verdict{Result: "PASS", Base: baseSHA, SHA: "bbbb", Level: "medium"}, ""},
+		"FAIL without notes":  {Verdict{Result: "FAIL", Base: baseSHA, SHA: headSHA, Level: "high"}, " \n"},
+		"notes without text":  {Verdict{Result: "PASS+NOTES", Base: baseSHA, SHA: headSHA, Level: "high"}, ""},
+		"review without base": {Verdict{Result: "PASS", SHA: headSHA, Level: "medium"}, ""},
+		"run with a level":    {Verdict{Run: true, Result: "PASS", SHA: headSHA, Level: "medium"}, ""},
+		"run with a base":     {Verdict{Run: true, Result: "PASS", Base: baseSHA, SHA: headSHA}, ""},
+		"run short sha":       {Verdict{Run: true, Result: "PASS", SHA: "bbbb"}, ""},
+		"run FAIL, no notes":  {Verdict{Run: true, Result: "FAIL", SHA: headSHA}, ""},
 	} {
 		if err := c.v.Validate(c.notes); !errors.Is(err, ErrInvalid) {
 			t.Errorf("%s: Validate = %v, want ErrInvalid", name, err)

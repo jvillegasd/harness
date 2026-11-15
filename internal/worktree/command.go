@@ -66,7 +66,6 @@ it is proven landed; a branch that does not exist prints nothing and exits 0.
                    patch; the worktree is then removed even though it is dirty
 `
 
-// Command runs `harness worktree` and returns the process exit code.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)
@@ -85,7 +84,6 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	return 2
 }
 
-// parse handles help and usage errors before any git call, returning -1 to continue.
 func parse(flags *flag.FlagSet, args []string, text string, stdout, stderr io.Writer) int {
 	flags.SetOutput(io.Discard)
 	if err := flags.Parse(args); err != nil {
@@ -99,7 +97,6 @@ func parse(flags *flag.FlagSet, args []string, text string, stdout, stderr io.Wr
 	return -1
 }
 
-// repository returns the working directory when it is inside a git repository.
 func repository(name string, stderr io.Writer) (string, bool) {
 	cwd, err := os.Getwd()
 	if err == nil {
@@ -187,7 +184,7 @@ func retire(args []string, stdout, stderr io.Writer) int {
 	flags.StringVar(&o.SavePatch, "save-patch", "", "")
 	flags.BoolVar(&o.AllowIgnored, "allow-ignored", false, "")
 	flags.BoolVar(&o.KeepBranch, "keep-branch", false, "")
-	// The path may come before the flags, as in `retire <path> --into <ref>`.
+
 	path := ""
 	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
 		path, args = args[0], args[1:]
@@ -215,7 +212,7 @@ func retire(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if o.Into == "" {
-		// A detached worktree, or one whose branch is kept, needs no landed check, so a missing default is only reported where it matters.
+
 		o.Into, _ = DefaultInto(dir)
 	}
 	if o.At != "" {

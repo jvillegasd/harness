@@ -17,7 +17,6 @@ func graphOf(edges map[int][]int, done ...int) []Ticket {
 	return ts
 }
 
-// 1 and 2 are free, 3 waits on 1, 4 waits on 1 and 2, 5 waits on 4.
 var diamond = map[int][]int{1: nil, 2: nil, 3: {1}, 4: {1, 2}, 5: {4}}
 
 func TestFrontierWithNothingDoneIsTheUnblockedTickets(t *testing.T) {

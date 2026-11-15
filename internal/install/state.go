@@ -19,22 +19,19 @@ import (
 	"github.com/jvillegasd/harness/internal/statefile"
 )
 
-// assetsEnv names a directory to install instead of the embedded assets, so a test or a local edit installs a tree the binary was not built from.
 const assetsEnv = "HARNESS_ASSETS"
 
 const stateVersion = 1
 
 var (
 	allClients = []string{"claude", "codex", "opencode"}
-	// allComponents is every name install, update, and uninstall select by; configComponents are the ones that write managed config into a client. The tools table names the components that put tools on the machine, and mcps is both.
+
 	allComponents    = []string{"clients", "packages", "mcps", "skills", "agents", "floor", "settings", "aliases"}
 	configComponents = []string{"agents", "aliases", "floor", "mcps", "settings", "skills"}
 )
 
-// renamed maps a component name an older install recorded to its current one.
 var renamed = map[string]string{"policy": "floor", "mcp": "mcps"}
 
-// entry is one managed copy: where it was written, what it belongs to, and the digest it had when written, which is how a later run tells the harness's copy from a user's edit.
 type entry struct {
 	Path      string   `json:"path"`
 	Component string   `json:"component"`
@@ -43,34 +40,29 @@ type entry struct {
 	source    string
 }
 
-// state is ~/.harness/state.json: the components installed per client and every copy written for them. Sync and uninstall act on this record, never on what merely sits at a managed path.
 type state struct {
 	Version   int                 `json:"version"`
 	Installed map[string][]string `json:"installed"`
 	Files     []entry             `json:"files"`
-	// Tools maps each tool this harness installed to how it installed it, which is the only record an uninstall removes a tool by. A tool present before the harness has no entry.
+
 	Tools map[string]string `json:"tools,omitempty"`
-	// Models is `harness models`' choice and Review is `harness review level`'s, both carried through untouched so an install never drops them.
+
 	Models json.RawMessage `json:"models,omitempty"`
 	Review json.RawMessage `json:"review,omitempty"`
 }
 
-// updateState applies change to the state on disk and writes it back at once, so the human's choices and every record another step wrote this run are kept.
 func (in *installer) updateState(change func(*state)) {
 	s := in.loadState()
 	change(&s)
 	in.saveState(s)
 }
 
-// empty reports whether the state records nothing the harness would still remove: no client keeps a component and no tool is recorded.
 func (s state) empty() bool {
 	return len(s.Installed) == 0 && len(s.Tools) == 0
 }
 
-// codexHome is ~/.codex whatever CODEX_HOME says, because a launcher may point CODEX_HOME at a home of its own in the terminals it opens.
 func (in *installer) codexHome() string { return filepath.Join(in.home, ".codex") }
 
-// codex runs a codex subcommand against codexHome, on the installer's output.
 func (in *installer) codex(args ...string) *exec.Cmd {
 	cmd := models.CodexCommand(in.home, args...)
 	cmd.Stderr = in.stderr
@@ -81,7 +73,6 @@ func (in *installer) stateDir() string { return filepath.Join(in.home, ".harness
 
 func (in *installer) statePath() string { return filepath.Join(in.stateDir(), "state.json") }
 
-// aliasesPath is the installed copy the login shell's startup file sources, outside any checkout.
 func (in *installer) aliasesPath() string { return filepath.Join(in.stateDir(), "aliases.sh") }
 
 func (in *installer) loadState() state {
@@ -100,7 +91,7 @@ func (in *installer) loadState() state {
 	if s.Tools == nil {
 		s.Tools = map[string]string{}
 	}
-	// Older installs recorded policy and mcp; reading them under the current names migrates the file on its next write.
+
 	for client, components := range s.Installed {
 		for i, c := range components {
 			if now, ok := renamed[c]; ok {
@@ -130,7 +121,6 @@ func (in *installer) saveState(s state) {
 	must(statefile.Replace(in.statePath(), append(data, '\n')))
 }
 
-// extractAssets writes the assets this binary carries, or the HARNESS_ASSETS tree, into a temporary directory for this run to install from, and returns its removal.
 func (in *installer) extractAssets() func() {
 	var assets fs.FS = harness.Assets
 	if dir := os.Getenv(assetsEnv); dir != "" {
@@ -138,7 +128,7 @@ func (in *installer) extractAssets() func() {
 	}
 	tmp, err := os.MkdirTemp("", "harness-assets-*")
 	must(err)
-	// The role agent renderer refuses a symlinked output path, and macOS TMPDIR sits under the /var symlink.
+
 	if resolved, err := filepath.EvalSymlinks(tmp); err == nil {
 		tmp = resolved
 	}
@@ -150,7 +140,6 @@ func (in *installer) extractAssets() func() {
 	return func() { _ = os.RemoveAll(tmp) }
 }
 
-// digest hashes a file, or a directory's paths and contents in walk order, so an edit anywhere in a managed copy changes it. A missing path digests to "".
 func digest(path string) string {
 	info, err := os.Lstat(path)
 	if err != nil {
@@ -189,7 +178,6 @@ func digest(path string) string {
 	return "sha256:" + hex.EncodeToString(h.Sum(nil))
 }
 
-// copyManaged writes source, a file or a whole directory, to dest. It builds beside dest and renames into place, so a client never reads a half-written copy.
 func copyManaged(source, dest string) {
 	must(os.MkdirAll(filepath.Dir(dest), 0o755))
 	next := dest + ".harness-next"
@@ -211,7 +199,6 @@ func copyManaged(source, dest string) {
 	must(os.Rename(next, dest))
 }
 
-// removeManaged deletes a recorded copy only while it still is what the harness wrote. An edited copy is the user's now and stays, with a warning.
 func (in *installer) removeManaged(e entry) {
 	current := digest(e.Path)
 	if current == "" {
@@ -225,7 +212,6 @@ func (in *installer) removeManaged(e entry) {
 	in.log("Removed %s", e.Path)
 }
 
-// desired lists every copy an install writes. ~/.agents/skills serves every client: Codex and OpenCode load skills from it, and Claude Code finds the same bodies there.
 func (in *installer) desired() []entry {
 	var out []entry
 	add := func(source, dest, component string, clients ...string) {
@@ -244,14 +230,13 @@ func (in *installer) desired() []entry {
 		}
 	}
 	add(in.dir.Aliases(), in.aliasesPath(), "aliases", allClients...)
-	// Claude Code's and Codex's compaction hooks are merged into files the user shares (reconcileClaudeSettings, reconcileCodexHooks); OpenCode's is a plugin file of its own.
+
 	add(filepath.Join(in.dir.Clients(), "opencode", "plugins", "harness-resume.ts"), filepath.Join(in.config, "opencode", "plugins", "harness-resume.ts"), "settings", "opencode")
-	// Codex loads every *.rules file under its rules directory, so the harness's command rules are a file of their own; OpenCode's live in opencode.json beside the user's (reconcileOpenCodePermission).
+
 	add(filepath.Join(in.dir.Clients(), "codex", "rules", "harness.rules"), filepath.Join(in.codexHome(), "rules", "harness.rules"), "settings", "codex")
 	return out
 }
 
-// needed reports whether any client still installed keeps the copy's component.
 func (s state) needed(e entry) bool {
 	return slices.ContainsFunc(e.Clients, func(client string) bool {
 		return slices.Contains(s.Installed[client], e.Component)

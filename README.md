@@ -26,7 +26,7 @@ The harness installs the same rules, skills, and helper roles into all three cli
 - **One install, three clients.** `harness install` provisions the floor rules, skills, roles, MCP servers, and client settings for Claude Code, Codex, and OpenCode, and never overwrites a file you edited.
 - **You stay in control.** Agents work on their own task branches. Nothing is pushed, published, merged, or discarded until you ask.
 - **Proven review.** Independent reviewers hunt for defects without the author's reasoning, only problems a run proves are reported, and each review posts one `PASS`, `PASS+NOTES`, or `FAIL` verdict on its pull request.
-- **Guarded landing.** `/land` merges only on your request and only when the checks, review verdict, and forge gates allow it, then cleans up branches and worktrees without losing work.
+- **Guarded landing.** `/land` merges only on your request and only when the checks, the review verdict, the run-as-user verdict, and the forge gates allow it, then cleans up branches and worktrees without losing work.
 - **Deterministic steps.** Repeatable workflow steps are `harness` commands with tests, not prose an agent has to interpret.
 
 ## Contents

@@ -1,4 +1,3 @@
-// Package update coordinates explicit, channel-preserving updates of installed tools.
 package update
 
 import (
@@ -13,10 +12,8 @@ import (
 	"github.com/jvillegasd/harness/internal/skills"
 )
 
-// components are the ones that carry a tool or an upstream source to update, in the order a bare update runs them.
 var components = []string{"packages", "clients", "mcps", "skills"}
 
-// configOnly are the install components with nothing to update: managed config a harness install reconciles.
 var configOnly = []string{"agents", "floor", "settings", "aliases"}
 
 var allClients = []string{"claude", "codex", "opencode"}
@@ -37,7 +34,6 @@ Components:
 Details: docs/cli.md#update-installed-tools
 `
 
-// Command validates the entire invocation before discovery or mutation.
 func Command(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 1 && args[0] == "help" {
 		fmt.Fprint(stdout, usage)
@@ -85,7 +81,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	}
 	r := &runner{out: stdout, err: stderr, only: only}
 	defer r.summary()
-	// Finish discovery for every selected target before the first upgrade.
+
 	targets := r.discover(selected)
 	outcomes := map[string]bool{}
 	for _, group := range selected {
@@ -141,7 +137,7 @@ type target struct {
 type runner struct {
 	out, err io.Writer
 	failed   bool
-	// only are the clients --client names, or every client.
+
 	only    []string
 	clients []string
 	results []string

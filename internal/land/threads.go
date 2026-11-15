@@ -9,7 +9,6 @@ import (
 	"strings"
 )
 
-// ThreadState is a review thread as read back after a write: whether it is resolved, and its latest comment.
 type ThreadState struct {
 	ID       string `json:"id"`
 	Resolved bool   `json:"resolved"`
@@ -24,7 +23,6 @@ const replyMutation = `mutation($thread:ID!,$body:String!){addPullRequestReviewT
 
 const resolveMutation = `mutation($thread:ID!){resolveReviewThread(input:{threadId:$thread}){thread{id isResolved}}}`
 
-// threadStates reads every review thread of a pull request by id. A pull request with more than 100 threads is refused, since a thread past the first page could not be told from one that belongs elsewhere.
 func (e Env) threadStates(number int) (map[string]ThreadState, error) {
 	var out struct {
 		Data struct {
@@ -63,7 +61,6 @@ func (e Env) threadStates(number int) (map[string]ThreadState, error) {
 	return states, nil
 }
 
-// Reply posts the body file's exact text as a reply on one review thread of the pull request, and returns the thread as read back. The thread must belong to the pull request, and the file must hold text, before anything is written.
 func Reply(e Env, number int, thread, bodyFile string) (ThreadState, error) {
 	raw, err := os.ReadFile(bodyFile)
 	if err != nil {
@@ -79,14 +76,13 @@ func Reply(e Env, number int, thread, bodyFile string) (ThreadState, error) {
 	if _, ok := states[thread]; !ok {
 		return ThreadState{}, fmt.Errorf("thread %s is not a review thread of #%d", thread, number)
 	}
-	// gh runs without a shell, so the text reaches the forge byte for byte.
+
 	if _, err := e.Forge("api", "graphql", "-f", "query="+replyMutation, "-f", "thread="+thread, "-f", "body="+string(raw)); err != nil {
 		return ThreadState{}, err
 	}
 	return e.readBack(number, thread)
 }
 
-// Resolve resolves the named review threads of the pull request and returns each as read back. Every id must belong to the pull request before any is resolved, and a thread already resolved is left as it is.
 func Resolve(e Env, number int, threads []string) ([]ThreadState, error) {
 	states, err := e.threadStates(number)
 	if err != nil {

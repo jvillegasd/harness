@@ -20,7 +20,6 @@ func run(t *testing.T, dir string, args ...string) {
 	}
 }
 
-// repo is an empty repository, optionally with a GitHub origin whose HEAD is main.
 func repo(t *testing.T, github bool) string {
 	t.Helper()
 	home := t.TempDir()
@@ -36,7 +35,6 @@ func repo(t *testing.T, github bool) string {
 	return dir
 }
 
-// fake is a forge with labels; it logs every call and fails auth when noAuth is set.
 type fake struct {
 	calls     []string
 	labels    []string
@@ -87,7 +85,6 @@ func read(t *testing.T, path string) string {
 	return string(raw)
 }
 
-// snapshot reads every file under dir, so a run that writes anything is caught.
 func snapshot(t *testing.T, dir string) map[string]string {
 	t.Helper()
 	files := map[string]string{}

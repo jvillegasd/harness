@@ -13,12 +13,10 @@ import (
 	"unicode/utf8"
 )
 
-// Assigned is one role's machine-level assignment: the client it runs on, and the model and effort there. An empty Effort inherits. Source names where it came from in the report.
 type Assigned struct {
 	Client, Model, Effort, Source string
 }
 
-// Render returns {relative output: text}, {relative output: access}, and the report lines. Each assigned role becomes its client's override, so the other client keeps its default.
 func Render(configPath string, assigned map[string]Assigned) (map[string]string, map[string]string, []string, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -33,7 +31,7 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 		return nil, nil, nil, fail(fmt.Sprintf("%s: config must be an object", configPath))
 	}
 	if roles, ok := config["roles"].(map[string]any); ok && assigned != nil {
-		// The machine's choice is the only per-role assignment, so a tracked one would silently compete with it.
+
 		for name, role := range roles {
 			if role, ok := role.(map[string]any); ok {
 				for _, client := range []string{"claude", "codex", "opencode"} {
@@ -106,12 +104,12 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		// JSON string quoting is valid YAML for this text.
+
 		quoted := `"` + strings.ReplaceAll(strings.ReplaceAll(description, `\`, `\\`), `"`, `\"`) + `"`
 		claude := resolved["claude/"+name]
 		codex := resolved["codex/"+name]
 		opencode := resolved["opencode/"+name]
-		// Claude Code documents model: inherit and inherits effort when the field is absent; OpenCode inherits both when absent.
+
 		claudeSettings := "model: " + claude["model"][0] + "\n"
 		if claude["effort"][0] != "inherit" {
 			claudeSettings += "effort: " + claude["effort"][0] + "\n"
@@ -128,9 +126,9 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 			controls += line + "\n"
 		}
 		outputs["claude/"+name+".md"] = "---\nname: " + name + "\ndescription: " + quoted + "\n" + controls + claudeSettings + "---\n\n" + body + "\n"
-		// mode: all, not subagent: `opencode run --agent` and `opencode --agent` silently fall back to the default agent for a subagent, which would drop every control below.
+
 		outputs["opencode/"+name+".md"] = "---\ndescription: " + quoted + "\nmode: all\n" + opencodeControls[accessLevel] + opencodeSettings + "---\n\n" + body + "\n"
-		// Codex inherits model and effort when absent, like OpenCode. The body is a multi-line literal string, which load keeps free of its ''' delimiter.
+
 		codexSettings := ""
 		if codex["model"][0] != "inherit" {
 			codexSettings += "model = \"" + codex["model"][0] + "\"\n"
@@ -146,7 +144,6 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 	return outputs, accesses, report, nil
 }
 
-// resolve returns the roles and {(client, role): {field: (value, source)}} for every assigned role, or a failure on the first invalid assignment.
 func resolve(config map[string]any) (map[string]any, map[string]map[string][2]string, error) {
 	clients, clientsOK := config["clients"].(map[string]any)
 	roles, rolesOK := config["roles"].(map[string]any)
@@ -169,7 +166,7 @@ func resolve(config map[string]any) (map[string]any, map[string]map[string][2]st
 	sort.Strings(roleNames)
 	for _, name := range roleNames {
 		role := roles[name]
-		// The name becomes an output path, so nothing but a plain file name gets through.
+
 		if !roleName.MatchString(name) {
 			return nil, nil, fail(fmt.Sprintf("roles.%s: a role name is lowercase letters, digits, and hyphens", repr(name)))
 		}
@@ -281,7 +278,6 @@ func assignmentBlock(block any, label string) (map[string]any, error) {
 	return obj, nil
 }
 
-// extendedBody reads the body of a definition another one extends, refusing a base that grants other access or itself extends another, so composition stays one level deep.
 func extendedBody(path, level string) (string, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -338,7 +334,7 @@ func load(path, name string) (string, string, string, error) {
 	if level != expected {
 		return "", "", "", fail(fmt.Sprintf("%s: access must be %s", path, expected))
 	}
-	// A definition that extends another, as a review lens extends the reviewer, renders the base's body first and its own after it, so the shared text exists once. The base must grant the same access, and the composed body is what the checks below see.
+
 	base := front["extends"]
 	if base != "" {
 		baseBody, err := extendedBody(filepath.Join(filepath.Dir(path), base), level)
@@ -365,7 +361,7 @@ func load(path, name string) (string, string, string, error) {
 	if body == "" || strings.Contains(body, "'''") {
 		return "", "", "", fail(path + ": body must be non-empty and free of '''")
 	}
-	// TOML strings refuse invalid UTF-8 and every control character but tab and, in the body, line feed.
+
 	if !tomlText(front["description"], false) || !tomlText(body, true) {
 		return "", "", "", fail(path + ": description and body must be UTF-8 without control characters other than tab and line feed")
 	}
@@ -384,7 +380,6 @@ func tomlText(s string, multiline bool) bool {
 	return true
 }
 
-// splitLines matches Python's str.splitlines: it drops the empty tail a trailing newline would otherwise leave.
 func splitLines(text string) []string {
 	if text == "" {
 		return nil
@@ -406,7 +401,6 @@ func countExact(lines []string, want string) int {
 	return count
 }
 
-// joinPath mirrors Python's Path / part: an absolute part replaces the base instead of being appended.
 func joinPath(base, part string) string {
 	if filepath.IsAbs(part) {
 		return part
@@ -426,7 +420,6 @@ func reprValue(v any) string {
 	}
 }
 
-// decodeUnique parses JSON, refusing a duplicate key anywhere, which encoding/json would otherwise resolve silently.
 func decodeUnique(data []byte) (any, error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.UseNumber()

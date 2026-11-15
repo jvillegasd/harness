@@ -8,8 +8,6 @@ import (
 	"testing"
 )
 
-// benchDir returns a throwaway checkout whose cohorts decide the split, so the
-// fixture's report does not depend on this machine's gitignored cohorts.json.
 func benchDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -41,8 +39,6 @@ func benchHome(t *testing.T) string {
 	return home
 }
 
-// sameReport compares line by line, ignoring the trailing pad the fixed-width
-// sessions row leaves behind, which the repository's whitespace rule strips.
 func sameReport(got, want string) bool {
 	a := strings.Split(strings.TrimRight(got, "\n"), "\n")
 	b := strings.Split(strings.TrimRight(want, "\n"), "\n")
@@ -66,8 +62,6 @@ func readGolden(t *testing.T, name string) string {
 	return string(golden)
 }
 
-// TestBenchMatchesRecordedReport holds the port to the numbers the pre-port
-// bench printed on the same fixture, recorded before it was deleted.
 func TestBenchMatchesRecordedReport(t *testing.T) {
 	r := ok(t, harness(t, benchDir(t), "bench", "--split", "2026-09-05", "--since", "2026-09-01", "--home", benchHome(t)), "bench")
 	if want := readGolden(t, "report.golden"); !sameReport(r.stdout, want) {
@@ -82,8 +76,6 @@ func TestBenchRowsMatchRecordedRows(t *testing.T) {
 	}
 }
 
-// TestBenchRowsWithoutSplit pins the split date to the report: a row export
-// needs no split, and adding one changes nothing.
 func TestBenchRowsWithoutSplit(t *testing.T) {
 	dir := benchDir(t)
 	without := ok(t, harness(t, dir, "bench", "--rows", "--since", "2026-09-01", "--home", benchHome(t)), "bench --rows")
@@ -93,9 +85,6 @@ func TestBenchRowsWithoutSplit(t *testing.T) {
 	}
 }
 
-// TestBenchSinceFilteredMatchesRecorded compares a windowed run, before and
-// after the change, byte for byte against the baseline recorded on the same
-// fixture population.
 func TestBenchSinceFilteredMatchesRecorded(t *testing.T) {
 	dir := benchDir(t)
 	report := ok(t, harness(t, dir, "bench", "--split", "2026-09-05", "--since", "2026-09-02", "--home", benchHome(t)), "bench --since report")
@@ -108,7 +97,6 @@ func TestBenchSinceFilteredMatchesRecorded(t *testing.T) {
 	}
 }
 
-// TestBenchClientFlagNarrowsThePopulation is the command wiring for --client; that repeating a client collects it once is settled in internal/bench.
 func TestBenchClientFlagNarrowsThePopulation(t *testing.T) {
 	r := ok(t, harness(t, benchDir(t), "bench", "--split", "2026-09-05", "--since", "2026-09-01", "--client", "claude", "--rows", "--home", benchHome(t)), "bench one client")
 	if !strings.Contains(r.stdout, `"client": "claude"`) {
@@ -119,8 +107,6 @@ func TestBenchClientFlagNarrowsThePopulation(t *testing.T) {
 	}
 }
 
-// TestBenchReadsCodex is the command wiring for the Codex reader; its counting
-// rules are settled in internal/bench.
 func TestBenchReadsCodex(t *testing.T) {
 	home := t.TempDir()
 	rollout := filepath.Join(home, ".codex", "sessions", "2026", "09", "03", "rollout-2026-09-03T10-00-00-a.jsonl")
@@ -150,7 +136,7 @@ func TestBenchReportsUnreadableTranscript(t *testing.T) {
 	if err := os.MkdirAll(project, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// A directory named like a transcript stands in for an unreadable file.
+
 	if err := os.Mkdir(filepath.Join(project, "broken.jsonl"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +160,7 @@ func TestBenchUsageErrors(t *testing.T) {
 		if r.code != 2 {
 			t.Errorf("%v exited %d, want a usage error", args, r.code)
 		}
-		// A report with no --split has to name the flag it is missing.
+
 		if !slices.Contains(args, "--split") && !strings.Contains(r.stderr, "--split") {
 			t.Errorf("%v did not name --split: %q", args, r.stderr)
 		}

@@ -26,9 +26,6 @@ import (
 
 const claudeInterrupt = "[Request interrupted by user"
 
-// claudeDenials are the two sentences Claude Code writes when a human refuses
-// a call. `has been denied` is anchored on the sentence around it: unanchored,
-// the phrase matched a grep of this very file quoted back in a tool result.
 var claudeDenials = [][]string{
 	{"The user doesn't want to proceed with this tool use"},
 	{"Permission to use ", " has been denied"},
@@ -36,11 +33,6 @@ var claudeDenials = [][]string{
 
 var claudeNonTurn = []string{claudeInterrupt, "<command-name>", "<command-message", "<local-command", "<system-reminder>", "<task-notification>"}
 
-// opencodeQuery is a row per top-level session. OpenCode gives a subagent a
-// session of its own carrying the parent's id, so the parents are the
-// population and the children are that population's delegation. The parameter
-// drops parents created before the requested window before the aggregate
-// subqueries count anything.
 const opencodeQuery = `
 select s.time_created,
        s.time_updated,
@@ -55,9 +47,6 @@ from session s
 where s.parent_id is null and s.time_created >= ?
 `
 
-// patterns reads the project patterns that mark a session as work, from the
-// working directory's checkout. The committed example names nobody, so an
-// unconfigured checkout reports one population and never a misleading split.
 func patterns(c checkout.Checkout, stderr io.Writer) []string {
 	for _, name := range []string{"cohorts.json", "cohorts.example.json"} {
 		data, err := os.ReadFile(filepath.Join(c.Bench(), name))
@@ -80,8 +69,6 @@ func patterns(c checkout.Checkout, stderr io.Writer) []string {
 	return nil
 }
 
-// session is one parsed session. values holds the eight metrics, each an int
-// for counts, a float64 for minutes, or nil when the client does not record it.
 type session struct {
 	client  string
 	date    time.Time
@@ -99,8 +86,6 @@ func newSession(client string, started time.Time, project *string, values map[st
 	}
 }
 
-// startOfDay is the session's UTC date, which is what the since boundary and
-// the report's split compare against.
 func startOfDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
@@ -115,11 +100,6 @@ func (s *session) metric(name string) (float64, bool) {
 	return 0, false
 }
 
-// collect builds the population for the requested clients and window. Repeating
-// a client is a set, so a duplicate selection never doubles a population or its
-// rows, and since drops sessions before their metrics are aggregated. Since is
-// a date, so its time of day is truncated here: both readers then compare
-// against one boundary, whatever instant a direct consumer passes.
 func collect(home string, clients []string, work []string, since *time.Time) ([]*session, error) {
 	if since != nil {
 		day := startOfDay(*since)
@@ -156,15 +136,12 @@ func collect(home string, clients []string, work []string, since *time.Time) ([]
 	return sessions, nil
 }
 
-// --- Claude Code: ~/.claude/projects/<slug>/<session>.jsonl -------------------
-
 func claudeSessions(home string, since *time.Time) ([]*session, error) {
 	root := filepath.Join(home, ".claude", "projects")
 	if !isDir(root) {
 		return nil, nil
 	}
-	// `<project>/<session>.jsonl` only. Recursing would sweep the subagent
-	// sidecars in as sessions of their own.
+
 	paths, _ := filepath.Glob(filepath.Join(root, "*", "*.jsonl"))
 	sort.Strings(paths)
 	var sessions []*session
@@ -189,9 +166,7 @@ func readClaude(path string, since *time.Time) (*session, error) {
 			if !seen {
 				first = stamp
 				seen = true
-				// The session's date is its first stamp. Once it falls outside
-				// the window the whole transcript is dropped, so stop before
-				// aggregating anything and before its sidecars are read.
+
 				if since != nil && startOfDay(first).Before(*since) {
 					excluded = true
 					return false
@@ -211,14 +186,12 @@ func readClaude(path string, since *time.Time) (*session, error) {
 		if entry["type"] != "user" {
 			return true
 		}
-		// An entry is a turn when it carries at least one block a human typed.
-		// Anything the client injected can ride along in the same entry, so this
-		// is per block: a real prompt arrives with its system reminders attached.
+
 		typed := false
 		for _, block := range blocks {
 			body := claudeText(block)
 			if block["type"] == "tool_result" {
-				// A tool result is the harness answering itself, never a turn.
+
 				if isDenial(body) {
 					denials++
 				} else if truthy(block["is_error"]) {
@@ -232,8 +205,7 @@ func readClaude(path string, since *time.Time) (*session, error) {
 			prompt := lead != "" && !hasNonTurnPrefix(lead)
 			typed = typed || prompt || hasCommandArgs(lead)
 		}
-		// A compaction summary is the client's text in a user entry that is
-		// neither meta nor prefixed, so only its own flag excludes it.
+
 		if typed && !truthy(entry["isMeta"]) && !truthy(entry["isCompactSummary"]) {
 			turns++
 		}
@@ -257,7 +229,6 @@ func readClaude(path string, since *time.Time) (*session, error) {
 	}), nil
 }
 
-// claudeDelegation counts the messages in this session's subagent sidecars.
 func claudeDelegation(path string) (int, error) {
 	stem := strings.TrimSuffix(filepath.Base(path), ".jsonl")
 	sidecars, _ := filepath.Glob(filepath.Join(filepath.Dir(path), stem, "subagents", "*.jsonl"))
@@ -285,8 +256,6 @@ func messageContent(entry map[string]any) any {
 	return message["content"]
 }
 
-// blocksOf normalizes an entry's content to a list of blocks. A non-list
-// content becomes one text block, so a plain string is treated like a block.
 func blocksOf(content any) []map[string]any {
 	if list, ok := content.([]any); ok {
 		var blocks []map[string]any
@@ -318,10 +287,6 @@ func claudeText(block map[string]any) string {
 	return string(data)
 }
 
-// hasCommandArgs reports a slash command the person typed a request into, such
-// as `/work fix the flaky test`. The request is theirs, so the entry is a turn
-// as well as a command; a bare command is the client's entry alone. Only an
-// entry that opens as a slash command counts, never the tag quoted elsewhere.
 func hasCommandArgs(body string) bool {
 	if !strings.HasPrefix(body, "<command-name>") && !strings.HasPrefix(body, "<command-message") {
 		return false
@@ -361,7 +326,6 @@ func isDenial(body string) bool {
 	return false
 }
 
-// truthy is Python's truthiness, which the ported counting rules rely on.
 func truthy(value any) bool {
 	switch v := value.(type) {
 	case nil:
@@ -388,8 +352,7 @@ func parseStamp(value any) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	text = strings.ReplaceAll(text, "Z", "+00:00")
-	// Python's datetime.fromisoformat accepts more shapes than RFC3339, and a
-	// stamp it parses but this drops would remove the session from the run.
+
 	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02 15:04:05", "2006-01-02"} {
 		if stamp, err := time.Parse(layout, text); err == nil {
 			return stamp, true
@@ -398,16 +361,8 @@ func parseStamp(value any) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-// maxRecordBytes bounds one streamed JSONL record, far above anything a client
-// writes. Records are decoded one at a time, so the transcript as a whole is
-// never held in memory, and a record past the ceiling is reported rather than
-// silently dropped because it would bias every median.
 const maxRecordBytes = 64 << 20
 
-// forEachEntry streams a JSONL transcript's decoded records to fn, one at a
-// time, skipping lines that do not decode. fn returns false to stop early. A
-// file that cannot be read is an error: the pre-port bench raised on it, and a
-// silently dropped transcript would bias every median.
 func forEachEntry(path string, fn func(entry map[string]any) bool) error {
 	file, err := os.Open(path)
 	if err != nil {
@@ -418,9 +373,7 @@ func forEachEntry(path string, fn func(entry map[string]any) bool) error {
 	scanner.Buffer(make([]byte, 0, 64*1024), maxRecordBytes)
 	for scanner.Scan() {
 		var value any
-		// A line the decoder rejects is damage and is skipped, the same as the
-		// whole-file reader skipped it. TrimSpace matches what that reader
-		// stripped before decoding, which is wider than JSON's own whitespace.
+
 		if json.Unmarshal(bytes.TrimSpace(scanner.Bytes()), &value) != nil {
 			continue
 		}
@@ -439,15 +392,8 @@ func forEachEntry(path string, fn func(entry map[string]any) bool) error {
 	return nil
 }
 
-// --- Codex: ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl -----------------------
-
-// codexDenials are the whole outputs Codex returns to the model when a human
-// declines an approval. Matched whole, so a tool output that quotes one is not
-// a denial.
 var codexDenials = []string{"rejected by user", "exec command rejected by user", "patch rejected by user"}
 
-// codexRollout is one rollout file. A subagent writes a rollout of its own
-// naming its parent thread, and is folded into that parent as delegation.
 type codexRollout struct {
 	id       string
 	parent   string
@@ -467,8 +413,7 @@ func codexSessions(home string, since *time.Time) ([]*session, error) {
 			if err != nil {
 				return err
 			}
-			// A cold rollout Codex compressed to .jsonl.zst is not read; that
-			// compression is an off-by-default Codex feature.
+
 			if !entry.IsDir() && strings.HasPrefix(entry.Name(), "rollout-") && strings.HasSuffix(entry.Name(), ".jsonl") {
 				paths = append(paths, path)
 			}
@@ -500,8 +445,7 @@ func codexSessions(home string, since *time.Time) ([]*session, error) {
 			}
 		}
 	}
-	// A nested subagent names the subagent that spawned it, so walk up to the
-	// top-level session. The hop bound stops a malformed cycle.
+
 	for _, sub := range subagents {
 		id := sub.parent
 		for hops := 0; id != "" && hops <= len(parents); hops++ {
@@ -536,8 +480,7 @@ func readCodex(path string, since *time.Time) (*codexRollout, error) {
 		payload, _ := entry["payload"].(map[string]any)
 		switch entry["type"] {
 		case "session_meta":
-			// Only the first is this rollout's own; a forked thread copies its
-			// parent's after it.
+
 			if hasMeta {
 				return true
 			}
@@ -584,8 +527,7 @@ func readCodex(path string, since *time.Time) (*codexRollout, error) {
 	if r.subagent {
 		return r, nil
 	}
-	// Codex persists neither a tool call's success nor a slash command, so
-	// errors and commands are absent.
+
 	r.session = newSession("codex", first, project, map[string]any{
 		"turns": turns, "tool_calls": tools, "minutes": round1(last.Sub(first).Seconds() / 60),
 		"delegation": 0, "interrupts": interrupts, "denials": denials,
@@ -593,9 +535,6 @@ func readCodex(path string, since *time.Time) (*codexRollout, error) {
 	return r, nil
 }
 
-// codexParent reads a rollout's session metadata for the thread that spawned
-// it. A subagent or internal source is never a session of its own; one with no
-// parent, such as a guardian review, is dropped rather than counted.
 func codexParent(meta map[string]any) (string, bool) {
 	if parent, ok := meta["parent_thread_id"].(string); ok && parent != "" {
 		return parent, true
@@ -613,22 +552,18 @@ func codexParent(meta map[string]any) (string, bool) {
 	return "", internal
 }
 
-// --- OpenCode: ~/.local/share/opencode/opencode.db ---------------------------
-
 func opencodeSessions(home string, since *time.Time) ([]*session, error) {
 	path := filepath.Join(home, ".local", "share", "opencode", "opencode.db")
 	if !isFile(path) {
 		return nil, nil
 	}
-	// Read-only: the database may belong to a running client.
+
 	db, err := sql.Open("sqlite", "file:"+path+"?mode=ro&immutable=1")
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
-	// time_created is the session's start in milliseconds, so a session is in
-	// the window when it is not older than the boundary; no boundary includes
-	// every parent.
+
 	boundary := int64(math.MinInt64)
 	if since != nil {
 		boundary = since.UnixMilli()
@@ -652,8 +587,7 @@ func opencodeSessions(home string, since *time.Time) ([]*session, error) {
 		}
 		started := time.UnixMilli(created).UTC()
 		changed := time.UnixMilli(updated).UTC()
-		// OpenCode records no interrupt, no declined call, no failed result, and
-		// no slash command durably.
+
 		sessions = append(sessions, newSession("opencode", started, project, map[string]any{
 			"turns": turns, "tool_calls": tools,
 			"minutes":    round1(changed.Sub(started).Seconds() / 60),
@@ -666,18 +600,8 @@ func opencodeSessions(home string, since *time.Time) ([]*session, error) {
 	return sessions, nil
 }
 
-// --- scratch projects ---------------------------------------------------------
-
-// scratchDir, under the home bench reads, holds synthetic projects such as the
-// eval playbook's headless runs. Their sessions are not real use, so they never
-// join the population. The name stays ordinary so a run working inside it
-// cannot tell it is being measured.
 const scratchDir = ".scratch-projects"
 
-// inScratch reports whether a session's project is the scratch directory or
-// lies under it. Codex and OpenCode record an absolute directory; Claude Code
-// records the lossy slug of one, so the root is compared in slug form; there a
-// sibling such as ".scratch-projects-old" cannot be told apart and is dropped too.
 func inScratch(project *string, home string) bool {
 	if project == nil {
 		return false
@@ -690,8 +614,6 @@ func inScratch(project *string, home string) bool {
 	return *project == slug || strings.HasPrefix(*project, slug+"-")
 }
 
-// claudeSlug is Claude Code's project directory name for a path: every rune
-// that is not an ASCII letter or digit becomes a dash.
 func claudeSlug(path string) string {
 	var b strings.Builder
 	for _, r := range path {
@@ -703,8 +625,6 @@ func claudeSlug(path string) string {
 	}
 	return b.String()
 }
-
-// --- cohorts ------------------------------------------------------------------
 
 func canon(value string) string {
 	var b strings.Builder
@@ -736,8 +656,6 @@ func cohort(project *string, work []string) string {
 	return "personal"
 }
 
-// round1 matches Python's round(value, 1), which rounds half to even on the
-// exact binary value; strconv.FormatFloat is the same correct rounding.
 func round1(value float64) float64 {
 	if math.IsNaN(value) || math.IsInf(value, 0) {
 		return value

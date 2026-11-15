@@ -5,7 +5,6 @@ import (
 	"io"
 )
 
-// Generate renders and writes the role agents for the installer, refusing a symlinked output path before anything is written.
 func Generate(config, output string, assigned map[string]Assigned, stdout, stderr io.Writer) int {
 	outputs, _, report, err := Render(config, assigned)
 	if err != nil {
@@ -17,7 +16,6 @@ func Generate(config, output string, assigned map[string]Assigned, stdout, stder
 	return generate(outputs, output, report, stdout, stderr)
 }
 
-// Check renders the assignments and reports drift without writing anything, for the installer's verification mode.
 func Check(config, output string, assigned map[string]Assigned, stdout, stderr io.Writer) int {
 	outputs, accesses, _, err := Render(config, assigned)
 	if err != nil {

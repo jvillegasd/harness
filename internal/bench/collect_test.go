@@ -10,9 +10,6 @@ import (
 	"time"
 )
 
-// synthHome writes a Claude session store with one transcript per day starting
-// 2026-01-01, so a since date selects a tail of the population. It backs both
-// the tests here and the measured collection benchmark.
 func synthHome(tb testing.TB, sessions, records int) string {
 	tb.Helper()
 	dir := filepath.Join(tb.TempDir(), ".claude", "projects", "-tmp-acme-app")
@@ -87,8 +84,7 @@ func TestCollectSkipsExcludedParentSidecar(t *testing.T) {
 	dir := filepath.Join(home, ".claude", "projects", "-tmp-acme-app")
 	writeTranscript(t, filepath.Join(dir, "session-old.jsonl"),
 		`{"type":"user","timestamp":"2026-01-01T09:00:00Z","message":{"content":"hi"}}`+"\n")
-	// A sidecar that cannot be read stands in for a real one: if it is opened,
-	// collection fails.
+
 	if err := os.MkdirAll(filepath.Join(dir, "session-old", "subagents", "agent1.jsonl"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +142,6 @@ func TestStreamSkipsDamagedLines(t *testing.T) {
 	}
 }
 
-// codexLine is one rollout record in Codex's wire shape.
 func codexLine(stamp, kind, payload string) string {
 	return fmt.Sprintf(`{"timestamp":"2026-03-01T%s.000Z","type":%q,"payload":%s}`, stamp, kind, payload) + "\n"
 }
@@ -165,7 +160,7 @@ func TestCodexRolloutMetrics(t *testing.T) {
 			codexLine("09:00:06", "event_msg", `{"type":"turn_aborted","reason":"interrupted"}`)+
 			codexLine("09:00:07", "event_msg", `{"type":"turn_aborted","reason":"replaced"}`)+
 			codexLine("09:03:00", "event_msg", `{"type":"user_message","message":"again"}`))
-	// A spawned subagent, its own subagent, and a guardian review are not sessions.
+
 	writeTranscript(t, filepath.Join(day, "rollout-2026-03-01T09-01-00-child.jsonl"),
 		codexLine("09:01:00", "session_meta", `{"id":"child","cwd":"/tmp/acme/app","source":{"subagent":{"thread_spawn":{"parent_thread_id":"parent","depth":1}}}}`)+
 			codexLine("09:01:00", "event_msg", `{"type":"user_message","message":"task"}`)+
@@ -181,8 +176,7 @@ func TestCodexRolloutMetrics(t *testing.T) {
 	writeTranscript(t, filepath.Join(day, "rollout-2026-03-01T09-02-30-guardian.jsonl"),
 		codexLine("09:02:30", "session_meta", `{"id":"guardian","cwd":"/tmp/acme/app","source":{"internal":"guardian"}}`)+
 			codexLine("09:02:31", "event_msg", `{"type":"user_message","message":"review"}`))
-	// An archived session is still a session, and a fork's copied parent
-	// metadata does not replace its own.
+
 	writeTranscript(t, filepath.Join(home, ".codex", "archived_sessions", "rollout-2026-03-01T10-00-00-fork.jsonl"),
 		codexLine("10:00:00", "session_meta", `{"id":"fork","forked_from_id":"parent","cwd":"/tmp/home/lab","source":"cli"}`)+
 			codexLine("10:00:00", "session_meta", `{"id":"parent","cwd":"/tmp/acme/app","source":"cli"}`))
@@ -226,8 +220,6 @@ func TestCodexSinceSkipsOldRollout(t *testing.T) {
 	}
 }
 
-// A compaction writes its summary into the transcript as a user entry that is
-// neither meta nor prefixed, so only its own flag tells it from a typed prompt.
 func TestCompactionSummaryIsNotATurn(t *testing.T) {
 	home := t.TempDir()
 	body := strings.Join([]string{
@@ -248,10 +240,6 @@ func TestCompactionSummaryIsNotATurn(t *testing.T) {
 	}
 }
 
-// `/work fix the flaky test` carries the request in the command's arguments,
-// so it is a command and a turn, in both the message-first form a skill writes
-// and the name-first form a built-in writes. A bare command stays no turn:
-// counted otherwise, moving a request behind `/work` would lower turns by itself.
 func TestSlashCommandWithArgumentsIsAlsoATurn(t *testing.T) {
 	home := t.TempDir()
 	body := strings.Join([]string{
@@ -276,8 +264,6 @@ func TestSlashCommandWithArgumentsIsAlsoATurn(t *testing.T) {
 	}
 }
 
-// Only a slash-command entry carries the person's arguments. The same tag
-// quoted inside text the client injected is not a typed request.
 func TestQuotedCommandArgsInInjectedTextIsNotATurn(t *testing.T) {
 	home := t.TempDir()
 	body := `{"type":"user","timestamp":"2026-01-01T09:00:00Z","message":{"content":"<system-reminder>earlier: <command-args>fix it</command-args></system-reminder>"}}` + "\n" +
@@ -295,10 +281,6 @@ func TestQuotedCommandArgsInInjectedTextIsNotATurn(t *testing.T) {
 	}
 }
 
-// TestCollectDropsScratchProjects keeps synthetic sessions, such as an eval's
-// headless runs, out of the population: a session whose project lies under the
-// scratch directory is dropped for each client, while a sibling directory whose
-// name only shares the prefix stays where the client records a real path.
 func TestCollectDropsScratchProjects(t *testing.T) {
 	home := t.TempDir()
 	scratch := filepath.Join(home, scratchDir)

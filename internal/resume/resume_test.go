@@ -26,7 +26,6 @@ func write(t *testing.T, path, text string) {
 	}
 }
 
-// repo is a checkout whose main branch already holds a shipped task document, with a task branch checked out.
 func repo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
