@@ -1,6 +1,55 @@
+<div align="center">
+
 # Harness AI
 
-One shared setup for three coding agents: Claude Code, Codex, and OpenCode. The harness installs the same rules, skills, and helper roles into all three, so every agent works the same way on your machine.
+**One shared setup for three coding agents: Claude Code, Codex, and OpenCode.**
+
+[![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go&logoColor=white)](go.mod)
+[![Go Reference](https://pkg.go.dev/badge/github.com/jvillegasd/harness.svg)](https://pkg.go.dev/github.com/jvillegasd/harness)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)](#quick-start)
+[![Last commit](https://img.shields.io/github/last-commit/jvillegasd/harness)](https://github.com/jvillegasd/harness/commits/main)
+
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-supported-D97757)](https://www.anthropic.com/claude-code)
+[![Codex](https://img.shields.io/badge/Codex-supported-412991)](https://github.com/openai/codex)
+[![OpenCode](https://img.shields.io/badge/OpenCode-supported-1F2937)](https://opencode.ai)
+
+[Quick start](#quick-start) · [Workflow guide](docs/workflow.md) · [Review](docs/review.md) · [CLI reference](docs/cli.md) · [Contributing](#contribute-to-the-harness)
+
+</div>
+
+---
+
+The harness installs the same rules, skills, and helper roles into all three clients, so every agent works the same way on your machine.
+
+## Highlights
+
+- **One install, three clients.** `harness install` provisions the floor rules, skills, roles, MCP servers, and client settings for Claude Code, Codex, and OpenCode, and never overwrites a file you edited.
+- **You stay in control.** Agents work on their own task branches. Nothing is pushed, published, merged, or discarded until you ask.
+- **Proven review.** Independent reviewers hunt for defects without the author's reasoning, only problems a run proves are reported, and each review posts one `PASS`, `PASS+NOTES`, or `FAIL` verdict on its pull request.
+- **Guarded landing.** `/land` merges only on your request and only when the checks, review verdict, and forge gates allow it, then cleans up branches and worktrees without losing work.
+- **Deterministic steps.** Repeatable workflow steps are `harness` commands with tests, not prose an agent has to interpret.
+
+## Contents
+
+- [How it feels](#how-it-feels)
+- [Quick start](#quick-start)
+- [Ask for what you need](#ask-for-what-you-need)
+- [What the agent does on its own, and what waits for you](#what-the-agent-does-on-its-own-and-what-waits-for-you)
+- [Review](#review)
+- [Work mode](#work-mode)
+- [Models](#models)
+- [Shell aliases](#shell-aliases)
+- [Other things the installer sets up](#other-things-the-installer-sets-up)
+- [Install only part of it](#install-only-part-of-it)
+- [Keep tools up to date](#keep-tools-up-to-date)
+- [Uninstall](#uninstall)
+- [Manage skills](#manage-skills)
+- [Commands the skills run](#commands-the-skills-run)
+- [Contribute to the harness](#contribute-to-the-harness)
+- [Guides](#guides)
+- [Acknowledgments](#acknowledgments)
+
+## How it feels
 
 You keep working the way you already do. Ask the agent for something in plain words, and it reads the code, makes the change on a task branch, runs the checks, and tells you what it did. Skills help with specific jobs, but you never have to run them in any order. When you want a stricter, step-by-step run, start the task with `/work`.
 
@@ -97,7 +146,7 @@ harness review level medium    # off, medium (the default), or high
 - **`medium`:** one independent reviewer for every PR beyond docs or tests, and for local changes with a concrete risk.
 - **`high`:** adds one or two specialist reviewers where the change needs them.
 
-Asking for a review always runs one at your level. [How review works](docs/review.md) walks through a review from start to finish, and the [`harness review` commands](docs/cli.md#review-commands) show you how to read the results.
+Asking for a review always runs one at your level. [How review works](docs/review.md) walks through a review from start to finish, and each review posts its verdict as one comment on the pull request. The [`harness review` commands](docs/cli.md#review-commands) describe that comment.
 
 ## Work mode
 
