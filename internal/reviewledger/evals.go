@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -346,23 +347,26 @@ func seedFix(root, fix string) ([]Case, error) {
 	lengths := map[string]int{}
 	for _, b := range blames {
 		if _, ok := lengths[b.path]; !ok {
-			text, err := git(root, "show", fix+"^:"+b.path)
+			text, err := rawGit(root, "show", fix+"^:"+b.path)
 			if err != nil {
 				return nil, err
 			}
-			lengths[b.path] = strings.Count(text, "\n") + 1
+			lengths[b.path] = strings.Count(text, "\n")
+			if text != "" && !strings.HasSuffix(text, "\n") {
+				lengths[b.path]++
+			}
 		}
 		hi := min(b.hi, lengths[b.path])
 		if b.lo > hi {
 			continue
 		}
-		porcelain, err := git(root, "blame", "--line-porcelain", "-L", fmt.Sprintf("%d,%d", b.lo, hi), fix+"^", "--", b.path)
+		raw, err := rawGit(root, "blame", "--line-porcelain", "-L", fmt.Sprintf("%d,%d", b.lo, hi), fix+"^", "--", b.path)
 		if err != nil {
 			return nil, err
 		}
 		intro, file := "", b.path
 		var origLine int
-		for _, pl := range strings.Split(porcelain, "\n") {
+		for _, pl := range strings.Split(raw, "\n") {
 			fields := strings.Fields(pl)
 			switch {
 			case len(fields) >= 3 && len(fields[0]) == 40 && !strings.HasPrefix(pl, "\t"):
@@ -399,4 +403,15 @@ func seedFix(root, fix string) ([]Case, error) {
 		cases = append(cases, c)
 	}
 	return cases, nil
+}
+
+// rawGit runs git in dir and returns its output untrimmed: a blank last line of a file, or of blame's content, is whitespace that trimming would erase.
+func rawGit(dir string, args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+	}
+	return string(out), nil
 }

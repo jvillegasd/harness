@@ -121,3 +121,17 @@ func TestSeed(t *testing.T) {
 		t.Errorf("--max 1 got %+v, %v", few, err)
 	}
 }
+
+// A fix whose blamed range ends on a blank line still traces that line.
+func TestSeedTracesABlankLastLine(t *testing.T) {
+	r := newCoverRepo(t)
+	intro := r.commitMsg("feat: add f", map[string]string{"f.txt": "a\nb\n\n"})
+	fix := r.commitMsg("fix: fill the blank line", map[string]string{"f.txt": "a\nb\nc\n"})
+	cases, err := Seed(r.dir, "HEAD", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cases) != 1 || cases[0].Head != intro || cases[0].Source != fix || !reflect.DeepEqual(cases[0].Expected, []Expected{{Path: "f.txt", Lines: "3"}}) {
+		t.Errorf("got %+v", cases)
+	}
+}

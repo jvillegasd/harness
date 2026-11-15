@@ -53,3 +53,19 @@ func TestPostComment(t *testing.T) {
 		t.Errorf("calls %q sent %q", calls, sent)
 	}
 }
+
+// A later disposition on an older review's finding keeps its reviewed commit, so it must not make that older review the one posted.
+func TestCommentBodyIgnoresLaterUpdates(t *testing.T) {
+	old := posted("old", "sha1111111111111", "confirmed", "bug", "a.go", "old bug", "red")
+	entries := []Entry{
+		old,
+		posted("new", "sha2222222222222", "confirmed", "bug", "b.go", "new bug", "red2"),
+	}
+	update := old
+	update.Disposition, update.Evidence = "accepted", "human: intended"
+	entries = append(entries, update)
+	body, err := CommentBody(entries, "pr-7")
+	if err != nil || !strings.Contains(body, "sha222222222") || !strings.Contains(body, "new bug") || strings.Contains(body, "old bug") {
+		t.Errorf("got %q, %v", body, err)
+	}
+}

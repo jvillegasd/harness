@@ -11,12 +11,17 @@ import (
 // CommentBody is the one comment a foreign review posts, built from the ledger's latest review of key: the reviewed range and level, and each finding confirmed in it with the run that proved it. Dropped findings, nits, and hunter reasoning never reach it. It is an error when the ledger holds no review for key.
 func CommentBody(entries []Entry, key string) (string, error) {
 	latest := Latest(entries, key, func(string) bool { return true })
-	// The latest review is the one whose line was written last; its findings share its reviewed commit.
+	// The latest review is the one whose first line was written last; its findings share its reviewed commit. A later line for a seen id is a disposition update, which keeps its finding's older commit.
 	var last *Entry
-	for i := len(entries) - 1; i >= 0; i-- {
-		if entries[i].Branch == key && entries[i].Disposition != "no-review" {
-			last = &entries[i]
-			break
+	seen := map[string]bool{}
+	for i := range entries {
+		e := &entries[i]
+		if e.Branch != key || seen[e.ID] {
+			continue
+		}
+		seen[e.ID] = true
+		if e.Disposition != "no-review" {
+			last = e
 		}
 	}
 	if last == nil {
