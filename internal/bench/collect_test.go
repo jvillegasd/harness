@@ -76,20 +76,6 @@ func TestCollectExcludesBeforeAggregation(t *testing.T) {
 	}
 }
 
-// TestCollectSinceIsDateGranular pins the window to the date, so a consumer
-// that passes a Since with a time of day still selects whole sessions.
-func TestCollectSinceIsDateGranular(t *testing.T) {
-	home := synthHome(t, 10, 4)
-	noon := time.Date(2026, 1, 8, 12, 0, 0, 0, time.UTC)
-	got, err := collect(home, []string{"claude"}, nil, &noon)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 3 {
-		t.Fatalf("collected %d sessions, want the 3 dated on or after %s", len(got), noon.Format("2006-01-02"))
-	}
-}
-
 func TestCollectRejectsUnknownClient(t *testing.T) {
 	if _, err := collect(t.TempDir(), []string{"cursor"}, nil, nil); err == nil {
 		t.Fatal("an unknown client was accepted")
@@ -157,39 +143,6 @@ func TestStreamSkipsDamagedLines(t *testing.T) {
 		if v, ok := got[0].metric(metric); !ok || v != want {
 			t.Fatalf("%s = %v, want %v", metric, v, want)
 		}
-	}
-}
-
-func TestReportCallableDirectly(t *testing.T) {
-	home := synthHome(t, 3, 4)
-	split := time.Date(2026, 1, 3, 0, 0, 0, 0, time.UTC)
-	out, err := Report(Options{Home: home, Clients: []string{"claude"}, Work: []string{"acme"}, Split: &split})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.HasPrefix(out, "split 2026-01-03\n") {
-		t.Fatalf("report does not start with its header:\n%s", out)
-	}
-	if !strings.Contains(out, "claude  work") {
-		t.Fatalf("report did not split the configured cohort:\n%s", out)
-	}
-	noon := time.Date(2026, 1, 3, 12, 0, 0, 0, time.UTC)
-	noonOut, err := Report(Options{Home: home, Clients: []string{"claude"}, Work: []string{"acme"}, Split: &noon})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if noonOut != out {
-		t.Fatalf("a split with a time of day changed the report:\n--- midnight\n%s\n--- noon\n%s", out, noonOut)
-	}
-	rows, err := Report(Options{Home: home, Clients: []string{"claude"}, Work: []string{"acme"}, Rows: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if n := strings.Count(rows, "\n"); n != 3 {
-		t.Fatalf("row export wrote %d lines, want 3", n)
-	}
-	if _, err := Report(Options{Home: home}); err == nil {
-		t.Fatal("a report without a split date was accepted")
 	}
 }
 

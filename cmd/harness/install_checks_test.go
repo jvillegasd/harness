@@ -847,8 +847,13 @@ func homeTree(t *testing.T, home string) string {
 func TestReinstallRewritesNothingUnchanged(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
+	home := filepath.Join(base, "home")
+	before := homeTree(t, home)
 	r := runInstaller(t, base)
 	ok(t, r, "reinstall")
+	if after := homeTree(t, home); after != before {
+		t.Errorf("the reinstall changed the home tree:\n--- before\n%s\n--- after\n%s", before, after)
+	}
 	for _, noise := range []string{"Installed ", "Backed up ", "Removed "} {
 		if strings.Contains(r.stdout, noise) {
 			t.Errorf("the reinstall logged %q:\n%s", noise, r.stdout)

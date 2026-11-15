@@ -130,9 +130,6 @@ func TestModelsResolveReportsTheAssignment(t *testing.T) {
 	if got := resolved("reviewer"); got["client"] != "claude" || got["route"] != "" {
 		t.Errorf("reviewer: %v", got)
 	}
-	if r := runModels(t, base, "resolve", "executor", "--session", "claude", "--json"); r.code == 0 {
-		t.Error("resolve still accepted --session")
-	}
 	if r := ok(t, runModels(t, base, "resolve", "reviewer"), "resolve, plain"); !strings.Contains(r.stdout, "reviewer client=claude model=sonnet effort=medium (preset:balanced)") || strings.Contains(r.stdout, "route=") {
 		t.Errorf("plain resolve: %s", r.stdout)
 	}

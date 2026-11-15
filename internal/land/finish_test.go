@@ -182,6 +182,23 @@ func TestFinishKeeps(t *testing.T) {
 	if err != nil || !exists(ledger) || !said(actions, false, "review directory") || f.has("refs/remotes/origin/held") || f.has("refs/heads/held") {
 		t.Errorf("a held review directory: %v %v", err, actions)
 	}
+
+	// A remote branch that gained commits after its pull request merged stays.
+	f.landed(6, "moved")
+	moved := f.git(f.dir, "commit-tree", "moved^{tree}", "-p", "moved", "-m", "more")
+	f.git(f.dir, "push", "-q", "origin", moved+":refs/heads/moved")
+	if actions, err := f.finish(f.dir, 6); err != nil || !f.has("refs/remotes/origin/moved") || !said(actions, false, "remote branch moved") {
+		t.Errorf("a moved remote branch: %v %v", err, actions)
+	}
+
+	// A remote branch that heads another open pull request stays.
+	p, _ = f.landed(7, "again")
+	reopened := *p
+	reopened.Number, reopened.State = 8, "OPEN"
+	f.pulls[8] = &reopened
+	if actions, err := f.finish(f.dir, 7); err != nil || !f.has("refs/remotes/origin/again") {
+		t.Errorf("a branch heading an open pull request: %v %v", err, actions)
+	}
 }
 
 // TestFinishOrder covers a refused retirement of this checkout, and that with two pull requests this checkout goes last.

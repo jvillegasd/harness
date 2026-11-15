@@ -264,6 +264,7 @@ func TestGates(t *testing.T) {
 	}{
 		"conflict":                   {func() { p.Mergeable = "CONFLICTING" }, "CONFLICTING"},
 		"blocked":                    {func() { p.MergeStateStatus = "BLOCKED" }, "merge state is BLOCKED"},
+		"dirty":                      {func() { p.MergeStateStatus = "DIRTY" }, "its merge state is DIRTY"},
 		"not computed":               {func() { p.Mergeable, p.MergeStateStatus = "UNKNOWN", "UNKNOWN" }, "still computing"},
 		"approval":                   {func() { p.ReviewDecision = "REVIEW_REQUIRED" }, "approval is missing"},
 		"changes":                    {func() { p.ReviewDecision = "CHANGES_REQUESTED" }, "requested changes"},

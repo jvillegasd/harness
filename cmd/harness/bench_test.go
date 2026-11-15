@@ -160,13 +160,6 @@ func TestBenchReportsUnreadableTranscript(t *testing.T) {
 	}
 }
 
-func TestBenchRefusesOutsideCheckout(t *testing.T) {
-	r := harness(t, t.TempDir(), "bench", "--split", "2026-09-05", "--home", benchHome(t))
-	if r.code == 0 || r.stderr == "" {
-		t.Fatalf("outside a checkout exited %d with stderr %q, want a reported failure", r.code, r.stderr)
-	}
-}
-
 func TestBenchUsageErrors(t *testing.T) {
 	dir := benchDir(t)
 	cases := [][]string{

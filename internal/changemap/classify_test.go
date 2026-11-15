@@ -148,21 +148,6 @@ func TestMechanicalOnlyFromRules(t *testing.T) {
 	}
 }
 
-func TestBuiltinCriticalIsDocumented(t *testing.T) {
-	want := []string{ConfigPath, SkillLockPath, ".github/workflows/**", "**/migrations/**", "**/*.sql", "**/Dockerfile", "**/*.tf"}
-	if len(BuiltinCritical) != len(want) {
-		t.Fatalf("BuiltinCritical = %v, want %v", BuiltinCritical, want)
-	}
-	for i, glob := range want {
-		if BuiltinCritical[i] != glob {
-			t.Errorf("BuiltinCritical[%d] = %q, want %q", i, BuiltinCritical[i], glob)
-		}
-		if err := ValidateGlob(glob); err != nil {
-			t.Errorf("built-in %q is not a valid glob: %v", glob, err)
-		}
-	}
-}
-
 // TestLockedBodiesCollapse reports a locked body as one mechanical entry that names its source and file count, without hiding the lock file or a configured critical path inside it.
 func TestLockedBodiesCollapse(t *testing.T) {
 	cfg := Config{

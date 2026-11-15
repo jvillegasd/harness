@@ -162,6 +162,10 @@ func TestRepairRefusals(t *testing.T) {
 		if head := f.git(wt, "rev-parse", "HEAD"); head != child.HeadRefOid || f.git(wt, "status", "--porcelain") != "" {
 			t.Errorf("the checkout is at %s with %q", head, f.git(wt, "status", "--porcelain"))
 		}
+		// The dependent's base is put back, so finish keeps the landed branch it still sits on.
+		if child.BaseRefName != "feat" {
+			t.Errorf("the dependent's base is %s after a conflicted repair", child.BaseRefName)
+		}
 	})
 }
 

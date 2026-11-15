@@ -192,17 +192,3 @@ func TestListJSONUsesTypedNumbers(t *testing.T) {
 		t.Fatalf("list did not print stored TSV: code=%d stdout=%q stderr=%q", code, raw, errText)
 	}
 }
-
-func TestCommandHelpAndInvalidArguments(t *testing.T) {
-	for _, args := range [][]string{{"--help"}, {"add", "--help"}, {"list", "-h"}} {
-		code, out, errText := invoke(args...)
-		if code != 0 || out == "" || errText != "" {
-			t.Errorf("%v => %d, stdout %q, stderr %q", args, code, out, errText)
-		}
-	}
-	for _, args := range [][]string{{}, {"bogus"}, {"add", "--bogus"}} {
-		if code, _, _ := invoke(args...); code != 2 {
-			t.Errorf("%v exited %d, want 2", args, code)
-		}
-	}
-}

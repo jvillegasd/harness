@@ -69,9 +69,16 @@ func (r *coverRepo) gitIn(dir string, args ...string) string {
 	return r.git(args...)
 }
 
-// TestAddWorktreePatch covers applying a saved patch, binary content included, in the new worktree.
+// TestAddWorktreePatch covers applying a saved patch, binary content included, in the new worktree, refusing a patch that does not apply, and refusing a patch over an existing worktree rather than returning it without the patch.
 func TestAddWorktreePatch(t *testing.T) {
 	r := newCoverRepo(t)
+	bad := filepath.Join(t.TempDir(), "bad.patch")
+	if err := os.WriteFile(bad, []byte("not a patch\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AddWorktree(r.dir, "feat", "HEAD", bad); err == nil {
+		t.Fatal("a bad patch applied")
+	}
 	if err := os.WriteFile(filepath.Join(r.dir, "a.go"), []byte("patched\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -80,6 +87,12 @@ func TestAddWorktreePatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	r.git("checkout", "--", "a.go")
+	if path, err := AddWorktree(r.dir, "feat", "HEAD", patch); err == nil {
+		t.Errorf("add over the existing worktree returned %s without applying the patch", path)
+	}
+	if _, err := RetireWorktree(r.dir, "feat", false); err != nil {
+		t.Fatal(err)
+	}
 	path, err := AddWorktree(r.dir, "feat", "HEAD", patch)
 	if err != nil {
 		t.Fatal(err)

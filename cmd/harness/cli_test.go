@@ -201,6 +201,7 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"bench"},
 		{"attempts"},
 		{"attempts", "bogus"},
+		{"attempts", "add", "--bogus"},
 		{"bench", "--split", "2026-01-01", "extra"},
 		{"bench", "--bogus"},
 		{"skills"},
@@ -339,8 +340,8 @@ func TestOperationalFailuresExitOne(t *testing.T) {
 		{"skills", "verify"},
 		{"bench", "--split", "2026-01-01", "--home", t.TempDir()},
 	} {
-		if r := runBinary(t, outside, args...); r.code != 1 {
-			t.Errorf("%v outside a checkout or configured repository exited %d, want 1 (stderr %q)", args, r.code, r.stderr)
+		if r := runBinary(t, outside, args...); r.code != 1 || r.stderr == "" {
+			t.Errorf("%v outside a checkout or configured repository exited %d with stderr %q, want 1 and a diagnostic", args, r.code, r.stderr)
 		}
 	}
 }
