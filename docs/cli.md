@@ -181,6 +181,7 @@ harness review stamp                     # the review line this branch's PR body
 | `worktree add`, `worktree retire` | Creates the one temporary worktree a review may use, outside your checkout with Git hooks off, and removes it later. Anything it holds is saved as a patch in the review directory before removal |
 | `snapshot` | Saves uncommitted work under the named paths as one patch and prints its digest, so a review of work not yet committed can be matched to exactly that content. It leaves your index and working tree as they were |
 | `comment` | Posts a review of someone else's PR as one comment, built from the ledger: the reviewed range, the level, and each confirmed finding with the run that proved it. Dropped findings and nits stay local. `--dry-run` prints it without posting |
+| `evals seed`, `evals score` | The review skill's own evals. `seed` lists candidate bug cases from past `fix:` and revert commits, with the lines each introducing commit got wrong, for you to confirm. `score` grades a run against the confirmed cases (recall, false positives, dropped findings) and says whether it regressed against the last run on the same cases |
 
 ## Worktree commands
 
