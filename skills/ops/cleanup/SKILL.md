@@ -1,13 +1,13 @@
 ---
 name: cleanup
-description: "Retire the worktrees, local branches, and review records that finished work left behind, after an audit and only the ones the human names. Invoke only by name: \"clean up worktrees\", \"prune what merged\"."
+description: "Retire the worktrees, local branches, and review scratch that finished work left behind, after an audit and only the ones the human names. Invoke only by name: \"clean up worktrees\", \"prune what merged\"."
 argument-hint: "[worktree paths or branches to retire; none audits every linked worktree]"
 disable-model-invocation: true
 metadata:
   opencode/autoinvoke: "false"
 ---
 
-Retire the worktrees, local branches, and review records that finished work left behind, losing nothing.
+Retire the worktrees, local branches, and review scratch that finished work left behind, losing nothing.
 
 Worktrees or branches: $ARGUMENTS
 
@@ -28,5 +28,5 @@ The audit cannot see whether another session is working in a worktree, so its `s
    - A branch not proven landed: pass `--keep-branch` when the human wants the checkout gone and the branch kept.
    - A `loose` head: put a branch on it first (`git branch <name> <head>`) when the human wants its commits kept.
    - A `missing` row: `git worktree prune`.
-5. Run `harness review prune --dry-run --forge`, which lists every review directory whose key is neither a local nor a remote-tracking branch, and marks each `pr-<n>` whose pull request is still open, since its ledger is what `land check` reads: a fork's `pr-<n>` and a range's `range-<base>-<sha>` are always listed. Show the list beside step 3's rows. Run `harness review prune` only once the human approves the whole list; it cannot spare one directory, so if the human holds any, do not run it and report that. A directory it keeps records a review worktree that still exists; retire that worktree in step 4 and the directory goes with the next prune.
+5. Run `harness review prune --dry-run`, which lists every review directory whose key is neither a local nor a remote-tracking branch: a fork's `pr-<n>` and a range's `range-<base>-<sha>` are always listed. A review directory holds only a review run's scratch, its saved patches and worktree record; verdicts live on the pull request. Show the list beside step 3's rows. Run `harness review prune` only once the human approves the whole list; it cannot spare one directory, so if the human holds any, do not run it and report that. A directory it keeps records a review worktree that still exists; retire that worktree in step 4 and the directory goes with the next prune.
 6. Report each worktree removed, branch deleted, and patch saved, then each row held with its reason. Remote branches stay as they are: deleting one is a forge write that belongs to `land` or to the human.

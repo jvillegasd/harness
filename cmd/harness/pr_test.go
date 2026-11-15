@@ -56,6 +56,7 @@ func prRepo(t *testing.T) (dir, head string, run func(forge string, args ...stri
 func prForge(head, checks string) string {
 	return `"repo view") echo '{"defaultBranchRef":{"name":"main"}}';;
 "api user") echo me;;
+"api --paginate") echo "[]";;
 "pr list") echo '[]';;
 "pr view") echo '{"number":7,"state":"OPEN","headRefName":"` + branch + `","headRefOid":"` + head + `","baseRefName":"main","author":{"login":"me"},"mergeable":"MERGEABLE","mergeStateStatus":"CLEAN"}';;
 "pr checks") echo '` + checks + `';;

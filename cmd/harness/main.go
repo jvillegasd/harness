@@ -14,7 +14,7 @@ import (
 	"github.com/jvillegasd/harness/internal/land"
 	"github.com/jvillegasd/harness/internal/models"
 	"github.com/jvillegasd/harness/internal/resume"
-	"github.com/jvillegasd/harness/internal/reviewledger"
+	"github.com/jvillegasd/harness/internal/review"
 	"github.com/jvillegasd/harness/internal/setup"
 	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/statusline"
@@ -73,7 +73,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case "change-map":
 		return changemap.Command(args[1:], stdout, stderr)
 	case "review":
-		return reviewledger.Command(args[1:], stdout, stderr)
+		return review.Command(args[1:], stdout, stderr)
 	case "worktree":
 		return worktree.Command(args[1:], stdout, stderr)
 	case "land":

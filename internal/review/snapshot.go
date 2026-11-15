@@ -1,4 +1,4 @@
-package reviewledger
+package review
 
 import (
 	"crypto/sha256"
@@ -59,11 +59,10 @@ func Snapshot(root, base, branchKey string, owned []string) (path, digest string
 	}
 	hash := sha256.Sum256(patch)
 	digest = hex.EncodeToString(hash[:])
-	ledgerFile, err := File(root, branchKey)
+	dir, err := Dir(root, branchKey)
 	if err != nil {
 		return "", "", err
 	}
-	dir := filepath.Dir(ledgerFile)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", "", err
 	}

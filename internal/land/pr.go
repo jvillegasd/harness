@@ -53,8 +53,7 @@ Each verdict carries:
 
   ready     true when nothing holds the merge
   blocker   the first blocker: conflict, thread, failing, pending, or other
-  review    the review coverage, as harness land check reports it
-  findings  the ledger's open findings and recorded dismissals
+  review    the review coverage and verdict, as harness land check reports it
   threads   every unresolved review thread: id, path, line, author, the
             author's permission on the base repository, the first comment's
             text, and its url
@@ -67,7 +66,7 @@ work them: 0 ready, 3 merge conflict, 4 unresolved review thread, 5 failing
 required check, 6 pending required check or mergeability the forge is still
 computing, 7 any other hold (a draft, a merged
 or closed pull request, a missing approval, a required review that is not
-current, an open ledger finding). 1 is an operational failure and 2 an invalid
+current, a FAIL review verdict). 1 is an operational failure and 2 an invalid
 invocation.
 `
 

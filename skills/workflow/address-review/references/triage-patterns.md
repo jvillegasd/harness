@@ -10,9 +10,9 @@ When in doubt, ask. Dismissing a noisy style comment is cheap; dismissing a real
 
 Change code only to fix a confirmed defect. A comment that merely repeats gets an answer, not an appeasing edit. Repeated review passes do not lower the evidence required for dismissal.
 
-## Ledger findings
+## Verdict findings
 
-The implementing agent may dismiss a low-risk PR claim with concrete disproof. When a thread matches an internal `review` ledger finding, follow `review`'s rule that only a run proves a finding. Resolving the PR thread does not close the ledger finding or authorize marking it `dropped`; record its disposition through `review`'s [ledger rules](../../review/references/ledger.md).
+The implementing agent may dismiss a low-risk PR claim with concrete disproof. When a thread matches a finding in a `review` verdict, follow `review`'s rule that only a run proves a finding. Resolving the PR thread does not replace a FAIL verdict: only a newer verdict from `review`, or the human accepting it at `/land`, does.
 
 ## Ask by default
 

@@ -1,4 +1,4 @@
-package reviewledger
+package review
 
 import (
 	"errors"
@@ -10,11 +10,11 @@ import (
 
 func (r *coverRepo) reviewDir(key string) string {
 	r.t.Helper()
-	file, err := File(r.dir, key)
+	dir, err := Dir(r.dir, key)
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	return filepath.Dir(file)
+	return dir
 }
 
 func (r *coverRepo) worktrees() int {
@@ -52,7 +52,7 @@ func TestAddWorktree(t *testing.T) {
 	if again, err := AddWorktree(r.dir, "feat", head, ""); err != nil || again != path || r.worktrees() != count {
 		t.Errorf("a second add gave %s, %v, %d worktrees", again, err, r.worktrees())
 	}
-	if _, err := RemoveBranch(filepath.Join(r.reviewDir("feat"), "ledger.jsonl")); !errors.Is(err, ErrHeld) {
+	if _, err := RemoveBranch(r.reviewDir("feat")); !errors.Is(err, ErrHeld) {
 		t.Errorf("remove did not refuse a recorded worktree: %v", err)
 	}
 	removed, held, err := Prune(filepath.Dir(r.reviewDir("feat")), func(string) bool { return false }, false)

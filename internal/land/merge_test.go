@@ -7,8 +7,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/jvillegasd/harness/internal/reviewledger"
 )
 
 func (f *fixture) merge(number int, head, text string, accepted bool) (Merged, error) {
@@ -98,16 +96,9 @@ func TestMergeRefusals(t *testing.T) {
 	delete(f.checksErr, 1)
 
 	// Any other hold needs the human's acceptance, and merges with it.
-	file, err := reviewledger.File(f.dir, "docs")
-	if err != nil {
-		t.Fatal(err)
-	}
-	path := "README.md"
-	if err := reviewledger.Append(file, reviewledger.Entry{ID: "f1", Branch: "docs", SHA: p.HeadRefOid, Depth: "medium", Path: &path, Severity: "bug", Summary: "wrong", Disposition: "confirmed"}); err != nil {
-		t.Fatal(err)
-	}
-	refused("open finding", p.HeadRefOid, "x\n", false, "--accepted")
+	f.verdict(1, "FAIL", p.HeadRefOid, "me")
+	refused("failed verdict", p.HeadRefOid, "x\n", false, "--accepted")
 	if m, err := f.merge(1, p.HeadRefOid, "x\n", true); err != nil || m.State != "MERGED" {
-		t.Errorf("an accepted finding got %+v, %v", m, err)
+		t.Errorf("an accepted FAIL verdict got %+v, %v", m, err)
 	}
 }

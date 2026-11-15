@@ -1,4 +1,4 @@
-package reviewledger
+package review
 
 import (
 	"bytes"
@@ -113,7 +113,7 @@ func TestSnapshotPreservesIndexAndRejectsEmptyOrBadBase(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "owned.txt"), []byte("base\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	branchDir := filepath.Dir(mustFile(t, root, "work"))
+	branchDir := mustDir(t, root, "work")
 	beforeEntries, err := os.ReadDir(branchDir)
 	if err != nil {
 		t.Fatal(err)
@@ -130,11 +130,11 @@ func TestSnapshotPreservesIndexAndRejectsEmptyOrBadBase(t *testing.T) {
 	}
 }
 
-func mustFile(t *testing.T, root, key string) string {
+func mustDir(t *testing.T, root, key string) string {
 	t.Helper()
-	file, err := File(root, key)
+	dir, err := Dir(root, key)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return file
+	return dir
 }

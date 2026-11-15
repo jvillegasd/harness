@@ -99,11 +99,10 @@ func TestStatusMatchesLandCheck(t *testing.T) {
 	f.open(1, "feature", "main", map[string]string{"a.go": "changed\n"})
 	f.threads[1] = 1
 	f.checks[1], f.checksErr[1] = `[{"name":"ci","bucket":"pending"}]`, errors.New("exit status 8")
-	reviewed := f.git(f.dir, "rev-parse", "HEAD")
-	f.pulls[1].Body = "Reviewed: " + reviewed + ".." + reviewed
+	f.verdict(1, "PASS", f.git(f.dir, "rev-parse", "HEAD"), "me")
 
 	c, s := f.one(1), f.status(false, 1)[0]
-	if !reflect.DeepEqual(c.Review, s.Review) || !reflect.DeepEqual(c.Holds, s.Holds) || !reflect.DeepEqual(c.Findings, s.Findings) {
+	if !reflect.DeepEqual(c.Review, s.Review) || !reflect.DeepEqual(c.Holds, s.Holds) {
 		t.Errorf("land check %+v %q, pr status %+v %q", c.Review, c.Holds, s.Review, s.Holds)
 	}
 	if s.Review == nil || s.Review.Status != "current" {

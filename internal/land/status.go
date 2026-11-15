@@ -26,12 +26,11 @@ type Status struct {
 	Head   string `json:"head"`
 	Ready  bool   `json:"ready"`
 	// Blocker names the first blocker: conflict, thread, failing, pending, or other. Empty when ready.
-	Blocker  string    `json:"blocker,omitempty"`
-	Review   *Review   `json:"review,omitempty"`
-	Findings []Finding `json:"findings"`
-	Threads  []Thread  `json:"threads"`
-	Holds    []string  `json:"holds"`
-	Notes    []string  `json:"notes"`
+	Blocker string   `json:"blocker,omitempty"`
+	Review  *Review  `json:"review,omitempty"`
+	Threads []Thread `json:"threads"`
+	Holds   []string `json:"holds"`
+	Notes   []string `json:"notes"`
 }
 
 // Code is the exit code that names the status's first blocker.
@@ -62,7 +61,7 @@ func Statuses(e Env, numbers []int, stack bool) ([]Status, error) {
 	for _, c := range checks {
 		s := Status{
 			Number: c.Number, URL: c.URL, Title: c.Title, Head: c.Head,
-			Review: c.Review, Findings: c.Findings, Threads: []Thread{}, Holds: c.Holds, Notes: c.Notes,
+			Review: c.Review, Threads: []Thread{}, Holds: c.Holds, Notes: c.Notes,
 		}
 		if c.Lane == "merged" {
 			s.Holds = append([]string{"it is already merged"}, s.Holds...)

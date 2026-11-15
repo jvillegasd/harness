@@ -109,7 +109,7 @@ After an update, read the changed skill bodies and the lockfile, then run `harne
 
 ## Review commands
 
-`harness review` sets how much review happens on its own, and lets you read what a review found. [How review works](review.md) explains the review itself.
+`harness review` sets how much review happens on its own, and posts a review's verdict on its PR. [How review works](review.md) explains the review itself.
 
 ### Set the review level
 
@@ -121,66 +121,35 @@ harness review level --json     # machine-readable, used by agents
 
 The level is stored in `~/.harness/state.json` and applies to every repository on this machine. Only you set it. Agents read it but never change it. `/land` uses the level in force when it runs, not the one in force when the PR was opened.
 
-### Read what a review found
+### Where a review's result lives
 
-```sh
-harness review list                     # findings on the current branch, as JSON
-harness review list --branch feat/x     # findings on another branch
-harness review list --head <rev>        # judge fixes against another head (default: HEAD)
-harness review path                     # where the ledger file lives
-harness review remove --branch feat/x   # delete a merged branch's ledger and patches
-harness review prune [--dry-run]        # delete ledgers of branches that exist nowhere (run git fetch --prune first)
-harness review prune --dry-run --forge  # also mark each pr-<n> ledger whose PR is still open
-```
+A review's result is one verdict comment on the PR, never a file on your machine. It opens with a hidden marker that `harness land check` and `harness pr status` read, then shows the verdict, the reviewed range, the level, and the notes: each confirmed or fixed finding with the run that proved it, plus coverage and how many findings each reviewer had dropped.
 
-`list` shows the latest state of each finding. An empty list, `[]`, means nothing was recorded for that branch on this machine. Two fields matter most:
-
-- **`open: true`:** the finding still needs attention. This covers confirmed findings and fixes whose commit is not in the branch yet.
-- **`rewritten: true`:** the reviewed commit is no longer in the branch history, for example after a rebase. The finding still counts.
-
-The findings live in a ledger file inside the Git directory. Git never tracks it, and every worktree of the repository shares it. `/land` deletes it once the branch merges, with `harness review remove`. A pull request merged on GitHub, closed, or only reviewed by number never reaches `/land`, so `harness review prune` deletes every ledger whose branch exists neither locally nor on a remote. A fork's `pr-<n>` ledger has no local branch and goes even while that pull request is open, so run `--dry-run --forge` first, which marks each one whose pull request is still open. Both commands leave a directory alone while the review worktree it records still exists.
-
-### What each disposition means
-
-| Disposition | Meaning | Still open? |
+| Verdict | Meaning | Holds `/land merge`? |
 | --- | --- | --- |
-| `confirmed` | Proven real, and the fix has not landed yet | Yes |
-| `fixed` | Repaired by a named commit | Until that commit is in the branch |
-| `dropped` | No run proved it. Counted in the review, not listed one by one | No |
-| `accepted` | You said the behavior is wanted, or decided not to fix it. Your words are kept | No |
-| `nit` | A style point, or a problem that existed before this change. Reported but not acted on | No |
-| `clean` or `no-review` | A whole review that found nothing, or a review that was skipped | No |
+| `PASS` | Nothing left to report | No |
+| `PASS+NOTES` | It may land; the notes say what you should still read | No |
+| `FAIL` | A confirmed finding is unfixed, or part of the change went unreviewed | Yes, until a newer verdict replaces it or you accept it by name |
 
-Any local process can write to the ledger, so `/land` asks you to reconfirm every `accepted` finding.
-
-### Record your own decision on a finding
-
-Agents call `harness review record` while they review. You rarely need it yourself, except to record your decision on a finding:
-
-```sh
-harness review record --id <id> --disposition accepted --evidence "We want retries to stop after 3."
-```
-
-Run `harness review record --help` for every flag.
+Only the newest verdict from someone with write access to the repository counts. A verdict from anyone else is listed as ignored. A review of work with no PR yet posts nothing; `open-pr` posts its verdict right after it opens the PR.
 
 ### Commands the review skills run
 
 The review, `open-pr`, and `/land` skills call these instead of working the answers out by hand. You can run them to see what an agent saw:
 
 ```sh
-harness review target 42                 # what a review of PR 42 reads: its base, commit, and ledger key
-harness review covers --base <base> --sha <sha> --level medium   # does a recorded review already cover this change?
-harness review stamp                     # the review line this branch's PR body should carry
+harness review target 42                 # what a review of PR 42 reads: its base, commit, and key
+harness review verdict 42 --result PASS --base <base> --sha <head> --level medium --dry-run   # the comment a review would post
+harness review prune --dry-run           # review scratch of branches that exist nowhere (run git fetch --prune first)
 ```
 
 | Command | What it answers or does |
 | --- | --- |
-| `target` | Resolves the current branch, a PR number or URL, another branch, or a `<base>..<sha>` range to the base, commit, and ledger key a review reads. It fetches what it needs and creates no branch or tag. A PR from a fork is keyed `pr-<n>` |
-| `covers` | Whether the latest `clean` review at that depth or deeper still covers the change. A rebase that changes no file's patch keeps its review. It also lists findings still open, and writes nothing |
-| `stamp` | Prints `Reviewed: <base>..<sha>` when a clean review covers the head and nothing is open, or `Review: not run (level <level>)` when the level skipped review. Otherwise it prints nothing, names the reason, and exits 1. This is the line `harness land check` reads back |
+| `target` | Resolves the current branch, a PR number or URL, another branch, or a `<base>..<sha>` range to the base, commit, and key a review reads. It fetches what it needs and creates no branch or tag. A PR from a fork is keyed `pr-<n>` |
+| `verdict` | Posts a review's verdict on an open PR as one comment and prints it. It refuses a commit that is not the PR's current head, and a `PASS+NOTES` or `FAIL` without `--notes`. `--dry-run` prints it without posting |
 | `worktree add`, `worktree retire` | Creates the one temporary worktree a review may use, outside your checkout with Git hooks off, and removes it later. Anything it holds is saved as a patch in the review directory before removal |
-| `snapshot` | Saves uncommitted work under the named paths as one patch and prints its digest, so a review of work not yet committed can be matched to exactly that content. It leaves your index and working tree as they were |
-| `comment` | Posts a review of someone else's PR as one comment, built from the ledger: the reviewed range, the level, and each confirmed finding with the run that proved it. Dropped findings and nits stay local. `--dry-run` prints it without posting |
+| `snapshot` | Saves uncommitted work under the named paths as one patch and prints its digest, so a review of work not yet committed reads exactly that content. It leaves your index and working tree as they were |
+| `remove`, `prune` | Delete a review directory, the scratch a review run leaves in the Git directory (saved patches and the worktree record). `/land` removes a merged branch's directory; `prune` removes those of branches that exist nowhere. Both leave a directory alone while the review worktree it records still exists |
 | `evals seed`, `evals score` | The review skill's own evals. `seed` lists candidate bug cases from past `fix:` and revert commits, with the lines each introducing commit got wrong, for you to confirm. `score` grades a run against the confirmed cases (recall, false positives, dropped findings) and says whether it regressed against the last run on the same cases |
 
 ## Worktree commands
@@ -231,8 +200,7 @@ It prints one JSON verdict per PR. The fields you will read most:
 | `holds` | Every reason not to merge. Empty means the gates passed. For a merged PR, what the merge skipped |
 | `mode` | `local` when this checkout is the PR's head, `fork` for a PR from another repository, otherwise `remote` |
 | `mine` | Whether you wrote the PR. `/land` deletes the remote branch, and rebases a PR stacked on it, only when it is yours |
-| `review` | Whether a review is required, where the reviewed commit came from, and whether it still covers the head |
-| `findings` | Open review findings and the ones you dismissed, each of which holds the merge |
+| `review` | Whether a review is required, the PR's latest verdict (its result, link, and reviewed commit), and whether it still covers the head |
 
 Without `--merge`, an open PR reads as `stop`. Run `harness land check --help` for every field.
 
@@ -281,7 +249,7 @@ It prints a JSON verdict per PR with the same holds and review coverage as `harn
 | 4 | An unresolved review thread |
 | 5 | A failing required check |
 | 6 | A pending required check, or mergeability GitHub is still computing |
-| 7 | Any other hold, such as a draft, a missing approval, a review that is not current, or an open finding |
+| 7 | Any other hold, such as a draft, a missing approval, a review that is not current, or a `FAIL` verdict |
 | 8 | `--watch` timed out (default 30 minutes) |
 
 `harness pr threads reply <pr> <thread id> --body-file <file>` posts a file's exact text as a reply, and `harness pr threads resolve <pr> <thread id>...` resolves threads. Both write to GitHub, so agents run them only under the authority they already have for that PR.

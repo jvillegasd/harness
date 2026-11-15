@@ -34,28 +34,3 @@ func TestWorktreeAuditForgeCommand(t *testing.T) {
 		t.Errorf("no held row for %s:\n%s", path, r.stdout)
 	}
 }
-
-// TestReviewPruneForgeCommand proves prune --dry-run --forge marks an open pull request's pr-<n> directory, removes nothing, and refuses --forge without --dry-run.
-func TestReviewPruneForgeCommand(t *testing.T) {
-	_, _, run := prRepo(t)
-	for _, n := range []string{"7", "9"} {
-		if r := run("", "review", "record", "--branch", "pr-"+n, "--depth", "medium", "--disposition", "clean", "--summary", "s"); r.code != 0 {
-			t.Fatalf("record exited %d: %s", r.code, r.stderr)
-		}
-	}
-	forge := `"pr view") if [ "$3" = 7 ]; then echo '{"state":"OPEN"}'; else echo '{"state":"MERGED"}'; fi;;
-`
-	r := run(forge, "review", "prune", "--dry-run", "--forge")
-	lines := strings.Split(strings.TrimSpace(r.stdout), "\n")
-	if r.code != 0 || len(lines) != 2 || !strings.HasSuffix(lines[0], "pr-7\tpull request #7 is open") || !strings.HasSuffix(lines[1], "pr-9") {
-		t.Fatalf("prune --dry-run --forge exited %d with %q: %s", r.code, r.stdout, r.stderr)
-	}
-	for _, line := range lines {
-		if _, err := os.Stat(strings.SplitN(line, "\t", 2)[0]); err != nil {
-			t.Errorf("a dry run removed %s", line)
-		}
-	}
-	if r := run(forge, "review", "prune", "--forge"); r.code != 2 {
-		t.Errorf("--forge without --dry-run exited %d", r.code)
-	}
-}

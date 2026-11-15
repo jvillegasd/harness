@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// reviewRun runs the built binary in dir; the ledger lands in the repository's Git directory.
+// reviewRun runs the built binary in dir; review scratch lands in the repository's Git directory.
 func reviewRun(t *testing.T, dir, data string, args ...string) result {
 	t.Helper()
 	cmd := exec.Command(binary, append([]string{"review"}, args...)...)
@@ -28,122 +28,24 @@ func reviewRun(t *testing.T, dir, data string, args ...string) result {
 	return result{stdout.String(), stderr.String(), code}
 }
 
-type listed struct {
-	ID          string `json:"id"`
-	Disposition string `json:"disposition"`
-	Open        bool   `json:"open"`
-	Rewritten   bool   `json:"rewritten"`
-}
-
-func listReview(t *testing.T, dir, data string) []listed {
+// scratchDir makes key's review directory holding a saved patch, as a review run leaves it, and returns it.
+func scratchDir(t *testing.T, dir, key string) string {
 	t.Helper()
-	r := reviewRun(t, dir, data, "list")
-	if r.code != 0 {
-		t.Fatalf("list exited %d: %s", r.code, r.stderr)
+	d := filepath.Join(git(t, dir, "rev-parse", "--path-format=absolute", "--git-common-dir"), "harness-review", "branches", url.PathEscape(key))
+	if err := os.MkdirAll(d, 0o755); err != nil {
+		t.Fatal(err)
 	}
-	var out []listed
-	if err := json.Unmarshal([]byte(r.stdout), &out); err != nil {
-		t.Fatalf("list printed %q: %v", r.stdout, err)
+	if err := os.WriteFile(filepath.Join(d, "review.patch"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	return out
+	return d
 }
 
-// TestReviewLedgerCommand proves the CLI is wired to the ledger rules: record, update by id, list, rejection without a write, and a rebase that keeps an open finding.
-func TestReviewLedgerCommand(t *testing.T) {
-	dir, data := repo(t), t.TempDir()
-	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
-	base := git(t, dir, "rev-parse", "HEAD")
-	git(t, dir, "switch", "-q", "-c", "work")
-	git(t, dir, "commit", "-q", "--allow-empty", "-m", "change")
-
-	p := reviewRun(t, dir, data, "path")
-	file := strings.TrimSpace(p.stdout)
-	common := git(t, dir, "rev-parse", "--path-format=absolute", "--git-common-dir")
-	if p.code != 0 || file != filepath.Join(common, "harness-review", "branches", "work", "ledger.jsonl") {
-		t.Fatalf("path exited %d with %q", p.code, p.stdout)
-	}
-	// A slash in a branch name stays inside one directory name.
-	if o := reviewRun(t, dir, data, "path", "--branch", "feat/x"); strings.TrimSpace(o.stdout) != filepath.Join(common, "harness-review", "branches", "feat%2Fx", "ledger.jsonl") {
-		t.Errorf("path --branch feat/x printed %q", o.stdout)
-	}
-
-	add := func(disposition string) string {
-		r := reviewRun(t, dir, data, "record", "--depth", "high", "--path", "a.go", "--lines", "40-52", "--severity", "bug", "--summary", "s", "--disposition", disposition)
-		if r.code != 0 {
-			t.Fatalf("record exited %d: %s", r.code, r.stderr)
-		}
-		return strings.TrimSpace(r.stdout)
-	}
-	fixed, open := add("confirmed"), add("confirmed")
-	reviewed := git(t, dir, "rev-parse", "HEAD")
-	git(t, dir, "commit", "-q", "--allow-empty", "-m", "fix")
-	if r := reviewRun(t, dir, data, "record", "--id", fixed, "--disposition", "fixed", "--evidence", "red test now green", "--commit", "HEAD"); r.code != 0 {
-		t.Fatalf("update exited %d: %s", r.code, r.stderr)
-	}
-
-	before, _ := os.ReadFile(file)
-	for _, bad := range [][]string{
-		{"record", "--depth", "high", "--path", "a.go", "--lines", "40-x", "--severity", "bug", "--summary", "s", "--disposition", "confirmed"},
-		{"record", "--id", "missing", "--disposition", "fixed", "--evidence", "e", "--commit", "HEAD"},
-		{"record", "--id", open, "--severity", "nit", "--disposition", "nit"},
-		{"record", "--id", open, "--disposition", "fixed", "--evidence", "e"},
-		// A fix is a commit after the reviewed one: the reviewed commit, an older one, or a name that does not resolve closes nothing.
-		{"record", "--id", open, "--disposition", "fixed", "--evidence", "e", "--commit", reviewed},
-		{"record", "--id", open, "--disposition", "fixed", "--evidence", "e", "--commit", base},
-		{"record", "--id", open, "--disposition", "fixed", "--evidence", "e", "--commit", "no-such-rev"},
-		// A proven finding is never dropped on an agent's word.
-		{"record", "--id", fixed, "--disposition", "dropped", "--evidence", "e"},
-	} {
-		if r := reviewRun(t, dir, data, bad...); r.code != 2 || r.stderr == "" {
-			t.Errorf("%v exited %d with %q, want 2 and a diagnostic", bad, r.code, r.stderr)
-		}
-	}
-	if after, _ := os.ReadFile(file); !bytes.Equal(before, after) {
-		t.Error("a rejected record changed the ledger")
-	}
-
-	got := listReview(t, dir, data)
-	if len(got) != 2 || got[0].ID != fixed || got[0].Open || got[1].ID != open || !got[1].Open || got[1].Rewritten {
-		t.Fatalf("list = %+v", got)
-	}
-
-	git(t, dir, "switch", "-q", "-C", "work", base)
-	git(t, dir, "commit", "-q", "--allow-empty", "-m", "rewritten")
-	got = listReview(t, dir, data)
-	if len(got) != 2 || !got[0].Open || !got[1].Open || !got[1].Rewritten {
-		t.Fatalf("after a rewrite the open finding must stay, marked rewritten, and a fix the head lost must reopen: %+v", got)
-	}
-
-	// Another worktree of the branch reads the same file, and another branch has its own.
-	sibling := filepath.Join(t.TempDir(), "sibling")
-	git(t, dir, "worktree", "add", "-q", "--detach", sibling)
-	if s := reviewRun(t, sibling, data, "path", "--branch", "work"); strings.TrimSpace(s.stdout) != file {
-		t.Errorf("a sibling worktree uses %q, want %q", s.stdout, file)
-	}
-	if s := reviewRun(t, sibling, data, "list", "--branch", "work"); !strings.Contains(s.stdout, fixed) {
-		t.Errorf("a sibling worktree does not see the branch's findings: %s", s.stdout)
-	}
-	git(t, dir, "switch", "-q", "-c", "other")
-	if got := listReview(t, dir, data); len(got) != 0 {
-		t.Errorf("another branch sees %d findings, want its own empty ledger", len(got))
-	}
-	// A detached head has no branch to key a ledger by.
-	if s := reviewRun(t, sibling, data, "path"); s.code != 2 || s.stderr == "" {
-		t.Errorf("path on a detached head exited %d with %q, want 2 and a diagnostic", s.code, s.stderr)
-	}
-}
-
-// TestReviewRemoveCommand proves the CLI is wired to the removal rule: the named branch's directory goes, another branch's stays, a second run is a no-op, and a recorded worktree is refused. The rule itself is settled in internal/reviewledger.
+// TestReviewRemoveCommand proves the CLI is wired to the removal rule: the named branch's directory goes, another branch's stays, a second run is a no-op, and a recorded worktree is refused. The rule itself is settled in internal/review.
 func TestReviewRemoveCommand(t *testing.T) {
 	dir, data := repo(t), t.TempDir()
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
-	record := func(branch string) string {
-		if r := reviewRun(t, dir, data, "record", "--branch", branch, "--depth", "medium", "--disposition", "clean", "--summary", "s"); r.code != 0 {
-			t.Fatalf("record exited %d: %s", r.code, r.stderr)
-		}
-		return filepath.Dir(strings.TrimSpace(reviewRun(t, dir, data, "path", "--branch", branch).stdout))
-	}
-	merged, kept := record("feat/x"), record("feat/y")
+	merged, kept := scratchDir(t, dir, "feat/x"), scratchDir(t, dir, "feat/y")
 
 	if r := reviewRun(t, dir, data, "remove", "--branch", "feat/x"); r.code != 0 || strings.TrimSpace(r.stdout) != merged {
 		t.Fatalf("remove exited %d with %q: %s", r.code, r.stdout, r.stderr)
@@ -151,8 +53,8 @@ func TestReviewRemoveCommand(t *testing.T) {
 	if _, err := os.Stat(merged); !os.IsNotExist(err) {
 		t.Errorf("the removed branch's directory is still there: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(kept, "ledger.jsonl")); err != nil {
-		t.Errorf("another branch's ledger was touched: %v", err)
+	if _, err := os.Stat(filepath.Join(kept, "review.patch")); err != nil {
+		t.Errorf("another branch's directory was touched: %v", err)
 	}
 	if r := reviewRun(t, dir, data, "remove", "--branch", "feat/x"); r.code != 0 || r.stdout != "" {
 		t.Errorf("a second remove exited %d with %q, want 0 and nothing", r.code, r.stdout)
@@ -163,8 +65,8 @@ func TestReviewRemoveCommand(t *testing.T) {
 			t.Errorf("remove --branch %s exited %d with %q, want 2 and a diagnostic", name, r.code, r.stderr)
 		}
 	}
-	if _, err := os.Stat(filepath.Join(kept, "ledger.jsonl")); err != nil {
-		t.Fatalf("a dot-segment branch name deleted another branch's ledger: %v", err)
+	if _, err := os.Stat(filepath.Join(kept, "review.patch")); err != nil {
+		t.Fatalf("a dot-segment branch name deleted another branch's directory: %v", err)
 	}
 
 	if err := os.WriteFile(filepath.Join(kept, "worktree.txt"), []byte(t.TempDir()+"\n"), 0o644); err != nil {
@@ -173,23 +75,17 @@ func TestReviewRemoveCommand(t *testing.T) {
 	if r := reviewRun(t, dir, data, "remove", "--branch", "feat/y"); r.code != 1 || r.stderr == "" {
 		t.Errorf("remove with a recorded worktree exited %d with %q, want 1 and a diagnostic", r.code, r.stderr)
 	}
-	if _, err := os.Stat(filepath.Join(kept, "ledger.jsonl")); err != nil {
-		t.Errorf("a refused remove deleted the ledger: %v", err)
+	if _, err := os.Stat(filepath.Join(kept, "review.patch")); err != nil {
+		t.Errorf("a refused remove deleted the patch: %v", err)
 	}
 }
 
-// TestReviewPruneCommand proves prune reads local and remote-tracking branches from git; which directories go is settled in internal/reviewledger.
+// TestReviewPruneCommand proves prune reads local and remote-tracking branches from git; which directories go is settled in internal/review.
 func TestReviewPruneCommand(t *testing.T) {
 	dir, data := repo(t), t.TempDir()
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
 	git(t, dir, "update-ref", "refs/remotes/origin/feat/remote", "HEAD")
-	record := func(name string) string {
-		if r := reviewRun(t, dir, data, "record", "--branch", name, "--depth", "medium", "--disposition", "clean", "--summary", "s"); r.code != 0 {
-			t.Fatalf("record exited %d: %s", r.code, r.stderr)
-		}
-		return filepath.Dir(strings.TrimSpace(reviewRun(t, dir, data, "path", "--branch", name).stdout))
-	}
-	local, remote, gone := record(branch), record("feat/remote"), record("feat/gone")
+	local, remote, gone := scratchDir(t, dir, branch), scratchDir(t, dir, "feat/remote"), scratchDir(t, dir, "feat/gone")
 
 	if r := reviewRun(t, dir, data, "prune", "--dry-run"); r.code != 0 || strings.TrimSpace(r.stdout) != gone {
 		t.Fatalf("prune --dry-run exited %d with %q, want only %s: %s", r.code, r.stdout, gone, r.stderr)
@@ -210,7 +106,7 @@ func TestReviewPruneCommand(t *testing.T) {
 	}
 }
 
-// TestReviewLevelCommand proves the CLI is wired to the level rules, and that an install keeps the stored level. Which values are accepted is settled in internal/reviewledger.
+// TestReviewLevelCommand proves the CLI is wired to the level rules, and that an install keeps the stored level. Which values are accepted is settled in internal/review.
 func TestReviewLevelCommand(t *testing.T) {
 	base := modelsBase(t)
 	level := func(args ...string) result {
@@ -238,19 +134,49 @@ func TestReviewLevelCommand(t *testing.T) {
 	}
 }
 
-// TestReviewCommentCommand proves the CLI is wired to the comment body: a dry run prints it and posts nothing, and a key with no review is refused.
-func TestReviewCommentCommand(t *testing.T) {
-	dir, data := repo(t), t.TempDir()
-	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
-	if r := reviewRun(t, dir, data, "comment", "--branch", "pr-7", "7", "--dry-run"); r.code != 1 || !strings.Contains(r.stderr, "no review of pr-7") {
-		t.Errorf("no review exited %d with %q", r.code, r.stderr)
+// TestReviewVerdictCommand proves the CLI is wired to the verdict rules: a dry run prints the comment and posts nothing, a verdict for a commit that is not the head or on a closed pull request is refused, and a post sends the comment from a file.
+func TestReviewVerdictCommand(t *testing.T) {
+	dir, head, run := prRepo(t)
+	base := git(t, dir, "rev-parse", "HEAD~1")
+	log := filepath.Join(t.TempDir(), "gh.log")
+	forge := func(state, oid string) string {
+		return `"pr view") echo '{"state":"` + state + `","headRefOid":"` + oid + `"}';;
+"pr comment") cat "$5" >> '` + log + `';;
+`
 	}
-	if r := reviewRun(t, dir, data, "record", "--branch", "pr-7", "--depth", "medium", "--disposition", "clean", "--summary", "s"); r.code != 0 {
-		t.Fatalf("record exited %d: %s", r.code, r.stderr)
+	notes := filepath.Join(t.TempDir(), "notes.md")
+	if err := os.WriteFile(notes, []byte("- **bug** `a.go:4`: wrong sign\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	r := reviewRun(t, dir, data, "comment", "7", "--branch", "pr-7", "--dry-run")
-	if r.code != 0 || !strings.Contains(r.stdout, "at level medium") || !strings.HasSuffix(r.stdout, "No finding was confirmed.\n") {
-		t.Errorf("dry run exited %d with %q: %s", r.code, r.stdout, r.stderr)
+	args := func(result string, extra ...string) []string {
+		return append([]string{"review", "verdict", "7", "--result", result, "--base", base, "--sha", "HEAD", "--level", "medium"}, extra...)
+	}
+
+	r := run(forge("OPEN", head), args("FAIL", "--notes", notes, "--dry-run")...)
+	if r.code != 0 || !strings.HasPrefix(r.stdout, "<!-- harness-review verdict=FAIL base="+base+" sha="+head+" level=medium -->\n") || !strings.Contains(r.stdout, "wrong sign") {
+		t.Fatalf("dry run exited %d with %q: %s", r.code, r.stdout, r.stderr)
+	}
+	if _, err := os.Stat(log); err == nil {
+		t.Fatal("a dry run posted")
+	}
+	for name, c := range map[string]struct {
+		forge string
+		args  []string
+		code  int
+	}{
+		"FAIL without notes": {forge("OPEN", head), args("FAIL"), 2},
+		"moved head":         {forge("OPEN", strings.Repeat("c", 40)), args("PASS"), 1},
+		"merged":             {forge("MERGED", head), args("PASS"), 1},
+	} {
+		if r := run(c.forge, c.args...); r.code != c.code || r.stderr == "" {
+			t.Errorf("%s exited %d with %q, want %d and a diagnostic", name, r.code, r.stderr, c.code)
+		}
+	}
+	if _, err := os.Stat(log); err == nil {
+		t.Fatal("a refused verdict posted")
+	}
+	if r := run(forge("OPEN", head), args("PASS")...); r.code != 0 || readFile(t, log) != r.stdout {
+		t.Errorf("post exited %d, printed %q, posted %q: %s", r.code, r.stdout, readFile(t, log), r.stderr)
 	}
 }
 

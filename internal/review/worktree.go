@@ -1,4 +1,4 @@
-package reviewledger
+package review
 
 import (
 	"errors"
@@ -61,11 +61,10 @@ func findTree(root, path string) (*wt.Tree, error) {
 
 // AddWorktree creates the review worktree for key: a detached checkout of sha in a fresh sibling directory outside the checkout, with Git hooks disabled, and the saved patch applied when one is given. The record is written before the worktree exists, so a failed creation still names where it was meant to be. Run again while that worktree exists at the same commit, it returns the same path and changes nothing.
 func AddWorktree(root, key, sha, patch string) (string, error) {
-	file, err := File(root, key)
+	dir, err := Dir(root, key)
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Dir(file)
 	full, err := commit(root, sha)
 	if err != nil {
 		return "", err
@@ -126,11 +125,10 @@ func exists(path string) bool {
 
 // RetireWorktree retires the review worktree recorded for key without losing work: whatever it holds is saved as a patch in the review directory first, and the record is deleted only once the worktree is gone. A refusal leaves both. It returns one line per thing it did; with no record it does nothing.
 func RetireWorktree(root, key string, allowIgnored bool) ([]string, error) {
-	file, err := File(root, key)
+	dir, err := Dir(root, key)
 	if err != nil {
 		return nil, err
 	}
-	dir := filepath.Dir(file)
 	path, sha, ok, err := readRecord(dir)
 	if err != nil || !ok {
 		return nil, err
