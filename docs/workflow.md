@@ -5,7 +5,7 @@ Start with a plain request. The agent reads the repository, does the agreed work
 This guide covers what to reach for when a plain request is not enough:
 
 - [Skills for specific jobs](#pick-a-skill-for-the-job)
-- [Work mode](#work-mode), which runs a task to a fixed set of steps
+- [jvillegasd-mode](#jvillegasd-mode), which runs a task to a fixed set of steps
 - [Autopilot](#autopilot), for work that runs while you are away
 - [The path from local work to a merged PR](#local-work-and-delivery)
 - [Larger builds](#larger-builds) across several tickets
@@ -14,57 +14,43 @@ This guide covers what to reach for when a plain request is not enough:
 
 ## Pick a skill for the job
 
-Each skill is a separate tool. Outside work mode, using one never starts another. A leading slash, as in `/spec`, means you call the skill by name. Each skill describes its own inputs.
+Every skill is callable by name. The skills you start yourself come first; the rest are helpers that `/jvillegasd-mode` or another skill runs as a step, and you can call any of them directly too. A leading slash, as in `/land`, means you call the skill by name.
 
-### Plan
-
-| Situation | Skill |
-| --- | --- |
-| A fuzzy idea needs decisions | `/grill-with-docs` |
-| A ticket needs investigation before anyone builds it | `/triage` |
-| A question needs evidence | `research` |
-| An experiment would settle an open question | `proto` |
-| A design needs a lasting specification | `/spec` |
-| A spec, a triage brief, findings, or a request needs tickets | `/tickets` |
-
-### Build
+### Skills you start
 
 | Situation | Skill |
 | --- | --- |
-| An everyday task or one ticket needs building, test-first | `implement` |
-| You want to write the tests before the code | `tdd` |
-| A bug needs reproducing and diagnosing | `diagnosing-bugs` |
-| A frontend needs design work | `impeccable` |
-| Frontend code needs current web platform APIs and their fallbacks | `modern-web-guidance` |
-
-### Verify
-
-| Situation | Skill |
-| --- | --- |
-| A state machine needs model checking | `/statechart` |
-| Code needs a lasting formal check of a model or proof | `/create-formal-verification-skill` |
-| A formal check may be out of date after merges or refactors | `/maintain-formal-verification-skill` |
+| Any task you want run to a playbook: plan, build, review, ship, diagnose, measure | `/jvillegasd-mode <task>` |
+| A fuzzy idea needs decisions, recorded as ADRs and glossary terms | `/grill-with-docs` |
+| A merged pull request needs its lifecycle closed, or you want the agent to merge | `/land` |
+| Old worktrees, branches, and review scratch pile up | `/cleanup` |
+| A repository needs its tracker and critical paths configured | `/setup-harness` |
+| Agents keep repeating the same mistakes in a repository | `/correct` |
+| A test suite may carry tests that protect nothing | `/test-audit` |
 | The project needs a scripted way to drive the real app | `/create-verification-skill` |
 | A project's verify skill or its feature map may have drifted | `/maintain-verification-skill` |
 | A feature, bugfix, PR, or path needs a real end-to-end run | `/e2e-verification` |
-| A test suite may carry tests that protect nothing | `/test-audit` |
+| Code needs a lasting formal check of a model or proof | `/create-formal-verification-skill` |
+| A formal check may be out of date after merges or refactors | `/maintain-formal-verification-skill` |
+| A state machine needs model checking | `/statechart` |
+| A codebase needs a scan for deepening opportunities | `/improve-codebase-architecture` |
+| A frontend needs design, critique, or polish work (also called by the design playbook) | `impeccable` |
+| Frontend code needs current web platform APIs and their fallbacks | `modern-web-guidance` |
+| Documentation needs a technical-writing pass | `technical-writing` |
 
-### Reflect
+### Helpers other skills run
 
-| Situation | Skill |
+| Group | Helpers |
 | --- | --- |
-| A session needs a retrospective | `/retro` |
-| Agents keep repeating the same mistakes in a repository | `/correct` |
-| Old worktrees, branches, and review scratch pile up | `/cleanup` |
+| Planning | `epic` (write the big ticket, agree its seams, cut its slices), `build` (one slice inline with `tdd`, or many slices fanned out), `triage`, `research`, `proto` |
+| Support | `review`, `address-review`, `open-pr`, `tdd`, `diagnosing-bugs`, `change-map`, `checkpoint`, `delegation`, `verification`, `grilling`, `how`, `why`, `unslop`, `caveman-commit` |
+| Design | `codebase-design`, `domain-modeling`, `writing-for-agents` |
+| Assurance | `journey-verification`, `security-audit` |
+| Principles | the `principle-*` skills and `benchmark-checklist`, which the mode's trigger list names |
 
-### `/implement` or `/build`?
+## jvillegasd-mode
 
-- **`/implement <task or ticket>`** builds one thing, test-first, in your current session, on one task branch. It takes a plain request, reuses test seams you already agreed on (or settles them with you), and finishes with the local checks.
-- **`/build`** runs many tickets unattended, with several workers. See [larger builds](#larger-builds).
-
-## Work mode
-
-`/work <task>` makes the agent follow a playbook: a fixed list of steps for that kind of task. The agent copies every step into its todo list. A step it decides to skip stays in the list as `skip: <reason>`, so you see what was left out and why.
+`/jvillegasd-mode <task>` makes the agent follow a playbook: a fixed list of steps for that kind of task. The agent copies every step into its todo list. A step it decides to skip stays in the list as `skip: <reason>`, so you see what was left out and why.
 
 The agent picks the playbook from the task:
 
@@ -81,32 +67,31 @@ The agent picks the playbook from the task:
 | Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | Skill playbook |
 | Whether a skill or instruction change changes agent behavior | Eval playbook |
 | A prototype, spike, or mock-up | `proto`'s steps |
-| A spec or plan, before anything is built | `spec`'s steps |
+| A plan before anything is built, or tickets from a brief, findings, or a request | `epic`'s steps |
 | A ticket or production error to analyze, with no fix requested | `triage`'s steps |
-| Tickets from a spec, a brief, findings, or a request | `tickets`' steps |
-| A settled spec or set of tickets to build | `build`'s steps |
+| A settled epic or set of slices to build | `build`'s steps |
 | Review a diff, a branch, or a PR | `review`'s steps |
 | Feedback or red checks on an open PR | `address-review`'s steps |
 | "Open a PR" or "ship this" | `open-pr`'s steps |
 | A merge, or "it merged, clean up" | Nothing. The agent tells you to run `/land` |
 | "Clean up old worktrees" | Nothing. The agent tells you to run `/cleanup` |
-| Pick up earlier work | `continuity`'s resume steps, then the recorded playbook |
+| Pick up earlier work | `checkpoint`'s resume steps, then the recorded playbook |
 | Large, multi-part, or none of the above | Large playbook |
 
-When a row names a skill, work mode runs that skill's own steps. It adds its checklist and its reply, never a second copy of the skill.
+When a row names a skill, jvillegasd-mode runs that skill's own steps. It adds its checklist and its reply, never a second copy of the skill.
 
 Two playbooks lean on their own commands. The eval playbook plants blinded copies of a project with [`harness eval`](cli.md#eval-commands), runs one session per copy and model, and shows you the model budget with `--dry-run` before anything starts. The hillclimb playbook logs every attempt, kept or reverted, with [`harness attempts`](cli.md#attempt-log).
 
 How each kind of task ends:
 
 - **A code change** ends with a change summary (`change-map`) and a review at your review level. If you already asked for delivery, it goes on to `open-pr`.
-- **An investigation, a review, a spec, or tickets** hand the result back to you.
+- **An investigation, a review, or an epic** hand the result back to you.
 - **A design** picks a shape, then continues as a feature or a refactor.
-- **A spec** asks whether to build it. Only an explicit "go" answers. That go is a new task, so it matches again as a settled spec and runs `build`.
+- **An epic** asks whether to build it. Only an explicit "go" answers. That go is a new task, so it matches again as a settled epic and runs `build`.
 
 If product decisions are still open, settle them with `/grill-with-docs` before you start. A merge always goes to you or `/land`.
 
-Work mode lasts for the whole conversation. The agent records the playbook and the current step in the task document, so after a compaction it resumes at the same step.
+jvillegasd-mode lasts for the whole conversation. The agent records the playbook and the current step in the task document, so after a compaction it resumes at the same step.
 
 ```mermaid
 stateDiagram-v2
@@ -119,28 +104,28 @@ stateDiagram-v2
     state "Ready locally" as Ready
     state "Handed to /land" as Routed
 
-    [*] --> Matched: You run /work
+    [*] --> Matched: You run /jvillegasd-mode
     [*] --> Routed: The task is a merge
     Matched --> Steps: Steps copied, skips marked
     Steps --> Working
     Working --> Reviewed: Code change
-    Working --> Answered: Investigation, review, spec, or tickets
+    Working --> Answered: Investigation, review, or epic
     Working --> Matched: Design chose a shape
     Reviewed --> Ready
     Reviewed --> Opened: You already asked for a PR
     Opened --> [*]
     Ready --> [*]: Publish it, or keep it local
     Answered --> [*]: You start a new task
-    Answered --> Matched: You say go on a spec
+    Answered --> Matched: You say go on an epic
     Routed --> [*]
 ```
 
 ### Autopilot
 
-To let work run while you are away, add "autopilot" or "I'm stepping away" and a goal to the `/work` request:
+To let work run while you are away, add "autopilot" or "I'm stepping away" and a goal to the `/jvillegasd-mode` request:
 
 ```text
-/work autopilot, max 3h: make the export job finish under a minute
+/jvillegasd-mode autopilot, max 3h: make the export job finish under a minute
 ```
 
 Here is what the agent does:
@@ -225,7 +210,7 @@ For longer work, the agent keeps the requirements, decisions, evidence, and next
 
 ## Larger builds
 
-`/build` implements a set of tickets, or a specification cut into tickets, without you watching:
+`build` implements an epic's slices without you watching:
 
 - It works on one integration branch.
 - Workers each take a bounded piece, in their own worktrees.
@@ -233,11 +218,11 @@ For longer work, the agent keeps the requirements, decisions, evidence, and next
 
 Use it when the work is settled enough to hand off. Resolve missing acceptance criteria, disputed test seams, or shared assumptions first.
 
-`/work` on a settled spec or set of tickets starts `/build` for you. A spec without tickets is first cut into them with `tickets`, as local drafts that [`harness tickets check`](cli.md#ticket-commands) validates. `/build` picks the next tickets with `harness tickets frontier`: those whose blockers are all done. Publishing still needs your request, and merging still needs `/land`. Under `/work` autopilot, your step-away request also counts as the request to publish.
+`/jvillegasd-mode` on a settled epic starts `build` for you. An epic without slices is first cut into them, as local drafts that [`harness tickets check`](cli.md#ticket-commands) validates. `build` picks the next slices with `harness tickets frontier`: those whose blockers are all done. Publishing still needs your request, and merging still needs `/land`. Under `/jvillegasd-mode` autopilot, your step-away request also counts as the request to publish.
 
 ## Optional tracking
 
-Ordinary coding needs no tracker. To set one up for a repository, run `setup-harness`. It writes `docs/agents/harness.json` with the tracker and the critical paths `change-map` reads. The harness installs no labels and no lifecycle workflow: ticket state is the tracker's own open, closed, and blocked-by state, and `/build` computes what is ready from merged work.
+Ordinary coding needs no tracker. To set one up for a repository, run `setup-harness`. It writes `docs/agents/harness.json` with the tracker and the critical paths `change-map` reads. The harness installs no labels and no lifecycle workflow: ticket state is the tracker's own open, closed, and blocked-by state, and `build` computes what is ready from merged work.
 
 Tracker writes and publishing tickets always need your explicit request. When you ask to publish, `harness tickets publish` creates the issues, blockers first, with native dependency links, and is safe to rerun after a failure. After a merge, `/land` confirms the ticket closed and closes a parent once every child merged. The [command-line reference](cli.md#ticket-commands) covers the command.
 
@@ -286,4 +271,4 @@ stateDiagram-v2
     Checked --> Resumed: Agent continues with the permission it had
 ```
 
-The [continuity skill](../skills/support/continuity/SKILL.md) has the full recovery details.
+The [checkpoint skill](../skills/support/checkpoint/SKILL.md) has the full recovery details.

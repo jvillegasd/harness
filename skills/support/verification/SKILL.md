@@ -55,4 +55,4 @@ Before a pull request opens or its head changes, and at `build`'s integration, g
 
 ## Output
 
-What passed, its scope and revision, the verdict line when one ran, and the remaining failures or unverified behavior. Keep the evidence in an existing task document only when `continuity` needs it.
+What passed, its scope and revision, the verdict line when one ran, and the remaining failures or unverified behavior. Keep the evidence in an existing task document only when `checkpoint` needs it.

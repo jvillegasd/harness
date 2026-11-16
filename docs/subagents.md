@@ -21,7 +21,7 @@ Touching many files is not, on its own, a reason to delegate.
 | `reviewer` | Check that review fixes hold | Read and search only, and never sees the author's reasoning |
 | `review-bugs`, `review-spec`, `review-risk` | Look for problems through one lens: general bugs, requirements, or risk | The same as `reviewer`, whose definition each lens builds on |
 
-The definitions live in [roles/](../roles/) and in [the review skill](../skills/workflow/review/SKILL.md).
+The definitions live in [roles/](../roles/) and in [the review skill](../skills/support/review/SKILL.md).
 
 A role saying it finished is not proof. The main agent checks the role's scope, the Git state, and the results itself.
 

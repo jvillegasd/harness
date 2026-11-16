@@ -8,7 +8,7 @@ It compares real sessions from before a change with real sessions after it. Rere
 
 Bench deliberately does not run a fixed set of synthetic tasks. Synthetic tasks can swing between identical runs, and they tend to leak into the fixture they are meant to test. Real sessions have their own problems: they arrive slowly and mix in variables no experiment controls. The `THIN` warning and the caveats below exist to handle those.
 
-Whether an instruction change makes agents behave as intended, checked before it ships, is the eval playbook in `/work`: blinded synthetic runs with the controls these problems call for. Bench stays the after-the-fact measure of cost and friction.
+Whether an instruction change makes agents behave as intended, checked before it ships, is the eval playbook in `/jvillegasd-mode`: blinded synthetic runs with the controls these problems call for. Bench stays the after-the-fact measure of cost and friction.
 
 ## Run it
 
@@ -16,7 +16,7 @@ Whether an instruction change makes agents behave as intended, checked before it
 harness bench --split <commit-date> --since <window-start>
 ```
 
-A typical use: you fix a friction point in the harness, for example one that `retro` suggested. Write down which metric you expect to move and the date the fix landed. Later, run bench with `--split` set to that date.
+A typical use: you fix a friction point in the harness, for example one a session kept hitting. Write down which metric you expect to move and the date the fix landed. Later, run bench with `--split` set to that date.
 
 Run it from inside the checkout. It reads work patterns from `bench/cohorts.json` there. That file is gitignored, so a fresh worktree has only the committed, empty `cohorts.example.json` until you copy your own in. Until a pattern matches, the report does not split sessions into work and personal.
 
@@ -34,7 +34,7 @@ Bench counts eight things per session and reports the median across all sessions
 
 | Metric | Kind | What it counts |
 | --- | --- | --- |
-| `turns` | Cost | Messages a person typed, including a slash command that carries arguments, such as `/work fix the flaky test`. Anything the client writes into its own transcript is not a turn (see below). |
+| `turns` | Cost | Messages a person typed, including a slash command that carries arguments, such as `/jvillegasd-mode fix the flaky test`. Anything the client writes into its own transcript is not a turn (see below). |
 | `tool_calls` | Cost | Tool calls the agent made. |
 | `minutes` | Cost | Time from the first timestamped entry to the last. |
 | `commands` | What the harness aims to move | Slash commands, including skills called as `/name`, so you can see whether people use explicit commands. |
@@ -76,7 +76,7 @@ Clients record a project in different ways: as a slug with dashes, or as a `dire
 
 ### Scratch projects are left out
 
-Sessions whose project is `~/.scratch-projects` or a directory under it are dropped before anything is counted, for every client. That directory holds synthetic work, such as the headless runs of `/work`'s eval playbook, which would otherwise join your real sessions and pull every median toward short, scripted transcripts. Keep real work out of it.
+Sessions whose project is `~/.scratch-projects` or a directory under it are dropped before anything is counted, for every client. That directory holds synthetic work, such as the headless runs of `/jvillegasd-mode`'s eval playbook, which would otherwise join your real sessions and pull every median toward short, scripted transcripts. Keep real work out of it.
 
 - The directory is found under `--home`. A store captured from another machine keeps its scratch sessions unless that machine's home was the same path.
 - Claude Code records a project as a slug in which `/`, `.`, and `-` all become `-`, so a sibling such as `~/.scratch-projects-old` is dropped from Claude Code's sessions too. Codex and OpenCode record the real path and keep it.

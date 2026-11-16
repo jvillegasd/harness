@@ -4,17 +4,29 @@ The shared installation of instructions, skills, and roles that Claude Code, Cod
 
 ## Language
 
-**Work mode**:
-The opt-in rigor a human turns on by invoking `/work`: the task is matched to a playbook and run to its steps. Only a human starts it.
-_Avoid_: poteto mode, workflow
+**jvillegasd-mode**:
+The opt-in rigor a human turns on by invoking `/jvillegasd-mode`: the task is matched to a playbook and run to its steps. Only a human starts it.
+_Avoid_: work mode, poteto mode, workflow
 
 **Autopilot**:
-Work mode under the human's step-away grant and stated goal: the work runs without checkpoints to verified, open pull requests within a time ceiling, and never merges. Without a goal from the human it does not start.
+jvillegasd-mode under the human's step-away grant and stated goal: the work runs without checkpoints to verified, open pull requests within a time ceiling, and never merges. Without a goal from the human it does not start.
 _Avoid_: yolo, unattended mode, full autonomy
 
 **Playbook**:
-An ordered list of steps for one kind of task, copied into the session's todo list when work mode matches it, where a step not taken stays visible with its reason. Either work mode's own or an existing skill's steps, never a second copy of a skill's procedure.
+An ordered list of steps for one kind of task, copied into the session's todo list when jvillegasd-mode matches it, where a step not taken stays visible with its reason. Either jvillegasd-mode's own or an existing skill's steps, never a second copy of a skill's procedure.
 _Avoid_: recipe, route, pipeline
+
+**Entry point**:
+A skill the human starts: `jvillegasd-mode` and the skills no other skill runs, kept in the `workflow` group. Every other skill is a **helper** that a skill or playbook runs as a step; helpers stay callable by name too.
+_Avoid_: public skill, top-level skill
+
+**Epic**:
+One big ticket that records a change's settled behavior, acceptance criteria, test seams, decisions, and risks, cut into slices. It doubles as the change's task document.
+_Avoid_: spec, plan document
+
+**Slice**:
+One vertical ticket of an epic: a narrow path through every layer, finished as one pull request, with acceptance checks that are red on the base commit. Drafted under `docs/agents/tickets/<feature>/`.
+_Avoid_: story, subtask, tracer-bullet ticket
 
 **Human docs**:
 The `README` files and the prose guides under `docs/`, written for people. The agent keeps them accurate when it changes what they describe, but never takes them as instructions. Decision records (`docs/adr/`), agent configuration (`docs/agents/`), and agent-read data such as a `verify-<app>/features/README.md` feature map are not human docs.

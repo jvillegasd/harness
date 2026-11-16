@@ -15,12 +15,12 @@ harness review level high    # off, medium, or high
 | Level | Starts on its own for | Who reviews | Most agents per review |
 | --- | --- | --- | --- |
 | `off` | Nothing | Nobody, unless you ask (then it runs as `medium`) | 0 unless you ask |
-| `medium` | Every PR (or `/build` integration branch) beyond docs or tests, and local work that is critical or names a security, data-loss, compatibility, or concurrency risk | One general reviewer | 2 |
+| `medium` | Every PR (or `build` integration branch) beyond docs or tests, and local work that is critical or names a security, data-loss, compatibility, or concurrency risk | One general reviewer | 2 |
 | `high` | Every PR or local change beyond docs, tests, and mechanical edits | The general reviewer plus one or two specialists | 6 |
 
 The kinds of change ("critical", "docs or tests", "mechanical") are the review tiers that `change-map` assigns to each changed file.
 
-Asking for a review always runs one, at your level (or at `medium` when the level is `off`). It never quietly upgrades to `high`. Under `/work`, every playbook that changes code calls review before it hands off, so you do not need to ask. The table still decides whether it runs and how deep it goes.
+Asking for a review always runs one, at your level (or at `medium` when the level is `off`). It never quietly upgrades to `high`. Under `/jvillegasd-mode`, every playbook that changes code calls review before it hands off, so you do not need to ask. The table still decides whether it runs and how deep it goes.
 
 ```mermaid
 stateDiagram-v2
@@ -124,4 +124,4 @@ Review never pushes or merges on its own.
 
 - **Agent counts are caps, not cost guarantees.** Retries, delegated fixes, and splitting a large change all count against the same cap. Whatever does not fit is reported as unreviewed.
 - **A verdict covers only the change it read.** New commits that change a file's patch need the affected parts rechecked.
-- **This page explains, it does not prove.** The [review skill](../skills/workflow/review/SKILL.md) is the exact procedure agents follow. The diagrams here describe it, but they do not prove how agents behave in practice.
+- **This page explains, it does not prove.** The [review skill](../skills/support/review/SKILL.md) is the exact procedure agents follow. The diagrams here describe it, but they do not prove how agents behave in practice.

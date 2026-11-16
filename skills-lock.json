@@ -61,12 +61,6 @@
       "skillPath": "skills/productivity/grilling/SKILL.md",
       "computedHash": "485451958784497cd4c4dbea13cb5bbb579da58fac0d0e45f3bcb310fab68ac7"
     },
-    "handoff": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/productivity/handoff/SKILL.md",
-      "computedHash": "f60a2c3688379b7a306b3a7b8dd4120eab39da44c74fa2cb62d6424935f04aa7"
-    },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
@@ -97,12 +91,6 @@
       "skillPath": "skills/modern-web-guidance/SKILL.md",
       "computedHash": "9e69ce00dc314b64f6664031b70295ea46c7de93ac682c624808df6e48e08b66"
     },
-    "ponytail": {
-      "source": "DietrichGebert/ponytail",
-      "sourceType": "github",
-      "skillPath": "skills/ponytail/SKILL.md",
-      "computedHash": "56d72677aca02689ac89bd48734e8c19b40ab86716d1257eaf5f1238b43cda6b"
-    },
     "principle-attack-the-premise": {
       "source": "backnotprop/pstack",
       "sourceType": "github",
@@ -126,12 +114,6 @@
       "sourceType": "github",
       "skillPath": "skills/principle-encode-lessons-in-structure/SKILL.md",
       "computedHash": "164c25e039539bc5cc04f109f3596d723e40c68f9745cd35129b34d4fe3e706e"
-    },
-    "principle-exhaust-the-design-space": {
-      "source": "backnotprop/pstack",
-      "sourceType": "github",
-      "skillPath": "skills/principle-exhaust-the-design-space/SKILL.md",
-      "computedHash": "223970dbf26021ca33726e793017dbbeac919edfbd6873d5e9d5eff2babb9bec"
     },
     "principle-experience-first": {
       "source": "backnotprop/pstack",
@@ -199,12 +181,6 @@
       "skillPath": "skills/principle-never-block-on-the-human/SKILL.md",
       "computedHash": "ab707816f6a0d48148bff1d7e27c56d76b23ef77fe642c094fbb7812e00474d7"
     },
-    "principle-outcome-oriented-execution": {
-      "source": "backnotprop/pstack",
-      "sourceType": "github",
-      "skillPath": "skills/principle-outcome-oriented-execution/SKILL.md",
-      "computedHash": "684e3f3887348aed42daa9e51cee47009c84187569c55f3365d16cfef070ff24"
-    },
     "principle-prove-it-works": {
       "source": "backnotprop/pstack",
       "sourceType": "github",
@@ -247,12 +223,6 @@
       "skillPath": "skills/principle-type-system-discipline/SKILL.md",
       "computedHash": "835538f784c0c5b1cb64b84489148b926c55934bdd92229a424df6d4069d7765"
     },
-    "retro": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/engineering/retro/SKILL.md",
-      "computedHash": "e260aefb7b75b3548a3ee9883afbf8808e521f2e86feec92399617894f83b7c2"
-    },
     "security-audit": {
       "source": "cloudflare/security-audit-skill",
       "sourceType": "github",
@@ -270,12 +240,6 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/tdd/SKILL.md",
       "computedHash": "e3e0f78ff1c2d52ffefa0378baa1e80e129d359288cf9a56f4e59afcd2aac86c"
-    },
-    "teach": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/productivity/teach/SKILL.md",
-      "computedHash": "31bb3eed09dd2787e290e933def99fbf7d65044a29119c224af47c01404ab228"
     },
     "technical-writing": {
       "source": "backnotprop/pstack",

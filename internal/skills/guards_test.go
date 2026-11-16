@@ -120,7 +120,7 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 			t.Errorf("Unguarded did not report %q:\n%s", w, got)
 		}
 	}
-	for _, exempt := range []string{"locked", "guarded-one", "workflow", "review"} {
+	for _, exempt := range []string{"locked", "guarded-one", "support", "review"} {
 		if strings.Contains(got, exempt+":") {
 			t.Errorf("Unguarded reported %s:\n%s", exempt, got)
 		}
