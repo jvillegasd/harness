@@ -42,10 +42,14 @@ Every skill is callable by name. The skills you start yourself come first; the r
 
 | Group | Helpers |
 | --- | --- |
-| Planning | `epic` (write the big ticket, agree its seams, cut its slices), `build` (one slice inline with `tdd`, or many slices fanned out), `triage`, `research`, `proto` |
-| Support | `review`, `address-review`, `open-pr`, `tdd`, `diagnosing-bugs`, `change-map`, `checkpoint`, `delegation`, `verification`, `grilling`, `how`, `why`, `unslop`, `caveman-commit` |
-| Design | `codebase-design`, `domain-modeling`, `writing-for-agents` |
-| Assurance | `journey-verification`, `security-audit` |
+| Orchestration | `delegation`, `checkpoint` |
+| Investigation | `how`, `why`, `research`, `triage`, `diagnosing-bugs` |
+| Planning | `epic` (write the big ticket, agree its seams, cut its slices), `proto`, `grilling` |
+| Building | `build` (one slice inline with `tdd`, or many slices fanned out), `tdd` |
+| Delivery | `review`, `address-review`, `open-pr`, `change-map`, `caveman-commit` |
+| Assurance | `verification`, `journey-verification`, `security-audit` |
+| Design | `codebase-design`, `domain-modeling` |
+| Writing | `writing-for-agents`, `unslop` |
 | Principles | the `principle-*` skills and `benchmark-checklist`, which the mode's trigger list names |
 
 ## jvillegasd-mode
@@ -271,4 +275,4 @@ stateDiagram-v2
     Checked --> Resumed: Agent continues with the permission it had
 ```
 
-The [checkpoint skill](../skills/support/checkpoint/SKILL.md) has the full recovery details.
+The [checkpoint skill](../skills/orchestration/checkpoint/SKILL.md) has the full recovery details.

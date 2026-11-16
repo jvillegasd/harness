@@ -60,7 +60,7 @@ regression true when recall dropped or false positives rose.
   --max       The newest fix commits seed reads (default 20)
   --depth     The review depth the run used
   --model     A hunter's resolved model, as role=model; repeatable
-  --revision  The harness revision of skills/support/review (default: the
+  --revision  The harness revision of skills/delivery/review (default: the
               last commit that touched it)
   --date      The run's date (default: today)
 `
@@ -663,7 +663,7 @@ func evals(args []string, stdout, stderr io.Writer) int {
 		return fail(err)
 	}
 	if *revision == "" {
-		*revision, _ = git(root, "log", "-1", "--format=%h", "--", "skills/support/review")
+		*revision, _ = git(root, "log", "-1", "--format=%h", "--", "skills/delivery/review")
 	}
 	if *date == "" {
 		*date = time.Now().Format("2006-01-02")

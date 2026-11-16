@@ -10,10 +10,10 @@ type Role struct {
 var Roles = []Role{
 	{Name: "executor", Definition: "roles/executor.md", Access: "implement"},
 	{Name: "code-search", Definition: "roles/code-search.md", Access: "read-search"},
-	{Name: "reviewer", Definition: "skills/support/review/roles/reviewer.md", Access: "read-search"},
-	{Name: "review-bugs", Definition: "skills/support/review/roles/review-bugs.md", Access: "read-search", Lens: true},
-	{Name: "review-spec", Definition: "skills/support/review/roles/review-spec.md", Access: "read-search", Lens: true},
-	{Name: "review-risk", Definition: "skills/support/review/roles/review-risk.md", Access: "read-search", Lens: true},
+	{Name: "reviewer", Definition: "skills/delivery/review/roles/reviewer.md", Access: "read-search"},
+	{Name: "review-bugs", Definition: "skills/delivery/review/roles/review-bugs.md", Access: "read-search", Lens: true},
+	{Name: "review-spec", Definition: "skills/delivery/review/roles/review-spec.md", Access: "read-search", Lens: true},
+	{Name: "review-risk", Definition: "skills/delivery/review/roles/review-risk.md", Access: "read-search", Lens: true},
 }
 
 var supported = map[string][]field{
