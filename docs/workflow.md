@@ -27,6 +27,12 @@ A session lists only the entry points: the skills you start yourself and no othe
 | A session needs a retrospective | `/retro` |
 | Agents keep repeating the same mistakes in a repository | `/correct` |
 | A test suite may carry tests that protect nothing | `/test-audit` |
+| The project needs a scripted way to drive the real app | `/create-verification-skill` |
+| A project's verify skill or its feature map may have drifted | `/maintain-verification-skill` |
+| A feature, bugfix, PR, or path needs a real end-to-end run | `/e2e-verification` |
+| Code needs a lasting formal check of a model or proof | `/create-formal-verification-skill` |
+| A formal check may be out of date after merges or refactors | `/maintain-formal-verification-skill` |
+| A state machine needs model checking | `/statechart` |
 | A codebase needs a scan for deepening opportunities | `/improve-codebase-architecture` |
 | Frontend code needs current web platform APIs and their fallbacks | `modern-web-guidance` |
 | Documentation needs a technical-writing pass | `technical-writing` |
@@ -39,7 +45,7 @@ A session lists only the entry points: the skills you start yourself and no othe
 | Planning | `epic` (grill, write the big ticket, cut its slices), `build` (one slice inline with `tdd`, or many slices fanned out), `triage`, `research`, `proto` |
 | Support | `review`, `address-review`, `open-pr`, `tdd`, `diagnosing-bugs`, `change-map`, `continuity`, `delegation`, `verification`, `grilling`, `how`, `why`, `ponytail`, `unslop`, `caveman-commit` |
 | Design | `codebase-design`, `domain-modeling`, `impeccable`, `writing-for-agents` |
-| Assurance | the verification and formal-verification skills, `e2e-verification`, `journey-verification`, `statechart`, `security-audit` |
+| Assurance | `journey-verification`, `security-audit` |
 | Principles | the `principle-*` skills and `benchmark-checklist`, which the mode's trigger list names |
 
 ## jvillegasd-mode

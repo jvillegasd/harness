@@ -7,7 +7,7 @@ metadata:
   opencode/autoinvoke: "false"
 ---
 
-Build what was asked, sized by the input. **One slice** (a plain request, one ticket, or an epic with one ready slice) is built inline in this session with `tdd`. **Several slices** (an epic or a set of tickets) are built unattended on one integration branch: fan the unblocked slices out to executors, merge each finished slice locally, and finish with the branch verified, mapped, and reviewed, ready for a human to read and merge.
+Build what was asked, sized by the input. **One slice** (a plain request, one ticket, or an epic that has only one slice) is built inline in this session with `tdd`. **Several slices** (an epic or a set of tickets with more than one slice, however many are ready at first) are built unattended on one integration branch: fan the unblocked slices out to executors, merge each finished slice locally, and finish with the branch verified, mapped, and reviewed, ready for a human to read and merge.
 
 Input: $ARGUMENTS
 
