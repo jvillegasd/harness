@@ -14,7 +14,7 @@ This guide covers what to reach for when a plain request is not enough:
 
 ## Pick a skill for the job
 
-A session lists only the entry points: the skills you start yourself and no other skill runs. Every other skill is a helper that installs to `~/.harness/skills/` and that `/jvillegasd-mode` or another skill reads by path when its step comes up. A leading slash, as in `/land`, means you call the skill by name.
+A session lists only the entry points: the skills you start yourself and no other skill runs, plus `impeccable`, which the design playbook calls but you also drive by name. Every other skill is a helper that installs to `~/.harness/skills/` and that `/jvillegasd-mode` or another skill reads by path when its step comes up. A leading slash, as in `/land`, means you call the skill by name.
 
 ### Entry points
 
@@ -34,6 +34,7 @@ A session lists only the entry points: the skills you start yourself and no othe
 | A formal check may be out of date after merges or refactors | `/maintain-formal-verification-skill` |
 | A state machine needs model checking | `/statechart` |
 | A codebase needs a scan for deepening opportunities | `/improve-codebase-architecture` |
+| A frontend needs design, critique, or polish work (also called by the design playbook) | `impeccable` |
 | Frontend code needs current web platform APIs and their fallbacks | `modern-web-guidance` |
 | Documentation needs a technical-writing pass | `technical-writing` |
 
@@ -43,7 +44,7 @@ A session lists only the entry points: the skills you start yourself and no othe
 | --- | --- |
 | Planning | `epic` (write the big ticket, agree its seams, cut its slices), `build` (one slice inline with `tdd`, or many slices fanned out), `triage`, `research`, `proto` |
 | Support | `review`, `address-review`, `open-pr`, `tdd`, `diagnosing-bugs`, `change-map`, `checkpoint`, `delegation`, `verification`, `grilling`, `how`, `why`, `unslop`, `caveman-commit` |
-| Design | `codebase-design`, `domain-modeling`, `impeccable`, `writing-for-agents` |
+| Design | `codebase-design`, `domain-modeling`, `writing-for-agents` |
 | Assurance | `journey-verification`, `security-audit` |
 | Principles | the `principle-*` skills and `benchmark-checklist`, which the mode's trigger list names |
 

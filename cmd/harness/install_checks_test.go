@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/jvillegasd/harness/internal/checkout"
 )
 
 var agentOutputs = []string{"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "claude/review-bugs.md", "claude/review-risk.md", "claude/review-spec.md", "codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml", "codex/review-bugs.toml", "codex/review-risk.toml", "codex/review-spec.toml", "opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md", "opencode/review-bugs.md", "opencode/review-risk.md", "opencode/review-spec.md"}
@@ -67,7 +69,7 @@ func TestOnlyEntrySkillsAreDiscoverable(t *testing.T) {
 		name, group := filepath.Base(filepath.Dir(body)), filepath.Base(filepath.Dir(filepath.Dir(body)))
 		discovered := []string{filepath.Join(home, ".agents", "skills", name, "SKILL.md"), filepath.Join(home, ".claude", "skills", name, "SKILL.md")}
 		hidden := filepath.Join(home, ".harness", "skills", name, "SKILL.md")
-		if group == "workflow" {
+		if group == "workflow" || name == "impeccable" {
 			entries++
 			for _, path := range discovered {
 				if _, err := os.Stat(path); err != nil {
@@ -86,6 +88,11 @@ func TestOnlyEntrySkillsAreDiscoverable(t *testing.T) {
 			if _, err := os.Stat(path); err == nil {
 				t.Errorf("%s skill %s is discoverable at %s", group, name, path)
 			}
+		}
+	}
+	for name := range checkout.Shown {
+		if _, err := os.Stat(filepath.Join(home, ".claude", "skills", name, "SKILL.md")); err != nil {
+			t.Errorf("%s, shown outside workflow, is not a shipped discoverable skill: %v", name, err)
 		}
 	}
 	if entries == 0 || entries == len(bodies) {

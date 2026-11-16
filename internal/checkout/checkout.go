@@ -89,8 +89,12 @@ type Skill struct {
 	Group string
 }
 
+// Shown names the skills a client discovers although they sit outside
+// EntryGroup: a skill a playbook calls that the human also drives by name.
+var Shown = map[string]bool{"impeccable": true}
+
 // Entry reports whether a client discovers the skill by name.
-func (s Skill) Entry() bool { return s.Group == EntryGroup }
+func (s Skill) Entry() bool { return s.Group == EntryGroup || Shown[s.Name] }
 
 func (c Checkout) SkillDirs() ([]Skill, error) {
 	groups, err := os.ReadDir(c.Skills())

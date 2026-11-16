@@ -30,6 +30,7 @@ Follow-up answers: entry points are "mode and the skills that are not triggered 
 | Decision | Instead of | By | Why | Evidence |
 | --- | --- | --- | --- | --- |
 | Visibility follows the group: `workflow/` is discoverable, every other group is hidden | A list of visible skill names | agent | The group rule already says `workflow/` holds only what the human invokes, so no second list can drift from it | `AGENTS.md` Directories row for `skills/<group>/<name>/` |
+| `impeccable` stays in `design/` and is shown through `checkout.Shown` | Moving it to `workflow/` | human | "keep it in its folder and being called by a playbook, but show it" | `internal/checkout/checkout.go` |
 | Hidden skills install once to `~/.harness/skills/<name>` for every client | Per-client hidden roots | agent | One path the floor can name for every client | `internal/install/state.go` `desired` |
 | Keep `benchmark-checklist` and `principle-minimize-reader-load` | Deleting them as duplicates | agent | Re-reading showed each owns a procedure the other lacks | Explanation given in the session |
 | `build` keeps the name and takes the single-slice path | Naming it `implement` | human | Answer to the build-merge question | Session |
