@@ -15,7 +15,4 @@
 # Names clients and employers. The committed example names nobody.
 bench/cohorts.json
 
-# Generated client agent definitions, linked into each client by harness install.
-.generated/
-
 *.backup.*
