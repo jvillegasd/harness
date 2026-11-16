@@ -22,7 +22,7 @@ The Harness AI installation that serves Claude Code, Codex, and OpenCode. `READM
 | `internal/attempts/` | The hillclimb attempt log behind `harness attempts add` and `list`, which the `hillclimb` playbook writes and reads instead of filling its columns by hand |
 | `internal/bench/` | The session-population comparison behind `harness bench` |
 | `internal/changemap/` | The deterministic floor tiers behind `harness change-map`, the first pass of the `change-map` skill |
-| `internal/agents/` | The role-agent renderer the installer calls in-process |
+| `internal/agents/` | The role registry (each role's definition path, access, and whether it is a review lens), which `harness models` reads its role names from, and the role-agent renderer the installer calls in-process |
 | `internal/models/` | The per-machine role model presets behind `harness models` |
 | `internal/statefile/` | Shared read and atomic write of `~/.harness/state.json`, whose top-level keys the installer, `harness models`, and `harness review level` each own |
 | `internal/resume/` | The task context `harness resume` prints for the clients' compaction hooks |
@@ -35,7 +35,7 @@ The Harness AI installation that serves Claude Code, Codex, and OpenCode. `READM
 | `GLOSSARY.md`, `docs/adr/` | The harness's domain terms and its decision records, which `domain-modeling` reads and writes |
 | `skills/<group>/<name>/` | Independent capabilities (also invoked as `/name`), grouped by type: `workflow` (what a normal session invokes), `support` (the shared helpers those skills and the floor call), `principles` (the locked engineering principles), `planning`, `design`, `assurance`, and `ops`. Locked bodies sit in their group beside local ones; clients see only the bare name |
 | `skills/assurance/e2e-verification/SKILL.md`, `skills/assurance/e2e-verification/scripts/` | Targeted E2E runs on a feature, bugfix, PR, or path over the project's `verify-<app>` skill, with real screenshots per test, and the run kit and report builder it copies |
-| `clients/` | Client settings, the Codex and OpenCode compaction hook files, Codex's command rules and OpenCode's permission rules, and the role assignments the installer reconciles |
+| `clients/` | Client settings, the Codex and OpenCode compaction hook files, and Codex's command rules and OpenCode's permission rules |
 | `roles/` | Canonical roles no skill owns, the executor and code-search |
 | `aliases.sh` | The managed yolo-mode shell aliases |
 | `bench/` | Cohort config and the manual for `harness bench` |
@@ -88,7 +88,7 @@ The suite protects one behavior set per retained boundary, at the lowest seam th
 | CLI behavior | `cmd/harness/cli_test.go` | Help and invalid invocations exit 0 and 2, spawn no subprocess, write nothing, and read no stdin. |
 | Compaction context | `internal/resume`, `cmd/harness/install_checks_test.go` | `harness resume` prints the branch, its head, and the next action of each task document the branch changed, capped, and nothing outside a checkout; the install puts a compaction hook in every client, and Claude Code's merge replaces only the harness's own hook group, keeping the user's hooks through install and uninstall. |
 | Status line | `cmd/harness/statusline_test.go`, `internal/statusline` | Recorded payloads render byte for byte against the goldens captured from the shell renderer, an empty payload reaches neither the keychain nor the usage cache, and a `CLAUDE_CONFIG_DIR` profile gets its own keychain item, credentials file, settings, and usage cache. |
-| Checkout discovery | `internal/checkout` | The nearest enclosing checkout is resolved by the floor marker beside the Harness module, a different module is refused rather than substituted, managed ownership is the explicit asset namespaces alone, and the skill tree flattens groups to bare names while refusing a name two groups share or a skill outside a group. |
+| Checkout discovery | `internal/checkout` | The nearest enclosing checkout is resolved by the floor marker beside the Harness module, a different module is refused rather than substituted, and the skill tree flattens groups to bare names while refusing a name two groups share or a skill outside a group. |
 | Bench accounting | `internal/bench`, `cmd/harness/bench_test.go` | Collection deduplicates clients, windows by date, folds Codex subagent rollouts into their top-level session, drops sessions run under the scratch-projects directory, and survives damaged or oversized records; the reports match the baselines recorded on the fixture population. |
 | Change classification | `internal/changemap`, `cmd/harness/change_map_test.go` | Floor tiers are deterministic and first match wins, configured critical globs beat every other rule, mechanical is assigned only by the lockfile and generated rules and to a locked skill body under `skills/` (flat or grouped) that still matches its lock hash, collapsed to one entry while `skills-lock.json` itself is critical and an edited body is raised and named, code under `skills/` takes the ordinary rules, `criticalPaths` validation names the bad entry, and the changed-file listing covers committed, staged, unstaged, untracked, and deleted files. |
 

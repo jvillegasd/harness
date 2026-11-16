@@ -22,11 +22,6 @@ func exists(path string) bool {
 	return err == nil
 }
 
-func isLink(path string) bool {
-	info, err := os.Lstat(path)
-	return err == nil && info.Mode()&fs.ModeSymlink != 0
-}
-
 func isDir(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
@@ -54,21 +49,6 @@ func entries(dir string) []string {
 		}
 	}
 	return paths
-}
-
-func exitCode(err error) int {
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
-		return exit.ExitCode()
-	}
-	if err != nil {
-		return -1
-	}
-	return 0
-}
-
-func (in *installer) skillRoots() []string {
-	return []string{filepath.Join(in.home, ".agents", "skills"), filepath.Join(in.home, ".claude", "skills"), filepath.Join(in.config, "opencode", "skills")}
 }
 
 func (in *installer) assigned() map[string]agents.Assigned {
@@ -200,7 +180,7 @@ func (in *installer) installFiles() {
 				in.ensureManagedDir(pair[1], true)
 			}
 		}
-		if code := agents.Generate(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.assigned(), in.stdout, in.stderr); code != 0 {
+		if code := agents.Generate(in.dir.Root, in.agentOut(), in.assigned(), in.stdout, in.stderr); code != 0 {
 			die("Generating the role agents failed with status %d.", code)
 		}
 	}
@@ -241,8 +221,6 @@ func (in *installer) installFiles() {
 		want[i].Digest = source
 	}
 
-	in.backupExisting(filepath.Join(in.home, ".local", "bin", "claude-seo"), "")
-
 	in.updateState(func(s *state) { s.Files = append(kept, want...) })
 	in.installed = want
 }
@@ -256,7 +234,7 @@ func (in *installer) checkFiles() {
 	if !in.has("agents") {
 		return
 	}
-	if code := agents.Check(filepath.Join(in.dir.Clients(), "assignments.json"), in.agentOut(), in.assigned(), in.stdout, in.stderr); code != 0 {
+	if code := agents.Check(in.dir.Root, in.agentOut(), in.assigned(), in.stdout, in.stderr); code != 0 {
 		die("Role agents in %s are missing, drifted, or widened.", in.agentOut())
 	}
 }

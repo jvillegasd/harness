@@ -2,7 +2,6 @@ package agents
 
 import (
 	"bytes"
-	"encoding/json"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -33,68 +32,47 @@ func repoRoot() string {
 	return abs
 }
 
-func configPath() string { return filepath.Join(repoRoot(), "clients", "assignments.json") }
-
 func runCommand(t *testing.T, args ...string) (int, string, string) {
+	t.Helper()
+	return runWith(t, nil, args...)
+}
+
+func runWith(t *testing.T, assigned map[string]Assigned, args ...string) (int, string, string) {
 	t.Helper()
 	var stdout, stderr bytes.Buffer
 	run := Generate
 	if args[0] == "--check" {
 		run, args = Check, args[1:]
 	}
-	code := run(args[0], args[1], nil, &stdout, &stderr)
+	code := run(args[0], args[1], assigned, &stdout, &stderr)
 	return code, stdout.String(), stderr.String()
 }
 
-func readConfig(t *testing.T, path string) map[string]any {
+func rootCopy(t *testing.T, dir string) string {
 	t.Helper()
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var data map[string]any
-	if err := json.Unmarshal(raw, &data); err != nil {
-		t.Fatal(err)
-	}
-	return data
-}
-
-func configCopy(t *testing.T, dir string, edit func(map[string]any)) string {
-	t.Helper()
-	data := readConfig(t, configPath())
-	roles := data["roles"].(map[string]any)
-	if err := os.MkdirAll(filepath.Join(dir, "roles"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	for name, raw := range roles {
-		role := raw.(map[string]any)
-		def, ok := role["definition"].(string)
-		if !ok {
-			continue
-		}
-		source := filepath.Join(filepath.Dir(configPath()), def)
-		rawBytes, err := os.ReadFile(source)
+	for _, role := range Roles {
+		raw, err := os.ReadFile(filepath.Join(repoRoot(), filepath.FromSlash(role.Definition)))
 		if err != nil {
 			t.Fatal(err)
 		}
-		copyPath := filepath.Join(dir, "roles", name+".md")
-		if err := os.WriteFile(copyPath, rawBytes, 0o644); err != nil {
+		path := definition(dir, role.Name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		role["definition"] = copyPath
+		if err := os.WriteFile(path, raw, 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if edit != nil {
-		edit(data)
+	return dir
+}
+
+func definition(root, name string) string {
+	for _, role := range Roles {
+		if role.Name == name {
+			return filepath.Join(root, filepath.FromSlash(role.Definition))
+		}
 	}
-	encoded, err := json.Marshal(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(dir, "assignments.json")
-	if err := os.WriteFile(path, encoded, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	return path
+	panic("unknown role " + name)
 }
 
 func treeOf(t *testing.T, root string) map[string]string {
@@ -127,7 +105,7 @@ func head(t *testing.T, path string) []string {
 
 func TestOneDefinitionPerRolePerClient(t *testing.T) {
 	out := temp(t)
-	code, _, stderr := runCommand(t, configPath(), out)
+	code, _, stderr := runCommand(t, repoRoot(), out)
 	if code != 0 {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
@@ -143,11 +121,11 @@ func TestOneDefinitionPerRolePerClient(t *testing.T) {
 
 func TestGenerationIsIdempotent(t *testing.T) {
 	out := temp(t)
-	if code, stdout, stderr := runCommand(t, configPath(), out); code != 0 || !strings.Contains(stdout, "output: changed") {
+	if code, stdout, stderr := runCommand(t, repoRoot(), out); code != 0 || !strings.Contains(stdout, "output: changed") {
 		t.Fatalf("first generate exited %d with %q: %s", code, stdout, stderr)
 	}
 	first := treeOf(t, out)
-	code, stdout, stderr := runCommand(t, configPath(), out)
+	code, stdout, stderr := runCommand(t, repoRoot(), out)
 	if code != 0 {
 		t.Fatalf("second generate exited %d, want 0: %s", code, stderr)
 	}
@@ -161,7 +139,7 @@ func TestGenerationIsIdempotent(t *testing.T) {
 
 func TestEachClientGetsItsControls(t *testing.T) {
 	out := temp(t)
-	if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
+	if code, _, stderr := runCommand(t, repoRoot(), out); code != 0 {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
 	for _, role := range []string{"reviewer"} {
@@ -182,7 +160,7 @@ func TestEachClientGetsItsControls(t *testing.T) {
 
 func TestExecutorKeepsImplementationAccess(t *testing.T) {
 	out := temp(t)
-	if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
+	if code, _, stderr := runCommand(t, repoRoot(), out); code != 0 {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
 	claude := readFile(t, filepath.Join(out, "claude", "executor.md"))
@@ -207,7 +185,7 @@ func TestExecutorKeepsImplementationAccess(t *testing.T) {
 	if codex := readFile(t, filepath.Join(out, "codex", "executor.toml")); !strings.HasSuffix(codex, "\n'''\n") {
 		t.Errorf("executor codex carries controls:\n%s", codex)
 	}
-	if code, _, stderr := runCommand(t, "--check", configPath(), out); code != 0 {
+	if code, _, stderr := runCommand(t, "--check", repoRoot(), out); code != 0 {
 		t.Fatalf("check exited %d: %s", code, stderr)
 	}
 }
@@ -224,8 +202,8 @@ func TestOnlyTheExecutorMayImplement(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name+"-"+c.access, func(t *testing.T) {
 			dir := temp(t)
-			config := configCopy(t, dir, nil)
-			rolePath := filepath.Join(dir, "roles", c.target+".md")
+			config := rootCopy(t, dir)
+			rolePath := definition(dir, c.target)
 			raw, err := os.ReadFile(rolePath)
 			if err != nil {
 				t.Fatal(err)
@@ -270,7 +248,7 @@ func TestCheckDetectsWidening(t *testing.T) {
 	for _, mutation := range mutations {
 		t.Run(mutation.path+mutation.new, func(t *testing.T) {
 			out := temp(t)
-			if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
+			if code, _, stderr := runCommand(t, repoRoot(), out); code != 0 {
 				t.Fatalf("generate exited %d: %s", code, stderr)
 			}
 			target := filepath.Join(out, filepath.FromSlash(mutation.path))
@@ -281,7 +259,7 @@ func TestCheckDetectsWidening(t *testing.T) {
 			if err := os.WriteFile(target, []byte(strings.Replace(text, mutation.old, mutation.new, 1)), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			code, stdout, _ := runCommand(t, "--check", configPath(), out)
+			code, stdout, _ := runCommand(t, "--check", repoRoot(), out)
 			if code != 1 || !strings.Contains(stdout, "widened: "+mutation.path) {
 				t.Fatalf("check = %d, %q; want widened %s", code, stdout, mutation.path)
 			}
@@ -291,8 +269,8 @@ func TestCheckDetectsWidening(t *testing.T) {
 
 func TestControlCharactersInADefinitionAreRefused(t *testing.T) {
 	dir := temp(t)
-	config := configCopy(t, dir, nil)
-	path := filepath.Join(dir, "roles", "reviewer.md")
+	config := rootCopy(t, dir)
+	path := definition(dir, "reviewer")
 	if err := os.WriteFile(path, []byte(strings.Replace(readFile(t, path), "# ", "# \x1b[1m", 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -304,7 +282,7 @@ func TestControlCharactersInADefinitionAreRefused(t *testing.T) {
 
 func TestCheckDetectsMissingAndDrifted(t *testing.T) {
 	out := temp(t)
-	if code, _, _ := runCommand(t, configPath(), out); code != 0 {
+	if code, _, _ := runCommand(t, repoRoot(), out); code != 0 {
 		t.Fatal("generate failed")
 	}
 	target := filepath.Join(out, "claude", "reviewer.md")
@@ -312,14 +290,14 @@ func TestCheckDetectsMissingAndDrifted(t *testing.T) {
 	if err := os.WriteFile(target, []byte(raw+"\nExtra instruction.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	code, stdout, _ := runCommand(t, "--check", configPath(), out)
+	code, stdout, _ := runCommand(t, "--check", repoRoot(), out)
 	if code != 1 || !strings.Contains(stdout, "changed: claude/reviewer.md") {
 		t.Fatalf("check = %d, %q", code, stdout)
 	}
 	if err := os.Remove(target); err != nil {
 		t.Fatal(err)
 	}
-	code, stdout, _ = runCommand(t, "--check", configPath(), out)
+	code, stdout, _ = runCommand(t, "--check", repoRoot(), out)
 	if code != 1 || !strings.Contains(stdout, "missing: claude/reviewer.md") {
 		t.Fatalf("check = %d, %q", code, stdout)
 	}
@@ -334,7 +312,7 @@ func TestGenerationRemovesStaleOutputs(t *testing.T) {
 	if err := os.WriteFile(stale, []byte("stale\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
+	if code, _, stderr := runCommand(t, repoRoot(), out); code != 0 {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
 	if _, err := os.Stat(stale); err == nil {
@@ -350,7 +328,7 @@ func TestSymlinkedOutputPathsAreRefusedWithoutWrites(t *testing.T) {
 		t.Run(kind, func(t *testing.T) {
 			base := temp(t)
 			output := filepath.Join(base, "parent", "out")
-			if code, _, stderr := runCommand(t, configPath(), output); code != 0 {
+			if code, _, stderr := runCommand(t, repoRoot(), output); code != 0 {
 				t.Fatalf("generate exited %d: %s", code, stderr)
 			}
 			var link string
@@ -384,7 +362,7 @@ func TestSymlinkedOutputPathsAreRefusedWithoutWrites(t *testing.T) {
 			}
 			before := treeOf(t, base)
 			for _, flags := range [][]string{{}, {"--check"}} {
-				args := append(append([]string{}, flags...), configPath(), output)
+				args := append(append([]string{}, flags...), repoRoot(), output)
 				code, _, stderr := runCommand(t, args...)
 				if code == 0 || !strings.Contains(stderr, "symlink") {
 					t.Fatalf("flags %v: exit %d, stderr %q; want a symlink refusal", flags, code, stderr)
@@ -403,21 +381,17 @@ func TestSymlinkedOutputPathsAreRefusedWithoutWrites(t *testing.T) {
 	}
 }
 
-func TestMissingDroppedAndMisnamedRolesPreserveOutputs(t *testing.T) {
+func TestMissingAndMisnamedRolesPreserveOutputs(t *testing.T) {
 	out := temp(t)
-	if code, _, _ := runCommand(t, configPath(), out); code != 0 {
+	if code, _, _ := runCommand(t, repoRoot(), out); code != 0 {
 		t.Fatal("generate failed")
 	}
 	before := treeOf(t, out)
-	for _, kind := range []string{"missing", "dropped", "misnamed"} {
+	for _, kind := range []string{"missing", "misnamed"} {
 		t.Run(kind, func(t *testing.T) {
 			dir := temp(t)
-			var edit func(map[string]any)
-			if kind == "dropped" {
-				edit = func(data map[string]any) { delete(data["roles"].(map[string]any), "reviewer") }
-			}
-			config := configCopy(t, dir, edit)
-			role := filepath.Join(dir, "roles", "reviewer.md")
+			config := rootCopy(t, dir)
+			role := definition(dir, "reviewer")
 			if kind == "missing" {
 				if err := os.Remove(role); err != nil {
 					t.Fatal(err)
@@ -452,8 +426,8 @@ func TestIncompleteOrWidenedRoleRefused(t *testing.T) {
 	for label, edit := range edits {
 		t.Run(label, func(t *testing.T) {
 			dir := temp(t)
-			config := configCopy(t, dir, nil)
-			role := filepath.Join(dir, "roles", "reviewer.md")
+			config := rootCopy(t, dir)
+			role := definition(dir, "reviewer")
 			raw := readFile(t, role)
 			if err := os.WriteFile(role, []byte(strings.Replace(raw, edit[0], edit[1], 1)), 0o644); err != nil {
 				t.Fatal(err)
@@ -471,9 +445,9 @@ func TestIncompleteOrWidenedRoleRefused(t *testing.T) {
 }
 
 func TestAssignments(t *testing.T) {
-	t.Run("inherit is explicit and translated per client", func(t *testing.T) {
+	t.Run("an unassigned role inherits on every client", func(t *testing.T) {
 		out := temp(t)
-		_, stdout, _ := runCommand(t, configPath(), out)
+		_, stdout, _ := runCommand(t, repoRoot(), out)
 		if !containsLine(head(t, filepath.Join(out, "claude", "reviewer.md")), "model: inherit") {
 			t.Error("claude reviewer does not inherit the model")
 		}
@@ -493,106 +467,73 @@ func TestAssignments(t *testing.T) {
 		if !strings.Contains(stdout, "assignment: claude reviewer model=inherit (client default) effort=inherit (client default)") {
 			t.Errorf("report = %s", stdout)
 		}
+		if strings.Contains(stdout, "to this account") {
+			t.Error("inherit assignments reported an availability warning")
+		}
 	})
 
-	t.Run("role overrides win over client defaults per client", func(t *testing.T) {
-		dir := temp(t)
-		config := configCopy(t, dir, func(data map[string]any) {
-			data["clients"] = map[string]any{
-				"claude":   map[string]any{"model": "opus", "effort": "medium"},
-				"codex":    map[string]any{"model": "gpt-6-luna", "effort": "inherit"},
-				"opencode": map[string]any{"model": "openai/gpt-5.5", "effort": "low"},
-			}
-			roles := data["roles"].(map[string]any)
-			roles["reviewer"].(map[string]any)["claude"] = map[string]any{"model": "sonnet"}
-			roles["reviewer"].(map[string]any)["codex"] = map[string]any{"model": "gpt-6.1-sol", "effort": "high"}
-			roles["executor"].(map[string]any)["opencode"] = map[string]any{"effort": "high"}
-			roles["code-search"].(map[string]any)["claude"] = map[string]any{"model": "haiku", "effort": "low"}
-		})
-		out := filepath.Join(dir, "out")
-		_, stdout, _ := runCommand(t, config, out)
-		assertHead(t, filepath.Join(out, "claude", "reviewer.md"), []string{"model: sonnet", "effort: medium"})
-		assertHead(t, filepath.Join(out, "claude", "executor.md"), []string{"model: opus", "effort: medium"})
-		assertHead(t, filepath.Join(out, "opencode", "executor.md"), []string{"model: openai/gpt-5.5", "reasoningEffort: high"})
-		assertHead(t, filepath.Join(out, "opencode", "reviewer.md"), []string{"model: openai/gpt-5.5", "reasoningEffort: low"})
-		assertHead(t, filepath.Join(out, "claude", "code-search.md"), []string{"model: haiku", "effort: low"})
+	t.Run("an assignment reaches only its client", func(t *testing.T) {
+		out := temp(t)
+		assigned := map[string]Assigned{
+			"reviewer":    {Client: "codex", Model: "gpt-6.1-sol", Effort: "high", Source: "preset:diversity"},
+			"executor":    {Client: "opencode", Model: "openai/gpt-5.5", Effort: "high", Source: "override"},
+			"code-search": {Client: "claude", Model: "haiku", Source: "preset:diversity"},
+			"review-bugs": {Client: "claude", Model: "sonnet", Effort: "max", Source: "reviewer"},
+		}
+		code, stdout, stderr := runWith(t, assigned, repoRoot(), out)
+		if code != 0 {
+			t.Fatalf("generate exited %d: %s", code, stderr)
+		}
 		if got := codexSettings(t, filepath.Join(out, "codex", "reviewer.toml")); strings.Join(got, "|") != `model = "gpt-6.1-sol"|model_reasoning_effort = "high"` {
 			t.Errorf("codex reviewer settings = %v", got)
 		}
-		if got := codexSettings(t, filepath.Join(out, "codex", "executor.toml")); strings.Join(got, "|") != `model = "gpt-6-luna"` {
-			t.Errorf("codex executor settings = %v", got)
+		assertHead(t, filepath.Join(out, "claude", "reviewer.md"), []string{"model: inherit"})
+		assertHead(t, filepath.Join(out, "opencode", "executor.md"), []string{"model: openai/gpt-5.5", "reasoningEffort: high"})
+		assertHead(t, filepath.Join(out, "claude", "executor.md"), []string{"model: inherit"})
+		assertHead(t, filepath.Join(out, "claude", "code-search.md"), []string{"model: haiku"})
+		assertHead(t, filepath.Join(out, "claude", "review-bugs.md"), []string{"model: sonnet", "effort: max"})
+		for _, want := range []string{
+			"assignment: codex reviewer model=gpt-6.1-sol (preset:diversity) effort=high (preset:diversity)",
+			"assignment: opencode executor model=openai/gpt-5.5 (override) effort=high (override)",
+			"assignment: claude code-search model=haiku (preset:diversity) effort=inherit (preset:diversity)",
+			"unverified: claude review-bugs model sonnet is available to this account",
+			"unverified: claude review-bugs effort max is supported by its model",
+		} {
+			if !strings.Contains(stdout, want) {
+				t.Errorf("report lacks %q:\n%s", want, stdout)
+			}
 		}
-		if code, _, stderr := runCommand(t, "--check", config, out); code != 0 {
-			t.Fatalf("check exited %d: %s", code, stderr)
+		if code, stdout, _ := runWith(t, assigned, "--check", repoRoot(), out); code != 0 {
+			t.Fatalf("check exited %d: %s", code, stdout)
 		}
-		if !strings.Contains(stdout, "assignment: claude reviewer model=sonnet (role) effort=medium (client default)") ||
-			!strings.Contains(stdout, "assignment: opencode executor model=openai/gpt-5.5 (client default) effort=high (role)") {
-			t.Errorf("report = %s", stdout)
+		if code, stdout, _ := runCommand(t, "--check", repoRoot(), out); code != 1 || !strings.Contains(stdout, "changed: codex/reviewer.toml") {
+			t.Fatalf("check without the assignment = %d, %q", code, stdout)
 		}
 	})
 
 	t.Run("invalid assignments are reported before writing", func(t *testing.T) {
 		out := temp(t)
-		if code, _, _ := runCommand(t, configPath(), out); code != 0 {
+		if code, _, _ := runCommand(t, repoRoot(), out); code != 0 {
 			t.Fatal("generate failed")
 		}
 		before := treeOf(t, out)
-		cases := map[string]func(map[string]any){
-			"gpt-5": func(data map[string]any) {
-				data["roles"].(map[string]any)["reviewer"].(map[string]any)["claude"] = map[string]any{"model": "gpt-5"}
-			},
-			"extreme": func(data map[string]any) {
-				data["clients"].(map[string]any)["claude"].(map[string]any)["effort"] = "extreme"
-			},
-			"gpt-5.5": func(data map[string]any) {
-				data["clients"].(map[string]any)["opencode"].(map[string]any)["model"] = "gpt-5.5"
-			},
-			"openai/": func(data map[string]any) {
-				data["clients"].(map[string]any)["opencode"].(map[string]any)["effort"] = "high"
-			},
-			"anthropic/claude-opus-5": func(data map[string]any) {
-				data["clients"].(map[string]any)["opencode"] = map[string]any{"model": "anthropic/claude-opus-5", "effort": "high"}
-			},
-			"gemini": func(data map[string]any) {
-				data["roles"].(map[string]any)["reviewer"].(map[string]any)["gemini"] = map[string]any{"model": "gpt-5"}
-			},
-			"codex effort 'none'": func(data map[string]any) {
-				data["clients"].(map[string]any)["codex"].(map[string]any)["effort"] = "none"
-			},
-			"codex model 'openai/gpt-5.5'": func(data map[string]any) {
-				data["roles"].(map[string]any)["reviewer"].(map[string]any)["codex"] = map[string]any{"model": "openai/gpt-5.5"}
-			},
-			"temperature": func(data map[string]any) {
-				data["roles"].(map[string]any)["reviewer"].(map[string]any)["claude"] = map[string]any{"temperature": 0}
-			},
-			"effort": func(data map[string]any) {
-				delete(data["clients"].(map[string]any)["claude"].(map[string]any), "effort")
-			},
-			"opencode": func(data map[string]any) {
-				delete(data["clients"].(map[string]any), "opencode")
-			},
-			"code-search": func(data map[string]any) {
-				data["roles"].(map[string]any)["code-search"].(map[string]any)["claude"] = map[string]any{"model": "gpt-5"}
-			},
-			"../x": func(data map[string]any) {
-				data["roles"].(map[string]any)["../x"] = map[string]any{}
-			},
-			"roles.reviewer.definition": func(data map[string]any) {
-				data["roles"].(map[string]any)["reviewer"].(map[string]any)["definition"] = 5
-			},
-			"roles.executor.definition": func(data map[string]any) {
-				data["roles"].(map[string]any)["executor"].(map[string]any)["definition"] = nil
-			},
+		cases := map[string]Assigned{
+			"gpt-5":                   {Client: "claude", Model: "gpt-5"},
+			"extreme":                 {Client: "claude", Model: "opus", Effort: "extreme"},
+			"gpt-5.5":                 {Client: "opencode", Model: "gpt-5.5"},
+			"anthropic/claude-opus-5": {Client: "opencode", Model: "anthropic/claude-opus-5", Effort: "high"},
+			"codex effort 'none'":     {Client: "codex", Model: "gpt-6-luna", Effort: "none"},
+			"'openai/gpt-5.5'":        {Client: "codex", Model: "openai/gpt-5.5"},
+			"newline":                 {Client: "opencode", Model: "openai/x\nmode: x"},
 		}
-		for expected, edit := range cases {
+		for expected, a := range cases {
 			t.Run(expected, func(t *testing.T) {
-				dir := temp(t)
-				config := configCopy(t, dir, edit)
+				assigned := map[string]Assigned{"reviewer": a}
 				for _, flags := range [][]string{{}, {"--check"}} {
-					args := append(append([]string{}, flags...), config, out)
-					code, _, stderr := runCommand(t, args...)
-					if code != 1 || !strings.Contains(stderr, expected) {
-						t.Fatalf("flags %v: exit %d, stderr %q; want %q", flags, code, stderr, expected)
+					args := append(append([]string{}, flags...), repoRoot(), out)
+					code, _, stderr := runWith(t, assigned, args...)
+					if code != 1 || !strings.Contains(stderr, "reviewer") {
+						t.Fatalf("flags %v: exit %d, stderr %q", flags, code, stderr)
 					}
 					if !deepEqualStrings(treeOf(t, out), before) {
 						t.Fatalf("flags %v changed the outputs", flags)
@@ -602,100 +543,17 @@ func TestAssignments(t *testing.T) {
 		}
 	})
 
-	t.Run("duplicate keys are refused", func(t *testing.T) {
-		dir := temp(t)
-		config := configCopy(t, dir, nil)
-		raw := readFile(t, config)
-		if err := os.WriteFile(config, []byte(strings.Replace(raw, `"roles":{`, `"roles":{"reviewer":{},`, 1)), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		out := filepath.Join(dir, "out")
-		code, _, stderr := runCommand(t, config, out)
-		if code != 1 || !strings.Contains(stderr, "duplicate") {
-			t.Fatalf("exit %d, stderr %q", code, stderr)
-		}
-		if _, err := os.Stat(out); err == nil {
-			t.Fatal("a duplicate-key config wrote output")
-		}
-	})
-
-	t.Run("assignment change reaches generated output", func(t *testing.T) {
-		dir := temp(t)
-		config := configCopy(t, dir, nil)
-		out := filepath.Join(dir, "out")
-		if code, _, _ := runCommand(t, config, out); code != 0 {
-			t.Fatal("generate failed")
-		}
-		data := readConfig(t, config)
-		data["roles"].(map[string]any)["reviewer"].(map[string]any)["claude"] = map[string]any{"model": "sonnet"}
-		encoded, _ := json.Marshal(data)
-		if err := os.WriteFile(config, encoded, 0o644); err != nil {
-			t.Fatal(err)
-		}
-		code, stdout, _ := runCommand(t, "--check", config, out)
-		if code != 1 || !strings.Contains(stdout, "changed: claude/reviewer.md") {
-			t.Fatalf("check = %d, %q", code, stdout)
-		}
-		if code, _, stderr := runCommand(t, config, out); code != 0 {
-			t.Fatalf("regenerate exited %d: %s", code, stderr)
-		}
-		assertHead(t, filepath.Join(out, "claude", "reviewer.md"), []string{"model: sonnet"})
-	})
-
-	t.Run("assigned role without definition generates nothing", func(t *testing.T) {
-		dir := temp(t)
-		config := configCopy(t, dir, func(data map[string]any) {
-			data["roles"].(map[string]any)["future-role"] = map[string]any{}
-		})
-		out := filepath.Join(dir, "out")
-		_, stdout, _ := runCommand(t, config, out)
-		if len(treeOf(t, out)) != len(outputNames) {
-			t.Fatalf("tree = %v", treeOf(t, out))
-		}
-		if !strings.Contains(stdout, "pending: future-role") {
-			t.Errorf("report = %s", stdout)
-		}
-	})
-
-	t.Run("the reviewer is required", func(t *testing.T) {
-		dir := temp(t)
-		config := configCopy(t, dir, func(data map[string]any) {
-			delete(data["roles"].(map[string]any)["reviewer"].(map[string]any), "definition")
-		})
-		code, _, stderr := runCommand(t, config, filepath.Join(dir, "out"))
-		if code != 1 || !strings.Contains(stderr, "reviewer must be assigned with a definition") {
-			t.Fatalf("exit %d, stderr %q", code, stderr)
-		}
-	})
-
-	t.Run("model availability is reported unverified", func(t *testing.T) {
-		out := temp(t)
-		_, stdout, _ := runCommand(t, configPath(), out)
-		if strings.Contains(stdout, "to this account") {
-			t.Error("inherit assignments reported an availability warning")
-		}
-		dir := temp(t)
-		config := configCopy(t, dir, func(data map[string]any) {
-			data["roles"].(map[string]any)["reviewer"].(map[string]any)["claude"] = map[string]any{"model": "sonnet", "effort": "max"}
-		})
-		_, stdout, _ = runCommand(t, config, filepath.Join(dir, "out"))
-		if !strings.Contains(stdout, "unverified: claude reviewer model sonnet is available to this account") ||
-			!strings.Contains(stdout, "unverified: claude reviewer effort max is supported by its model") {
-			t.Errorf("report = %s", stdout)
-		}
-	})
-
 	t.Run("generated frontmatter carries only agent settings", func(t *testing.T) {
-		dir := temp(t)
-		config := configCopy(t, dir, func(data map[string]any) {
-			data["clients"] = map[string]any{
-				"claude":   map[string]any{"model": "claude-opus-5", "effort": "high"},
-				"codex":    map[string]any{"model": "gpt-6-luna", "effort": "high"},
-				"opencode": map[string]any{"model": "openai/gpt-5.5", "effort": "high"},
-			}
-		})
-		out := filepath.Join(dir, "out")
-		if code, _, stderr := runCommand(t, config, out); code != 0 {
+		out := temp(t)
+		assigned := map[string]Assigned{}
+		for i, role := range Roles {
+			assigned[role.Name] = []Assigned{
+				{Client: "claude", Model: "claude-opus-5", Effort: "high"},
+				{Client: "codex", Model: "gpt-6-luna", Effort: "high"},
+				{Client: "opencode", Model: "openai/gpt-5.5", Effort: "high"},
+			}[i%3]
+		}
+		if code, _, stderr := runWith(t, assigned, repoRoot(), out); code != 0 {
 			t.Fatalf("generate exited %d: %s", code, stderr)
 		}
 		allowed := map[string]map[string]bool{
@@ -705,7 +563,6 @@ func TestAssignments(t *testing.T) {
 		for relative := range treeOf(t, out) {
 			client := strings.Split(relative, "/")[0]
 			if client == "codex" {
-
 				continue
 			}
 			for _, line := range head(t, filepath.Join(out, filepath.FromSlash(relative))) {
@@ -722,12 +579,9 @@ func TestAssignments(t *testing.T) {
 }
 
 func TestCheckDetectsWideningBesideAssignments(t *testing.T) {
-	dir := temp(t)
-	config := configCopy(t, dir, func(data map[string]any) {
-		data["clients"].(map[string]any)["opencode"] = map[string]any{"model": "openai/gpt-5.5", "effort": "high"}
-	})
-	out := filepath.Join(dir, "out")
-	if code, _, stderr := runCommand(t, config, out); code != 0 {
+	out := temp(t)
+	assigned := map[string]Assigned{"reviewer": {Client: "opencode", Model: "openai/gpt-5.5", Effort: "high"}}
+	if code, _, stderr := runWith(t, assigned, repoRoot(), out); code != 0 {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
 	target := filepath.Join(out, "opencode", "reviewer.md")
@@ -735,7 +589,7 @@ func TestCheckDetectsWideningBesideAssignments(t *testing.T) {
 	if err := os.WriteFile(target, []byte(strings.Replace(text, "  \"*\": deny", "  \"*\": allow", 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	code, stdout, _ := runCommand(t, "--check", config, out)
+	code, stdout, _ := runWith(t, assigned, "--check", repoRoot(), out)
 	if code != 1 || !strings.Contains(stdout, "widened: opencode/reviewer.md") {
 		t.Fatalf("check = %d, %q", code, stdout)
 	}
@@ -797,7 +651,7 @@ func deepEqualStrings(a, b map[string]string) bool {
 
 func TestLensExtendsTheReviewer(t *testing.T) {
 	out := temp(t)
-	if code, _, stderr := runCommand(t, configPath(), out); code != 0 {
+	if code, _, stderr := runCommand(t, repoRoot(), out); code != 0 {
 		t.Fatalf("generate exited %d: %s", code, stderr)
 	}
 	lens := readFile(t, filepath.Join(out, "claude", "review-spec.md"))
@@ -822,10 +676,10 @@ func TestLensExtendsTheReviewer(t *testing.T) {
 
 func TestExtendsIsOneLevelDeep(t *testing.T) {
 	dir := temp(t)
-	config := configCopy(t, dir, nil)
-	base := filepath.Join(dir, "roles", "reviewer.md")
+	config := rootCopy(t, dir)
+	base := definition(dir, "reviewer")
 	raw := readFile(t, base)
-	if err := os.WriteFile(base, []byte(strings.Replace(raw, "access: read-search\n", "access: read-search\nextends: code-search.md\n", 1)), 0o644); err != nil {
+	if err := os.WriteFile(base, []byte(strings.Replace(raw, "access: read-search\n", "access: read-search\nextends: review-spec.md\n", 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if code, _, stderr := runCommand(t, config, filepath.Join(dir, "out")); code != 1 || !strings.Contains(stderr, "extends another definition itself") {
@@ -835,13 +689,13 @@ func TestExtendsIsOneLevelDeep(t *testing.T) {
 
 func TestExtendsRequiresTheSameAccess(t *testing.T) {
 	dir := temp(t)
-	config := configCopy(t, dir, nil)
-	base := readFile(t, filepath.Join(dir, "roles", "reviewer.md"))
+	config := rootCopy(t, dir)
+	base := readFile(t, definition(dir, "reviewer"))
 	writable := strings.Replace(strings.Replace(base, "access: read-search", "access: implement", 1), "name: reviewer", "name: unassigned", 1)
-	if err := os.WriteFile(filepath.Join(dir, "roles", "writable-base.md"), []byte(writable), 0o644); err != nil {
+	lens := definition(dir, "review-bugs")
+	if err := os.WriteFile(filepath.Join(filepath.Dir(lens), "writable-base.md"), []byte(writable), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	lens := filepath.Join(dir, "roles", "review-bugs.md")
 	if err := os.WriteFile(lens, []byte(strings.Replace(readFile(t, lens), "extends: reviewer.md", "extends: writable-base.md", 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}

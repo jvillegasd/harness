@@ -2,14 +2,18 @@ package agents
 
 import "errors"
 
-var required = map[string]string{
-	"executor":    "implement",
-	"code-search": "read-search",
-	"reviewer":    "read-search",
+type Role struct {
+	Name, Definition, Access string
+	Lens                     bool
+}
 
-	"review-bugs": "read-search",
-	"review-spec": "read-search",
-	"review-risk": "read-search",
+var Roles = []Role{
+	{Name: "executor", Definition: "roles/executor.md", Access: "implement"},
+	{Name: "code-search", Definition: "roles/code-search.md", Access: "read-search"},
+	{Name: "reviewer", Definition: "skills/workflow/review/roles/reviewer.md", Access: "read-search"},
+	{Name: "review-bugs", Definition: "skills/workflow/review/roles/review-bugs.md", Access: "read-search", Lens: true},
+	{Name: "review-spec", Definition: "skills/workflow/review/roles/review-spec.md", Access: "read-search", Lens: true},
+	{Name: "review-risk", Definition: "skills/workflow/review/roles/review-risk.md", Access: "read-search", Lens: true},
 }
 
 var supported = map[string][]field{

@@ -1,10 +1,7 @@
 package agents
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,52 +14,10 @@ type Assigned struct {
 	Client, Model, Effort, Source string
 }
 
-func Render(configPath string, assigned map[string]Assigned) (map[string]string, map[string]string, []string, error) {
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, nil, nil, fail(fmt.Sprintf("%s: %v", configPath, err))
-	}
-	decoded, err := decodeUnique(data)
-	if err != nil {
-		return nil, nil, nil, fail(fmt.Sprintf("%s: %v", configPath, err))
-	}
-	config, ok := decoded.(map[string]any)
-	if !ok {
-		return nil, nil, nil, fail(fmt.Sprintf("%s: config must be an object", configPath))
-	}
-	if roles, ok := config["roles"].(map[string]any); ok && assigned != nil {
-
-		for name, role := range roles {
-			if role, ok := role.(map[string]any); ok {
-				for _, client := range []string{"claude", "codex", "opencode"} {
-					if _, ok := role[client]; ok {
-						return nil, nil, nil, fail(fmt.Sprintf("roles.%s.%s: per-role model and effort are chosen with `harness models`, not in the assignments file", name, client))
-					}
-				}
-			}
-		}
-		for name, a := range assigned {
-			role, ok := roles[name].(map[string]any)
-			if !ok {
-				continue
-			}
-			effort := a.Effort
-			if effort == "" {
-				effort = "inherit"
-			}
-			role[a.Client] = map[string]any{"model": a.Model, "effort": effort}
-		}
-	}
-	roles, resolved, err := resolve(config)
+func Render(root string, assigned map[string]Assigned) (map[string]string, map[string]string, []string, error) {
+	resolved, err := resolve(assigned)
 	if err != nil {
 		return nil, nil, nil, err
-	}
-	for name, a := range assigned {
-		if settings, ok := resolved[a.Client+"/"+name]; ok {
-			for field, value := range settings {
-				settings[field] = [2]string{value[0], a.Source}
-			}
-		}
 	}
 	outputs, accesses, report := map[string]string{}, map[string]string{}, []string{}
 	pairs := make([][2]string, 0, len(resolved))
@@ -88,19 +43,9 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 			report = append(report, fmt.Sprintf("unverified: %s %s effort %s is supported by its model", pair[0], pair[1], effort))
 		}
 	}
-	names := make([]string, 0, len(roles))
-	for name := range roles {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		role := roles[name].(map[string]any)
-		def, hasDef := role["definition"]
-		if !hasDef {
-			report = append(report, fmt.Sprintf("pending: %s has an assignment and no definition, so no agent is generated", name))
-			continue
-		}
-		description, accessLevel, body, err := load(joinPath(filepath.Dir(configPath), def.(string)), name)
+	for _, role := range Roles {
+		name := role.Name
+		description, accessLevel, body, err := load(filepath.Join(root, filepath.FromSlash(role.Definition)), role)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -144,138 +89,35 @@ func Render(configPath string, assigned map[string]Assigned) (map[string]string,
 	return outputs, accesses, report, nil
 }
 
-func resolve(config map[string]any) (map[string]any, map[string]map[string][2]string, error) {
-	clients, clientsOK := config["clients"].(map[string]any)
-	roles, rolesOK := config["roles"].(map[string]any)
-	clientNames := make([]string, 0, len(supported))
+func resolve(assigned map[string]Assigned) (map[string]map[string][2]string, error) {
+	clients := make([]string, 0, len(supported))
 	for name := range supported {
-		clientNames = append(clientNames, name)
+		clients = append(clients, name)
 	}
-	sort.Strings(clientNames)
-	if !clientsOK || len(clients) != len(supported) || !containsAll(clients, clientNames) {
-		return nil, nil, fail("clients must set exactly " + strings.Join(clientNames, ", "))
-	}
-	if !rolesOK {
-		return nil, nil, fail("roles must be an object")
-	}
+	sort.Strings(clients)
 	resolved := map[string]map[string][2]string{}
-	roleNames := make([]string, 0, len(roles))
-	for name := range roles {
-		roleNames = append(roleNames, name)
-	}
-	sort.Strings(roleNames)
-	for _, name := range roleNames {
-		role := roles[name]
-
-		if !roleName.MatchString(name) {
-			return nil, nil, fail(fmt.Sprintf("roles.%s: a role name is lowercase letters, digits, and hyphens", repr(name)))
-		}
-		roleObj, ok := role.(map[string]any)
-		if !ok {
-			return nil, nil, fail(fmt.Sprintf("roles.%s must be an object", name))
-		}
-		allowed := []string{"definition", "claude", "codex", "opencode"}
-		if unknown := unknownKeys(roleObj, allowed); len(unknown) > 0 {
-			return nil, nil, fail(fmt.Sprintf("roles.%s: unknown keys %s; a role takes definition, %s", name, strings.Join(unknown, ", "), strings.Join(clientNames, ", ")))
-		}
-		if def, ok := roleObj["definition"]; ok {
-			text, isString := def.(string)
-			if !isString || text == "" {
-				return nil, nil, fail(fmt.Sprintf("roles.%s.definition must be a path; leave it out for a role with no definition yet", name))
-			}
-		}
-		for _, client := range clientNames {
-			defBlock, err := assignmentBlock(clients[client], "clients."+client)
-			if err != nil {
-				return nil, nil, err
-			}
-			var override map[string]any
-			if raw, ok := roleObj[client]; ok {
-				override, err = assignmentBlock(raw, fmt.Sprintf("roles.%s.%s", name, client))
-				if err != nil {
-					return nil, nil, err
+	for _, role := range Roles {
+		for _, client := range clients {
+			settings := map[string][2]string{"model": {"inherit", "client default"}, "effort": {"inherit", "client default"}}
+			if a, ok := assigned[role.Name]; ok && a.Client == client {
+				effort := a.Effort
+				if effort == "" {
+					effort = "inherit"
 				}
-			} else {
-				override = map[string]any{}
+				settings = map[string][2]string{"model": {a.Model, a.Source}, "effort": {effort, a.Source}}
 			}
-			settings := map[string][2]string{}
 			for _, f := range supported[client] {
-				if _, ok := defBlock[f.name]; !ok {
-					return nil, nil, fail(fmt.Sprintf("clients.%s must set %s; write inherit to use the session's", client, f.name))
+				if value := settings[f.name][0]; !regexp.MustCompile("^(?:" + f.pattern + ")$").MatchString(value) {
+					return nil, fail(fmt.Sprintf("%s %s %s for %s is unsupported; %s accepts %s", client, f.name, repr(value), role.Name, client, strings.ReplaceAll(f.pattern, "|", ", ")))
 				}
-				value, source := defBlock[f.name], "client default"
-				if v, ok := override[f.name]; ok {
-					value, source = v, "role"
-				}
-				text, isString := value.(string)
-				if !isString || !regexp.MustCompile("^(?:"+f.pattern+")$").MatchString(text) {
-					return nil, nil, fail(fmt.Sprintf("%s %s %s for %s is unsupported; %s accepts %s", client, f.name, reprValue(value), name, client, strings.ReplaceAll(f.pattern, "|", ", ")))
-				}
-				settings[f.name] = [2]string{text, source}
 			}
 			if client == "opencode" && settings["effort"][0] != "inherit" && !strings.HasPrefix(settings["model"][0], "openai/") {
-				return nil, nil, fail(fmt.Sprintf("opencode effort for %s is passed as OpenAI's reasoningEffort, so it needs an openai/ model, not %s", name, settings["model"][0]))
+				return nil, fail(fmt.Sprintf("opencode effort for %s is passed as OpenAI's reasoningEffort, so it needs an openai/ model, not %s", role.Name, settings["model"][0]))
 			}
-			resolved[client+"/"+name] = settings
+			resolved[client+"/"+role.Name] = settings
 		}
 	}
-	requiredNames := make([]string, 0, len(required))
-	for name := range required {
-		requiredNames = append(requiredNames, name)
-	}
-	sort.Strings(requiredNames)
-	var missing []string
-	for _, name := range requiredNames {
-		role, ok := roles[name].(map[string]any)
-		if !ok {
-			missing = append(missing, name)
-			continue
-		}
-		if _, ok := role["definition"]; !ok {
-			missing = append(missing, name)
-		}
-	}
-	if len(missing) > 0 {
-		return nil, nil, fail(strings.Join(missing, ", ") + " must be assigned with a definition")
-	}
-	return roles, resolved, nil
-}
-
-var roleName = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
-
-func containsAll(m map[string]any, keys []string) bool {
-	for _, key := range keys {
-		if _, ok := m[key]; !ok {
-			return false
-		}
-	}
-	return true
-}
-
-func unknownKeys(m map[string]any, allowed []string) []string {
-	set := map[string]bool{}
-	for _, key := range allowed {
-		set[key] = true
-	}
-	var unknown []string
-	for key := range m {
-		if !set[key] {
-			unknown = append(unknown, key)
-		}
-	}
-	sort.Strings(unknown)
-	return unknown
-}
-
-func assignmentBlock(block any, label string) (map[string]any, error) {
-	obj, ok := block.(map[string]any)
-	if !ok {
-		return nil, fail(label + " must be an object")
-	}
-	if unknown := unknownKeys(obj, []string{"model", "effort"}); len(unknown) > 0 {
-		return nil, fail(fmt.Sprintf("%s: unknown keys %s; only model and effort are assigned", label, strings.Join(unknown, ", ")))
-	}
-	return obj, nil
+	return resolved, nil
 }
 
 func extendedBody(path, level string) (string, error) {
@@ -304,7 +146,8 @@ func extendedBody(path, level string) (string, error) {
 
 var frontmatter = regexp.MustCompile(`(?s)^---\n(.*?)\n---\n(.*)$`)
 
-func load(path, name string) (string, string, string, error) {
+func load(path string, role Role) (string, string, string, error) {
+	name := role.Name
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return "", "", "", fail(fmt.Sprintf("%s: unreadable definition for %s: %v", path, name, err))
@@ -327,12 +170,8 @@ func load(path, name string) (string, string, string, error) {
 		return "", "", "", fail(path + ": missing description")
 	}
 	level := front["access"]
-	expected, ok := required[name]
-	if !ok {
-		expected = "read-search"
-	}
-	if level != expected {
-		return "", "", "", fail(fmt.Sprintf("%s: access must be %s", path, expected))
+	if level != role.Access {
+		return "", "", "", fail(fmt.Sprintf("%s: access must be %s", path, role.Access))
 	}
 
 	base := front["extends"]
@@ -401,85 +240,4 @@ func countExact(lines []string, want string) int {
 	return count
 }
 
-func joinPath(base, part string) string {
-	if filepath.IsAbs(part) {
-		return part
-	}
-	return filepath.Join(base, part)
-}
-
 func repr(s string) string { return "'" + s + "'" }
-func reprValue(v any) string {
-	switch value := v.(type) {
-	case string:
-		return repr(value)
-	case nil:
-		return "None"
-	default:
-		return fmt.Sprint(value)
-	}
-}
-
-func decodeUnique(data []byte) (any, error) {
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.UseNumber()
-	value, err := parseValue(dec)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := dec.Token(); err != io.EOF {
-		return nil, fmt.Errorf("trailing data after the JSON document")
-	}
-	return value, nil
-}
-
-func parseValue(dec *json.Decoder) (any, error) {
-	token, err := dec.Token()
-	if err != nil {
-		return nil, err
-	}
-	delim, ok := token.(json.Delim)
-	if !ok {
-		return token, nil
-	}
-	switch delim {
-	case '{':
-		obj := map[string]any{}
-		for dec.More() {
-			keyToken, err := dec.Token()
-			if err != nil {
-				return nil, err
-			}
-			key, ok := keyToken.(string)
-			if !ok {
-				return nil, fmt.Errorf("object key is not a string")
-			}
-			if _, exists := obj[key]; exists {
-				return nil, fmt.Errorf("duplicate keys: %s", key)
-			}
-			value, err := parseValue(dec)
-			if err != nil {
-				return nil, err
-			}
-			obj[key] = value
-		}
-		if _, err := dec.Token(); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	case '[':
-		var arr []any
-		for dec.More() {
-			value, err := parseValue(dec)
-			if err != nil {
-				return nil, err
-			}
-			arr = append(arr, value)
-		}
-		if _, err := dec.Token(); err != nil {
-			return nil, err
-		}
-		return arr, nil
-	}
-	return nil, fmt.Errorf("unexpected delimiter %q", delim)
-}
