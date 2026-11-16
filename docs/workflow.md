@@ -14,9 +14,9 @@ This guide covers what to reach for when a plain request is not enough:
 
 ## Pick a skill for the job
 
-A session lists only the entry points: the skills you start yourself and no other skill runs, plus `impeccable`, which the design playbook calls but you also drive by name. Every other skill is a helper that installs to `~/.harness/skills/` and that `/jvillegasd-mode` or another skill reads by path when its step comes up. A leading slash, as in `/land`, means you call the skill by name.
+Every skill is callable by name. The skills you start yourself come first; the rest are helpers that `/jvillegasd-mode` or another skill runs as a step, and you can call any of them directly too. A leading slash, as in `/land`, means you call the skill by name.
 
-### Entry points
+### Skills you start
 
 | Situation | Skill |
 | --- | --- |
@@ -38,7 +38,7 @@ A session lists only the entry points: the skills you start yourself and no othe
 | Frontend code needs current web platform APIs and their fallbacks | `modern-web-guidance` |
 | Documentation needs a technical-writing pass | `technical-writing` |
 
-### Helpers the mode reaches
+### Helpers other skills run
 
 | Group | Helpers |
 | --- | --- |

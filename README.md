@@ -72,7 +72,7 @@ After the first install, the `harness` command lives at `~/.local/bin/harness`. 
 
 ## Ask for what you need
 
-A plain request works the way it always does. For the harness's procedures (planning, building, review, delivery), start the mode; it reaches every helper skill by path, so a normal session lists only the entry points below.
+A plain request works the way it always does. For the harness's procedures (planning, building, review, delivery), start the mode; every skill also stays callable by name.
 
 | You want to | Ask for |
 | --- | --- |
@@ -86,7 +86,7 @@ A plain request works the way it always does. For the harness's procedures (plan
 | Clean up after you merge a PR | `/land`, or `/land merge` to have the agent merge for you; name PRs (`/land merge 19 20`, `/land merge stack 23`) to land ones not checked out here |
 | Clear out old worktrees and branches | `/cleanup` |
 
-The [workflow guide](docs/workflow.md) lists the entry points and the helpers the mode reaches.
+The [workflow guide](docs/workflow.md) lists every skill and when to reach for it.
 
 ## What the agent does on its own, and what waits for you
 

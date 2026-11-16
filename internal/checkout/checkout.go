@@ -79,22 +79,10 @@ func (c Checkout) Floor() string { return filepath.Join(c.Root, floorMarker) }
 
 func (c Checkout) Skills() string { return filepath.Join(c.Root, "skills") }
 
-// EntryGroup is the one group whose skills a client discovers by name; every
-// other group installs where only a path reaches it.
-const EntryGroup = "workflow"
-
 type Skill struct {
-	Name  string
-	Dir   string
-	Group string
+	Name string
+	Dir  string
 }
-
-// Shown names the skills a client discovers although they sit outside
-// EntryGroup: a skill a playbook calls that the human also drives by name.
-var Shown = map[string]bool{"impeccable": true}
-
-// Entry reports whether a client discovers the skill by name.
-func (s Skill) Entry() bool { return s.Group == EntryGroup || Shown[s.Name] }
 
 func (c Checkout) SkillDirs() ([]Skill, error) {
 	groups, err := os.ReadDir(c.Skills())
@@ -127,7 +115,7 @@ func (c Checkout) SkillDirs() ([]Skill, error) {
 				return nil, fmt.Errorf("skill %s is in two groups: %s and %s", entry.Name(), prev, dir)
 			}
 			seen[entry.Name()] = dir
-			out = append(out, Skill{Name: entry.Name(), Dir: dir, Group: group.Name()})
+			out = append(out, Skill{Name: entry.Name(), Dir: dir})
 		}
 	}
 	slices.SortFunc(out, func(a, b Skill) int { return strings.Compare(a.Name, b.Name) })

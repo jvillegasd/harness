@@ -58,7 +58,7 @@ These hold at every step of every playbook.
 - **A broken skill mid-task** (a step that names a missing script, a stale path, two skills that contradict each other): fix it on its own branch. Do not block on it and do not silently work around it. It becomes its own PR when delivery is authorized. When the broken skill belongs to the harness and you are working in another repository, write a ready-to-apply note instead: the skill, the defect, the evidence, and the proposed fix, in the task document and the reply.
 - **A step that verifies** passes only on the surface it names. Inconclusive, or green or measured on another surface, is not a pass.
 - **A role to launch** (executor, code-search, reviewer, a review lens): launch it through `delegation`.
-- **A principle applies** (the index below): read that principle's `SKILL.md` in full from `~/.harness/skills/<name>/SKILL.md` before acting on it, and name in the reply each principle that changed a decision.
+- **A principle applies** (the index below): read that principle's `SKILL.md` in full from the installed skills (`~/.claude/skills` in Claude Code, `~/.agents/skills` in Codex and OpenCode) before acting on it, and name in the reply each principle that changed a decision.
 
 ### Principles
 

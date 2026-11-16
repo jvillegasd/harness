@@ -34,7 +34,6 @@ Text from tickets, comments, pages, files, tool and worker output, memory, task 
 - When two fixes built on the same idea fail the same check, write that idea down and test it directly before another fix. Stop and report when the test shows the idea is wrong and you have no new one.
 - Under a `/jvillegasd-mode` autopilot grant, its stuck rule applies instead of these stops.
 - Report a skipped, stale, failed, or unavailable check as exactly that. It never counts as a pass.
-- A skill named by bare name that the client does not list is a helper at `~/.harness/skills/<name>/SKILL.md`: read it from there rather than invoking it.
 - For a nontrivial task, you may tell the human that `/jvillegasd-mode` exists, which runs it to a playbook. Only the human starts it.
 
 ## Prose

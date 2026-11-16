@@ -71,10 +71,6 @@ func (in *installer) codex(args ...string) *exec.Cmd {
 
 func (in *installer) stateDir() string { return filepath.Join(in.home, ".harness") }
 
-// hiddenSkills holds the skills no client discovers: the floor names this
-// directory, and the entry skills read a helper from it by path.
-func (in *installer) hiddenSkills() string { return filepath.Join(in.stateDir(), "skills") }
-
 func (in *installer) statePath() string { return filepath.Join(in.stateDir(), "state.json") }
 
 func (in *installer) aliasesPath() string { return filepath.Join(in.stateDir(), "aliases.sh") }
@@ -222,10 +218,6 @@ func (in *installer) desired() []entry {
 		out = append(out, entry{Path: dest, Component: component, Clients: clients, source: source})
 	}
 	for _, skill := range in.skills() {
-		if !skill.Entry() {
-			add(skill.Dir, filepath.Join(in.hiddenSkills(), skill.Name), "skills", "claude", "codex", "opencode")
-			continue
-		}
 		add(skill.Dir, filepath.Join(in.home, ".agents", "skills", skill.Name), "skills", "claude", "codex", "opencode")
 		add(skill.Dir, filepath.Join(in.home, ".claude", "skills", skill.Name), "skills", "claude")
 	}

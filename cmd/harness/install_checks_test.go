@@ -12,8 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/jvillegasd/harness/internal/checkout"
 )
 
 var agentOutputs = []string{"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "claude/review-bugs.md", "claude/review-risk.md", "claude/review-spec.md", "codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml", "codex/review-bugs.toml", "codex/review-risk.toml", "codex/review-spec.toml", "opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md", "opencode/review-bugs.md", "opencode/review-risk.md", "opencode/review-spec.md"}
@@ -56,47 +54,26 @@ func readDir(dir string) []string {
 	return out
 }
 
-func TestOnlyEntrySkillsAreDiscoverable(t *testing.T) {
+func TestGuardedSkillsAreInstalled(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "skip-packages install")
 	bodies, err := filepath.Glob(filepath.Join(base, "checkout", "skills", "*", "*", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	home := filepath.Join(base, "home")
-	entries := 0
+	guarded := 0
 	for _, body := range bodies {
-		name, group := filepath.Base(filepath.Dir(body)), filepath.Base(filepath.Dir(filepath.Dir(body)))
-		discovered := []string{filepath.Join(home, ".agents", "skills", name, "SKILL.md"), filepath.Join(home, ".claude", "skills", name, "SKILL.md")}
-		hidden := filepath.Join(home, ".harness", "skills", name, "SKILL.md")
-		if group == "workflow" || name == "impeccable" {
-			entries++
-			for _, path := range discovered {
-				if _, err := os.Stat(path); err != nil {
-					t.Errorf("entry skill %s is not discoverable: %v", name, err)
-				}
-			}
-			if _, err := os.Stat(hidden); err == nil {
-				t.Errorf("entry skill %s also sits in the hidden directory", name)
-			}
+		if !strings.Contains(readFile(t, body), "disable-model-invocation: true") {
 			continue
 		}
-		if _, err := os.Stat(hidden); err != nil {
-			t.Errorf("%s skill %s is not in the hidden directory: %v", group, name, err)
-		}
-		for _, path := range discovered {
-			if _, err := os.Stat(path); err == nil {
-				t.Errorf("%s skill %s is discoverable at %s", group, name, path)
-			}
+		guarded++
+		name := filepath.Base(filepath.Dir(body))
+		if _, err := os.Stat(filepath.Join(base, "home", ".agents", "skills", name, "SKILL.md")); err != nil {
+			t.Errorf("guarded skill %s is not installed in the shared skill namespace: %v", name, err)
 		}
 	}
-	for name := range checkout.Shown {
-		if _, err := os.Stat(filepath.Join(home, ".claude", "skills", name, "SKILL.md")); err != nil {
-			t.Errorf("%s, shown outside workflow, is not a shipped discoverable skill: %v", name, err)
-		}
-	}
-	if entries == 0 || entries == len(bodies) {
-		t.Fatalf("found %d entry skills of %d; the test needs both kinds", entries, len(bodies))
+	if guarded == 0 {
+		t.Fatal("found no guarded skill")
 	}
 }
 
@@ -216,11 +193,11 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 func TestUninstallKeepsAnEditedCopy(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
-	edited := filepath.Join(base, "home", ".claude", "skills", "land", "SKILL.md")
-	writeMode(t, edited, "my land\n", 0o644)
+	edited := filepath.Join(base, "home", ".claude", "skills", "open-pr", "SKILL.md")
+	writeMode(t, edited, "my open-pr\n", 0o644)
 	r := runUninstaller(t, base, "--yes")
 	ok(t, r, "uninstall")
-	if got := readFileOr(edited); got != "my land\n" {
+	if got := readFileOr(edited); got != "my open-pr\n" {
 		t.Errorf("the uninstall removed or changed the edited copy: %q", got)
 	}
 	if !strings.Contains(r.stderr, "changed since the harness wrote it") {
@@ -524,7 +501,7 @@ func TestNamedComponentInstallsOnlyItself(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	r := ok(t, runInstaller(t, base, "skills"), "skills install")
-	if readFileOr(filepath.Join(home, ".claude", "skills", "land", "SKILL.md")) == "" {
+	if readFileOr(filepath.Join(home, ".claude", "skills", "open-pr", "SKILL.md")) == "" {
 		t.Error("the skills install did not copy the skills")
 	}
 	for _, absent := range []string{".claude/CLAUDE.md", ".claude/agents/reviewer.md", ".claude/settings.json", ".harness/aliases.sh", ".zshrc"} {
@@ -1001,11 +978,11 @@ func TestClaudeAllowKeepsTheUsersRules(t *testing.T) {
 		return got.Permissions.Allow
 	}
 	ok(t, runInstaller(t, base), "install")
-	if got, want := allow(), []string{"Bash(make test)", "Read(~/.claude/skills/**)", "Read(~/.harness/skills/**)"}; !slices.Equal(got, want) {
+	if got, want := allow(), []string{"Bash(make test)", "Read(~/.claude/skills/**)"}; !slices.Equal(got, want) {
 		t.Errorf("allow after install = %q, want %q", got, want)
 	}
 	ok(t, runInstaller(t, base), "reinstall")
-	if got := allow(); len(got) != 3 {
+	if got := allow(); len(got) != 2 {
 		t.Errorf("a reinstall duplicated the tracked rule: %q", got)
 	}
 	ok(t, runUninstaller(t, base, "--yes"), "uninstall")

@@ -134,9 +134,9 @@ func TestSkillDirsFlattensGroups(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []Skill{
-		{"empty", filepath.Join(c.Skills(), "ops", "empty"), "ops"},
-		{"ponytail", filepath.Join(c.Skills(), "support", "ponytail"), "support"},
-		{"tdd", filepath.Join(c.Skills(), "workflow", "tdd"), "workflow"},
+		{"empty", filepath.Join(c.Skills(), "ops", "empty")},
+		{"ponytail", filepath.Join(c.Skills(), "support", "ponytail")},
+		{"tdd", filepath.Join(c.Skills(), "workflow", "tdd")},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("SkillDirs = %v, want %v", got, want)

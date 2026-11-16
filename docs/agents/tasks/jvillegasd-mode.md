@@ -11,7 +11,7 @@ Follow-up answers: entry points are "mode and the skills that are not triggered 
 - `epic` replaces `spec` and `tickets`: write the big ticket, agree its seams, cut it into vertical slices. `grill-with-docs` stays a locked entry point ("grill-with-docs needs to be locked, epic cover spec and tickets").
 - `build` absorbs `implement`: one slice inline with `tdd`, several slices fanned out.
 - `work` is renamed `jvillegasd-mode`, and `continuity` is renamed `checkpoint` ("also rename continuity to checkpoint"). `retro` and `teach` are removed ("remove retro and teach skills").
-- Only `workflow/` skills are discoverable: the mode and the skills no other skill runs. Every other group installs to `~/.harness/skills/<name>`, where the floor tells the agent to read a named skill from.
+- Every skill stays discoverable by name ("lets make skills visible again"); the `workflow` group holds the entry points the human starts.
 - Delete `principle-outcome-oriented-execution`, `principle-exhaust-the-design-space`, and `handoff`. `principle-redesign-from-first-principles` stays locked ("re lock principle-redesign-from-first-principles").
 - Remove the floor lines that duplicate `principle-never-block-on-the-human` and `principle-guard-the-context-window`; delete `ponytail` and keep `principle-subtract-before-you-add`.
 - Evals unchanged.
@@ -29,9 +29,10 @@ Follow-up answers: entry points are "mode and the skills that are not triggered 
 
 | Decision | Instead of | By | Why | Evidence |
 | --- | --- | --- | --- | --- |
-| Visibility follows the group: `workflow/` is discoverable, every other group is hidden | A list of visible skill names | agent | The group rule already says `workflow/` holds only what the human invokes, so no second list can drift from it | `AGENTS.md` Directories row for `skills/<group>/<name>/` |
-| `impeccable` stays in `design/` and is shown through `checkout.Shown` | Moving it to `workflow/` | human | "keep it in its folder and being called by a playbook, but show it" | `internal/checkout/checkout.go` |
-| Hidden skills install once to `~/.harness/skills/<name>` for every client | Per-client hidden roots | agent | One path the floor can name for every client | `internal/install/state.go` `desired` |
+| (superseded) Visibility follows the group: `workflow/` is discoverable, every other group is hidden | A list of visible skill names | agent | The group rule already says `workflow/` holds only what the human invokes, so no second list can drift from it | `AGENTS.md` Directories row for `skills/<group>/<name>/` |
+| (superseded) `impeccable` stays in `design/` and is shown through `checkout.Shown` | Moving it to `workflow/` | human | "keep it in its folder and being called by a playbook, but show it" | `internal/checkout/checkout.go` |
+| Every skill is visible again: the hidden install folder, `checkout.Shown`, and the floor's helper-path line are removed | Keeping helpers hidden | human | "lets make skills visible again" | `internal/install/state.go` |
+| (superseded) Hidden skills install once to `~/.harness/skills/<name>` for every client | Per-client hidden roots | agent | One path the floor can name for every client | `internal/install/state.go` `desired` |
 | Keep `benchmark-checklist` and `principle-minimize-reader-load` | Deleting them as duplicates | agent | Re-reading showed each owns a procedure the other lacks | Explanation given in the session |
 | `build` keeps the name and takes the single-slice path | Naming it `implement` | human | Answer to the build-merge question | Session |
 | The verification, formal-verification, `statechart`, and `e2e-verification` skills stay entry points | Hiding them in `assurance/` | agent | Other skills only suggest them to the human, so nothing else runs them | Review finding; `e2e-verification` line 14, `change-map` line 35 |
