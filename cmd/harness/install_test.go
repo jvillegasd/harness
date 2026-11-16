@@ -178,7 +178,6 @@ func seedLived(t *testing.T, base string) {
 		".config/opencode/opencode.json":            `{"$schema": "https://opencode.ai/config.json", "agent": {"mine": {"model": "openai/gpt-5.5"}}, "mcp": {"engram": {"type": "local"}, "other": {"type": "remote"}}, "plugin": ["/x/plugins/engram.ts", "other-plugin"]}` + "\n",
 		".config/opencode/tui.json":                 `{"plugin": ["opencode-subagent-statusline", "keep"]}` + "\n",
 		".config/opencode/plugins/engram.ts":        "export {}\n",
-		".local/bin/claude-seo":                     "#!/bin/sh\n",
 		".engram/engram.db":                         "memories\n",
 		".agent-browser/browsers/chrome":            "browser\n",
 		".local/share/opencode/auth.json":           `{"openai": "private-secret"}` + "\n",

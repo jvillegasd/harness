@@ -221,8 +221,6 @@ func (in *installer) installFiles() {
 		want[i].Digest = source
 	}
 
-	in.backupExisting(filepath.Join(in.home, ".local", "bin", "claude-seo"), "")
-
 	in.updateState(func(s *state) { s.Files = append(kept, want...) })
 	in.installed = want
 }
