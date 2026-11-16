@@ -263,7 +263,7 @@ It prints a JSON verdict per PR with the same holds, review coverage, and run-as
 Skills live in `skills/<group>/<name>/`, and clients call each one by its bare name. Every skill also has two links, `.agents/skills/<name>` and `.claude/skills/<name>`, which these commands keep correct.
 
 ```sh
-harness skills new my-skill support             # a local skill with a starting body and both links
+harness skills new my-skill writing             # a local skill with a starting body and both links
 harness skills new my-skill planning --guarded  # the same, but only callable by name
 harness skills move my-skill design             # move a skill to another group, keeping its history
 harness skills add <owner/repo> <name> <group>  # lock a third-party skill
@@ -272,7 +272,7 @@ harness skills remove <name>                    # remove a locked skill and its 
 harness skills verify                           # recheck every locked body's hash, offline
 ```
 
-`--guarded` adds the invocation guard for each client, so no agent starts the skill on its own. `move` uses `git mv` and keeps a locked skill's hash. Both `new` and `move` refuse a name that exists, an unknown group, or the group a skill is already in, and write nothing.
+`--guarded` adds the invocation guard for each client, so no agent starts the skill on its own. `move` uses `git mv` and keeps a locked skill's hash. Both `new` and `move` refuse a name that exists, an unknown group, or the group a skill is already in, and write nothing. A group is a directory under `skills/`, so to add a group, create its directory before you move a skill into it.
 
 Locked skills come from other projects and change only through `add`, `update`, and `remove`. [Updating skills safely](#updating-skills-safely) covers what `update` refuses.
 

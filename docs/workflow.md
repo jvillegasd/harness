@@ -29,7 +29,7 @@ Every skill is callable by name. The skills you start yourself come first; the r
 | A test suite may carry tests that protect nothing | `/test-audit` |
 | The project needs a scripted way to drive the real app | `/create-verification-skill` |
 | A project's verify skill or its feature map may have drifted | `/maintain-verification-skill` |
-| A feature, bugfix, PR, or path needs a real end-to-end run | `/e2e-verification` |
+| A feature, bugfix, PR, or path needs a deep end-to-end run with a screenshot per test | `/e2e-verification` |
 | Code needs a lasting formal check of a model or proof | `/create-formal-verification-skill` |
 | A formal check may be out of date after merges or refactors | `/maintain-formal-verification-skill` |
 | A state machine needs model checking | `/statechart` |
@@ -42,11 +42,28 @@ Every skill is callable by name. The skills you start yourself come first; the r
 
 | Group | Helpers |
 | --- | --- |
-| Planning | `epic` (write the big ticket, agree its seams, cut its slices), `build` (one slice inline with `tdd`, or many slices fanned out), `triage`, `research`, `proto` |
-| Support | `review`, `address-review`, `open-pr`, `tdd`, `diagnosing-bugs`, `change-map`, `checkpoint`, `delegation`, `verification`, `grilling`, `how`, `why`, `unslop`, `caveman-commit` |
-| Design | `codebase-design`, `domain-modeling`, `writing-for-agents` |
-| Assurance | `journey-verification`, `security-audit` |
+| Orchestration | `delegation`, `checkpoint` |
+| Investigation | `how`, `why`, `research`, `triage`, `diagnosing-bugs` |
+| Planning | `epic` (write the big ticket, agree its seams, cut its slices), `proto`, `grilling` |
+| Building | `build` (one slice inline with `tdd`, or many slices fanned out), `tdd` |
+| Delivery | `review`, `address-review`, `open-pr`, `change-map`, `caveman-commit` |
+| Assurance | `verification`, `journey-verification`, `security-audit` |
+| Design | `codebase-design`, `domain-modeling` |
+| Writing | `writing-for-agents`, `unslop` |
 | Principles | the `principle-*` skills and `benchmark-checklist`, which the mode's trigger list names |
+
+### Choose a verification skill
+
+Four skills prove that a change works, and each one answers a different question:
+
+| You want | Skill | What it leaves |
+| --- | --- | --- |
+| To know whether a change is safe to merge | `verification`, which runs on its own before a PR opens | A run-as-user verdict comment that `/land` reads |
+| Proof that one feature, bugfix, PR, or path works, error paths included | `/e2e-verification` | A screenshot report. Nothing is committed |
+| Tests of a flow that stay in the repository | `journey-verification` | Tests and fixtures in the project's own test suite |
+| A way for agents to drive the real app at all | `/create-verification-skill` | A `verify-<app>` skill and a feature map |
+
+The verdict and `/e2e-verification` both drive the app through `verify-<app>`, so create that skill first. They also share one rule set: `verification` decides which features a PR touches and how a bugfix runs on the old code and then the new code. `/e2e-verification` adds the deeper test list, the screenshots, and the report. When the app changes and the feature map falls behind, run `/maintain-verification-skill`.
 
 ## jvillegasd-mode
 
@@ -271,4 +288,4 @@ stateDiagram-v2
     Checked --> Resumed: Agent continues with the permission it had
 ```
 
-The [checkpoint skill](../skills/support/checkpoint/SKILL.md) has the full recovery details.
+The [checkpoint skill](../skills/orchestration/checkpoint/SKILL.md) has the full recovery details.

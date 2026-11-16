@@ -17,7 +17,7 @@ An ordered list of steps for one kind of task, copied into the session's todo li
 _Avoid_: recipe, route, pipeline
 
 **Entry point**:
-A skill the human starts: `jvillegasd-mode` and the skills no other skill runs, kept in the `workflow` group. Every other skill is a **helper** that a skill or playbook runs as a step; helpers stay callable by name too.
+A skill the human starts: `jvillegasd-mode` and the skills no other skill runs. Every other skill is a **helper** that a skill or playbook runs as a step; helpers stay callable by name too. Skill groups sort skills by purpose, not by who starts them.
 _Avoid_: public skill, top-level skill
 
 **Epic**:

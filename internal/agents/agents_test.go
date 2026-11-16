@@ -657,7 +657,7 @@ func TestLensExtendsTheReviewer(t *testing.T) {
 	lens := readFile(t, filepath.Join(out, "claude", "review-spec.md"))
 	body := func(name string) string {
 		t.Helper()
-		parts := strings.SplitN(readFile(t, filepath.Join(repoRoot(), "skills", "support", "review", "roles", name)), "---\n", 3)
+		parts := strings.SplitN(readFile(t, filepath.Join(repoRoot(), "skills", "delivery", "review", "roles", name)), "---\n", 3)
 		if len(parts) != 3 {
 			t.Fatalf("%s has no frontmatter", name)
 		}

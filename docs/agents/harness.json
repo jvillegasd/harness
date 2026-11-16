@@ -5,8 +5,8 @@
     "clients/**",
     "internal/install/**",
     "internal/models/**",
-    "skills/workflow/land/**",
-    "skills/support/review/**",
+    "skills/delivery/land/**",
+    "skills/delivery/review/**",
     "docs/agents/harness.json"
   ]
 }

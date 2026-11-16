@@ -245,7 +245,7 @@ Two options delete things for good:
 
 ## Manage skills
 
-Skills live in `skills/<group>/<name>/`. The group only organizes this repository. Clients call a skill by its name alone.
+Skills live in `skills/<group>/<name>/`, grouped by purpose: `orchestration`, `investigation`, `planning`, `building`, `delivery`, `assurance`, `design`, `writing`, and `principles`. The group only organizes this repository. Clients call a skill by its name alone.
 
 Create or move a skill of your own with these commands, which also write the links each client reads:
 
