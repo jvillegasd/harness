@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 
@@ -234,40 +233,8 @@ func TestInstallFallsBackForAnUnlistedModel(t *testing.T) {
 	}
 }
 
-func TestInstallRefusesATrackedPerRoleAssignment(t *testing.T) {
-	base := modelsBase(t)
-	path := filepath.Join(base, "checkout", "clients", "assignments.json")
-	var config map[string]any
-	if err := json.Unmarshal([]byte(readFile(t, path)), &config); err != nil {
-		t.Fatal(err)
-	}
-	config["roles"].(map[string]any)["reviewer"].(map[string]any)["opencode"] = map[string]any{"model": "openai/gpt-5.6-sol"}
-	data, err := json.MarshalIndent(config, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	writeMode(t, path, string(data)+"\n", 0o644)
-	if r := runInstaller(t, base, "agents"); r.code == 0 || !strings.Contains(r.stdout+r.stderr, "chosen with `harness models`") {
-		t.Errorf("exit %d, output %q%q", r.code, r.stdout, r.stderr)
-	}
-}
-
-func TestEveryAssignedRoleIsDispatchable(t *testing.T) {
-	var config struct {
-		Roles map[string]struct{} `json:"roles"`
-	}
-	raw := readFile(t, filepath.Join("..", "..", "clients", "assignments.json"))
-	if err := json.Unmarshal([]byte(raw), &config); err != nil {
-		t.Fatal(err)
-	}
-	for role := range config.Roles {
-		if !slices.Contains(models.AllRoles, role) {
-			t.Errorf("clients/assignments.json assigns %q but models.AllRoles omits it, so the role cannot be resolved", role)
-		}
-
-		if slices.Contains(models.Lenses, role) {
-			continue
-		}
+func TestEveryPresetAssignsEveryRole(t *testing.T) {
+	for _, role := range models.Roles {
 		for preset, table := range models.Presets {
 			if _, ok := table[role]; !ok {
 				t.Errorf("preset %q has no assignment for %q, so Resolve yields an empty client", preset, role)

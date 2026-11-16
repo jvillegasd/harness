@@ -22,7 +22,7 @@ The Harness AI installation that serves Claude Code, Codex, and OpenCode. `READM
 | `internal/attempts/` | The hillclimb attempt log behind `harness attempts add` and `list`, which the `hillclimb` playbook writes and reads instead of filling its columns by hand |
 | `internal/bench/` | The session-population comparison behind `harness bench` |
 | `internal/changemap/` | The deterministic floor tiers behind `harness change-map`, the first pass of the `change-map` skill |
-| `internal/agents/` | The role-agent renderer the installer calls in-process |
+| `internal/agents/` | The role registry (each role's definition path, access, and whether it is a review lens), which `harness models` reads its role names from, and the role-agent renderer the installer calls in-process |
 | `internal/models/` | The per-machine role model presets behind `harness models` |
 | `internal/statefile/` | Shared read and atomic write of `~/.harness/state.json`, whose top-level keys the installer, `harness models`, and `harness review level` each own |
 | `internal/resume/` | The task context `harness resume` prints for the clients' compaction hooks |
@@ -35,7 +35,7 @@ The Harness AI installation that serves Claude Code, Codex, and OpenCode. `READM
 | `GLOSSARY.md`, `docs/adr/` | The harness's domain terms and its decision records, which `domain-modeling` reads and writes |
 | `skills/<group>/<name>/` | Independent capabilities (also invoked as `/name`), grouped by type: `workflow` (what a normal session invokes), `support` (the shared helpers those skills and the floor call), `principles` (the locked engineering principles), `planning`, `design`, `assurance`, and `ops`. Locked bodies sit in their group beside local ones; clients see only the bare name |
 | `skills/assurance/e2e-verification/SKILL.md`, `skills/assurance/e2e-verification/scripts/` | Targeted E2E runs on a feature, bugfix, PR, or path over the project's `verify-<app>` skill, with real screenshots per test, and the run kit and report builder it copies |
-| `clients/` | Client settings, the Codex and OpenCode compaction hook files, Codex's command rules and OpenCode's permission rules, and the role assignments the installer reconciles |
+| `clients/` | Client settings, the Codex and OpenCode compaction hook files, and Codex's command rules and OpenCode's permission rules |
 | `roles/` | Canonical roles no skill owns, the executor and code-search |
 | `aliases.sh` | The managed yolo-mode shell aliases |
 | `bench/` | Cohort config and the manual for `harness bench` |

@@ -21,9 +21,16 @@ type Assignment struct {
 	Effort string `json:"effort,omitempty"`
 }
 
-var Roles = []string{"executor", "code-search", "reviewer"}
-
-var Lenses = []string{"review-bugs", "review-spec", "review-risk"}
+var Roles, Lenses = func() (roles, lenses []string) {
+	for _, r := range agents.Roles {
+		if r.Lens {
+			lenses = append(lenses, r.Name)
+		} else {
+			roles = append(roles, r.Name)
+		}
+	}
+	return roles, lenses
+}()
 
 var AllRoles = append(append([]string{}, Roles...), Lenses...)
 
