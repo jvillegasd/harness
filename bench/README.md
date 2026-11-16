@@ -16,7 +16,7 @@ Whether an instruction change makes agents behave as intended, checked before it
 harness bench --split <commit-date> --since <window-start>
 ```
 
-A typical use: you fix a friction point in the harness, for example one that `retro` suggested. Write down which metric you expect to move and the date the fix landed. Later, run bench with `--split` set to that date.
+A typical use: you fix a friction point in the harness, for example one a session kept hitting. Write down which metric you expect to move and the date the fix landed. Later, run bench with `--split` set to that date.
 
 Run it from inside the checkout. It reads work patterns from `bench/cohorts.json` there. That file is gitignored, so a fresh worktree has only the committed, empty `cohorts.example.json` until you copy your own in. Until a pattern matches, the report does not split sessions into work and personal.
 
