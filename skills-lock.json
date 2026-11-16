@@ -187,6 +187,12 @@
       "skillPath": "skills/principle-prove-it-works/SKILL.md",
       "computedHash": "0429fc6fad74a95d594fc21ac8d859a571705ba51303c05880d9bd0eafb44adb"
     },
+    "principle-redesign-from-first-principles": {
+      "source": "backnotprop/pstack",
+      "sourceType": "github",
+      "skillPath": "skills/principle-redesign-from-first-principles/SKILL.md",
+      "computedHash": "c6b2348402c9c1a4d3b43ab695ad8dbb6a92b19e02e08f6395146ab9b1b61ce9"
+    },
     "principle-separate-before-serializing-shared-state": {
       "source": "backnotprop/pstack",
       "sourceType": "github",

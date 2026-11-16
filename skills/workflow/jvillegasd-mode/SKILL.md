@@ -65,6 +65,7 @@ These hold at every step of every playbook.
 - `principle-laziness-protocol`: refactoring, sizing a diff, or tempted to add abstractions or layers.
 - `principle-foundational-thinking`: before writing logic, when choosing core types, data structures, and what concurrent actors share.
 - `principle-attack-the-premise`: two or more fixes that share one premise have failed the same gate.
+- `principle-redesign-from-first-principles`: integrating a new requirement into an existing design.
 - `principle-subtract-before-you-add`: sequencing an addition, refactor, or rewrite.
 - `principle-minimize-reader-load`: reviewing or shaping code that is hard to trace.
 - `principle-experience-first`: product, UX, or feature-scope tradeoffs.

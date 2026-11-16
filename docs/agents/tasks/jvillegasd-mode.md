@@ -12,7 +12,7 @@ Follow-up answers: entry points are "mode and the skills that are not triggered 
 - `build` absorbs `implement`: one slice inline with `tdd`, several slices fanned out.
 - `work` is renamed `jvillegasd-mode`, and `continuity` is renamed `checkpoint` ("also rename continuity to checkpoint"). `retro` and `teach` are removed ("remove retro and teach skills").
 - Only `workflow/` skills are discoverable: the mode and the skills no other skill runs. Every other group installs to `~/.harness/skills/<name>`, where the floor tells the agent to read a named skill from.
-- Delete `principle-outcome-oriented-execution`, `principle-exhaust-the-design-space`, `principle-redesign-from-first-principles`, and `handoff`.
+- Delete `principle-outcome-oriented-execution`, `principle-exhaust-the-design-space`, and `handoff`. `principle-redesign-from-first-principles` stays locked ("re lock principle-redesign-from-first-principles").
 - Remove the floor lines that duplicate `principle-never-block-on-the-human` and `principle-guard-the-context-window`; delete `ponytail` and keep `principle-subtract-before-you-add`.
 - Evals unchanged.
 
