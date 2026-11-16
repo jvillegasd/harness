@@ -287,25 +287,11 @@ harness tickets frontier my-feature        # which tickets are ready, done, and 
 harness tickets frontier my-feature --done 1,2
 harness tickets publish my-feature --dry-run
 harness tickets publish my-feature
-harness tickets close --dir docs/specs/my-feature/issues 3   # local markdown: ticket 3 merged
 ```
 
 - **`check`** prints each problem as `path:line: message`: a missing or empty section, a reused number, a blocker that is not in the feature, or a cycle. A draft needs a title and five sections: What to build, Acceptance criteria, Seam, Blocked by, and Out of scope.
 - **`frontier`** is how `/build` picks the next tickets. A ticket is done when `--done` names it or its draft says `Status: done`, and ready once every ticket blocking it is done.
-- **`publish`** creates GitHub issues, blockers first, with the ready or blocked label and native dependency links. It records each issue in its draft as it goes, so a rerun after a failure creates no duplicates, and removes a draft once its issue reads back correctly. It refuses a repository whose tracker is not GitHub. It writes to GitHub, so agents run it only when you ask to publish. `--dry-run` shows every issue, link, and label and writes nothing.
-- **`close`** is `/land`'s tracker update for a local-markdown tracker. It marks each merged ticket `Status: done`, moves each ticket waiting on the blocked label to the ready label once its blockers are all done, and marks the feature's `spec.md` done after its last ticket. It leaves a claimed ticket alone, commits nothing, refuses any other tracker, and changes nothing on a second run.
-
-## Tracker setup commands
-
-`setup-harness` runs these when you set up issue tracking for a repository. Choosing the mode stays with you.
-
-```sh
-harness setup probe                                          # the evidence, as JSON; changes nothing
-harness setup tracker --mode github
-harness setup tracker --mode local-markdown --spec-home docs/specs
-```
-
-`probe` reports the GitHub remote, the default branch and whether it is protected, the mode already configured, and any local spec tree. `tracker` writes `docs/agents/harness.json`, keeping your label names, `criticalPaths`, and keys it does not know. In GitHub mode it first checks `gh` is signed in, creates only the labels the repository lacks, and installs the lifecycle workflow and reconciler. Local mode reaches no forge. A second run with the same arguments changes nothing.
+- **`publish`** creates GitHub issues, blockers first, with native dependency links. It records each issue in its draft as it goes, so a rerun after a failure creates no duplicates, and removes a draft once its issue reads back correctly. It refuses a repository whose tracker is not GitHub. It writes to GitHub, so agents run it only when you ask to publish. `--dry-run` shows every issue and link and writes nothing.
 
 ## Eval commands
 

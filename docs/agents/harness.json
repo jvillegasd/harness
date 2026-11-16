@@ -1,12 +1,5 @@
 {
   "tracker": "github",
-  "spec_home": "github-issues",
-  "labels": {
-    "blocked": "blocked",
-    "ready_for_agent": "ready-for-agent",
-    "in_progress": "in-progress",
-    "ready_for_human": "ready-for-human"
-  },
   "criticalPaths": [
     "FLOOR.md",
     "clients/**",
@@ -14,8 +7,6 @@
     "internal/models/**",
     "skills/workflow/land/**",
     "skills/workflow/review/**",
-    "skills/ops/setup-harness/scripts/**",
-    ".github/**",
     "docs/agents/harness.json"
   ]
 }

@@ -45,7 +45,7 @@ func (f *fakeForge) run(args ...string) ([]byte, error) {
 			return nil, errors.New("HTTP 502")
 		}
 		f.next++
-		f.issues[f.next] = &fakeIssue{Title: flag("--title"), Body: flag("--body"), Labels: []string{flag("--label")}}
+		f.issues[f.next] = &fakeIssue{Title: flag("--title"), Body: flag("--body")}
 		if f.next == f.retitle {
 			f.issues[f.next].Title = "edited on the forge"
 		}
@@ -56,11 +56,7 @@ func (f *fakeForge) run(args ...string) ([]byte, error) {
 		if i == nil {
 			return nil, errors.New("not found")
 		}
-		labels := []map[string]string{}
-		for _, l := range i.Labels {
-			labels = append(labels, map[string]string{"name": l})
-		}
-		return json.Marshal(map[string]any{"title": i.Title, "body": i.Body, "labels": labels})
+		return json.Marshal(map[string]any{"title": i.Title, "body": i.Body})
 	case args[0] == "api" && args[1] == "-X":
 		n := f.number(args[3])
 		id, _ := strconv.Atoi(strings.TrimPrefix(args[5], "issue_id="))
@@ -97,8 +93,6 @@ func (f *fakeForge) creatTitles() []string {
 	return titles
 }
 
-var config = Config{Tracker: "github", Labels: map[string]string{"ready_for_agent": "go", "blocked": "wait"}}
-
 func threeDrafts(t *testing.T) (string, string) {
 	t.Helper()
 	root := t.TempDir()
@@ -119,18 +113,15 @@ func checked(t *testing.T, root, rel string) []Ticket {
 	return ts
 }
 
-func TestPublishCreatesBlockersFirstWithMappedLabelsAndDatabaseIDs(t *testing.T) {
+func TestPublishCreatesBlockersFirstWithDatabaseIDs(t *testing.T) {
 	root, rel := threeDrafts(t)
 	f := newFake()
-	p, err := Publish(config, root, checked(t, root, rel), f.run)
+	p, err := Publish(root, checked(t, root, rel), f.run)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := strings.Join(f.creatTitles(), ","); got != "Alpha,Beta,Gamma" {
 		t.Errorf("create order = %s", got)
-	}
-	if got := f.issues[41].Labels[0] + f.issues[42].Labels[0] + f.issues[43].Labels[0]; got != "gogowait" {
-		t.Errorf("labels = %s", got)
 	}
 	posts := 0
 	for _, c := range f.calls {
@@ -164,7 +155,7 @@ func TestPublishResumesAfterAFailedCreateWithoutDuplicates(t *testing.T) {
 	}
 	f := newFake()
 	f.failCreate = 2
-	p, err := Publish(config, root, checked(t, root, rel), f.run)
+	p, err := Publish(root, checked(t, root, rel), f.run)
 	if err == nil {
 		t.Fatal("a failed create did not stop the run")
 	}
@@ -182,7 +173,7 @@ func TestPublishResumesAfterAFailedCreateWithoutDuplicates(t *testing.T) {
 	}
 
 	f.calls, f.failCreate = nil, 0
-	if _, err := Publish(config, root, checked(t, root, rel), f.run); err != nil {
+	if _, err := Publish(root, checked(t, root, rel), f.run); err != nil {
 		t.Fatal(err)
 	}
 	if got := strings.Join(f.creatTitles(), ","); got != "Beta,Gamma" {
@@ -197,7 +188,7 @@ func TestPublishKeepsADraftWhoseIssueDoesNotMatch(t *testing.T) {
 	root, rel := threeDrafts(t)
 	f := newFake()
 	f.retitle = 42
-	p, err := Publish(config, root, checked(t, root, rel), f.run)
+	p, err := Publish(root, checked(t, root, rel), f.run)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,11 +200,11 @@ func TestPublishKeepsADraftWhoseIssueDoesNotMatch(t *testing.T) {
 	}
 }
 
-func TestPlanListsEveryIssueEdgeAndLabel(t *testing.T) {
+func TestPlanListsEveryIssueAndEdge(t *testing.T) {
 	root, rel := threeDrafts(t)
 	var out strings.Builder
-	Plan(config, checked(t, root, rel), &out)
-	want := "create 01 \"Alpha\" label go\ncreate 02 \"Beta\" label go\ncreate 03 \"Gamma\" label wait\nedge   03 blocked by 01\nedge   03 blocked by 02\n"
+	Plan(checked(t, root, rel), &out)
+	want := "create 01 \"Alpha\"\ncreate 02 \"Beta\"\ncreate 03 \"Gamma\"\nedge   03 blocked by 01\nedge   03 blocked by 02\n"
 	if out.String() != want {
 		t.Errorf("plan:\n%s\nwant:\n%s", out.String(), want)
 	}
@@ -228,7 +219,7 @@ func TestPublishKeepsTheWholeBlockerChainOfAKeptDraft(t *testing.T) {
 	})
 	f := newFake()
 	f.retitle = 43
-	if _, err := Publish(config, root, checked(t, root, rel), f.run); err != nil {
+	if _, err := Publish(root, checked(t, root, rel), f.run); err != nil {
 		t.Fatal(err)
 	}
 	if _, problems, err := Check(root, rel); err != nil || len(problems) != 0 {

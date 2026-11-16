@@ -17,8 +17,7 @@ import (
 type Forge func(args ...string) ([]byte, error)
 
 type Config struct {
-	Tracker string            `json:"tracker"`
-	Labels  map[string]string `json:"labels"`
+	Tracker string `json:"tracker"`
 }
 
 var ConfigPath = filepath.Join("docs", "agents", "harness.json")
@@ -36,13 +35,6 @@ func ReadConfig(root string) (Config, error) {
 		return c, fmt.Errorf("%s: %w", ConfigPath, err)
 	}
 	return c, nil
-}
-
-func (c Config) label(key, fallback string) string {
-	if v := c.Labels[key]; v != "" {
-		return v
-	}
-	return fallback
 }
 
 func Order(ts []Ticket) []Ticket {
@@ -93,20 +85,13 @@ func Body(t Ticket, issues map[int]int) string {
 	return strings.Join(parts, "\n\n") + "\n"
 }
 
-func Label(c Config, t Ticket) string {
-	if len(t.BlockedBy) == 0 {
-		return c.label("ready_for_agent", "ready-for-agent")
-	}
-	return c.label("blocked", "blocked")
-}
-
-func Plan(c Config, ts []Ticket, out io.Writer) {
+func Plan(ts []Ticket, out io.Writer) {
 	for _, t := range Order(ts) {
 		if t.Issue != "" {
 			fmt.Fprintf(out, "exists %02d %s\n", t.Number, t.Issue)
 			continue
 		}
-		fmt.Fprintf(out, "create %02d %q label %s\n", t.Number, t.Title, Label(c, t))
+		fmt.Fprintf(out, "create %02d %q\n", t.Number, t.Title)
 	}
 	for _, t := range Order(ts) {
 		for _, b := range t.BlockedBy {
@@ -134,7 +119,7 @@ type Published struct {
 	Mismatch []string
 }
 
-func Publish(c Config, root string, ts []Ticket, forge Forge) (Published, error) {
+func Publish(root string, ts []Ticket, forge Forge) (Published, error) {
 	var p Published
 	issues := map[int]int{}
 	order := Order(ts)
@@ -148,7 +133,7 @@ func Publish(c Config, root string, ts []Ticket, forge Forge) (Published, error)
 		}
 		url := t.Issue
 		if url == "" {
-			out, err := forge("issue", "create", "--title", t.Title, "--body", Body(t, issues), "--label", Label(c, t))
+			out, err := forge("issue", "create", "--title", t.Title, "--body", Body(t, issues))
 			if err != nil {
 				return stop(err)
 			}
@@ -170,7 +155,7 @@ func Publish(c Config, root string, ts []Ticket, forge Forge) (Published, error)
 		if err := edges(forge, n, t.BlockedBy, issues); err != nil {
 			return stop(err)
 		}
-		why, err := readBack(forge, n, t.Title, Body(t, issues), Label(c, t), t.BlockedBy, issues)
+		why, err := readBack(forge, n, t.Title, Body(t, issues), t.BlockedBy, issues)
 		if err != nil {
 			return stop(err)
 		}
@@ -282,15 +267,14 @@ func edges(forge Forge, n int, blockers []int, issues map[int]int) error {
 	return nil
 }
 
-func readBack(forge Forge, n int, title, body, label string, blockers []int, issues map[int]int) (string, error) {
-	out, err := forge("issue", "view", strconv.Itoa(n), "--json", "title,body,labels")
+func readBack(forge Forge, n int, title, body string, blockers []int, issues map[int]int) (string, error) {
+	out, err := forge("issue", "view", strconv.Itoa(n), "--json", "title,body")
 	if err != nil {
 		return "", err
 	}
 	var got struct {
-		Title  string
-		Body   string
-		Labels []struct{ Name string }
+		Title string
+		Body  string
 	}
 	if err := json.Unmarshal(out, &got); err != nil {
 		return "", fmt.Errorf("reading #%d back: %w", n, err)
@@ -300,13 +284,6 @@ func readBack(forge Forge, n int, title, body, label string, blockers []int, iss
 		return fmt.Sprintf("title is %q", got.Title), nil
 	case strings.TrimSpace(strings.ReplaceAll(got.Body, "\r\n", "\n")) != strings.TrimSpace(body):
 		return "body differs from the draft", nil
-	}
-	hasLabel := false
-	for _, l := range got.Labels {
-		hasLabel = hasLabel || l.Name == label
-	}
-	if !hasLabel {
-		return "label " + label + " is missing", nil
 	}
 	if len(blockers) > 0 {
 		have, err := blockedBy(forge, n)

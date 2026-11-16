@@ -98,7 +98,7 @@ const summaryText = `Next steps (interactive; not run by this installer):
   5. Restart Claude Code, Codex, and OpenCode.
   6. In Codex, open /hooks and trust the harness compaction hook in
      ~/.codex/hooks.json; Codex skips a new or changed hook until then.
-  7. Invoke setup-harness in each project that should use the public lifecycle.
+  7. Invoke setup-harness in each project that should use a tracker or critical paths.
 
 Status line: harness statusline, which Claude Code runs on every draw.
 Codex and OpenCode get none from the harness.
