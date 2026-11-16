@@ -58,7 +58,7 @@ func TestTicketsFrontierCommand(t *testing.T) {
 		t.Errorf("unknown --done exited %d: %s", r.code, r.stderr)
 	}
 	writeDraft(t, dir, "demo", "04-d.md", "04 D", "07")
-	if r := harness(t, dir, "tickets", "frontier", "--dir", filepath.Join("docs", "agents", "tickets", "demo")); r.code != 1 || !strings.Contains(r.stderr, "04-d.md:17: blocked by 07") || r.stdout != "" {
+	if r := harness(t, dir, "tickets", "frontier", "demo"); r.code != 1 || !strings.Contains(r.stderr, "04-d.md:17: blocked by 07") || r.stdout != "" {
 		t.Errorf("a failing feature exited %d with %q, %q", r.code, r.stdout, r.stderr)
 	}
 }
@@ -69,18 +69,18 @@ func TestTicketsPublishCommand(t *testing.T) {
 	config := filepath.Join(dir, "docs", "agents", "harness.json")
 	log := filepath.Join(t.TempDir(), "gh.log")
 	forge := `"issue create") printf '%s\n' "$*" >> '` + log + `'; echo https://github.com/o/r/issues/9;;
-"issue view") echo '{"title":"Alpha","body":"edited","labels":[{"name":"go"}]}';;
+"issue view") echo '{"title":"Alpha","body":"edited"}';;
 `
-	if err := os.WriteFile(config, []byte(`{"tracker":"local-markdown"}`), 0o644); err != nil {
+	if err := os.WriteFile(config, []byte(`{"tracker":"jira"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if r := run(forge, "tickets", "publish", "demo"); r.code != 1 || !strings.Contains(r.stderr, "local-markdown") {
-		t.Errorf("a local tracker exited %d: %s", r.code, r.stderr)
+	if r := run(forge, "tickets", "publish", "demo"); r.code != 1 || !strings.Contains(r.stderr, "jira") {
+		t.Errorf("another tracker exited %d: %s", r.code, r.stderr)
 	}
-	if err := os.WriteFile(config, []byte(`{"tracker":"github","labels":{"ready_for_agent":"go"}}`), 0o644); err != nil {
+	if err := os.WriteFile(config, []byte(`{"tracker":"github"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if r := run(forge, "tickets", "publish", "demo", "--dry-run"); r.code != 0 || r.stdout != "create 01 \"Alpha\" label go\n" {
+	if r := run(forge, "tickets", "publish", "demo", "--dry-run"); r.code != 0 || r.stdout != "create 01 \"Alpha\"\n" {
 		t.Errorf("dry run exited %d: %q %s", r.code, r.stdout, r.stderr)
 	}
 	if _, err := os.Stat(log); err == nil {
@@ -90,49 +90,10 @@ func TestTicketsPublishCommand(t *testing.T) {
 	if r.code != 1 || r.stdout != "https://github.com/o/r/issues/9\n" || !strings.Contains(r.stderr, "body differs") {
 		t.Errorf("publish exited %d: %q %s", r.code, r.stdout, r.stderr)
 	}
-	if raw, _ := os.ReadFile(log); !strings.Contains(string(raw), "--title Alpha --body ## What to build") || !strings.Contains(string(raw), "--label go") {
+	if raw, _ := os.ReadFile(log); !strings.Contains(string(raw), "--title Alpha --body ## What to build") {
 		t.Errorf("gh create got %q", raw)
 	}
 	if raw, _ := os.ReadFile(filepath.Join(dir, "docs", "agents", "tickets", "demo", "01-a.md")); !strings.Contains(string(raw), "Issue: https://github.com/o/r/issues/9") {
 		t.Errorf("the kept draft does not record its issue:\n%s", raw)
-	}
-}
-
-func TestTicketsCloseCommand(t *testing.T) {
-	dir := repo(t)
-	issues := filepath.Join("docs", "agents", "tickets", "demo")
-	writeDraft(t, dir, "demo", "01-a.md", "01 A", "none")
-	writeDraft(t, dir, "demo", "02-b.md", "02 B", "01")
-	config := filepath.Join(dir, "docs", "agents", "harness.json")
-	write := func(tracker string) {
-		if err := os.WriteFile(config, []byte(`{"tracker":"`+tracker+`"}`), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	write("github")
-	if r := harness(t, dir, "tickets", "close", "--dir", issues, "1"); r.code != 1 || !strings.Contains(r.stderr, "not local-markdown") {
-		t.Errorf("a github tracker exited %d with %q", r.code, r.stderr)
-	}
-	write("local-markdown")
-	if r := harness(t, dir, "tickets", "close", "--dir", issues, "9"); r.code != 2 {
-		t.Errorf("an unknown ticket exited %d with %q", r.code, r.stderr)
-	}
-	broken := filepath.Join(dir, issues, "03-c.md")
-	if err := os.WriteFile(broken, []byte("# 03 C\n\n## What to build\n\nx\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if r := harness(t, dir, "tickets", "close", "--dir", issues, "1"); r.code != 1 || !strings.Contains(r.stderr, "fail harness tickets check") {
-		t.Errorf("drafts failing the check exited %d with %q", r.code, r.stderr)
-	}
-	if err := os.Remove(broken); err != nil {
-		t.Fatal(err)
-	}
-	before, _ := os.ReadFile(filepath.Join(dir, issues, "01-a.md"))
-	if !strings.Contains(string(before), "# 01 A") || strings.Contains(string(before), "Status:") {
-		t.Fatalf("a refused close wrote %q", before)
-	}
-	r := ok(t, harness(t, dir, "tickets", "close", "--dir", issues, "1"), "close")
-	if r.stdout != filepath.Join(issues, "01-a.md")+"\n" {
-		t.Errorf("close printed %q", r.stdout)
 	}
 }

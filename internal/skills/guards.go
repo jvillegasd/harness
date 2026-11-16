@@ -13,7 +13,7 @@ import (
 
 var mustGuard = map[string]bool{
 	"land": true, "setup-harness": true, "build": true, "work": true,
-	"spec": true, "tickets": true, "triage": true, "e2e-verification": true, "local-tracker": true,
+	"spec": true, "tickets": true, "triage": true, "e2e-verification": true,
 	"cleanup": true,
 }
 

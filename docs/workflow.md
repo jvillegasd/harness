@@ -237,46 +237,9 @@ Use it when the work is settled enough to hand off. Resolve missing acceptance c
 
 ## Optional tracking
 
-Ordinary coding needs no tracker. To set one up for a repository, run `setup-harness`. It gathers the evidence with `harness setup probe`, settles the mode with you, and writes it with `harness setup tracker`. It offers two modes:
+Ordinary coding needs no tracker. To set one up for a repository, run `setup-harness`. It writes `docs/agents/harness.json` with the tracker and the critical paths `change-map` reads. The harness installs no labels and no lifecycle workflow: ticket state is the tracker's own open, closed, and blocked-by state, and `/build` computes what is ready from merged work.
 
-- **GitHub mode** installs labels and a workflow that moves tickets through their lifecycle.
-- **Local mode** keeps ticket status in Markdown files. After a merge, `/land` runs `harness tickets close`, which marks the merged tickets done, moves each ticket whose blockers are now all done to ready, and marks the spec done after its last ticket. A ticket someone claimed keeps its state.
-
-Tracker writes and publishing tickets always need your explicit request. When you ask to publish, `harness tickets publish` creates the issues, blockers first, and is safe to rerun after a failure. The [command-line reference](cli.md#tracker-setup-commands) covers both commands.
-
-### How GitHub tickets move
-
-A ticket becomes ready only when every ticket blocking it was closed by a merged PR. Closing an issue by hand does not count. A parent issue closes when all its required children have merge evidence.
-
-The diagram follows one ticket through the default labels (a repository can rename them). **Main agent** means your primary session. **Reconciler** means the installed GitHub workflow, not a subagent. A ready label does not by itself allow work to start.
-
-```mermaid
-stateDiagram-v2
-    state "blocked" as Blocked
-    state "ready-for-agent" as Ready
-    state "in-progress" as Active
-    state "ready-for-human" as Handoff
-    state "Closed with merge evidence" as Closed
-
-    Blocked --> Ready: Every blocker merged
-    Ready --> Active: Agent claims it, with your OK
-    Active --> Handoff: Agent opens the PR
-    Handoff --> Closed: You merge and run /land
-    Ready --> Blocked: A blocker is not merged
-    Active --> Blocked: A blocker is not merged
-    Handoff --> Blocked: A blocker is not merged
-    Closed --> [*]
-```
-
-What each label means:
-
-- **`ready-for-agent`:** every blocker has merge evidence, or there are no blockers. The main agent rechecks before it claims the ticket, and never overwrites another run's claim.
-- **`in-progress`:** the main agent has claimed the ticket, with your authorization.
-- **`ready-for-human`:** the PR is ready for your review, with required checks and any applicable review passing. PR feedback stays on the same branch. The label does not mean a person has to build the ticket.
-- **`blocked`:** a blocker has no merge evidence, including when its repository cannot be read. The reconciler can replace an active label with this one. Otherwise it keeps active claims and handoffs.
-- **Closed with merge evidence:** a merged PR closed the ticket. Closing it by hand does not release the tickets that depend on it. `/land` checks the tracker and makes scoped repairs if the workflow did not run.
-
-A parent issue is a container, not a ticket in this diagram. It closes only after every required child has merge evidence. Reopening a ticket and explicitly authorized releases are outside this view. The diagram describes the written workflow and the reconciler's rules, not proof of how a live agent behaves.
+Tracker writes and publishing tickets always need your explicit request. When you ask to publish, `harness tickets publish` creates the issues, blockers first, with native dependency links, and is safe to rerun after a failure. After a merge, `/land` confirms the ticket closed and closes a parent once every child merged. The [command-line reference](cli.md#ticket-commands) covers the command.
 
 ## When work stops
 
