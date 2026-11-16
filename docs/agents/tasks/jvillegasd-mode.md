@@ -13,7 +13,7 @@ Follow-up answers: entry points are "mode and the skills that are not triggered 
 - `work` is renamed `jvillegasd-mode`.
 - Only `workflow/` skills are discoverable: the mode and the skills no other skill runs. Every other group installs to `~/.harness/skills/<name>`, where the floor tells the agent to read a named skill from.
 - Delete `principle-outcome-oriented-execution`, `principle-exhaust-the-design-space`, `principle-redesign-from-first-principles`, and `handoff`.
-- Floor duplicates of `principle-never-block-on-the-human` and `principle-guard-the-context-window`: pending the human's confirmation.
+- Remove the floor lines that duplicate `principle-never-block-on-the-human` and `principle-guard-the-context-window`; delete `ponytail` and keep `principle-subtract-before-you-add`.
 - Evals unchanged.
 
 ## Phases
@@ -34,8 +34,10 @@ Follow-up answers: entry points are "mode and the skills that are not triggered 
 | Keep `benchmark-checklist` and `principle-minimize-reader-load` | Deleting them as duplicates | agent | Re-reading showed each owns a procedure the other lacks | Explanation given in the session |
 | `build` keeps the name and takes the single-slice path | Naming it `implement` | human | Answer to the build-merge question | Session |
 | The verification, formal-verification, `statechart`, and `e2e-verification` skills stay entry points | Hiding them in `assurance/` | agent | Other skills only suggest them to the human, so nothing else runs them | Review finding; `e2e-verification` line 14, `change-map` line 35 |
+| Floor drops its ask and inline-delegation lines; the mode's principles own them | Keeping them in the floor | human | "yes thats ok because I intended to use jvillegas mode as default unless grilling or the other skills called" | Session |
+| Delete `ponytail`, keep `principle-subtract-before-you-add` | Deleting the principle | human | "delete ponitail, keep principle" | Session |
 | `build` picks its path by the epic's total slices | By the slices ready at first | agent | A chained epic has one ready slice and would stop after it | Review finding; `build` line 10 |
 
 ## State and next action
 
-Playbook: large, step 5. Phases done and reviewed at medium; two confirmed findings fixed. Waiting on the human: the floor-duplicate edit and `principle-subtract-before-you-add`. Delivery not requested.
+Playbook: large, step 5. All phases done; delivery requested, so `open-pr` is next.

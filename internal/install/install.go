@@ -375,7 +375,7 @@ var description = regexp.MustCompile(`(?m)^description:`)
 
 func (in *installer) checkInstall() {
 	if in.has("skills") {
-		ponytail := false
+		mode := false
 		for _, skill := range in.skills() {
 			if !isFile(filepath.Join(skill.Dir, "SKILL.md")) {
 				die("Missing SKILL.md: %s", skill.Dir)
@@ -383,10 +383,10 @@ func (in *installer) checkInstall() {
 			if exists(filepath.Join(in.config, "opencode", "skills", skill.Name)) {
 				die("Duplicate OpenCode skill path: %s", skill.Dir)
 			}
-			ponytail = ponytail || skill.Name == "ponytail"
+			mode = mode || skill.Name == "jvillegasd-mode"
 		}
-		if !ponytail {
-			die("Missing the ponytail skill body.")
+		if !mode {
+			die("Missing the jvillegasd-mode skill body.")
 		}
 	}
 	in.checkFiles()

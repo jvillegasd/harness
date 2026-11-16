@@ -450,8 +450,8 @@ func TestSkillsVerifyReportsUnverifiableNotDrift(t *testing.T) {
 
 	skills["grilling"].(map[string]any)["computedHash"] = strings.Repeat("a", 40)
 
-	skills["ponytail"].(map[string]any)["computedHash"] = strings.Repeat("b", 64)
-	if err := os.RemoveAll(filepath.Join(lr.root, "skills/support/ponytail")); err != nil {
+	skills["unslop"].(map[string]any)["computedHash"] = strings.Repeat("b", 64)
+	if err := os.RemoveAll(filepath.Join(lr.root, "skills/support/unslop")); err != nil {
 		t.Fatal(err)
 	}
 	out, err := json.MarshalIndent(lf, "", "  ")

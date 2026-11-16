@@ -43,7 +43,7 @@ A session lists only the entry points: the skills you start yourself and no othe
 | Group | Helpers |
 | --- | --- |
 | Planning | `epic` (grill, write the big ticket, cut its slices), `build` (one slice inline with `tdd`, or many slices fanned out), `triage`, `research`, `proto` |
-| Support | `review`, `address-review`, `open-pr`, `tdd`, `diagnosing-bugs`, `change-map`, `continuity`, `delegation`, `verification`, `grilling`, `how`, `why`, `ponytail`, `unslop`, `caveman-commit` |
+| Support | `review`, `address-review`, `open-pr`, `tdd`, `diagnosing-bugs`, `change-map`, `continuity`, `delegation`, `verification`, `grilling`, `how`, `why`, `unslop`, `caveman-commit` |
 | Design | `codebase-design`, `domain-modeling`, `impeccable`, `writing-for-agents` |
 | Assurance | `journey-verification`, `security-audit` |
 | Principles | the `principle-*` skills and `benchmark-checklist`, which the mode's trigger list names |
