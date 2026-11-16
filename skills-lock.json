@@ -49,23 +49,11 @@
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
       "computedHash": "b78689833404148c769077355e12dbe5ad996a158a1e21e58ddf169e439d9d8c"
     },
-    "grill-with-docs": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/engineering/grill-with-docs/SKILL.md",
-      "computedHash": "02e258f41d210f9b2e7cce9faf62b3c59e8fcebe5d2736369c3cd07d471324f8"
-    },
     "grilling": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/grilling/SKILL.md",
       "computedHash": "485451958784497cd4c4dbea13cb5bbb579da58fac0d0e45f3bcb310fab68ac7"
-    },
-    "handoff": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/productivity/handoff/SKILL.md",
-      "computedHash": "f60a2c3688379b7a306b3a7b8dd4120eab39da44c74fa2cb62d6424935f04aa7"
     },
     "impeccable": {
       "source": "pbakaus/impeccable",
@@ -126,12 +114,6 @@
       "sourceType": "github",
       "skillPath": "skills/principle-encode-lessons-in-structure/SKILL.md",
       "computedHash": "164c25e039539bc5cc04f109f3596d723e40c68f9745cd35129b34d4fe3e706e"
-    },
-    "principle-exhaust-the-design-space": {
-      "source": "backnotprop/pstack",
-      "sourceType": "github",
-      "skillPath": "skills/principle-exhaust-the-design-space/SKILL.md",
-      "computedHash": "223970dbf26021ca33726e793017dbbeac919edfbd6873d5e9d5eff2babb9bec"
     },
     "principle-experience-first": {
       "source": "backnotprop/pstack",
@@ -199,23 +181,11 @@
       "skillPath": "skills/principle-never-block-on-the-human/SKILL.md",
       "computedHash": "ab707816f6a0d48148bff1d7e27c56d76b23ef77fe642c094fbb7812e00474d7"
     },
-    "principle-outcome-oriented-execution": {
-      "source": "backnotprop/pstack",
-      "sourceType": "github",
-      "skillPath": "skills/principle-outcome-oriented-execution/SKILL.md",
-      "computedHash": "684e3f3887348aed42daa9e51cee47009c84187569c55f3365d16cfef070ff24"
-    },
     "principle-prove-it-works": {
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/principle-prove-it-works/SKILL.md",
       "computedHash": "0429fc6fad74a95d594fc21ac8d859a571705ba51303c05880d9bd0eafb44adb"
-    },
-    "principle-redesign-from-first-principles": {
-      "source": "backnotprop/pstack",
-      "sourceType": "github",
-      "skillPath": "skills/principle-redesign-from-first-principles/SKILL.md",
-      "computedHash": "c6b2348402c9c1a4d3b43ab695ad8dbb6a92b19e02e08f6395146ab9b1b61ce9"
     },
     "principle-separate-before-serializing-shared-state": {
       "source": "backnotprop/pstack",

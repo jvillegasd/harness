@@ -157,7 +157,7 @@ harness review prune --dry-run           # review scratch of branches that exist
 
 ## Worktree commands
 
-`harness worktree` lists a repository's linked worktrees and removes one without losing work. `/land`, review, and `/build` use it to retire the worktrees they create, and `/cleanup` uses it to sweep the rest.
+`harness worktree` lists a repository's linked worktrees and removes one without losing work. `/land`, review, and `build` use it to retire the worktrees they create, and `/cleanup` uses it to sweep the rest.
 
 ```sh
 harness worktree audit                             # every linked worktree and whether it is safe to retire
@@ -278,7 +278,7 @@ Locked skills come from other projects and change only through `add`, `update`, 
 
 ## Ticket commands
 
-`/tickets` writes drafts to `docs/agents/tickets/<feature-slug>/`, one `<NN>-<slug>.md` file per ticket. These commands read them:
+`epic` writes slice drafts to `docs/agents/tickets/<feature-slug>/`, one `<NN>-<slug>.md` file per ticket. These commands read them:
 
 ```sh
 harness tickets check                      # validate every feature's drafts
@@ -290,12 +290,12 @@ harness tickets publish my-feature
 ```
 
 - **`check`** prints each problem as `path:line: message`: a missing or empty section, a reused number, a blocker that is not in the feature, or a cycle. A draft needs a title and five sections: What to build, Acceptance criteria, Seam, Blocked by, and Out of scope.
-- **`frontier`** is how `/build` picks the next tickets. A ticket is done when `--done` names it or its draft says `Status: done`, and ready once every ticket blocking it is done.
+- **`frontier`** is how `build` picks the next tickets. A ticket is done when `--done` names it or its draft says `Status: done`, and ready once every ticket blocking it is done.
 - **`publish`** creates GitHub issues, blockers first, with native dependency links. It records each issue in its draft as it goes, so a rerun after a failure creates no duplicates, and removes a draft once its issue reads back correctly. It refuses a repository whose tracker is not GitHub. It writes to GitHub, so agents run it only when you ask to publish. `--dry-run` shows every issue and link and writes nothing.
 
 ## Eval commands
 
-The eval playbook in `/work` uses these to test whether a skill change changes agent behavior, with blinded sessions:
+The eval playbook in `/jvillegasd-mode` uses these to test whether a skill change changes agent behavior, with blinded sessions:
 
 ```sh
 harness eval plant --variant <skill dir> --baseline <skill dir> --client claude --runs 3
@@ -312,7 +312,7 @@ harness eval clean <run id>
 
 ## Attempt log
 
-The hillclimb playbook in `/work` records every attempt with `harness attempts`:
+The hillclimb playbook in `/jvillegasd-mode` records every attempt with `harness attempts`:
 
 ```sh
 harness attempts add --log ~/attempts.tsv --hypothesis "cache the index" --change "add LRU" \

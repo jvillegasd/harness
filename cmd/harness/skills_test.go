@@ -416,7 +416,7 @@ func TestSkillsVerifyMatchesThePinnedLock(t *testing.T) {
 
 func TestSkillsVerifyReportsDriftForTheEditedBodyOnly(t *testing.T) {
 	lr := locksVerifySandbox(t)
-	body := filepath.Join(lr.root, "skills/workflow/tdd/SKILL.md")
+	body := filepath.Join(lr.root, "skills/support/tdd/SKILL.md")
 	data, err := os.ReadFile(body)
 	if err != nil {
 		t.Fatal(err)
@@ -448,7 +448,7 @@ func TestSkillsVerifyReportsUnverifiableNotDrift(t *testing.T) {
 	}
 	skills := lf["skills"].(map[string]any)
 
-	skills["handoff"].(map[string]any)["computedHash"] = strings.Repeat("a", 40)
+	skills["grilling"].(map[string]any)["computedHash"] = strings.Repeat("a", 40)
 
 	skills["ponytail"].(map[string]any)["computedHash"] = strings.Repeat("b", 64)
 	if err := os.RemoveAll(filepath.Join(lr.root, "skills/support/ponytail")); err != nil {

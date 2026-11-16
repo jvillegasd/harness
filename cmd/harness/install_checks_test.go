@@ -54,26 +54,42 @@ func readDir(dir string) []string {
 	return out
 }
 
-func TestGuardedSkillsAreInstalled(t *testing.T) {
+func TestOnlyEntrySkillsAreDiscoverable(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "skip-packages install")
 	bodies, err := filepath.Glob(filepath.Join(base, "checkout", "skills", "*", "*", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	guarded := 0
+	home := filepath.Join(base, "home")
+	entries := 0
 	for _, body := range bodies {
-		if !strings.Contains(readFile(t, body), "disable-model-invocation: true") {
+		name, group := filepath.Base(filepath.Dir(body)), filepath.Base(filepath.Dir(filepath.Dir(body)))
+		discovered := []string{filepath.Join(home, ".agents", "skills", name, "SKILL.md"), filepath.Join(home, ".claude", "skills", name, "SKILL.md")}
+		hidden := filepath.Join(home, ".harness", "skills", name, "SKILL.md")
+		if group == "workflow" {
+			entries++
+			for _, path := range discovered {
+				if _, err := os.Stat(path); err != nil {
+					t.Errorf("entry skill %s is not discoverable: %v", name, err)
+				}
+			}
+			if _, err := os.Stat(hidden); err == nil {
+				t.Errorf("entry skill %s also sits in the hidden directory", name)
+			}
 			continue
 		}
-		guarded++
-		name := filepath.Base(filepath.Dir(body))
-		if _, err := os.Stat(filepath.Join(base, "home", ".agents", "skills", name, "SKILL.md")); err != nil {
-			t.Errorf("guarded skill %s is not installed in the shared skill namespace: %v", name, err)
+		if _, err := os.Stat(hidden); err != nil {
+			t.Errorf("%s skill %s is not in the hidden directory: %v", group, name, err)
+		}
+		for _, path := range discovered {
+			if _, err := os.Stat(path); err == nil {
+				t.Errorf("%s skill %s is discoverable at %s", group, name, path)
+			}
 		}
 	}
-	if guarded == 0 {
-		t.Fatal("found no guarded skill")
+	if entries == 0 || entries == len(bodies) {
+		t.Fatalf("found %d entry skills of %d; the test needs both kinds", entries, len(bodies))
 	}
 }
 
@@ -193,11 +209,11 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 func TestUninstallKeepsAnEditedCopy(t *testing.T) {
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
-	edited := filepath.Join(base, "home", ".claude", "skills", "open-pr", "SKILL.md")
-	writeMode(t, edited, "my open-pr\n", 0o644)
+	edited := filepath.Join(base, "home", ".claude", "skills", "land", "SKILL.md")
+	writeMode(t, edited, "my land\n", 0o644)
 	r := runUninstaller(t, base, "--yes")
 	ok(t, r, "uninstall")
-	if got := readFileOr(edited); got != "my open-pr\n" {
+	if got := readFileOr(edited); got != "my land\n" {
 		t.Errorf("the uninstall removed or changed the edited copy: %q", got)
 	}
 	if !strings.Contains(r.stderr, "changed since the harness wrote it") {
@@ -501,7 +517,7 @@ func TestNamedComponentInstallsOnlyItself(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	r := ok(t, runInstaller(t, base, "skills"), "skills install")
-	if readFileOr(filepath.Join(home, ".claude", "skills", "open-pr", "SKILL.md")) == "" {
+	if readFileOr(filepath.Join(home, ".claude", "skills", "land", "SKILL.md")) == "" {
 		t.Error("the skills install did not copy the skills")
 	}
 	for _, absent := range []string{".claude/CLAUDE.md", ".claude/agents/reviewer.md", ".claude/settings.json", ".harness/aliases.sh", ".zshrc"} {
@@ -978,11 +994,11 @@ func TestClaudeAllowKeepsTheUsersRules(t *testing.T) {
 		return got.Permissions.Allow
 	}
 	ok(t, runInstaller(t, base), "install")
-	if got, want := allow(), []string{"Bash(make test)", "Read(~/.claude/skills/**)"}; !slices.Equal(got, want) {
+	if got, want := allow(), []string{"Bash(make test)", "Read(~/.claude/skills/**)", "Read(~/.harness/skills/**)"}; !slices.Equal(got, want) {
 		t.Errorf("allow after install = %q, want %q", got, want)
 	}
 	ok(t, runInstaller(t, base), "reinstall")
-	if got := allow(); len(got) != 2 {
+	if got := allow(); len(got) != 3 {
 		t.Errorf("a reinstall duplicated the tracked rule: %q", got)
 	}
 	ok(t, runUninstaller(t, base, "--yes"), "uninstall")

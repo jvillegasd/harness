@@ -6,7 +6,7 @@
     "internal/install/**",
     "internal/models/**",
     "skills/workflow/land/**",
-    "skills/workflow/review/**",
+    "skills/support/review/**",
     "docs/agents/harness.json"
   ]
 }

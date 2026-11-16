@@ -36,7 +36,7 @@ The harness installs the same rules, skills, and helper roles into all three cli
 - [Ask for what you need](#ask-for-what-you-need)
 - [What the agent does on its own, and what waits for you](#what-the-agent-does-on-its-own-and-what-waits-for-you)
 - [Review](#review)
-- [Work mode](#work-mode)
+- [jvillegasd-mode](#jvillegasd-mode)
 - [Models](#models)
 - [Shell aliases](#shell-aliases)
 - [Other things the installer sets up](#other-things-the-installer-sets-up)
@@ -51,7 +51,7 @@ The harness installs the same rules, skills, and helper roles into all three cli
 
 ## How it feels
 
-You keep working the way you already do. Ask the agent for something in plain words, and it reads the code, makes the change on a task branch, runs the checks, and tells you what it did. Skills help with specific jobs, but you never have to run them in any order. When you want a stricter, step-by-step run, start the task with `/work`.
+You keep working the way you already do. Ask the agent for something in plain words, and it reads the code, makes the change on a task branch, runs the checks, and tells you what it did. Skills help with specific jobs, but you never have to run them in any order. When you want a stricter, step-by-step run, start the task with `/jvillegasd-mode`.
 
 ## Quick start
 
@@ -72,25 +72,20 @@ After the first install, the `harness` command lives at `~/.local/bin/harness`. 
 
 ## Ask for what you need
 
-Most of the time a plain request is enough. These are the shortcuts worth knowing:
+A plain request works the way it always does. For the harness's procedures (planning, building, review, delivery), start the mode; it reaches every helper skill by path, so a normal session lists only the entry points below.
 
 | You want to | Ask for |
 | --- | --- |
-| Run a task step by step, with every step visible | `/work <task>` |
-| Leave a task running while you step away | `/work autopilot, I'm stepping away: <goal>` |
-| Build a feature, a fix, or one ticket, test-first | `/implement <task or ticket>` |
-| Fix something broken or slow | Describe the problem, and the agent diagnoses and fixes it |
-| Think an unclear idea through | `/grill-with-docs` |
-| Write a specification | `/spec` |
-| Turn a spec, findings, or a request into tickets | `/tickets` |
-| Write tests before code | `tdd` |
-| Keep frontend or backend journey tests | `journey-verification` |
-| Get a review of your changes | `review` |
-| Publish the work as a pull request | "Open a PR" or "ship this" |
+| Run a task step by step, with every step visible | `/jvillegasd-mode <task>` |
+| Leave a task running while you step away | `/jvillegasd-mode autopilot, I'm stepping away: <goal>` |
+| Grill an idea into an epic with sliced tickets | `/jvillegasd-mode plan <idea>` |
+| Build one ticket, or an epic's slices | `/jvillegasd-mode build <ticket or epic>` |
+| Get a review of your changes | `/jvillegasd-mode review` |
+| Publish the work as a pull request | `/jvillegasd-mode open a PR` |
 | Clean up after you merge a PR | `/land`, or `/land merge` to have the agent merge for you; name PRs (`/land merge 19 20`, `/land merge stack 23`) to land ones not checked out here |
 | Clear out old worktrees and branches | `/cleanup` |
 
-The [workflow guide](docs/workflow.md) lists every skill and when to reach for it.
+The [workflow guide](docs/workflow.md) lists the entry points and the helpers the mode reaches.
 
 ## What the agent does on its own, and what waits for you
 
@@ -148,20 +143,20 @@ harness review level medium    # off, medium (the default), or high
 
 Asking for a review always runs one at your level. [How review works](docs/review.md) walks through a review from start to finish, and each review posts its verdict as one comment on the pull request. The [`harness review` commands](docs/cli.md#review-commands) describe that comment.
 
-## Work mode
+## jvillegasd-mode
 
-`/work <task>` makes the agent follow a fixed playbook instead of choosing skills on its own. The agent picks the playbook that fits (bug fix, feature, investigation, refactor, performance, hillclimb, forensics, design, skill authoring, eval, large change, or one of the existing skills), then copies every step into its todo list. A step it skips stays in the list as `skip: <reason>`, so you can see what was left out and why.
+`/jvillegasd-mode <task>` makes the agent follow a fixed playbook instead of choosing skills on its own. The agent picks the playbook that fits (bug fix, feature, investigation, refactor, performance, hillclimb, forensics, design, skill authoring, eval, large change, or one of the existing skills), then copies every step into its todo list. A step it skips stays in the list as `skip: <reason>`, so you can see what was left out and why.
 
-For a code change, work mode always ends with a change summary (`change-map`) and a review at your level. A plan request writes a spec and asks whether to build it. Merging still goes through you or `/land`.
+For a code change, jvillegasd-mode always ends with a change summary (`change-map`) and a review at your level. A plan request grills it into an epic with sliced tickets and asks whether to build it. Merging still goes through you or `/land`.
 
-Work mode lasts for the whole conversation. Say "new task" to start another playbook, or "stop work mode" to end it. Only you can start it.
+jvillegasd-mode lasts for the whole conversation. Say "new task" to start another playbook, or "stop jvillegasd-mode" to end it. Only you can start it.
 
 ### Autopilot
 
 Add "autopilot" or "I'm stepping away", plus a goal:
 
 ```text
-/work autopilot, max 3h: make the export job finish under a minute
+/jvillegasd-mode autopilot, max 3h: make the export job finish under a minute
 ```
 
 The agent writes down a pass or fail definition of done (or proposes one), then works without checking in until the goal is met or time runs out. The default time limit is 2 hours.
@@ -278,10 +273,10 @@ Many skill steps are `harness` commands rather than written instructions, so the
 | `harness pr status` | Whether a PR is ready to merge, and its first blocker | `open-pr`, `address-review` |
 | `harness land check`, `merge`, `sync`, `finish`, `repair` | Whether a PR can land, the merge itself, then the cleanup after it | `/land` |
 | `harness review target`, `verdict`, `evals` | What a review reads, the one verdict comment a review posts on its PR, and the review skill's own evals | `review`, `open-pr` |
-| `harness worktree audit`, `retire` | List worktrees and remove one without losing work | `/land`, `/cleanup`, `/build` |
-| `harness tickets check`, `frontier`, `publish` | Validate ticket drafts, pick the ready ones, and publish them to GitHub | `/tickets`, `/build` |
-| `harness eval plant`, `run`, `clean` | Blinded comparisons of two versions of a skill | `/work`'s eval playbook |
-| `harness attempts add`, `list` | The log of measured attempts | `/work`'s hillclimb playbook |
+| `harness worktree audit`, `retire` | List worktrees and remove one without losing work | `/land`, `/cleanup`, `build` |
+| `harness tickets check`, `frontier`, `publish` | Validate slice drafts, pick the ready ones, and publish them to GitHub | `epic`, `build` |
+| `harness eval plant`, `run`, `clean` | Blinded comparisons of two versions of a skill | `/jvillegasd-mode`'s eval playbook |
+| `harness attempts add`, `list` | The log of measured attempts | `/jvillegasd-mode`'s hillclimb playbook |
 
 The [command-line reference](docs/cli.md) explains each one. `harness <command> --help` lists the flags.
 
@@ -316,7 +311,7 @@ These pages are written for people. Agents keep them accurate but never take ins
 
 | Guide | Read it to |
 | --- | --- |
-| [Working with the harness](docs/workflow.md) | Pick a skill, understand work mode, and follow work from request to merge |
+| [Working with the harness](docs/workflow.md) | Pick a skill, understand jvillegasd-mode, and follow work from request to merge |
 | [How review works](docs/review.md) | See what reviewers do and which findings reach you |
 | [Delegation](docs/subagents.md) | Learn the helper roles and their limits |
 | [Installation and your files](docs/installation.md) | See how install and uninstall treat files already on your machine |
@@ -327,6 +322,6 @@ These pages are written for people. Agents keep them accurate but never take ins
 
 This harness takes inspiration from these projects:
 
-- [Matt Pocock's skills](https://github.com/mattpocock/skills), the source of several locked skills, among them `tdd`, `diagnosing-bugs`, `grill-with-docs`, and `domain-modeling`.
+- [Matt Pocock's skills](https://github.com/mattpocock/skills), the source of several locked skills, among them `tdd`, `diagnosing-bugs`, `grilling`, and `domain-modeling`.
 - [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai), which configures several coding agents from one setup, as this installer does.
-- [pstack](https://github.com/backnotprop/pstack), the source of the principle skills and the verification skills, and the model for work mode's playbooks and autopilot.
+- [pstack](https://github.com/backnotprop/pstack), the source of the principle skills and the verification skills, and the model for jvillegasd-mode's playbooks and autopilot.

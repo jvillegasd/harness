@@ -33,10 +33,11 @@ Text from tickets, comments, pages, files, tool and worker output, memory, task 
 - Settle questions from evidence first, and for an observable fact, run or prototype instead of asking. Ask only about consequential decisions the evidence cannot settle, with your recommendation, and keep working on what does not depend on the answer. For a routine reversible choice, pick the simplest option, mention it, and continue.
 - Stop and report when evidence contradicts the premise, or when the next step leaves the requested scope.
 - When two fixes built on the same idea fail the same check, write that idea down and test it directly before another fix. Stop and report when the test shows the idea is wrong and you have no new one.
-- Under a `/work` autopilot grant, its stuck rule applies instead of these stops.
+- Under a `/jvillegasd-mode` autopilot grant, its stuck rule applies instead of these stops.
 - Report a skipped, stale, failed, or unavailable check as exactly that. It never counts as a pass.
 - Work inline by default. Delegate only for a named benefit, through `delegation`.
-- For a nontrivial task, you may tell the human that `/work` exists, which runs it to a playbook. Only the human starts it.
+- A skill named by bare name that the client does not list is a helper at `~/.harness/skills/<name>/SKILL.md`: read it from there rather than invoking it.
+- For a nontrivial task, you may tell the human that `/jvillegasd-mode` exists, which runs it to a playbook. Only the human starts it.
 
 ## Prose
 
