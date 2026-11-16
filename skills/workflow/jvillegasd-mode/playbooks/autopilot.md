@@ -7,7 +7,7 @@
 1. Take the goal from the human's request. When the request has none, ask for it and do not start: an unattended run with no goal has no finish line.
 2. State the definition of done as a pass/fail check every iteration measures against (`principle-prove-it-works`). When the human gave none, propose one and start on it without waiting.
 3. Set the ceiling: the human's ("autopilot, max 3h"), or 2 hours of wall-clock time.
-4. Open the task document (`continuity`) and write the grant line into its `## State and next action`: the human's step-away words verbatim, and the time the ceiling ends. Commit it. After a compaction the client's hook restores that section, so the grant stays in view for the rest of this conversation.
+4. Open the task document (`checkpoint`) and write the grant line into its `## State and next action`: the human's step-away words verbatim, and the time the ceiling ends. Commit it. After a compaction the client's hook restores that section, so the grant stays in view for the rest of this conversation.
 5. Match the work to its row and run it, with the rules below in place of its checkpoints. The grant stands in for the delivery request of any skill the row runs, `build` included.
 
 ## What the grant covers
@@ -28,7 +28,7 @@ Everything up to verified, open pull requests: commits, pushes of the run's own 
 ## Stopping
 
 - **Done:** each pull request is verified and green at its current head, with `open-pr`'s readiness report. After the handoff, nothing is pushed without the human's go.
-- **Ceiling reached:** pause with `continuity`'s Pause (a `wip:` commit and the next action), then report.
+- **Ceiling reached:** pause with `checkpoint`'s Pause (a `wip:` commit and the next action), then report.
 - **Epic written:** when the goal is a plan, the committed epic and its slices are done, and the run ends without building it.
 - **Goal ruled out:** when the evidence rules out the goal itself, as jvillegasd-mode's Start step 1 describes, stop and report that evidence, since there is nothing left to drive toward.
 

@@ -9,7 +9,7 @@
    - Build the verification harness before the work, with its baseline taken from the state before the change, so each check reads as old value against new.
    - For a one-way design decision, run [design](design.md). Mechanical work whose shape is already concrete skips it.
    - Fan out only across seams, each worker in its own worktree, through `delegation` (`principle-separate-before-serializing-shared-state`).
-   - Write the phase list into the task document (`continuity`), then add each phase to the todo list.
+   - Write the phase list into the task document (`checkpoint`), then add each phase to the todo list.
 3. **Run the loop.** Each unit is an experiment: state the hypothesis, make the smallest change, measure it against the definition of done on the real artifact, and keep it or revert it. Pair delegated work with a judge: when a worker games the check, harden its contract; when the check itself is wrong, fix the check in its own change. Every result is verified, not verified, or inconclusive, and inconclusive is not a pass.
 4. **Keep the trail.** Add a row to the `## Decisions` table as each unit lands, not at the end.
 5. **Verify and hand back.** Check the whole against step 1's definition on the real product, not only the harness. Turn a correction that kept recurring into a check (`principle-encode-lessons-in-structure`). Then Finish, as jvillegasd-mode's Finish lists.

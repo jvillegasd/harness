@@ -1,5 +1,5 @@
 ---
-name: continuity
+name: checkpoint
 description: "Trigger: long work, a pause, a resume, or compaction. Keep one committed task document, pause safely, and resume from it without redoing verified work."
 license: MIT
 metadata:

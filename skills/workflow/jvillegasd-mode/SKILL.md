@@ -17,7 +17,7 @@ Task: $ARGUMENTS
 2. When the request grants a step-away ("autopilot", "I'm stepping away", "going to bed, keep going"), read [autopilot](playbooks/autopilot.md) now; it frames the run before anything else.
 3. Match the task to one row of the matcher and read that playbook.
 4. Copy every step of the playbook into the todo list verbatim, before any task-specific item. A step you will not take stays in the list as `skip: <reason>`, so the human sees what was left out and why.
-5. When the work has a task document (`continuity`), record the playbook and step there as `continuity` describes, so a compaction resumes the same step.
+5. When the work has a task document (`checkpoint`), record the playbook and step there as `checkpoint` describes, so a compaction resumes the same step.
 
 jvillegasd-mode lasts the conversation. "New task" means match again from step 1, and "stop jvillegasd-mode" ends it.
 
@@ -44,7 +44,7 @@ jvillegasd-mode lasts the conversation. "New task" means match again from step 1
 | Open a PR, ship this | `open-pr`'s steps |
 | Merge, or "it merged, clean up" | Reply "run `/land` in this worktree" and stop. Merging and cleanup belong to the human through `land` |
 | Clean up old worktrees or branches | Reply "run `/cleanup`" and stop. The human names what a sweep removes |
-| Resume or pick up earlier work | `continuity`'s Resume, then continue the playbook and step it recorded, or match what is left |
+| Resume or pick up earlier work | `checkpoint`'s Resume, then continue the playbook and step it recorded, or match what is left |
 | Large, multi-part, or none of the above | [large](playbooks/large.md) |
 
 A bug that is a slowdown with a number is perf, and a one-off speedup is perf while a target reached over many measured attempts is hillclimb. A single ticket or a plain request to change behavior matches its kind's row (bug fix, feature, refactor), whose playbook runs `build` on one slice. When the task fits two rows, take the narrower one, and the large playbook only when no narrower row covers it.

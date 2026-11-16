@@ -42,7 +42,7 @@ A session lists only the entry points: the skills you start yourself and no othe
 | Group | Helpers |
 | --- | --- |
 | Planning | `epic` (write the big ticket, agree its seams, cut its slices), `build` (one slice inline with `tdd`, or many slices fanned out), `triage`, `research`, `proto` |
-| Support | `review`, `address-review`, `open-pr`, `tdd`, `diagnosing-bugs`, `change-map`, `continuity`, `delegation`, `verification`, `grilling`, `how`, `why`, `unslop`, `caveman-commit` |
+| Support | `review`, `address-review`, `open-pr`, `tdd`, `diagnosing-bugs`, `change-map`, `checkpoint`, `delegation`, `verification`, `grilling`, `how`, `why`, `unslop`, `caveman-commit` |
 | Design | `codebase-design`, `domain-modeling`, `impeccable`, `writing-for-agents` |
 | Assurance | `journey-verification`, `security-audit` |
 | Principles | the `principle-*` skills and `benchmark-checklist`, which the mode's trigger list names |
@@ -74,7 +74,7 @@ The agent picks the playbook from the task:
 | "Open a PR" or "ship this" | `open-pr`'s steps |
 | A merge, or "it merged, clean up" | Nothing. The agent tells you to run `/land` |
 | "Clean up old worktrees" | Nothing. The agent tells you to run `/cleanup` |
-| Pick up earlier work | `continuity`'s resume steps, then the recorded playbook |
+| Pick up earlier work | `checkpoint`'s resume steps, then the recorded playbook |
 | Large, multi-part, or none of the above | Large playbook |
 
 When a row names a skill, jvillegasd-mode runs that skill's own steps. It adds its checklist and its reply, never a second copy of the skill.
@@ -270,4 +270,4 @@ stateDiagram-v2
     Checked --> Resumed: Agent continues with the permission it had
 ```
 
-The [continuity skill](../skills/support/continuity/SKILL.md) has the full recovery details.
+The [checkpoint skill](../skills/support/checkpoint/SKILL.md) has the full recovery details.

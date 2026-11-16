@@ -38,7 +38,7 @@ The Harness AI installation that serves Claude Code, Codex, and OpenCode. `READM
 | `roles/` | Canonical roles no skill owns, the executor and code-search |
 | `aliases.sh` | The managed yolo-mode shell aliases |
 | `bench/` | Cohort config and the manual for `harness bench` |
-| `docs/agents/` | This repository's tracker and critical-path configuration, the task documents `continuity` keeps in `tasks/`, and the slice drafts `epic` writes to `tickets/` |
+| `docs/agents/` | This repository's tracker and critical-path configuration, the task documents `checkpoint` keeps in `tasks/`, and the slice drafts `epic` writes to `tickets/` |
 | `skills-lock.json` | Reviewed third-party skill locks |
 | `.agents/skills`, `.claude/skills` | One link per skill by bare name: `.agents/skills/<name>` points at the grouped body, `.claude/skills/<name>` at that link. Create a local skill with `harness skills new <name> <group> [--guarded]`, lock a third-party one with `harness skills add`, and move one with `harness skills move <name> <group>`, each of which writes both links; `TestShippedSkillLinksResolve` fails on a missing or stale link |
 

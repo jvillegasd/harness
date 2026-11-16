@@ -67,7 +67,7 @@ func Context(dir string) string {
 			fmt.Fprintf(&b, "\n%s\n", section)
 		}
 	}
-	fmt.Fprintln(&b, "\nResume per `continuity`: read the task document and the branch's commits, trust evidence bound to unchanged commits, and rerun only what a later change made stale.")
+	fmt.Fprintln(&b, "\nResume per `checkpoint`: read the task document and the branch's commits, trust evidence bound to unchanged commits, and rerun only what a later change made stale.")
 	return b.String()
 }
 
