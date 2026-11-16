@@ -33,7 +33,7 @@ The Harness AI installation that serves Claude Code, Codex, and OpenCode. `READM
 | `FLOOR.md` | The floor: the rules installed into each client that hold on every turn |
 | `GLOSSARY.md`, `docs/adr/` | The harness's domain terms and its decision records, which `domain-modeling` reads and writes |
 | `skills/<group>/<name>/` | Independent capabilities (also invoked as `/name`), grouped by type: `workflow` (the entry points: `jvillegasd-mode` and the skills no other skill runs), `support` (the shared helpers those skills and the floor call), `principles` (the locked engineering principles), `planning`, `design`, and `assurance`. Only `workflow` installs where a client discovers skills; every other group installs to `~/.harness/skills/<name>`, which the floor tells the agent to read a named helper from. Locked bodies sit in their group beside local ones |
-| `skills/assurance/e2e-verification/SKILL.md`, `skills/assurance/e2e-verification/scripts/` | Targeted E2E runs on a feature, bugfix, PR, or path over the project's `verify-<app>` skill, with real screenshots per test, and the run kit and report builder it copies |
+| `skills/workflow/e2e-verification/SKILL.md`, `skills/workflow/e2e-verification/scripts/` | Targeted E2E runs on a feature, bugfix, PR, or path over the project's `verify-<app>` skill, with real screenshots per test, and the run kit and report builder it copies |
 | `clients/` | Client settings, the Codex and OpenCode compaction hook files, and Codex's command rules and OpenCode's permission rules |
 | `roles/` | Canonical roles no skill owns, the executor and code-search |
 | `aliases.sh` | The managed yolo-mode shell aliases |
