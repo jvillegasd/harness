@@ -1,6 +1,6 @@
 # jvillegasd-mode: fewer planning pieces and hidden helpers
 
-Branch: `refactor/jvillegasd-mode`. Status: in progress.
+Branch: `refactor/jvillegasd-mode`. Status: shipped for review.
 
 Request (live session, 2026-11-16): "I want to have fewer pieces in planning too, grilling with docs, we can merge spec and tickets into one called epic that follows jira princples of a big ticket (spec) with the verticals (tickets). For build, we already have the autopilot and the implement skill, we may need merge them too. Also I want to rename work skill to jvillegasd-mode and hide whats isn't an entry point. regarding evals, I want to relax this, keep manual evals like sjdonado. regarding the playbooks, lets see which skills and principles overlaps, also which principles we can trim"
 
@@ -40,4 +40,4 @@ Follow-up answers: entry points are "mode and the skills that are not triggered 
 
 ## State and next action
 
-Playbook: large, step 5. All phases done; delivery requested, so `open-pr` is next.
+Playbook: large, step 5. Shipped for review. Evidence: `go vet`, `gofmt -l`, `go test ./...`, `go build`, `git diff --check` pass at 1842d66; a throwaway-home `harness install skills` installed only `workflow/` into the client skill folders at b5ff2dc. Open: the locked `principle-attack-the-premise` links to the deleted redesign principle.
