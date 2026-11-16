@@ -104,35 +104,6 @@ func TestFindOutsideAnyCheckout(t *testing.T) {
 	}
 }
 
-func TestManagedIsExplicitNamespaces(t *testing.T) {
-	c := Checkout{Root: "/repo"}
-	managed := []string{
-		"/repo/skills",
-		"/repo/skills/tdd/SKILL.md",
-		"/repo/FLOOR.md",
-		"/repo/.generated/agents/claude/executor.md",
-	}
-	unmanaged := []string{
-		"/repo",
-		"/repo/cmd/harness/main.go",
-		"/repo/internal/install/links.go",
-		"/repo/README.md",
-		"/repo/docs/agents/harness.json",
-		"/repo/skills-lock.json",
-		"/repo/elsewhere/FLOOR.md",
-	}
-	for _, path := range managed {
-		if !c.Manages(path) {
-			t.Errorf("Manages(%s) = false, want true", path)
-		}
-	}
-	for _, path := range unmanaged {
-		if c.Manages(path) {
-			t.Errorf("Manages(%s) = true, want false: an unrelated repository file is not installer-owned", path)
-		}
-	}
-}
-
 func TestModuleOf(t *testing.T) {
 	cases := map[string]string{
 		"module github.com/jvillegasd/harness\n\ngo 1.26.0\n": "github.com/jvillegasd/harness",

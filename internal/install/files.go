@@ -22,11 +22,6 @@ func exists(path string) bool {
 	return err == nil
 }
 
-func isLink(path string) bool {
-	info, err := os.Lstat(path)
-	return err == nil && info.Mode()&fs.ModeSymlink != 0
-}
-
 func isDir(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
@@ -54,21 +49,6 @@ func entries(dir string) []string {
 		}
 	}
 	return paths
-}
-
-func exitCode(err error) int {
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
-		return exit.ExitCode()
-	}
-	if err != nil {
-		return -1
-	}
-	return 0
-}
-
-func (in *installer) skillRoots() []string {
-	return []string{filepath.Join(in.home, ".agents", "skills"), filepath.Join(in.home, ".claude", "skills"), filepath.Join(in.config, "opencode", "skills")}
 }
 
 func (in *installer) assigned() map[string]agents.Assigned {

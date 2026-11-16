@@ -122,19 +122,6 @@ func (c Checkout) SkillDirs() ([]Skill, error) {
 	return out, nil
 }
 
-func (c Checkout) SkillDir(name string) (string, bool, error) {
-	skills, err := c.SkillDirs()
-	if err != nil {
-		return "", false, err
-	}
-	for _, s := range skills {
-		if s.Name == name {
-			return s.Dir, true, nil
-		}
-	}
-	return "", false, nil
-}
-
 func (c Checkout) Aliases() string { return filepath.Join(c.Root, "aliases.sh") }
 
 func (c Checkout) Clients() string { return filepath.Join(c.Root, "clients") }
@@ -148,16 +135,3 @@ func (c Checkout) Lock() string { return filepath.Join(c.Root, "skills-lock.json
 func (c Checkout) AgentSkills() string { return filepath.Join(c.Root, ".agents", "skills") }
 
 func (c Checkout) ClaudeSkills() string { return filepath.Join(c.Root, ".claude", "skills") }
-
-func (c Checkout) Managed() []string {
-	return []string{c.Skills(), c.Floor(), c.Generated()}
-}
-
-func (c Checkout) Manages(path string) bool {
-	for _, root := range c.Managed() {
-		if path == root || strings.HasPrefix(path, root+"/") {
-			return true
-		}
-	}
-	return false
-}
