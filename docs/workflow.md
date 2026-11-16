@@ -21,10 +21,10 @@ A session lists only the entry points: the skills you start yourself and no othe
 | Situation | Skill |
 | --- | --- |
 | Any task you want run to a playbook: plan, build, review, ship, diagnose, measure | `/jvillegasd-mode <task>` |
+| A fuzzy idea needs decisions, recorded as ADRs and glossary terms | `/grill-with-docs` |
 | A merged pull request needs its lifecycle closed, or you want the agent to merge | `/land` |
 | Old worktrees, branches, and review scratch pile up | `/cleanup` |
 | A repository needs its tracker and critical paths configured | `/setup-harness` |
-| A session needs a retrospective | `/retro` |
 | Agents keep repeating the same mistakes in a repository | `/correct` |
 | A test suite may carry tests that protect nothing | `/test-audit` |
 | The project needs a scripted way to drive the real app | `/create-verification-skill` |
@@ -36,13 +36,12 @@ A session lists only the entry points: the skills you start yourself and no othe
 | A codebase needs a scan for deepening opportunities | `/improve-codebase-architecture` |
 | Frontend code needs current web platform APIs and their fallbacks | `modern-web-guidance` |
 | Documentation needs a technical-writing pass | `technical-writing` |
-| You want to learn a concept inside this workspace | `teach` |
 
 ### Helpers the mode reaches
 
 | Group | Helpers |
 | --- | --- |
-| Planning | `epic` (grill, write the big ticket, cut its slices), `build` (one slice inline with `tdd`, or many slices fanned out), `triage`, `research`, `proto` |
+| Planning | `epic` (write the big ticket, agree its seams, cut its slices), `build` (one slice inline with `tdd`, or many slices fanned out), `triage`, `research`, `proto` |
 | Support | `review`, `address-review`, `open-pr`, `tdd`, `diagnosing-bugs`, `change-map`, `continuity`, `delegation`, `verification`, `grilling`, `how`, `why`, `unslop`, `caveman-commit` |
 | Design | `codebase-design`, `domain-modeling`, `impeccable`, `writing-for-agents` |
 | Assurance | `journey-verification`, `security-audit` |
@@ -89,7 +88,7 @@ How each kind of task ends:
 - **A design** picks a shape, then continues as a feature or a refactor.
 - **An epic** asks whether to build it. Only an explicit "go" answers. That go is a new task, so it matches again as a settled epic and runs `build`.
 
-An epic grills you on open product decisions before it writes anything. A merge always goes to you or `/land`.
+If product decisions are still open, settle them with `/grill-with-docs` before you start. A merge always goes to you or `/land`.
 
 jvillegasd-mode lasts for the whole conversation. The agent records the playbook and the current step in the task document, so after a compaction it resumes at the same step.
 

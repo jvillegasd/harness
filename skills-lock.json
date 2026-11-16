@@ -49,6 +49,12 @@
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
       "computedHash": "b78689833404148c769077355e12dbe5ad996a158a1e21e58ddf169e439d9d8c"
     },
+    "grill-with-docs": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/grill-with-docs/SKILL.md",
+      "computedHash": "02e258f41d210f9b2e7cce9faf62b3c59e8fcebe5d2736369c3cd07d471324f8"
+    },
     "grilling": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -211,12 +217,6 @@
       "skillPath": "skills/principle-type-system-discipline/SKILL.md",
       "computedHash": "835538f784c0c5b1cb64b84489148b926c55934bdd92229a424df6d4069d7765"
     },
-    "retro": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/engineering/retro/SKILL.md",
-      "computedHash": "e260aefb7b75b3548a3ee9883afbf8808e521f2e86feec92399617894f83b7c2"
-    },
     "security-audit": {
       "source": "cloudflare/security-audit-skill",
       "sourceType": "github",
@@ -234,12 +234,6 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/tdd/SKILL.md",
       "computedHash": "e3e0f78ff1c2d52ffefa0378baa1e80e129d359288cf9a56f4e59afcd2aac86c"
-    },
-    "teach": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/productivity/teach/SKILL.md",
-      "computedHash": "31bb3eed09dd2787e290e933def99fbf7d65044a29119c224af47c01404ab228"
     },
     "technical-writing": {
       "source": "backnotprop/pstack",

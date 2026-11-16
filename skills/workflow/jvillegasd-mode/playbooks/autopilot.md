@@ -17,7 +17,7 @@ Everything up to verified, open pull requests: commits, pushes of the run's own 
 ## Running
 
 - **Each iteration** makes the smallest change the evidence justifies, verifies it against the definition of done, commits it when it advanced, and reverts it when it did not.
-- **A decision only the human could make**, including a skill's human checkpoint such as `epic`'s grilling and seam agreement, gets the simplest safe default. Record it as an `agent` row in the `## Decisions` table with the alternative it beat, and keep going; asking would stall the run until the human returns.
+- **A decision only the human could make**, including a skill's human checkpoint such as `epic`'s seam agreement, gets the simplest safe default. Record it as an `agent` row in the `## Decisions` table with the alternative it beat, and keep going; asking would stall the run until the human returns.
 - **Discoveries that support the goal** are yours: a broken skill, a related bug, a flaky check, a tooling failure. Fix each in its own pull request, then return to the goal. A problem that does not block the goal becomes a follow-up in the report.
 - **A plateau** means changing approach, not stopping.
 - **Two fixes that share one premise** have failed the same check: read `principle-attack-the-premise` and test the premise directly before another fix assumes it.

@@ -1,6 +1,6 @@
 ---
 name: epic
-description: "Grill a plan into an epic: one big ticket with the settled behavior and agreed test seams, cut into vertical slices drafted locally and published only on request. Invoke only by name: \"/epic the export feature\"."
+description: "Turn a settled plan into an epic: one big ticket with the settled behavior and agreed test seams, cut into vertical slices drafted locally and published only on request. Invoke only by name: \"/epic the export feature\"."
 argument-hint: "[the plan, a triage brief, finding ids, or the scope; add \"publish to <tracker>\" to authorize the writes]"
 disable-model-invocation: true
 license: MIT
@@ -10,7 +10,7 @@ metadata:
   opencode/autoinvoke: "false"
 ---
 
-Turn a plan into an **epic**: one big ticket that records what was settled, and its **slices**, the vertical tickets that build it. Each slice is a tracer bullet: a narrow path through every layer, finished as one pull request by one worker or one session, with acceptance checks that are red on the base commit. The epic and its slices stay local; publishing them is its own request.
+Turn a settled plan into an **epic**: one big ticket that records what was settled, and its **slices**, the vertical tickets that build it. Each slice is a tracer bullet: a narrow path through every layer, finished as one pull request by one worker or one session, with acceptance checks that are red on the base commit. The epic and its slices stay local; publishing them is its own request.
 
 Source: $ARGUMENTS
 
@@ -20,7 +20,7 @@ The epic is what later work starts from instead of a reconstruction, so exact re
 
 ## Steps
 
-1. **Grill.** Read the settled discussion, the domain terms in `GLOSSARY.md`, and the ADRs, then read `grilling` and `domain-modeling` and interview the human on the open product decisions, one at a time, with your recommendation for each. Record each sharpened term in the glossary and each hard-to-reverse decision as an ADR as it settles. Settle a question a run can answer with `proto` instead of asking, and keep its branch as a primary source. Explore wide code through `code-search` launched by `delegation`: file pointers, conventions, test commands, and entry points, not pasted contents. Search the tracker that `docs/agents/harness.json` names, and the drafts under `docs/agents/tickets/`, for work already covering this. Done when no consequential product decision is open, or each one left is written as an open question saying what depends on it.
+1. **Ground.** Read the settled discussion, the domain terms in `GLOSSARY.md`, and the ADRs, and reuse grounded evidence. Explore wide code through `code-search` launched by `delegation`: file pointers, conventions, test commands, and entry points, not pasted contents. Settle a question a run can answer with `proto`, and keep its branch as a primary source. Search the tracker that `docs/agents/harness.json` names, and the drafts under `docs/agents/tickets/`, for work already covering this. Ask the human only the consequential questions no run can settle, with the options and your recommendation, and draft the independent settled sections meanwhile. When product decisions are still open, stop and say that `/grill-with-docs` settles them first. Done when no consequential product decision is open, or each one left is written as an open question saying what depends on it.
 2. **Write the epic** to the repository's spec location or `docs/agents/tasks/<feature>.md`, reusing an existing document. It doubles as the `continuity` task document. Its sections:
    - **Problem**: who is affected, what is wrong or missing, and why it matters now.
    - **Behavior**: what a user or caller observes, in the domain's own words, with exact examples and the human's wording where it matters.
@@ -42,4 +42,4 @@ Approving the epic authorizes local implementation only, as the floor says; buil
 
 ## Output
 
-The epic's path, the settled behavior, the test seams awaiting confirmation or confirmed, the glossary and ADR entries written, what the prototypes proved, the numbered slices with their blockers and seams, the draft paths or published links, and the open questions, with local drafts labeled apart from anything published.
+The epic's path, the settled behavior, the test seams awaiting confirmation or confirmed, what the prototypes proved, the numbered slices with their blockers and seams, the draft paths or published links, and the open questions, with local drafts labeled apart from anything published.

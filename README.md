@@ -78,7 +78,8 @@ A plain request works the way it always does. For the harness's procedures (plan
 | --- | --- |
 | Run a task step by step, with every step visible | `/jvillegasd-mode <task>` |
 | Leave a task running while you step away | `/jvillegasd-mode autopilot, I'm stepping away: <goal>` |
-| Grill an idea into an epic with sliced tickets | `/jvillegasd-mode plan <idea>` |
+| Think an unclear idea through, recording ADRs and glossary terms | `/grill-with-docs` |
+| Turn a settled plan into an epic with sliced tickets | `/jvillegasd-mode plan <idea>` |
 | Build one ticket, or an epic's slices | `/jvillegasd-mode build <ticket or epic>` |
 | Get a review of your changes | `/jvillegasd-mode review` |
 | Publish the work as a pull request | `/jvillegasd-mode open a PR` |
@@ -147,7 +148,7 @@ Asking for a review always runs one at your level. [How review works](docs/revie
 
 `/jvillegasd-mode <task>` makes the agent follow a fixed playbook instead of choosing skills on its own. The agent picks the playbook that fits (bug fix, feature, investigation, refactor, performance, hillclimb, forensics, design, skill authoring, eval, large change, or one of the existing skills), then copies every step into its todo list. A step it skips stays in the list as `skip: <reason>`, so you can see what was left out and why.
 
-For a code change, jvillegasd-mode always ends with a change summary (`change-map`) and a review at your level. A plan request grills it into an epic with sliced tickets and asks whether to build it. Merging still goes through you or `/land`.
+For a code change, jvillegasd-mode always ends with a change summary (`change-map`) and a review at your level. A plan request writes an epic with sliced tickets and asks whether to build it. Merging still goes through you or `/land`.
 
 jvillegasd-mode lasts for the whole conversation. Say "new task" to start another playbook, or "stop jvillegasd-mode" to end it. Only you can start it.
 
@@ -322,6 +323,6 @@ These pages are written for people. Agents keep them accurate but never take ins
 
 This harness takes inspiration from these projects:
 
-- [Matt Pocock's skills](https://github.com/mattpocock/skills), the source of several locked skills, among them `tdd`, `diagnosing-bugs`, `grilling`, and `domain-modeling`.
+- [Matt Pocock's skills](https://github.com/mattpocock/skills), the source of several locked skills, among them `tdd`, `diagnosing-bugs`, `grill-with-docs`, and `domain-modeling`.
 - [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai), which configures several coding agents from one setup, as this installer does.
 - [pstack](https://github.com/backnotprop/pstack), the source of the principle skills and the verification skills, and the model for jvillegasd-mode's playbooks and autopilot.

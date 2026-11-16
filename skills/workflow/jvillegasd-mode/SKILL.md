@@ -36,7 +36,7 @@ jvillegasd-mode lasts the conversation. "New task" means match again from step 1
 | Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | [skill](playbooks/skill.md) |
 | Whether a skill, prompt, or instruction change changes agent behavior | [eval](playbooks/eval.md) |
 | A prototype, spike, or mock-up | `proto`'s steps |
-| A plan for a change, before anything is built, or tickets from a triage brief, research findings, or a request | `epic`'s steps. Under autopilot its grilling and seam checkpoint are `agent` decisions instead |
+| A plan for a change, before anything is built, or tickets from a triage brief, research findings, or a request | `epic`'s steps. When product decisions are still open, reply that `/grill-with-docs` settles them first, and stop; under autopilot they are `agent` decisions instead |
 | A ticket or a production error to turn into a plan brief, with no fix requested | `triage`'s steps |
 | A settled epic or a set of slices to build | `build`'s steps |
 | Review a diff, a branch, or a PR | `review`'s steps, at the depth the human asked |

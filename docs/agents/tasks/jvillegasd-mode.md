@@ -8,7 +8,7 @@ Follow-up answers: entry points are "mode and the skills that are not triggered 
 
 ## Requirements
 
-- `epic` replaces `spec`, `tickets`, and `grill-with-docs`: grill and record terms and ADRs, write the big ticket, cut it into vertical slices.
+- `epic` replaces `spec` and `tickets`: write the big ticket, agree its seams, cut it into vertical slices. `grill-with-docs` stays a locked entry point ("grill-with-docs needs to be locked, epic cover spec and tickets").
 - `build` absorbs `implement`: one slice inline with `tdd`, several slices fanned out.
 - `work` is renamed `jvillegasd-mode`.
 - Only `workflow/` skills are discoverable: the mode and the skills no other skill runs. Every other group installs to `~/.harness/skills/<name>`, where the floor tells the agent to read a named skill from.
