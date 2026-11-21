@@ -191,3 +191,25 @@ func TestModelsSetBeforeAnyInstallRendersNothing(t *testing.T) {
 		t.Error("set created the Claude agents before any install")
 	}
 }
+
+func TestModelsSetKeepsAnAgentEditedByHand(t *testing.T) {
+	base := modelsBase(t)
+	ok(t, runInstaller(t, base, "agents", "--client", "claude"), "install Claude's agents")
+	path := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
+	edited := readFile(t, path) + "\nMy own note.\n"
+	writeMode(t, path, edited, 0o644)
+	r := ok(t, runModels(t, base, "set", "code-search", "--tier", "high"), "set with an edited agent")
+	if readFile(t, path) != edited {
+		t.Error("set replaced an agent edited by hand")
+	}
+	if !strings.Contains(r.stderr, path) || !strings.Contains(r.stderr, "changed since the harness wrote it") {
+		t.Errorf("set did not name the kept agent:\n%s", r.stderr)
+	}
+	if !strings.Contains(agentFile(t, base, "claude", "code-search"), "model: opus\n") {
+		t.Error("an edited agent stopped the others from applying")
+	}
+	ok(t, runModels(t, base, "set", "code-search", "--tier", "fast"), "a second set over the same edit")
+	if readFile(t, path) != edited {
+		t.Error("a second set replaced the edited agent")
+	}
+}

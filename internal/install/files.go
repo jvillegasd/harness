@@ -216,7 +216,17 @@ func (in *installer) installFiles() {
 		}
 		current, source := digest(e.Path), digest(e.source)
 		if current != source {
-			if current != "" && current != recorded[e.Path] {
+			edited := current != "" && current != recorded[e.Path]
+			if edited && in.keepEdited {
+				in.warn("%s changed since the harness wrote it, so it stays; `harness install agents` archives it and renders the choice.", e.Path)
+				want[i].Digest = recorded[e.Path]
+				if in.keptEdited == nil {
+					in.keptEdited = map[string]bool{}
+				}
+				in.keptEdited[e.Path] = true
+				continue
+			}
+			if edited {
 				in.backupExisting(e.Path, "")
 			}
 			copyManaged(e.source, e.Path)
@@ -231,7 +241,7 @@ func (in *installer) installFiles() {
 
 func (in *installer) checkFiles() {
 	for _, e := range in.installed {
-		if digest(e.Path) != e.Digest {
+		if !in.keptEdited[e.Path] && digest(e.Path) != e.Digest {
 			die("Managed copy missing or changed: %s", e.Path)
 		}
 	}
