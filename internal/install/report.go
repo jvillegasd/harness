@@ -2,6 +2,7 @@ package install
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/jvillegasd/harness/internal/models"
@@ -22,11 +23,16 @@ type logbook struct {
 	hue     int
 	// files counts each component's file changes by verb.
 	files map[string]map[string]int
-	// deferring holds warnings raised while files are written, so each is
-	// drawn under its component's section, which prints after the writes.
+	// deferring holds output until its component section opens.
 	deferring bool
-	deferred  map[string][]string
+	component string
+	deferred  []heldLine
 	warnings  int
+}
+
+type heldLine struct {
+	component, text string
+	warning         bool
 }
 
 func (in *installer) style() ui.Style { return ui.For(in.stdout) }
@@ -53,6 +59,10 @@ func (in *installer) end(result string) {
 
 // log is one step: a tree line inside a section, an ok line outside one.
 func (in *installer) log(format string, args ...any) {
+	if in.book.deferring {
+		in.hold(in.book.component, false, fmt.Sprintf(format, args...))
+		return
+	}
 	s, text := in.style(), in.tilde(fmt.Sprintf(format, args...))
 	if in.book.section == "" {
 		fmt.Fprintln(in.stdout, s.OK(text))
@@ -63,6 +73,10 @@ func (in *installer) log(format string, args ...any) {
 
 // warn is a problem, under the open section when there is one.
 func (in *installer) warn(format string, args ...any) {
+	if in.book.deferring {
+		in.hold(in.book.component, true, fmt.Sprintf(format, args...))
+		return
+	}
 	in.book.warnings++
 	s, prefix := ui.For(in.stderr), ""
 	if in.book.section != "" {
@@ -83,23 +97,48 @@ func (in *installer) tilde(text string) string {
 // warnFor is a problem with one component's files: held until that
 // component's section is drawn while files are being written.
 func (in *installer) warnFor(component, format string, args ...any) {
-	if !in.book.deferring {
-		in.warn(format, args...)
+	if in.book.deferring {
+		in.hold(component, true, fmt.Sprintf(format, args...))
 		return
 	}
-	if in.book.deferred == nil {
-		in.book.deferred = map[string][]string{}
-	}
-	in.book.deferred[component] = append(in.book.deferred[component], fmt.Sprintf(format, args...))
+	in.warn(format, args...)
 }
 
-// flushWarnings draws the warnings held for the components.
-func (in *installer) flushWarnings(components ...string) {
-	for _, c := range components {
-		for _, w := range in.book.deferred[c] {
-			in.warn("%s", w)
+func (in *installer) hold(component string, warning bool, text string) {
+	in.book.deferred = append(in.book.deferred, heldLine{component, text, warning})
+}
+
+// flush draws matching lines in their original order.
+func (in *installer) flush(components ...string) {
+	var remaining []heldLine
+	for _, line := range in.book.deferred {
+		if !slices.Contains(components, line.component) {
+			remaining = append(remaining, line)
+			continue
 		}
-		delete(in.book.deferred, c)
+		if line.warning {
+			in.warn("%s", line.text)
+		} else {
+			in.log("%s", line.text)
+		}
+	}
+	in.book.deferred = remaining
+}
+
+// flushOnPanic preserves output already produced before a fatal error.
+func (in *installer) flushOnPanic() {
+	if r := recover(); r != nil {
+		in.book.deferring = false
+		in.book.section = ""
+		for _, line := range in.book.deferred {
+			if line.warning {
+				in.warn("%s", line.text)
+			} else {
+				in.log("%s", line.text)
+			}
+		}
+		in.book.deferred = nil
+		panic(r)
 	}
 }
 
@@ -113,7 +152,11 @@ func (in *installer) file(component, verb, path string) {
 	}
 	in.book.files[component][verb]++
 	if in.verbose && verb != "unchanged" {
-		in.log("%s %s", verb, path)
+		if in.book.deferring {
+			in.hold(component, false, fmt.Sprintf("%s %s", verb, path))
+		} else {
+			in.log("%s %s", verb, path)
+		}
 	}
 }
 

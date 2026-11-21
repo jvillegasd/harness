@@ -258,7 +258,20 @@ func TestInstallGroupsItsLogBySection(t *testing.T) {
 	}
 	writeMode(t, filepath.Join(base, "home", ".claude", "agents", "worker.md"), "edited\n", 0o644)
 	r = ok(t, runInstaller(t, base, "agents", "--no-backup", "--verbose"), "install agents --verbose")
-	if !strings.Contains(r.stdout, "installed ~/.claude/agents/worker.md") {
-		t.Errorf("--verbose did not list the rewritten agent:\n%s", r.stdout)
+	if !strings.Contains(r.stdout, "\n  ├─ installed ~/.claude/agents/worker.md") || strings.Index(r.stdout, "installed ~/.claude/agents/worker.md") < strings.Index(r.stdout, "\n AGENTS ") {
+		t.Errorf("--verbose did not list the rewritten agent under the agents section:\n%s", r.stdout)
+	}
+}
+
+func TestUninstallWarnsUnderItsSection(t *testing.T) {
+	base := modelsBase(t)
+	ok(t, runInstaller(t, base, "agents", "--client", "claude"), "install agents")
+	writeMode(t, filepath.Join(base, "home", ".claude", "agents", "worker.md"), "edited\n", 0o644)
+	r := ok(t, runHarness(t, base, nil, "uninstall", "agents", "--client", "claude", "--yes"), "uninstall agents")
+	if !strings.Contains(r.stderr, "  ├─ ! "+filepath.Join(base, "home", ".claude", "agents", "worker.md")+" changed since the harness wrote it") {
+		t.Errorf("the kept copy's warning is not under the files section:\nstdout:\n%s\nstderr:\n%s", r.stdout, r.stderr)
+	}
+	if !strings.Contains(r.stdout, "ok Harness AI removed. · 1 warning") {
+		t.Errorf("the closing line does not count the warning:\n%s", r.stdout)
 	}
 }

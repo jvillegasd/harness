@@ -303,6 +303,7 @@ func (in *installer) resolveTargets() {
 }
 
 func (in *installer) install() {
+	defer in.flushOnPanic()
 
 	unguarded, err := skills.Unguarded(in.dir)
 	if err != nil {
@@ -345,13 +346,13 @@ func (in *installer) install() {
 	}
 	if in.has("skills") {
 		in.begin("skills", "for "+strings.Join(in.clients, ", "))
-		in.flushWarnings("skills")
+		in.flush("skills")
 		in.end(in.counted("skills"))
 	}
 	if in.has("agents") {
 		in.begin("agents", fmt.Sprintf("%d roles for %s", len(models.AllRoles), strings.Join(in.clients, ", ")))
 		in.drawAssignments()
-		in.flushWarnings("agents")
+		in.flush("agents")
 		in.end(in.counted("agents"))
 	}
 	var config []string
@@ -360,14 +361,16 @@ func (in *installer) install() {
 			config = append(config, c)
 		}
 	}
-	if len(config) > 0 {
+	if len(config) > 0 || slices.ContainsFunc(in.book.deferred, func(line heldLine) bool {
+		return slices.Contains([]string{"floor", "settings", "aliases", ""}, line.component)
+	}) {
 		in.begin("config", strings.Join(config, ", "))
 		for _, c := range []string{"floor", "settings", "aliases"} {
 			if in.has(c) && in.book.files[c] != nil {
 				in.log("%s  %s", ui.Pad(c, 8), in.style().Dim(in.counted(c)))
-				in.flushWarnings(c)
 			}
 		}
+		in.flush("floor", "settings", "aliases", "")
 	}
 	if in.has("aliases") {
 		in.reconcileAliases(false)

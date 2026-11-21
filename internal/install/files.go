@@ -164,6 +164,7 @@ func (in *installer) inScope(e entry) bool {
 
 func (in *installer) installFiles() {
 	if in.has("skills") {
+		in.book.component = "skills"
 		for _, root := range []string{filepath.Join(in.home, ".agents", "skills"), filepath.Join(in.home, ".claude", "skills")} {
 			in.ensureManagedDir(root, true)
 		}
@@ -171,6 +172,7 @@ func (in *installer) installFiles() {
 		in.ensureManagedDir(filepath.Join(in.config, "opencode", "skills"), false)
 	}
 	if in.has("agents") {
+		in.book.component = "agents"
 		for _, pair := range in.agentRoots() {
 			if in.targets(pair[0]) {
 				in.ensureManagedDir(pair[1], true)
@@ -193,6 +195,7 @@ func (in *installer) installFiles() {
 	}
 	var kept []entry
 	for _, e := range previous.Files {
+		in.book.component = e.Component
 		switch {
 		case wanted[e.Path]:
 		case in.inScope(e):
@@ -202,6 +205,7 @@ func (in *installer) installFiles() {
 		}
 	}
 	for i, e := range want {
+		in.book.component = e.Component
 		if e.Component == "skills" {
 
 			in.backupExisting(filepath.Join(in.config, "opencode", "skills", filepath.Base(e.Path)), "")
@@ -230,6 +234,7 @@ func (in *installer) installFiles() {
 		want[i].Digest = source
 	}
 
+	in.book.component = ""
 	in.updateState(func(s *state) { s.Files = append(kept, want...) })
 	in.installed = want
 }
@@ -246,7 +251,9 @@ func (in *installer) checkFiles() {
 	var findings strings.Builder
 	if code := agents.Check(in.dir.Root, in.agentOut(), in.assigned(), &findings, in.stderr); code != 0 {
 		for _, finding := range strings.Split(strings.TrimSpace(findings.String()), "\n") {
-			in.warn("%s", finding)
+			if finding != "" {
+				in.warn("%s", finding)
+			}
 		}
 		die("Role agents in %s are missing, drifted, or widened.", in.agentOut())
 	}

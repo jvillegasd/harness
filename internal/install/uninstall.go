@@ -27,6 +27,7 @@ var yoloAlias = regexp.MustCompile(`(?m)^[ \t]*alias (ccyolo|cxyolo|oyolo|ocyolo
 const uninstallLeft = "Not touched: every tool's data (~/.engram, ~/.agent-browser, ~/.claude, ~/.codex), ~/.dotfiles-backups, and every untracked key in the client configs. Reinstall with: harness install"
 
 func (in *installer) uninstallSelected() {
+	defer in.flushOnPanic()
 
 	in.usePATH()
 	clients := in.clients
@@ -117,7 +118,9 @@ func (in *installer) uninstallSelected() {
 	}
 
 	var kept, removed []entry
+	in.book.deferring = true
 	for _, e := range s.Files {
+		in.book.component = e.Component
 		if s.needed(e) {
 			kept = append(kept, e)
 			continue
@@ -125,14 +128,17 @@ func (in *installer) uninstallSelected() {
 		in.removeManaged(e)
 		removed = append(removed, e)
 	}
+	in.book.deferring = false
+	in.book.component = ""
 	s.Files = kept
-	if len(configs) > 0 {
+	if len(configs) > 0 || len(in.book.deferred) > 0 {
 		in.begin("files", strings.Join(configs, ", ")+" from "+strings.Join(clients, ", "))
 		for _, c := range configs {
 			if in.book.files[c] != nil {
 				in.log("%s  %s", ui.Pad(c, 8), in.style().Dim(in.counted(c)))
 			}
 		}
+		in.flush(append(configComponents, "")...)
 		in.end(in.counted(configs...))
 		if slices.ContainsFunc(configs, func(c string) bool { return c == "settings" || c == "mcps" || c == "aliases" }) {
 			in.begin("config", "client settings, MCP registrations, and aliases")
