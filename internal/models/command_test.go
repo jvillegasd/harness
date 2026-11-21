@@ -441,10 +441,10 @@ func TestShowDrawsRolesUnderTheirTier(t *testing.T) {
 	out := runOK(t, path, "show")
 	for _, want := range []string{
 		"harness models  preset balanced",
-		" HIGH       claude › opus            preset\n  ├─ reviewer      effort low\n  ├─ review-bugs   effort low      via reviewer\n  └─ review-risk   effort low      via reviewer\n",
-		" STANDARD   codex  › gpt-6.1-terra   preset\n  ├─ executor      effort default\n  └─ worker        effort default  tier chosen at launch\n",
+		" HIGH       claude › opus            preset\n  also codex › gpt-6.1-sol\n  ├─ reviewer      effort low\n  ├─ review-bugs   effort low      via reviewer\n  └─ review-risk   effort low      via reviewer\n",
+		" STANDARD   codex  › gpt-6.1-terra   preset\n  also claude › sonnet\n  ├─ executor      effort default\n  └─ worker        effort default  tier chosen at launch\n",
 		"  └─ review-spec   effort default  set\n     ! claude haiku does not support effort \"low\"",
-		" HEAVY      claude › opus            preset\n  └─ no roles",
+		" HEAVY      claude › opus            preset\n  also claude › fable · codex › gpt-6.1-sol at high\n  └─ no roles",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("show lacks %q:\n%s", want, out)
@@ -458,5 +458,46 @@ func TestShowDrawsRolesUnderTheirTier(t *testing.T) {
 	drawTree(ui.Colored, choice.report(new(Catalog)), &tree)
 	if !strings.Contains(tree.String(), "\x1b[1;30;46m HIGH     \x1b[0m") {
 		t.Errorf("the colored tree does not draw the high tier's pill:\n%q", tree.String())
+	}
+}
+
+func TestEachTierListsWhatOtherClientsRunAtIt(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, "")
+	runOK(t, path, "tier", "set", "high", "--client", "claude", "--model", "fable")
+	runOK(t, path, "tier", "set", "fast", "--client", "opencode", "--model", "opencode-go/glm-5.3")
+	runOK(t, path, "tier", "set", "fast", "--client", "claude")
+	var rep report
+	if err := json.Unmarshal([]byte(runOK(t, path, "tier", "show", "--json")), &rep); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, v := range rep.Tiers {
+		var parts []string
+		for _, o := range v.Others {
+			part := o.Client + "=" + o.Model
+			if o.Tier != "" {
+				part += "@" + o.Tier
+			}
+			parts = append(parts, part)
+		}
+		got[v.Tier] = strings.Join(parts, " ")
+	}
+	want := map[string]string{
+		"heavy":    "claude=fable codex=gpt-6.1-sol@high",
+		"high":     "claude=opus codex=gpt-6.1-sol",
+		"standard": "claude=sonnet",
+		"fast":     "codex=gpt-6-luna opencode=opencode-go/glm-5.3",
+	}
+	for tier, w := range want {
+		if got[tier] != w {
+			t.Errorf("%s lists %q from other clients, want %q", tier, got[tier], w)
+		}
+	}
+	if got := resolved(t, path, "worker", "--tier", "heavy", "--client", "codex"); got["model"] != "gpt-6.1-sol" || got["tier"] != "high" {
+		t.Errorf("the listing disagrees with what a role on codex at heavy resolves to: %v", got)
+	}
+	if out := runOK(t, path, "tier", "show"); !strings.Contains(out, " HEAVY      claude › opus            preset\n  also claude › fable · codex › gpt-6.1-sol at high\n") {
+		t.Errorf("tier show does not draw heavy's fallback:\n%s", out)
 	}
 }

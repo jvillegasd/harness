@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"slices"
 	"strings"
 
@@ -22,6 +23,52 @@ type tierView struct {
 	Problem string `json:"problem,omitempty"`
 	// Fallback is the tier its roles fall back to when its model is not listed.
 	Fallback string `json:"fallback,omitempty"`
+	// Others is what each other client runs at this tier, for a role set to
+	// that client; a client with no model for the tier is left out.
+	Others []clientModel `json:"others"`
+}
+
+type clientModel struct {
+	Client string `json:"client"`
+	Model  string `json:"model"`
+	// Tier is the tier it falls back to, when the client lists no model for this one.
+	Tier string `json:"tier,omitempty"`
+}
+
+// others lists every model a role set to a tier may run on besides the one
+// that serves it: each client's model for the tier, falling back as Resolve
+// does, and each other Claude alias made for the tier, such as fable for heavy.
+func (c Choice) others(tier string, served clientModel, cat *Catalog) []clientModel {
+	out := []clientModel{}
+	add := func(m clientModel) {
+		if (m.Client != served.Client || m.Model != served.Model) && !slices.Contains(out, m) {
+			out = append(out, m)
+		}
+	}
+	for _, client := range Clients {
+		at := tier
+		model, err := c.Model(at, client, cat)
+		for next, ok := fallback[at]; ok && errors.Is(err, ErrNotListed); next, ok = fallback[at] {
+			at = next
+			model, err = c.Model(at, client, cat)
+		}
+		if err != nil {
+			continue
+		}
+		m := clientModel{Client: client, Model: model}
+		if at != tier {
+			m.Tier = at
+		}
+		add(m)
+		if client == "claude" {
+			for _, alias := range slices.Sorted(maps.Keys(claudeTiers)) {
+				if claudeTiers[alias] == tier {
+					add(clientModel{Client: client, Model: alias})
+				}
+			}
+		}
+	}
+	return out
 }
 
 type roleView struct {
@@ -51,6 +98,7 @@ func (c Choice) report(cat *Catalog) report {
 		if next, ok := fallback[tier]; ok && errors.Is(err, ErrNotListed) {
 			v.Fallback = next
 		}
+		v.Others = c.others(tier, clientModel{Client: b.Client, Model: model}, cat)
 		out.Tiers = append(out.Tiers, v)
 	}
 	for _, name := range AllRoles {
@@ -99,10 +147,7 @@ func drawTree(s ui.Style, rep report, w io.Writer) {
 	fmt.Fprintln(w, s.Title("harness models", "preset "+rep.Preset, "~/.harness/state.json"))
 	for i, t := range rep.Tiers {
 		fmt.Fprintln(w)
-		fmt.Fprintln(w, drawTier(s, i, t))
-		if t.Problem != "" {
-			fmt.Fprintln(w, "  "+s.Warn(tierProblem(t)))
-		}
+		drawTierLines(s, i, t, w)
 		var members []roleView
 		for _, r := range rep.Roles {
 			if r.Tier == t.Tier {
@@ -126,6 +171,22 @@ func drawTree(s ui.Style, rep report, w io.Writer) {
 
 func drawTier(s ui.Style, i int, t tierView) string {
 	return s.Pill(ui.Hue(i), t.Tier, 8) + "  " + s.Resolved(t.Client, ui.Pad(t.Model, 14)) + "  " + drawSource(s, t.Source)
+}
+
+// drawOthers lists what a role set to another client would run at the tier.
+func drawOthers(s ui.Style, t tierView) string {
+	if len(t.Others) == 0 {
+		return ""
+	}
+	var parts []string
+	for _, o := range t.Others {
+		part := o.Client + " " + s.Dim("›") + " " + o.Model
+		if o.Tier != "" {
+			part += " " + s.Dim("at "+o.Tier)
+		}
+		parts = append(parts, part)
+	}
+	return "  " + s.Dim("also "+strings.Join(parts, s.Dim(" · ")))
 }
 
 func tierProblem(t tierView) string {
@@ -194,10 +255,18 @@ func drawTiers(s ui.Style, rep report, w io.Writer) {
 	fmt.Fprintln(w, s.Title("harness models tier", "preset "+rep.Preset))
 	fmt.Fprintln(w)
 	for i, t := range rep.Tiers {
-		fmt.Fprintln(w, drawTier(s, i, t))
-		if t.Problem != "" {
-			fmt.Fprintln(w, "  "+s.Warn(tierProblem(t)))
-		}
+		drawTierLines(s, i, t, w)
+	}
+}
+
+// drawTierLines draws a tier, its problem, and what other clients run at it.
+func drawTierLines(s ui.Style, i int, t tierView, w io.Writer) {
+	fmt.Fprintln(w, drawTier(s, i, t))
+	if t.Problem != "" {
+		fmt.Fprintln(w, "  "+s.Warn(tierProblem(t)))
+	}
+	if others := drawOthers(s, t); others != "" {
+		fmt.Fprintln(w, others)
 	}
 }
 
