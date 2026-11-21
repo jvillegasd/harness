@@ -125,6 +125,8 @@ A preset and a role override are separate settings. `tier preset` changes only t
 
 `show` prints two sections. `tier defaults` has one card per tier: what the tier is for, `runs on` with the model that serves it now, and one `with <preset>` line per other preset with the model that preset would serve it with. A Claude alias made for the tier follows its model as `or fable`, whether or not your plan includes it. When a preset's client lists no model for the tier, the card shows the model a role falls back to, such as `codex › gpt-6.1-sol at high`. A tier you set with `tier set` keeps its client under every preset. `roles` lists each role under its tier with the model it runs on, as `<client> › <model>`. `tier show` prints the cards alone.
 
+`harness models` with no arguments, in a terminal, opens a picker. Its first screen offers each preset, with a preview of the models it runs each tier on, or `custom`. The custom screen lists every tier and role with what it runs on now, marks the ones you set with `set`, and queues each change as the `harness models` command it runs. A tier takes a client and then a model. A role takes a tier, then a client, then an effort, and never a model of its own. A tier or role marked `set` also offers `reset`. Each change is checked when you pick it, so `save` writes everything queued. `esc` goes back one screen, and `q` quits without writing.
+
 Each line is labeled with where it comes from:
 
 | Label | Meaning |
