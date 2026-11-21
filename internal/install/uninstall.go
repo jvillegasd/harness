@@ -24,11 +24,7 @@ const subagentStatusline = "opencode-subagent-statusline"
 
 var yoloAlias = regexp.MustCompile(`(?m)^[ \t]*alias (ccyolo|cxyolo|oyolo|ocyolo)=`)
 
-const uninstallLeft = `
-Not touched: every tool's data (~/.engram, ~/.agent-browser, ~/.claude,
-~/.codex), ~/.dotfiles-backups, and every untracked key in the client configs.
-Reinstall with: harness install
-`
+const uninstallLeft = "Not touched: every tool's data (~/.engram, ~/.agent-browser, ~/.claude, ~/.codex), ~/.dotfiles-backups, and every untracked key in the client configs. Reinstall with: harness install"
 
 func (in *installer) uninstallSelected() {
 
@@ -88,15 +84,14 @@ func (in *installer) uninstallSelected() {
 		names = append(names, t.name)
 	}
 	if len(configs) == 0 && len(removals) == 0 {
-		for _, note := range notes {
-			fmt.Fprintln(in.stdout, note)
-		}
+		in.drawList("Left in place", notes)
+		fmt.Fprintln(in.stdout)
 		in.log("Nothing to remove.")
 		return
 	}
 	emptied := len(s.Installed) == 0 && len(s.Tools) == len(removals)
 	if emptied && (len(s.Models) > 0 || len(s.Review) > 0) {
-		fmt.Fprintln(in.stdout, "This also removes ~/.harness, which discards the `harness models` and `harness review level` choices.")
+		fmt.Fprintln(in.stdout, in.style().Warn("This also removes ~/.harness, which discards the `harness models` and `harness review level` choices."))
 	}
 	var parts []string
 	if len(configs) > 0 {
@@ -131,6 +126,18 @@ func (in *installer) uninstallSelected() {
 		removed = append(removed, e)
 	}
 	s.Files = kept
+	if len(configs) > 0 {
+		in.begin("files", strings.Join(configs, ", ")+" from "+strings.Join(clients, ", "))
+		for _, c := range configs {
+			if in.book.files[c] != nil {
+				in.log("%s  %s", ui.Pad(c, 8), in.style().Dim(in.counted(c)))
+			}
+		}
+		in.end(in.counted(configs...))
+		if slices.ContainsFunc(configs, func(c string) bool { return c == "settings" || c == "mcps" || c == "aliases" }) {
+			in.begin("config", "client settings, MCP registrations, and aliases")
+		}
+	}
 
 	selected := func(client, component string) bool {
 		return slices.Contains(clients, client) && slices.Contains(configs, component)
@@ -160,10 +167,15 @@ func (in *installer) uninstallSelected() {
 		in.reconcileAliases(true)
 	}
 	in.updateState(func(now *state) { now.Installed, now.Files = s.Installed, s.Files })
+	in.end("reconciled")
 	in.checkRemoved(removed, selected, aliasesRemoved)
 
-	for _, t := range removals {
-		in.removeTool(t, s.Tools[t.name])
+	if len(removals) > 0 {
+		in.begin("tools", strings.Join(names, ", "))
+		for _, t := range removals {
+			in.removeTool(t, s.Tools[t.name])
+		}
+		in.end("removed")
 	}
 	if in.loadState().empty() {
 		must(os.RemoveAll(in.stateDir()))
@@ -173,19 +185,17 @@ func (in *installer) uninstallSelected() {
 		}
 	}
 
-	fmt.Fprintln(in.stdout, "\n"+ui.For(in.stdout).OK("Harness AI removed."))
-	for _, note := range notes {
-		fmt.Fprintln(in.stdout, note)
-	}
+	in.summarize("Harness AI removed.")
 	for _, t := range removals {
 		if path := filepath.Join(in.home, t.data); t.data != "" && exists(path) {
-			fmt.Fprintf(in.stdout, "%s: its data stays in %s\n", t.name, path)
+			notes = append(notes, fmt.Sprintf("%s: its data stays in %s", t.name, path))
 		}
 	}
+	in.drawList("Left in place", notes)
 	if aliasesRemoved {
-		fmt.Fprintln(in.stdout, "Open a new shell to drop the aliases from the one you are in.")
+		fmt.Fprintln(in.stdout, "\n"+in.style().Dim("Open a new shell to drop the aliases from the one you are in."))
 	}
-	fmt.Fprint(in.stdout, uninstallLeft)
+	fmt.Fprintln(in.stdout, "\n"+in.style().Dim(uninstallLeft))
 }
 
 func removeFile(path string) {

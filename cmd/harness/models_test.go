@@ -113,8 +113,8 @@ func TestModelsResolveReportsTheAssignment(t *testing.T) {
 func TestInstallRendersTheResolvedTiers(t *testing.T) {
 	base := modelsBase(t)
 	r := ok(t, runInstaller(t, base, "agents"), "install with the default preset")
-	if !strings.Contains(r.stdout, "assignment: codex executor model=gpt-6.1-terra (standard, preset:balanced)") {
-		t.Errorf("install did not report the tier and source:\n%s", r.stdout)
+	if !strings.Contains(r.stdout, "codex     executor, worker on gpt-6.1-terra") || strings.Contains(r.stdout, "assignment:") {
+		t.Errorf("install did not draw the codex agents' models, or kept the raw render report:\n%s", r.stdout)
 	}
 	if !strings.Contains(agentFile(t, base, "codex", "executor"), "\nmodel = \"gpt-6.1-terra\"\n") {
 		t.Error("the Codex executor does not carry the standard tier's model")
@@ -243,4 +243,22 @@ func shown(t *testing.T, base string) string {
 		fmt.Fprintf(&b, "%s tier=%s client=%s model=%s effort=%s (%s)\n", v.Role, v.Tier, v.Client, v.Model, v.Effort, v.Source)
 	}
 	return b.String()
+}
+
+func TestInstallGroupsItsLogBySection(t *testing.T) {
+	base := modelsBase(t)
+	r := ok(t, runInstaller(t, base, "agents"), "install agents")
+	for _, want := range []string{"harness install  ", "\n TOOLS ", "\n AGENTS ", "  └─ ok "} {
+		if !strings.Contains(r.stdout, want) {
+			t.Errorf("install output lacks %q:\n%s", want, r.stdout)
+		}
+	}
+	if strings.Contains(r.stdout, "\x1b[") || strings.Contains(r.stdout, "installed "+filepath.Join(base, "home")) {
+		t.Errorf("install wrote color to a pipe, or listed files without --verbose:\n%s", r.stdout)
+	}
+	writeMode(t, filepath.Join(base, "home", ".claude", "agents", "worker.md"), "edited\n", 0o644)
+	r = ok(t, runInstaller(t, base, "agents", "--no-backup", "--verbose"), "install agents --verbose")
+	if !strings.Contains(r.stdout, "installed ~/.claude/agents/worker.md") {
+		t.Errorf("--verbose did not list the rewritten agent:\n%s", r.stdout)
+	}
 }

@@ -67,23 +67,15 @@ func (in *installer) assigned() map[string]agents.Assigned {
 		switch {
 		case r.Err != nil && r.Source == "reviewer":
 		case errors.Is(r.Err, models.ErrNotListed):
-			in.warn("%s runs at the %s tier on %s, which this machine cannot serve (%v); its agent keeps the client default until `harness models` names a model this machine can run.", role, r.Tier, r.Client, r.Err)
+			in.warnFor("agents", "%s runs at the %s tier on %s, which this machine cannot serve (%v); its agent keeps the client default until `harness models` names a model this machine can run.", role, r.Tier, r.Client, r.Err)
 		case r.Err != nil:
-			in.warn("%v; %s keeps the %s client default.", r.Err, role, r.Client)
+			in.warnFor("agents", "%v; %s keeps the %s client default.", r.Err, role, r.Client)
 		case r.Note != "" && r.Source != "reviewer":
-			in.warn("%s: %s.", role, r.Note)
+			in.warnFor("agents", "%s: %s.", role, r.Note)
 		}
 	}
 	in.assignments = assigned
 	return assigned
-}
-
-// reportOut is where the role-agent render and check print their report.
-func (in *installer) reportOut() io.Writer {
-	if in.quietReport {
-		return io.Discard
-	}
-	return in.stdout
 }
 
 func (in *installer) agentOut() string {
@@ -184,7 +176,7 @@ func (in *installer) installFiles() {
 				in.ensureManagedDir(pair[1], true)
 			}
 		}
-		if code := agents.Generate(in.dir.Root, in.agentOut(), in.assigned(), in.reportOut(), in.stderr); code != 0 {
+		if code := agents.Generate(in.dir.Root, in.agentOut(), in.assigned(), io.Discard, in.stderr); code != 0 {
 			die("Generating the role agents failed with status %d.", code)
 		}
 	}
@@ -218,7 +210,8 @@ func (in *installer) installFiles() {
 		if current != source {
 			edited := current != "" && current != recorded[e.Path]
 			if edited && in.keepEdited {
-				in.warn("%s changed since the harness wrote it, so it stays; `harness install agents` archives it and renders the choice.", e.Path)
+				in.warnFor(e.Component, "%s changed since the harness wrote it, so it stays; `harness install agents` archives it and renders the choice.", e.Path)
+				in.file(e.Component, "kept", e.Path)
 				want[i].Digest = recorded[e.Path]
 				if in.keptEdited == nil {
 					in.keptEdited = map[string]bool{}
@@ -230,7 +223,9 @@ func (in *installer) installFiles() {
 				in.backupExisting(e.Path, "")
 			}
 			copyManaged(e.source, e.Path)
-			in.log("Installed %s", e.Path)
+			in.file(e.Component, "installed", e.Path)
+		} else {
+			in.file(e.Component, "unchanged", e.Path)
 		}
 		want[i].Digest = source
 	}
@@ -248,7 +243,11 @@ func (in *installer) checkFiles() {
 	if !in.has("agents") {
 		return
 	}
-	if code := agents.Check(in.dir.Root, in.agentOut(), in.assigned(), in.reportOut(), in.stderr); code != 0 {
+	var findings strings.Builder
+	if code := agents.Check(in.dir.Root, in.agentOut(), in.assigned(), &findings, in.stderr); code != 0 {
+		for _, finding := range strings.Split(strings.TrimSpace(findings.String()), "\n") {
+			in.warn("%s", finding)
+		}
 		die("Role agents in %s are missing, drifted, or widened.", in.agentOut())
 	}
 }

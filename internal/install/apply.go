@@ -14,7 +14,7 @@ import (
 // install. It installs nothing new and leaves every other component alone.
 func ApplyAgents(stdout, stderr io.Writer) (code int) {
 	defer recoverFatal("models", stderr, &code)
-	in := &installer{verb: "models", stdout: stdout, stderr: stderr, quietReport: true, keepEdited: true}
+	in := &installer{verb: "models", stdout: stdout, stderr: stderr, keepEdited: true}
 	in.resolveLocations()
 	installed := in.loadState().Installed
 	for _, client := range allClients {
