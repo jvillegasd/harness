@@ -2,7 +2,7 @@
 
 **You own the measurement.** Every fix is tied to a number; reading the source is not measuring.
 
-1. Capture a baseline on the surface where the slowness shows up (the project's `verify-<app>` skill, `journey-verification`, or a benchmark), and vet it and every later number with `principle-explain-the-number`.
+1. Capture a baseline on the surface where the slowness shows up (the project's `verify-<app>` skill or a benchmark), and vet it and every later number with `principle-explain-the-number`.
 2. Ground hypotheses with `how`, and claim no ceiling you have not run. Try the mantras cheapest first, and stop at the first one that meets the target:
    1. Don't do it: stop work whose result nothing uses.
    2. Do it, but don't do it again.

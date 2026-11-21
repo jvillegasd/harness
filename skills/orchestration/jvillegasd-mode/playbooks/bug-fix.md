@@ -3,7 +3,7 @@
 **You own the root cause.** `diagnosing-bugs` finds it and fixes it; the steps around it are what jvillegasd-mode adds. Every shipped line traces to runtime evidence. A change that "might help" is a hypothesis, not a fix, and when evidence refutes a hypothesis, revert what it motivated.
 
 1. Run `diagnosing-bugs`' Phases 1 to 4, with two bindings:
-   - Its loop drives the surface where the bug shows up: the project's `verify-<app>` skill, `journey-verification`, the CLI, or a test. Ask the human to reproduce only with a stated reason that surface cannot reach the target, after driving it as far as it goes.
+   - Its loop drives the surface where the bug shows up: the project's `verify-<app>` skill, the CLI, or a test. Ask the human to reproduce only with a stated reason that surface cannot reach the target, after driving it as far as it goes.
    - Seed its hypotheses with `how` over the affected subsystem and `why` for the regression history.
 
    Done when runtime evidence confirms the surviving mechanism.
