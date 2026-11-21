@@ -132,7 +132,7 @@ A preset and a role override are separate settings. `tier preset` changes only t
 | `via reviewer` | A review lens with no setting of its own follows the reviewer |
 | `tier chosen at launch` | The `worker`, whose tier the agent picks for each launch |
 
-A role whose client or model differs from its tier's also shows `on <client> › <model>`. The settings live on each machine, so two machines can show different results until you set them the same way on both.
+A role whose client or model differs from its tier's also shows `on <client> › <model>`. Under each tier, `show` and `tier show` add an `also` line naming what every other client runs at that tier, such as `also codex › gpt-6.2-astra` under `heavy`, which is the model a role gets there with `role set --client codex`. A client with no model for the tier is left off; `--json` carries the same list as `others`. The settings live on each machine, so two machines can show different results until you set them the same way on both.
 
 ## Review commands
 
