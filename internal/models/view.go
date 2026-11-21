@@ -270,7 +270,7 @@ func tierProblem(t tierView) string {
 // on, and where it came from.
 func drawMember(s ui.Style, r roleView) string {
 	line := ui.Pad(r.Role, 13) + " " + s.Dim("effort") + " " + drawEffort(s, r.Effort)
-	line += "  " + s.Dim("on") + " " + s.Resolved(r.Client, r.Model)
+	line += "  " + s.Resolved(r.Client, r.Model)
 	if a := annotation(s, r); a != "" {
 		line += "  " + a
 	}

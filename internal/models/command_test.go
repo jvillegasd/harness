@@ -444,9 +444,9 @@ func TestShowDrawsRolesUnderTheirTier(t *testing.T) {
 		"tier defaults  preset balanced\n\n HEAVY      system design, architecture\n  runs on      claude › opus or fable\n  with claude  claude › opus or fable\n  with codex   codex  › gpt-6.1-sol at high\n",
 		" STANDARD   scoped work with tests\n  runs on      codex  › gpt-6.1-terra\n  with claude  claude › sonnet\n  with codex   codex  › gpt-6.1-terra\n",
 		"roles  the model each role runs on\n\n HEAVY    \n  └─ no roles",
-		" HIGH     \n  ├─ reviewer      effort low      on claude › opus\n  ├─ review-bugs   effort low      on claude › opus  via reviewer\n  └─ review-risk   effort low      on claude › opus  via reviewer\n",
-		" STANDARD \n  ├─ executor      effort default  on codex  › gpt-6.1-terra\n  └─ worker        effort default  on codex  › gpt-6.1-terra  tier chosen at launch\n",
-		"  └─ review-spec   effort default  on claude › haiku  set\n     ! claude haiku does not support effort \"low\"",
+		" HIGH     \n  ├─ reviewer      effort low      claude › opus\n  ├─ review-bugs   effort low      claude › opus  via reviewer\n  └─ review-risk   effort low      claude › opus  via reviewer\n",
+		" STANDARD \n  ├─ executor      effort default  codex  › gpt-6.1-terra\n  └─ worker        effort default  codex  › gpt-6.1-terra  tier chosen at launch\n",
+		"  └─ review-spec   effort default  claude › haiku  set\n     ! claude haiku does not support effort \"low\"",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("show lacks %q:\n%s", want, out)

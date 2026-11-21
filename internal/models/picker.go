@@ -12,9 +12,9 @@ import (
 )
 
 var presetNotes = map[string]string{
-	"balanced": "Codex serves standard; Claude serves heavy, high, and fast (default)",
-	"claude":   "Claude serves every tier: opus for heavy and high, sonnet, haiku",
-	"codex":    "Codex serves every tier: its newest astra, sol, terra, luna",
+	"balanced": "Claude for heavy, high, fast; Codex for standard",
+	"claude":   "Claude for every tier",
+	"codex":    "Codex for every tier",
 }
 
 const (
@@ -42,6 +42,8 @@ type picker struct {
 	sets               [][]string
 	done               bool
 	style              ui.Style
+	// refused is why the last pick could not be applied; the picker stays on its step.
+	refused string
 }
 
 func newPicker(catalog *Catalog, choice Choice) picker {
@@ -78,7 +80,18 @@ func (p picker) options() []string {
 	case stepRoleTier:
 		return slices.Concat([]string{keep}, Tiers)
 	case stepRoleClient:
-		return slices.Concat([]string{keep}, p.clients())
+		// Only clients with a model at the role's tier, since role set refuses the others.
+		out := []string{keep}
+		for _, client := range p.clients() {
+			c := p.pending()
+			ov := c.Roles[p.name]
+			ov.Client = client
+			c.Roles[p.name] = ov
+			if c.Resolve(p.name, Launch{}, p.catalog).Err == nil {
+				out = append(out, client)
+			}
+		}
+		return out
 	case stepRoleEffort:
 		r := p.pending().Resolve(p.name, Launch{}, p.catalog)
 		switch r.Client {
@@ -137,6 +150,7 @@ func (p picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if !ok {
 		return p, nil
 	}
+	p.refused = ""
 	switch key.String() {
 	case "q", "esc", "ctrl+c":
 		return p, tea.Quit
@@ -151,6 +165,7 @@ func (p picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
+	at := p.cursor
 	p.cursor = 0
 	switch p.step {
 	case stepMenu:
@@ -176,7 +191,7 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 		if opt != newest {
 			set = append(set, "--model", opt)
 		}
-		p.sets, p.step = append(p.sets, set), stepName
+		return p.queue(stepTierModel, at, set)
 	case stepRoleTier:
 		if opt != keep {
 			p.tier = opt
@@ -188,21 +203,61 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 		}
 		p.step = stepRoleEffort
 	case stepRoleEffort:
-		set := []string{"role", "set", p.name}
-		if p.tier != "" {
-			set = append(set, "--tier", p.tier)
+		return p.queue(stepRoleEffort, at, p.roleSets(opt)...)
+	}
+	return p, nil
+}
+
+// roleSets are the changes a role pick makes. Default clears an effort the
+// role was set to, which role set cannot do alone, so it resets the role and
+// sets again what it keeps.
+func (p picker) roleSets(effort string) [][]string {
+	ov := p.applied().Roles[p.name]
+	tier, client := first(p.tier, ov.Tier), first(p.client, ov.Client)
+	set := []string{"role", "set", p.name}
+	if effort == "" && ov.Effort != "" {
+		var out [][]string
+		out = append(out, []string{"role", "reset", p.name})
+		if tier != "" {
+			set = append(set, "--tier", tier)
 		}
-		if p.client != "" {
-			set = append(set, "--client", p.client)
-		}
-		if opt != "" {
-			set = append(set, "--effort", opt)
+		if client != "" {
+			set = append(set, "--client", client)
 		}
 		if len(set) > 3 {
-			p.sets = append(p.sets, set)
+			out = append(out, set)
 		}
-		p.step = stepName
+		return out
 	}
+	if p.tier != "" {
+		set = append(set, "--tier", p.tier)
+	}
+	if p.client != "" {
+		set = append(set, "--client", p.client)
+	}
+	if effort != "" {
+		set = append(set, "--effort", effort)
+	}
+	if len(set) == 3 {
+		return nil
+	}
+	return [][]string{set}
+}
+
+// queue applies sets to the pending choice as save will. When one is
+// refused, it stays on step with the reason and queues nothing, so the
+// pending list only holds changes that save writes.
+func (p picker) queue(step, cursor int, sets ...[]string) (tea.Model, tea.Cmd) {
+	c := p.applied()
+	for _, set := range sets {
+		next, err := change(c, set, p.catalog)
+		if err != nil {
+			p.step, p.cursor, p.refused = step, cursor, err.Error()
+			return p, nil
+		}
+		c = next
+	}
+	p.sets, p.step = append(p.sets, sets...), stepName
 	return p, nil
 }
 
@@ -252,6 +307,9 @@ func (p picker) View() tea.View {
 		for _, line := range p.presetPreview(opts[p.cursor]) {
 			b.WriteString(line + "\n")
 		}
+	}
+	if p.refused != "" {
+		b.WriteString("\n" + s.Warn(p.refused) + "\n")
 	}
 	if p.step == stepTierClient || p.step == stepRoleClient {
 		if _, err := p.catalog.Codex(); err != nil {

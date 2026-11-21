@@ -265,3 +265,47 @@ func TestPickerSaysWhatNewestResolvesTo(t *testing.T) {
 		}
 	}
 }
+
+func TestPickerOffersOnlyClientsWithAModelAtTheRolesTier(t *testing.T) {
+	listingPath(t)
+	p := choose(t, choose(t, choose(t, newPicker(new(Catalog), Choice{}), "custom"), "reviewer"), keep)
+	if got := p.options(); slices.Contains(got, "opencode") || !slices.Contains(got, "codex") {
+		t.Errorf("clients offered for the reviewer at high: %v, want codex and not opencode", got)
+	}
+}
+
+func TestPickerRefusesAChangeSaveWouldRefuse(t *testing.T) {
+	listingPath(t)
+	p := choose(t, newPicker(new(Catalog), Choice{}), "custom")
+	p = choose(t, choose(t, choose(t, p, "high"), "codex"), newest)
+	p.name, p.tier, p.client, p.step = "reviewer", "", "opencode", stepRoleEffort
+	p = choose(t, p, "")
+	if p.step != stepRoleEffort || !strings.Contains(p.View().Content, "! opencode has no model for the high tier") {
+		t.Errorf("a refused pick left step %d:\n%s", p.step, p.View().Content)
+	}
+	if len(p.sets) != 1 {
+		t.Fatalf("pending = %v, want only the tier change", p.sets)
+	}
+	p.step, p.cursor = stepName, len(p.options())-1
+	p = choose(t, p, "save")
+	path := statePath(t)
+	if wrote, err := p.save(path); err != nil || !wrote {
+		t.Fatalf("the valid change was not saved: wrote=%v err=%v", wrote, err)
+	}
+}
+
+func TestPickerDefaultEffortClearsAnEffortTheNewModelLacks(t *testing.T) {
+	listingPath(t)
+	p := choose(t, newPicker(new(Catalog), Choice{}), "custom")
+	p = choose(t, choose(t, choose(t, choose(t, p, "reviewer"), keep), keep), "high")
+	p = choose(t, choose(t, choose(t, choose(t, p, "reviewer"), "fast"), keep), "")
+	p = choose(t, p, "save")
+	path := statePath(t)
+	if wrote, err := p.save(path); err != nil || !wrote {
+		t.Fatalf("moving the reviewer to haiku was not saved: wrote=%v err=%v", wrote, err)
+	}
+	choice, _ := Load(path)
+	if ov := choice.Roles["reviewer"]; ov.Tier != "fast" || ov.Effort != "" {
+		t.Errorf("reviewer override = %+v, want tier fast and no effort", ov)
+	}
+}
