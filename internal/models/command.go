@@ -168,6 +168,13 @@ func change(choice Choice, args []string, cat *Catalog) (Choice, error) {
 		return setTier(choice, args[2:], cat)
 	case "role set":
 		return setRole(choice, args[2:], cat)
+	case "tier reset":
+		if len(args) != 3 || knownTier(args[2]) != nil {
+			return choice, fmt.Errorf("tier reset takes one tier")
+		}
+		choice.Tiers = maps.Clone(choice.Tiers)
+		delete(choice.Tiers, args[2])
+		return choice, nil
 	case "role reset":
 		if len(args) != 3 || knownRole(args[2]) != nil {
 			return choice, fmt.Errorf("role reset takes one role")

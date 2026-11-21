@@ -21,6 +21,7 @@ const (
 	visibleRows = 15
 	keep        = "keep"
 	newest      = "newest"
+	reset       = "reset"
 )
 
 const (
@@ -66,6 +67,9 @@ func (p picker) options() []string {
 	case stepName:
 		return slices.Concat(Tiers, AllRoles, []string{"save"})
 	case stepTierClient:
+		if _, set := p.applied().Tiers[p.name]; set {
+			return slices.Concat([]string{reset}, p.clients())
+		}
 		return p.clients()
 	case stepTierModel:
 		switch p.client {
@@ -78,6 +82,9 @@ func (p picker) options() []string {
 		listed, _ := p.catalog.OpenCode()
 		return listed
 	case stepRoleTier:
+		if _, set := p.applied().Roles[p.name]; set {
+			return slices.Concat([]string{reset, keep}, Tiers)
+		}
 		return slices.Concat([]string{keep}, Tiers)
 	case stepRoleClient:
 		// Only clients with a model at the role's tier, since role set refuses the others.
@@ -152,8 +159,15 @@ func (p picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	p.refused = ""
 	switch key.String() {
-	case "q", "esc", "ctrl+c":
+	case "q", "ctrl+c":
 		return p, tea.Quit
+	case "esc":
+		// Back one step; on the first step there is nowhere back to, so quit.
+		back, ok := backSteps[p.step]
+		if !ok {
+			return p, tea.Quit
+		}
+		p.step, p.cursor = back, 0
 	case "up", "k":
 		p.cursor = max(p.cursor-1, 0)
 	case "down", "j":
@@ -164,13 +178,23 @@ func (p picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return p, nil
 }
 
+// backSteps is the step esc returns to from each step.
+var backSteps = map[int]int{
+	stepName:       stepMenu,
+	stepTierClient: stepName,
+	stepTierModel:  stepTierClient,
+	stepRoleTier:   stepName,
+	stepRoleClient: stepRoleTier,
+	stepRoleEffort: stepRoleClient,
+}
+
 func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 	at := p.cursor
 	p.cursor = 0
 	switch p.step {
 	case stepMenu:
 		if opt != "custom" {
-			p.sets, p.done = [][]string{{"tier", "preset", opt}}, true
+			p.sets, p.done = append(p.sets, []string{"tier", "preset", opt}), true
 			return p, tea.Quit
 		}
 		p.step = stepName
@@ -185,6 +209,9 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 			p.step = stepTierClient
 		}
 	case stepTierClient:
+		if opt == reset {
+			return p.queue(stepTierClient, at, []string{"tier", "reset", p.name})
+		}
 		p.client, p.step = opt, stepTierModel
 	case stepTierModel:
 		set := []string{"tier", "set", p.name, "--client", p.client}
@@ -193,6 +220,9 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 		}
 		return p.queue(stepTierModel, at, set)
 	case stepRoleTier:
+		if opt == reset {
+			return p.queue(stepRoleTier, at, []string{"role", "reset", p.name})
+		}
 		if opt != keep {
 			p.tier = opt
 		}
@@ -325,7 +355,11 @@ func (p picker) View() tea.View {
 			b.WriteString("  harness models " + strings.Join(set, " ") + "\n")
 		}
 	}
-	b.WriteString("\n" + s.Dim("↑/↓ move  enter select  esc cancel without writing") + "\n")
+	back := "esc back"
+	if p.step == stepMenu {
+		back = "esc quit"
+	}
+	b.WriteString("\n" + s.Dim("↑/↓ move  enter select  "+back+"  q quit without writing") + "\n")
 	return tea.NewView(b.String())
 }
 
@@ -340,6 +374,8 @@ func (p picker) label(opt string) string {
 		}
 	case p.step == stepName && opt == "save":
 		return s.Accent(opt)
+	case opt == reset:
+		return s.Caution(opt)
 	case (p.step == stepName || p.step == stepRoleTier) && slices.Contains(Tiers, opt):
 		return s.Color(ui.Hue(slices.Index(Tiers, opt)), opt)
 	}
@@ -360,13 +396,32 @@ func (p picker) detail(opt string) string {
 			note += "  " + s.Accent("current")
 		}
 		return s.Dim(note)
+	case stepTierClient, stepRoleTier:
+		if opt == reset {
+			c := p.applied()
+			if p.step == stepTierClient {
+				delete(c.Tiers, p.name)
+				b, _ := c.binding(p.name)
+				model, _ := c.Model(p.name, b.Client, p.catalog)
+				return s.Dim("back to preset " + c.preset() + ": " + b.Client + " › " + orUnavailable(model))
+			}
+			delete(c.Roles, p.name)
+			r := c.Resolve(p.name, Launch{}, p.catalog)
+			return s.Dim("back to its default: " + r.Tier + ", " + r.Client + " › " + orUnavailable(r.Model))
+		}
 	case stepName:
 		c := p.applied()
+		_, tierSet := c.Tiers[opt]
+		_, roleSet := c.Roles[opt]
+		mark := ""
+		if tierSet || roleSet {
+			mark = "  " + s.Accent("set")
+		}
 		switch {
 		case slices.Contains(Tiers, opt):
 			b, _ := c.binding(opt)
 			model, _ := c.Model(opt, b.Client, p.catalog)
-			return s.Dim(ui.Pad("", 10) + ui.Pad(b.Client, 6) + " › " + orUnavailable(model))
+			return s.Dim(ui.Pad("", 10)+ui.Pad(b.Client, 6)+" › "+orUnavailable(model)) + mark
 		case opt == "save":
 			if len(p.sets) == 1 {
 				return s.Dim("write 1 pending change")
@@ -374,7 +429,7 @@ func (p picker) detail(opt string) string {
 			return s.Dim(fmt.Sprintf("write %d pending changes", len(p.sets)))
 		}
 		r := c.Resolve(opt, Launch{}, p.catalog)
-		return s.Dim(ui.Pad(r.Tier, 10) + ui.Pad(r.Client, 6) + " › " + orUnavailable(r.Model))
+		return s.Dim(ui.Pad(r.Tier, 10)+ui.Pad(r.Client, 6)+" › "+orUnavailable(r.Model)) + mark
 	case stepTierModel:
 		if opt == newest {
 			if model := p.newestModel(); model != "" {

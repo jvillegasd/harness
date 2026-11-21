@@ -17,6 +17,7 @@ var (
 	keyDown  = tea.KeyPressMsg{Code: tea.KeyDown}
 	keyEnter = tea.KeyPressMsg{Code: tea.KeyEnter}
 	keyEsc   = tea.KeyPressMsg{Code: tea.KeyEscape}
+	keyQ     = tea.KeyPressMsg{Code: 'q', Text: "q"}
 )
 
 func drive(t *testing.T, p picker, keys ...tea.KeyPressMsg) picker {
@@ -154,12 +155,12 @@ func TestPickerCancelWritesNothing(t *testing.T) {
 		"after an edit": choose(t, choose(t, custom, "claude"), "high"),
 	} {
 		p = drive(t, p, keyDown, keyUp)
-		next, cmd := p.Update(keyEsc)
+		next, cmd := p.Update(keyQ)
 		if cmd == nil {
-			t.Fatalf("%s: esc did not quit", name)
+			t.Fatalf("%s: q did not quit", name)
 		}
 		if _, ok := cmd().(tea.QuitMsg); !ok {
-			t.Errorf("%s: esc did not quit", name)
+			t.Errorf("%s: q did not quit", name)
 		}
 		p = next.(picker)
 		path := statePath(t)
@@ -307,5 +308,32 @@ func TestPickerDefaultEffortClearsAnEffortTheNewModelLacks(t *testing.T) {
 	choice, _ := Load(path)
 	if ov := choice.Roles["reviewer"]; ov.Tier != "fast" || ov.Effort != "" {
 		t.Errorf("reviewer override = %+v, want tier fast and no effort", ov)
+	}
+}
+
+func TestPickerEscGoesBackOneStep(t *testing.T) {
+	p := choose(t, choose(t, fresh(catalogOf(nil, nil)), "custom"), "reviewer")
+	for _, want := range []int{stepName, stepMenu} {
+		next, _ := p.Update(keyEsc)
+		if p = next.(picker); p.step != want {
+			t.Fatalf("esc went to step %d, want %d", p.step, want)
+		}
+	}
+	if _, cmd := p.Update(keyEsc); cmd == nil {
+		t.Error("esc on the first step did not quit")
+	}
+}
+
+func TestPickerResetsATierAndARole(t *testing.T) {
+	listingPath(t)
+	choice := Choice{Tiers: map[string]Binding{"high": {Client: "codex"}}, Roles: map[string]Override{"reviewer": {Client: "codex"}}}
+	p := choose(t, newPicker(new(Catalog), choice), "custom")
+	p = choose(t, choose(t, p, "high"), reset)
+	p = choose(t, choose(t, p, "reviewer"), reset)
+	if got := fmt.Sprint(p.sets); got != "[[tier reset high] [role reset reviewer]]" {
+		t.Fatalf("pending = %s", got)
+	}
+	if opts := choose(t, p, "executor").options(); slices.Contains(opts, reset) {
+		t.Errorf("reset offered for a role with nothing set: %v", opts)
 	}
 }
