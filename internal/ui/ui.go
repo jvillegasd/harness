@@ -9,8 +9,14 @@
 //   - Metadata is dim. A value the human set is accented ("set"). Problems
 //     are a `!` line in the warning color under what they affect (Warn);
 //     a finished action is an `ok` line (OK).
+//   - A flat list of records is a Table: aligned columns, a dim header,
+//     the first column as the record's name. A record's details are Fields.
+//   - A failed check is an `x` line in red (Fail); a passed one is `ok`.
 //   - Color and weight appear only on a terminal and never under NO_COLOR;
 //     the layout is the same either way. Scripts read `--json`, never this.
+//
+// What a program or agent reads as a value stays out of the design: JSON, a
+// printed path or digest, a forge comment, a written file, and hook output.
 package ui
 
 import (
@@ -18,6 +24,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/term"
 )
 
@@ -106,9 +113,69 @@ func (s Style) Warn(text string) string { return s.sgr("33", "!") + " " + text }
 // OK is a finished-action line.
 func (s Style) OK(text string) string { return s.sgr("32", "ok") + " " + s.Dim(text) }
 
-// Pad pads text with spaces to width display columns.
+// Fail is a failed-check line.
+func (s Style) Fail(text string) string { return s.sgr("31", "x") + " " + text }
+
+// Bad draws text in the failure color, for a value that is a failure.
+func (s Style) Bad(text string) string { return s.sgr("31", text) }
+
+// Good draws text in the success color, for a value that is a success.
+func (s Style) Good(text string) string { return s.sgr("32", text) }
+
+// Caution draws text in the warning color, for a value that needs attention.
+func (s Style) Caution(text string) string { return s.sgr("33", text) }
+
+// Table aligns rows into columns two spaces apart, the header dim when given.
+// Cells may already be styled; widths count display columns only.
+func (s Style) Table(header []string, rows [][]string) []string {
+	all := rows
+	if header != nil {
+		dimmed := make([]string, len(header))
+		for i, h := range header {
+			dimmed[i] = s.Dim(strings.ToUpper(h))
+		}
+		all = append([][]string{dimmed}, rows...)
+	}
+	var widths []int
+	for _, row := range all {
+		for i, cell := range row {
+			if i >= len(widths) {
+				widths = append(widths, 0)
+			}
+			widths[i] = max(widths[i], ansi.StringWidth(cell))
+		}
+	}
+	out := make([]string, 0, len(all))
+	for _, row := range all {
+		var b strings.Builder
+		for i, cell := range row {
+			if i < len(row)-1 {
+				cell = Pad(cell, widths[i]) + "  "
+			}
+			b.WriteString(cell)
+		}
+		out = append(out, strings.TrimRight(b.String(), " "))
+	}
+	return out
+}
+
+// Fields are a record's details: dim labels aligned, values after them.
+func (s Style) Fields(pairs ...[2]string) []string {
+	width := 0
+	for _, p := range pairs {
+		width = max(width, ansi.StringWidth(p[0]))
+	}
+	out := make([]string, 0, len(pairs))
+	for _, p := range pairs {
+		out = append(out, "  "+s.Dim(Pad(p[0], width))+"  "+p[1])
+	}
+	return out
+}
+
+// Pad pads text with spaces to width display columns; styled text counts
+// only what shows.
 func Pad(text string, width int) string {
-	if n := len([]rune(text)); n < width {
+	if n := ansi.StringWidth(text); n < width {
 		return text + strings.Repeat(" ", width-n)
 	}
 	return text
