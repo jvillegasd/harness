@@ -15,7 +15,7 @@ harness review level high    # off, medium, or high
 | Level | Starts on its own for | Who reviews | Most agents per review |
 | --- | --- | --- | --- |
 | `off` | Nothing | Nobody, unless you ask (then it runs as `medium`) | 0 unless you ask |
-| `medium` | Every PR (or `build` integration branch) beyond docs or tests, and local work that is critical or names a security, data-loss, compatibility, or concurrency risk | One general reviewer | 2 |
+| `medium` | Every PR (or `build` pull-request branch) beyond docs or tests, and local work that is critical or names a security, data-loss, compatibility, or concurrency risk | One general reviewer | 2 |
 | `high` | Every PR or local change beyond docs, tests, and mechanical edits | The general reviewer plus one or two specialists | 6 |
 
 The kinds of change ("critical", "docs or tests", "mechanical") are the review tiers that `change-map` assigns to each changed file.

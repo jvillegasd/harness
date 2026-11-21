@@ -44,9 +44,9 @@ jvillegasd-mode lasts the conversation. "New task" means match again from step 1
 | Merge, or "it merged, clean up" | Reply "run `/land` in this worktree" and stop. Merging and cleanup belong to the human through `land` |
 | Clean up old worktrees or branches | Reply "run `/cleanup`" and stop. The human names what a sweep removes |
 | Resume or pick up earlier work | `checkpoint`'s Resume, then continue the playbook and step it recorded, or match what is left |
-| Large, multi-part, or none of the above | [large](playbooks/large.md) |
+| Large, multi-part, or none of the above | [you-got-this](playbooks/you-got-this.md) |
 
-A bug that is a slowdown with a number is perf, and a one-off speedup is perf while a target reached over many measured attempts is hillclimb. A single ticket or a plain request to change behavior matches its kind's row (bug fix, feature, refactor), whose playbook runs `build` on one slice. When the task fits two rows, take the narrower one, and the large playbook only when no narrower row covers it.
+A bug that is a slowdown with a number is perf, and a one-off speedup is perf while a target reached over many measured attempts is hillclimb. A single ticket or a plain request to change behavior matches its kind's row (bug fix, feature, refactor), whose playbook runs `build` on one slice. When the task fits two rows, take the narrower one, and you-got-this only when no narrower row covers it.
 
 A row that names a skill runs that skill's steps as the playbook: they go into the todo list like any playbook's, and jvillegasd-mode adds only its triggers and reply. `epic`, `build`, and `triage` are guarded so the model never starts them on its own; the human's `/jvillegasd-mode` request is what starts them. An epic hands back asking "go to build it?". Only an explicit go answers it, since approving an epic authorizes local implementation alone; the go is a new task, a settled epic matched again.
 
@@ -57,6 +57,7 @@ These hold at every step of every playbook.
 - **A broken skill mid-task** (a step that names a missing script, a stale path, two skills that contradict each other): fix it on its own branch. Do not block on it and do not silently work around it. It becomes its own PR when delivery is authorized. When the broken skill belongs to the harness and you are working in another repository, write a ready-to-apply note instead: the skill, the defect, the evidence, and the proposed fix, in the task document and the reply.
 - **A step that verifies** passes only on the surface it names. Inconclusive, or green or measured on another surface, is not a pass.
 - **A subagent to launch** (executor, code-search, reviewer, a review lens, or any other, which runs as the `worker` at a tier): launch it through `delegation`.
+- **Bulk that would crowd the context** (a broad search, a long log, transcript, trace, or profile, a sweep of mechanical edits, an implementation big enough to bury the plan): route it to a role through `delegation` and keep only its reduced result, so this session stays on planning, review, and verification (`principle-guard-the-context-window`).
 - **A principle applies** (the index below): read that principle's `SKILL.md` in full from the installed skills (`~/.claude/skills` in Claude Code, `~/.agents/skills` in Codex and OpenCode) before acting on it, and name in the reply each principle that changed a decision.
 
 ### Principles
