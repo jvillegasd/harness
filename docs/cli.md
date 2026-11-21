@@ -113,7 +113,7 @@ After an update, read the changed skill bodies and the lockfile, then run `harne
 
 ```sh
 harness models show                                    # every tier with its roles
-harness models tier preset codex                       # codex serves every tier
+harness models tier preset codex                       # codex serves every tier you have not set
 harness models tier set high --client codex            # one tier from another client
 harness models role set reviewer --client codex        # one role on another client, at its own tier
 harness models role resolve reviewer                   # the model the role launches on
@@ -121,7 +121,7 @@ harness models role reset                              # drop every role overrid
 harness models reset                                   # drop every tier and role setting
 ```
 
-A preset and a role override are separate settings. `tier preset` changes only the tiers, so a role you set earlier keeps its client and effort until you run `role reset`. A role on another client runs at that client's model for the same tier: a reviewer set to `--client codex` at `high` runs on Codex's newest `-sol` model even while Claude serves `high`.
+A preset and a role override are separate settings. `tier preset` changes only the tiers, so the fields you set on a role earlier survive until you run `role reset`, while a field you did not set, such as the client of a role saved with only `--effort`, follows the tier and moves with the preset. A role on another client runs at that client's model for the same tier: a reviewer set to `--client codex` at `high` runs on Codex's newest `-sol` model even while Claude serves `high`, unless a Codex model is pinned for `high` with `tier set high --client codex --model <model>`, which wins over the newest model.
 
 `show` labels where each line comes from:
 
@@ -337,4 +337,4 @@ The log is a tab-separated file outside the repository. `add` fills in the id, t
 The client settings the harness installs call two commands that you rarely run yourself:
 
 - **`harness statusline`** reads Claude Code's status payload as JSON on stdin and prints the status line. An empty payload prints `Claude` alone.
-- **`harness resume`** prints what a client restores after it compacts a session: the branch, its head commit, and the state and next action of every task document under `docs/agents/tasks/` that the branch changed. The compaction hooks in Claude Code, Codex, and OpenCode run it from the session's working directory. It prints nothing outside a Git checkout and always exits 0, so it never blocks compaction.
+- **`harness resume`** prints what a client restores after it compacts a session: the branch, its head commit, and, for each task document under `docs/agents/tasks/` that the branch changed, its path and its next-action section when present. The compaction hooks in Claude Code, Codex, and OpenCode run it from the session's working directory. It prints nothing outside a Git checkout and without arguments, as the hooks call it, always exits 0, so it never blocks compaction.
