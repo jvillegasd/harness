@@ -369,7 +369,7 @@ func TestTierAndRoleCommandsTouchOnlyTheirHalf(t *testing.T) {
 	runOK(t, path, "tier", "preset", "claude")
 	runOK(t, path, "tier", "set", "high", "--client", "codex")
 	runOK(t, path, "role", "set", "executor", "--tier", "high")
-	if out := runOK(t, path, "tier", "show"); !strings.Contains(out, " HIGH       codex  › gpt-6.1-sol") || strings.Contains(out, "executor") {
+	if out := runOK(t, path, "tier", "show"); !strings.Contains(out, "  runs on        codex  › gpt-6.1-sol  set\n") || strings.Contains(out, "executor") {
 		t.Errorf("tier show prints more or less than the tiers:\n%s", out)
 	}
 	if out := runOK(t, path, "role", "show"); !strings.Contains(out, "executor      high      codex  › gpt-6.1-sol") || strings.Contains(out, " HIGH ") {
@@ -441,10 +441,12 @@ func TestShowDrawsRolesUnderTheirTier(t *testing.T) {
 	out := runOK(t, path, "show")
 	for _, want := range []string{
 		"harness models  preset balanced",
-		" HIGH       claude › opus            preset\n  also codex › gpt-6.1-sol\n  ├─ reviewer      effort low\n  ├─ review-bugs   effort low      via reviewer\n  └─ review-risk   effort low      via reviewer\n",
-		" STANDARD   codex  › gpt-6.1-terra   preset\n  also claude › sonnet\n  ├─ executor      effort default\n  └─ worker        effort default  tier chosen at launch\n",
-		"  └─ review-spec   effort default  set\n     ! claude haiku does not support effort \"low\"",
-		" HEAVY      claude › opus            preset\n  also claude › fable · codex › gpt-6.1-sol at high\n  └─ no roles",
+		"tier defaults  preset balanced\n\n HEAVY      system design, architecture\n  runs on      claude › opus or fable\n  with claude  claude › opus or fable\n  with codex   codex  › gpt-6.1-sol at high\n",
+		" STANDARD   scoped work with tests\n  runs on      codex  › gpt-6.1-terra\n  with claude  claude › sonnet\n  with codex   codex  › gpt-6.1-terra\n",
+		"roles  the model each role runs on\n\n HEAVY    \n  └─ no roles",
+		" HIGH     \n  ├─ reviewer      effort low      on claude › opus\n  ├─ review-bugs   effort low      on claude › opus  via reviewer\n  └─ review-risk   effort low      on claude › opus  via reviewer\n",
+		" STANDARD \n  ├─ executor      effort default  on codex  › gpt-6.1-terra\n  └─ worker        effort default  on codex  › gpt-6.1-terra  tier chosen at launch\n",
+		"  └─ review-spec   effort default  on claude › haiku  set\n     ! claude haiku does not support effort \"low\"",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("show lacks %q:\n%s", want, out)
@@ -461,7 +463,7 @@ func TestShowDrawsRolesUnderTheirTier(t *testing.T) {
 	}
 }
 
-func TestEachTierListsWhatOtherClientsRunAtIt(t *testing.T) {
+func TestEachTierListsWhatOtherClientsAndPresetsRunItOn(t *testing.T) {
 	listingPath(t)
 	path := seeded(t, "")
 	runOK(t, path, "tier", "set", "high", "--client", "claude", "--model", "fable")
@@ -497,7 +499,26 @@ func TestEachTierListsWhatOtherClientsRunAtIt(t *testing.T) {
 	if got := resolved(t, path, "worker", "--tier", "heavy", "--client", "codex"); got["model"] != "gpt-6.1-sol" || got["tier"] != "high" {
 		t.Errorf("the listing disagrees with what a role on codex at heavy resolves to: %v", got)
 	}
-	if out := runOK(t, path, "tier", "show"); !strings.Contains(out, " HEAVY      claude › opus            preset\n  also claude › fable · codex › gpt-6.1-sol at high\n") {
-		t.Errorf("tier show does not draw heavy's fallback:\n%s", out)
+	presets := map[string]string{}
+	for _, v := range rep.Tiers {
+		for _, name := range presetNames() {
+			m := v.Presets[name]
+			presets[v.Tier+" "+name] = m.Client + "=" + m.Model + strings.TrimSuffix("@"+m.Tier, "@")
+		}
+	}
+	for key, w := range map[string]string{
+		"heavy balanced":    "claude=opus",
+		"heavy codex":       "codex=gpt-6.1-sol@high",
+		"high codex":        "claude=fable",
+		"standard balanced": "codex=gpt-6.1-terra",
+		"standard claude":   "claude=sonnet",
+		"fast codex":        "claude=haiku",
+	} {
+		if presets[key] != w {
+			t.Errorf("under preset %s serves %q, want %q (a tier set by hand keeps its client)", key, presets[key], w)
+		}
+	}
+	if out := runOK(t, path, "tier", "show"); !strings.Contains(out, " HEAVY      system design, architecture\n  runs on      claude › opus or fable\n  with claude  claude › opus or fable\n  with codex   codex  › gpt-6.1-sol at high\n") {
+		t.Errorf("tier show does not draw heavy's card with its fallback:\n%s", out)
 	}
 }

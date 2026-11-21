@@ -26,6 +26,10 @@ type tierView struct {
 	// Others is what each other client runs at this tier, for a role set to
 	// that client; a client with no model for the tier is left out.
 	Others []clientModel `json:"others"`
+	// Presets is what serves this tier under each preset.
+	Presets map[string]clientModel `json:"presets"`
+	// alternatives is each preset's other models on the same client, such as fable beside opus.
+	alternatives map[string][]string
 }
 
 type clientModel struct {
@@ -99,10 +103,40 @@ func (c Choice) report(cat *Catalog) report {
 			v.Fallback = next
 		}
 		v.Others = c.others(tier, clientModel{Client: b.Client, Model: model}, cat)
+		v.Presets, v.alternatives = map[string]clientModel{}, map[string][]string{}
+		for _, name := range presetNames() {
+			under := c
+			under.Preset = name
+			pb, _ := under.binding(tier)
+			pm, err := under.Model(tier, pb.Client, cat)
+			at := tier
+			// A role at the tier falls back as Resolve does when the client lists no model.
+			for next, ok := fallback[at]; ok && errors.Is(err, ErrNotListed); next, ok = fallback[at] {
+				at = next
+				pm, err = under.Model(at, pb.Client, cat)
+			}
+			m := clientModel{Client: pb.Client, Model: orUnavailable(pm)}
+			if at != tier {
+				m.Tier = at
+			}
+			v.Presets[name] = m
+			v.alternatives[name] = sameClient(under.others(tier, clientModel{Client: pb.Client, Model: pm}, cat), pb.Client)
+		}
 		out.Tiers = append(out.Tiers, v)
 	}
 	for _, name := range AllRoles {
 		out.Roles = append(out.Roles, view(c.Resolve(name, Launch{}, cat)))
+	}
+	return out
+}
+
+// sameClient is the models in others that run on client.
+func sameClient(others []clientModel, client string) []string {
+	var out []string
+	for _, o := range others {
+		if o.Client == client && o.Tier == "" {
+			out = append(out, o.Model)
+		}
 	}
 	return out
 }
@@ -142,12 +176,17 @@ func writeJSON(w io.Writer, v any) error {
 	return enc.Encode(v)
 }
 
-// drawTree draws every tier with the roles that run at it hanging under it.
+// drawTree draws a card per tier, then each tier's roles hanging under its pill.
 func drawTree(s ui.Style, rep report, w io.Writer) {
 	fmt.Fprintln(w, s.Title("harness models", "preset "+rep.Preset, "~/.harness/state.json"))
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, s.Title("tier defaults", "preset "+rep.Preset))
+	drawCards(s, rep, w)
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, s.Title("roles", "the model each role runs on"))
 	for i, t := range rep.Tiers {
 		fmt.Fprintln(w)
-		drawTierLines(s, i, t, w)
+		fmt.Fprintln(w, s.Pill(ui.Hue(i), t.Tier, 8))
 		var members []roleView
 		for _, r := range rep.Roles {
 			if r.Tier == t.Tier {
@@ -159,7 +198,7 @@ func drawTree(s ui.Style, rep report, w io.Writer) {
 		}
 		for j, r := range members {
 			last := j == len(members)-1
-			fmt.Fprintln(w, strings.TrimRight(s.Branch(last)+drawMember(s, r, t), " "))
+			fmt.Fprintln(w, strings.TrimRight(s.Branch(last)+drawMember(s, r), " "))
 			for _, p := range memberProblems(r) {
 				if p != t.Problem {
 					fmt.Fprintln(w, s.Stem(last)+s.Warn(p))
@@ -169,24 +208,51 @@ func drawTree(s ui.Style, rep report, w io.Writer) {
 	}
 }
 
-func drawTier(s ui.Style, i int, t tierView) string {
-	return s.Pill(ui.Hue(i), t.Tier, 8) + "  " + s.Resolved(t.Client, ui.Pad(t.Model, 14)) + "  " + drawSource(s, t.Source)
+// tierWork is what each tier's card says the tier is for.
+var tierWork = map[string]string{
+	"heavy":    "system design, architecture",
+	"high":     "defects, engineering, analysis",
+	"standard": "scoped work with tests",
+	"fast":     "classification, bulk reads, boilerplate",
 }
 
-// drawOthers lists what a role set to another client would run at the tier.
-func drawOthers(s ui.Style, t tierView) string {
-	if len(t.Others) == 0 {
-		return ""
-	}
-	var parts []string
-	for _, o := range t.Others {
-		part := o.Client + " " + s.Dim("›") + " " + o.Model
-		if o.Tier != "" {
-			part += " " + s.Dim("at "+o.Tier)
+// drawCards draws one card per tier: what it is for, what runs it, and what
+// each other preset would run it on.
+func drawCards(s ui.Style, rep report, w io.Writer) {
+	for i, t := range rep.Tiers {
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, s.Pill(ui.Hue(i), t.Tier, 8)+"  "+s.Dim(tierWork[t.Tier]))
+		runs := drawChoice(s, clientModel{Client: t.Client, Model: t.Model}, t.alternatives[rep.Preset])
+		if t.Source == "set" {
+			runs += "  " + s.Accent("set")
 		}
-		parts = append(parts, part)
+		pairs := [][2]string{{"runs on", runs}}
+		for _, name := range presetNames() {
+			if name != rep.Preset {
+				pairs = append(pairs, [2]string{"with " + name, drawChoice(s, t.Presets[name], t.alternatives[name])})
+			}
+		}
+		lines := s.Fields(pairs...)
+		fmt.Fprintln(w, lines[0])
+		if t.Problem != "" {
+			fmt.Fprintln(w, "  "+s.Warn(tierProblem(t)))
+		}
+		for _, line := range lines[1:] {
+			fmt.Fprintln(w, line)
+		}
 	}
-	return "  " + s.Dim("also "+strings.Join(parts, s.Dim(" · ")))
+}
+
+// drawChoice is `client › model`, with the client's other models for the tier dim after it.
+func drawChoice(s ui.Style, m clientModel, alternatives []string) string {
+	text := s.Resolved(m.Client, m.Model)
+	if m.Tier != "" {
+		text += " " + s.Dim("at "+m.Tier)
+	}
+	for _, alt := range alternatives {
+		text += s.Dim(" or " + alt)
+	}
+	return text
 }
 
 func tierProblem(t tierView) string {
@@ -196,22 +262,11 @@ func tierProblem(t tierView) string {
 	return t.Problem
 }
 
-// drawSource says where a tier's binding came from: the human, or the preset.
-func drawSource(s ui.Style, source string) string {
-	if source == "set" {
-		return s.Accent("set")
-	}
-	preset, _, _ := strings.Cut(source, ":")
-	return s.Dim(preset)
-}
-
-// drawMember is a role under its tier: its name, effort, and where it came
-// from, plus the client and model when they differ from the tier's.
-func drawMember(s ui.Style, r roleView, t tierView) string {
+// drawMember is a role under its tier: its name, effort, the model it runs
+// on, and where it came from.
+func drawMember(s ui.Style, r roleView) string {
 	line := ui.Pad(r.Role, 13) + " " + s.Dim("effort") + " " + drawEffort(s, r.Effort)
-	if r.Client != t.Client || r.Model != t.Model {
-		line += "  " + s.Dim("on") + " " + s.Resolved(r.Client, r.Model)
-	}
+	line += "  " + s.Dim("on") + " " + s.Resolved(r.Client, r.Model)
 	if a := annotation(s, r); a != "" {
 		line += "  " + a
 	}
@@ -250,24 +305,10 @@ func memberProblems(r roleView) []string {
 	return out
 }
 
-// drawTiers draws the tiers alone, for `tier show`.
+// drawTiers draws the tier cards alone, for `tier show`.
 func drawTiers(s ui.Style, rep report, w io.Writer) {
 	fmt.Fprintln(w, s.Title("harness models tier", "preset "+rep.Preset))
-	fmt.Fprintln(w)
-	for i, t := range rep.Tiers {
-		drawTierLines(s, i, t, w)
-	}
-}
-
-// drawTierLines draws a tier, its problem, and what other clients run at it.
-func drawTierLines(s ui.Style, i int, t tierView, w io.Writer) {
-	fmt.Fprintln(w, drawTier(s, i, t))
-	if t.Problem != "" {
-		fmt.Fprintln(w, "  "+s.Warn(tierProblem(t)))
-	}
-	if others := drawOthers(s, t); others != "" {
-		fmt.Fprintln(w, others)
-	}
+	drawCards(s, rep, w)
 }
 
 // drawRoles draws one row per role, for `role show` and `role resolve`.

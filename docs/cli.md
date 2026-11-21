@@ -123,16 +123,17 @@ harness models reset                                   # drop every tier and rol
 
 A preset and a role override are separate settings. `tier preset` changes only the tiers, so the fields you set on a role earlier survive until you run `role reset`, while a field you did not set, such as the client of a role saved with only `--effort`, follows the tier and moves with the preset. A role on another client runs at that client's model for the same tier: a reviewer set to `--client codex` at `high` runs on Codex's newest `-sol` model even while Claude serves `high`, unless a Codex model is pinned for `high` with `tier set high --client codex --model <model>`, which wins over the newest model.
 
-`show` labels where each line comes from:
+`show` prints two sections. `tier defaults` has one card per tier: what the tier is for, `runs on` with the model that serves it now, and one `with <preset>` line per other preset with the model that preset would serve it with. A Claude alias made for the tier follows its model as `or fable`, whether or not your plan includes it. When a preset's client lists no model for the tier, the card shows the model a role falls back to, such as `codex › gpt-6.1-sol at high`. A tier you set with `tier set` keeps its client under every preset. `roles` lists each role under its tier with the model it runs on, as `on <client> › <model>`. `tier show` prints the cards alone.
+
+Each line is labeled with where it comes from:
 
 | Label | Meaning |
 | --- | --- |
-| `preset` | The tier comes from the preset (`balanced` unless you chose another) |
 | `set` | You set this tier or role, and it is saved in `~/.harness/state.json` |
 | `via reviewer` | A review lens with no setting of its own follows the reviewer |
 | `tier chosen at launch` | The `worker`, whose tier the agent picks for each launch |
 
-A role whose client or model differs from its tier's also shows `on <client> › <model>`. Under each tier, `show` and `tier show` add an `also` line naming the other models a role at that tier can run on. Each other client shows the model a role gets there with `role set --client`, such as `codex › gpt-6.2-astra` under `heavy`. When that client lists no model for the tier, the line shows the model it falls back to, such as `codex › gpt-6.1-sol at high`. A Claude alias made for the tier is listed too, such as `claude › fable` under `heavy`, whether or not your plan includes it. A client with no model is left off. `--json` carries the same list as `others`, with `tier` set on a fallback. The settings live on each machine, so two machines can show different results until you set them the same way on both.
+A line with no label comes from the preset. `--json` carries each tier's `presets`, the model each preset serves it with and `tier` on a fallback, and `others`, the model a role set to each other client would get. The settings live on each machine, so two machines can show different results until you set them the same way on both.
 
 ## Review commands
 
