@@ -40,7 +40,7 @@ func TestModelsShowDefaultsToBalanced(t *testing.T) {
 		"standard client=codex model=gpt-6.1-terra (preset:balanced)",
 		"executor tier=standard client=codex model=gpt-6.1-terra effort=inherit (preset:balanced)",
 		"worker tier=standard client=codex model=gpt-6.1-terra effort=inherit (preset:balanced)",
-		"reviewer tier=high client=claude model=opus effort=medium (preset:balanced)",
+		"reviewer tier=high client=claude model=opus effort=low (preset:balanced)",
 	} {
 		if !strings.Contains(r.stdout, want) {
 			t.Errorf("show lacks %q:\n%s", want, r.stdout)
@@ -73,7 +73,7 @@ func TestModelsSetKeepsOtherStateKeysAndRejectsWithoutWriting(t *testing.T) {
 	ok(t, runModels(t, base, "tier", "preset", "codex"), "set preset")
 	ok(t, runModels(t, base, "role", "set", "code-search", "--tier", "high"), "set role")
 	r := ok(t, runModels(t, base, "show"), "models show")
-	for _, want := range []string{`reviewer tier=high client=codex model=gpt-6.1-sol effort=inherit (preset:codex) [codex gpt-6.1-sol does not support effort "medium"`, "heavy client=codex model=unavailable (preset:codex) [codex lists no heavy (astra) model; run `codex debug models`: not listed; roles at heavy fall back to high]", "code-search tier=high client=codex model=gpt-6.1-sol effort=inherit (override)"} {
+	for _, want := range []string{"reviewer tier=high client=codex model=gpt-6.1-sol effort=low (preset:codex)", "heavy client=codex model=unavailable (preset:codex) [codex lists no heavy (astra) model; run `codex debug models`: not listed; roles at heavy fall back to high]", "code-search tier=high client=codex model=gpt-6.1-sol effort=inherit (override)"} {
 		if !strings.Contains(r.stdout, want) {
 			t.Errorf("show lacks %q:\n%s", want, r.stdout)
 		}
@@ -118,15 +118,15 @@ func TestInstallRendersTheResolvedTiers(t *testing.T) {
 	if !strings.Contains(agentFile(t, base, "claude", "executor"), "model: inherit\n") {
 		t.Error("the Claude executor, served by Codex, does not keep the client default")
 	}
-	if a := agentFile(t, base, "claude", "reviewer"); !strings.Contains(a, "model: opus\n") || !strings.Contains(a, "effort: medium\n") {
-		t.Errorf("claude reviewer lacks opus at medium effort:\n%s", a)
+	if a := agentFile(t, base, "claude", "reviewer"); !strings.Contains(a, "model: opus\n") || !strings.Contains(a, "effort: low\n") {
+		t.Errorf("claude reviewer lacks opus at low effort:\n%s", a)
 	}
 	if !strings.Contains(agentFile(t, base, "codex", "worker"), "\nmodel = \"gpt-6.1-terra\"\n") {
 		t.Error("the Codex worker does not carry its default tier's model")
 	}
 	ok(t, runModels(t, base, "tier", "set", "high", "--client", "opencode", "--model", "openai/gpt-5.6-sol"), "serve high from OpenCode")
 	ok(t, runInstaller(t, base, "agents"), "install with OpenCode serving high")
-	if a := agentFile(t, base, "opencode", "review-bugs"); !strings.Contains(a, "model: openai/gpt-5.6-sol\n") || !strings.Contains(a, "reasoningEffort: medium\n") {
+	if a := agentFile(t, base, "opencode", "review-bugs"); !strings.Contains(a, "model: openai/gpt-5.6-sol\n") || !strings.Contains(a, "reasoningEffort: low\n") {
 		t.Errorf("the OpenCode lens does not follow the reviewer's tier:\n%s", a)
 	}
 	if strings.Contains(agentFile(t, base, "claude", "reviewer"), "model: opus") {

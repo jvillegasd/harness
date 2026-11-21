@@ -15,7 +15,7 @@ var Roles = []Role{
 	{Name: "executor", Definition: "roles/executor.md", Access: "implement", Tier: "standard"},
 	{Name: "code-search", Definition: "roles/code-search.md", Access: "read-search", Tier: "fast"},
 	{Name: "worker", Definition: "roles/worker.md", Access: "implement", Tier: "standard", Generic: true},
-	{Name: "reviewer", Definition: "skills/delivery/review/roles/reviewer.md", Access: "read-search", Tier: "high", Effort: "medium"},
+	{Name: "reviewer", Definition: "skills/delivery/review/roles/reviewer.md", Access: "read-search", Tier: "high", Effort: "low"},
 	{Name: "review-bugs", Definition: "skills/delivery/review/roles/review-bugs.md", Access: "read-search", Lens: true},
 	{Name: "review-spec", Definition: "skills/delivery/review/roles/review-spec.md", Access: "read-search", Lens: true},
 	{Name: "review-risk", Definition: "skills/delivery/review/roles/review-risk.md", Access: "read-search", Lens: true},

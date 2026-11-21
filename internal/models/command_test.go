@@ -109,8 +109,8 @@ func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
 		"executor tier=standard client=codex model=gpt-6.1-terra effort=inherit (preset:balanced)",
 		"code-search tier=fast client=claude model=haiku effort=inherit (preset:balanced)",
 		"worker tier=standard client=codex model=gpt-6.1-terra effort=inherit (preset:balanced)",
-		"reviewer tier=high client=claude model=opus effort=medium (preset:balanced)",
-		"review-risk tier=high client=claude model=opus effort=medium (reviewer)",
+		"reviewer tier=high client=claude model=opus effort=low (preset:balanced)",
+		"review-risk tier=high client=claude model=opus effort=low (reviewer)",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("show lacks %q:\n%s", want, out)
@@ -120,7 +120,7 @@ func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
 	runOK(t, path, "role", "set", "review-spec", "--tier", "fast")
 	out = runOK(t, path, "show")
 	for _, want := range []string{
-		"review-risk tier=heavy client=claude model=opus effort=medium (reviewer)",
+		"review-risk tier=heavy client=claude model=opus effort=low (reviewer)",
 		"review-spec tier=fast client=claude model=haiku effort=inherit (override)",
 	} {
 		if !strings.Contains(out, want) {
@@ -128,7 +128,7 @@ func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
 		}
 	}
 	runOK(t, path, "role", "reset", "review-spec")
-	if out := runOK(t, path, "show"); !strings.Contains(out, "review-spec tier=heavy client=claude model=opus effort=medium (reviewer)") {
+	if out := runOK(t, path, "show"); !strings.Contains(out, "review-spec tier=heavy client=claude model=opus effort=low (reviewer)") {
 		t.Errorf("a reset lens does not return to the reviewer:\n%s", out)
 	}
 }
@@ -202,7 +202,7 @@ func TestSetTierNamesOrClearsAModel(t *testing.T) {
 		t.Errorf("omitting --model does not return to the newest: %v", got)
 	}
 	runOK(t, path, "tier", "set", "high", "--client", "opencode", "--model", "openai/gpt-5.6-sol")
-	if got := resolved(t, path, "reviewer"); got["client"] != "opencode" || got["model"] != "openai/gpt-5.6-sol" || got["effort"] != "medium" {
+	if got := resolved(t, path, "reviewer"); got["client"] != "opencode" || got["model"] != "openai/gpt-5.6-sol" || got["effort"] != "low" {
 		t.Errorf("opencode tier: %v", got)
 	}
 	runOK(t, path, "tier", "reset", "high")
@@ -391,5 +391,14 @@ func TestTierResetClearsAPinALegacyOverrideMade(t *testing.T) {
 		if out := runOK(t, path, "tier", "show"); !strings.Contains(out, "heavy client=claude model=opus (preset:balanced)") {
 			t.Errorf("%v left the migrated pin:\n%s", reset, out)
 		}
+	}
+}
+
+func TestAnInheritedEffortTheModelLacksIsDroppedWithANote(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, "")
+	runOK(t, path, "role", "set", "reviewer", "--tier", "fast", "--client", "claude")
+	if out := runOK(t, path, "role", "show"); !strings.Contains(out, `reviewer tier=fast client=claude model=haiku effort=inherit (override) [claude haiku does not support effort "low", so it runs at the client default effort]`) {
+		t.Errorf("the reviewer's default effort on haiku was not dropped with a note:\n%s", out)
 	}
 }
