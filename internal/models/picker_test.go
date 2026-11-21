@@ -244,3 +244,11 @@ func TestPickerKeepLeavesAnExistingOverride(t *testing.T) {
 		t.Errorf("keep did not keep the tier:\n%s", out)
 	}
 }
+
+func TestPickerMapsAClaudeTierToAnAlias(t *testing.T) {
+	p := choose(t, choose(t, choose(t, fresh(catalogOf(nil, nil)), "custom"), "heavy"), "claude")
+	p = choose(t, choose(t, p, "fable"), "save")
+	if !slices.Equal(p.sets[0], []string{"heavy", "--client", "claude", "--model", "fable"}) {
+		t.Errorf("tier set %v", p.sets)
+	}
+}

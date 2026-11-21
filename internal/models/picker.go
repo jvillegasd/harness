@@ -65,7 +65,7 @@ func (p picker) options() []string {
 	case stepTierModel:
 		switch p.client {
 		case "claude":
-			return []string{newest}
+			return []string{newest, "fable", "opus", "sonnet", "haiku"}
 		case "codex":
 			listed, _ := p.catalog.Codex()
 			return slices.Concat([]string{newest}, listed)

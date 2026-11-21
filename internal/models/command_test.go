@@ -341,3 +341,11 @@ func TestLoadMovesALegacyOpenCodeModelIntoItsTier(t *testing.T) {
 		t.Errorf("a legacy OpenCode override was not kept: %v", got)
 	}
 }
+
+func TestLoadKeepsALegacyFableOverrideOnFable(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, `{"roles": {"reviewer": {"client": "claude", "model": "fable"}}}`)
+	if got := resolved(t, path, "reviewer"); got["tier"] != "heavy" || got["model"] != "fable" {
+		t.Errorf("a legacy fable override moved to another model: %v", got)
+	}
+}

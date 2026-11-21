@@ -451,14 +451,21 @@ func Load(path string) (Choice, error) {
 }
 
 // migrate turns an override saved before tiers into one: a Claude or Codex
-// model into the tier it implies, and an OpenCode model into the model that
-// serves the role's tier on OpenCode. It reports false for nothing to keep.
+// model into the tier it implies, pinned there when the tier's default is a
+// different Claude model, and an OpenCode model into the model that serves
+// the role's tier on OpenCode. It reports false for nothing to keep.
 func (c *Choice) migrate(name string, ov *Override) bool {
 	model := ov.Model
 	ov.Model = ""
 	if ov.Client != "opencode" {
 		ov.Tier = first(ov.Tier, TierOf(ov.Client, model))
-		return ov.Tier != ""
+		if ov.Tier == "" {
+			return false
+		}
+		if ov.Client == "claude" && tierModels["claude"][ov.Tier] != model {
+			c.pin(ov.Tier, "claude", model)
+		}
+		return true
 	}
 	if !strings.Contains(model, "/") {
 		return false
@@ -467,19 +474,25 @@ func (c *Choice) migrate(name string, ov *Override) bool {
 	if tier == "" {
 		tier = role("reviewer").Tier
 	}
-	b := c.Tiers[tier]
-	if b.Models["opencode"] == "" {
-		b.Models = maps.Clone(b.Models)
-		if b.Models == nil {
-			b.Models = map[string]string{}
-		}
-		b.Models["opencode"] = model
-		if c.Tiers == nil {
-			c.Tiers = map[string]Binding{}
-		}
-		c.Tiers[tier] = b
-	}
+	c.pin(tier, "opencode", model)
 	return true
+}
+
+// pin names the model a client runs for a tier, unless one is named already.
+func (c *Choice) pin(tier, client, model string) {
+	b := c.Tiers[tier]
+	if b.Models[client] != "" {
+		return
+	}
+	b.Models = maps.Clone(b.Models)
+	if b.Models == nil {
+		b.Models = map[string]string{}
+	}
+	b.Models[client] = model
+	if c.Tiers == nil {
+		c.Tiers = map[string]Binding{}
+	}
+	c.Tiers[tier] = b
 }
 
 func checkBinding(tier string, b Binding) error {
