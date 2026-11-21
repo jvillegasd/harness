@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -156,4 +157,59 @@ func TestModelsRejectsAStaleChoice(t *testing.T) {
 	}
 	ok(t, runModels(t, base, "reset"), "the recommended reset")
 	ok(t, runInstaller(t, base, "agents"), "install after reset")
+}
+
+func TestModelsSetAppliesToTheInstalledAgentsOnly(t *testing.T) {
+	base := modelsBase(t)
+	ok(t, runInstaller(t, base, "agents", "--client", "claude"), "install Claude's agents alone")
+	r := ok(t, runModels(t, base, "set", "reviewer", "--tier", "fast"), "set without a reinstall")
+	if !strings.Contains(r.stdout, "Applied to the role agents of claude.") || strings.Contains(r.stdout, "assignment:") {
+		t.Errorf("set did not report a quiet apply:\n%s", r.stdout)
+	}
+	if a := agentFile(t, base, "claude", "reviewer"); !strings.Contains(a, "model: haiku\n") || strings.Contains(a, "effort:") {
+		t.Errorf("the Claude reviewer does not carry the new tier:\n%s", a)
+	}
+	if _, err := os.Stat(filepath.Join(base, "home", ".codex", "agents")); err == nil {
+		t.Error("set rendered agents for a client whose agents were never installed")
+	}
+	ok(t, runModels(t, base, "reset"), "reset")
+	if a := agentFile(t, base, "claude", "reviewer"); !strings.Contains(a, "model: opus\n") {
+		t.Errorf("reset did not reach the Claude reviewer:\n%s", a)
+	}
+	if r := ok(t, runModels(t, base, "show"), "show"); strings.Contains(r.stdout, "Applied") {
+		t.Errorf("show applied the choice:\n%s", r.stdout)
+	}
+}
+
+func TestModelsSetBeforeAnyInstallRendersNothing(t *testing.T) {
+	base := modelsBase(t)
+	r := ok(t, runModels(t, base, "set", "reviewer", "--tier", "fast"), "set before install")
+	if !strings.Contains(r.stdout, "`harness install agents` renders them") {
+		t.Errorf("set does not say the agents wait for an install:\n%s", r.stdout)
+	}
+	if _, err := os.Stat(filepath.Join(base, "home", ".claude", "agents")); err == nil {
+		t.Error("set created the Claude agents before any install")
+	}
+}
+
+func TestModelsSetKeepsAnAgentEditedByHand(t *testing.T) {
+	base := modelsBase(t)
+	ok(t, runInstaller(t, base, "agents", "--client", "claude"), "install Claude's agents")
+	path := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
+	edited := readFile(t, path) + "\nMy own note.\n"
+	writeMode(t, path, edited, 0o644)
+	r := ok(t, runModels(t, base, "set", "code-search", "--tier", "high"), "set with an edited agent")
+	if readFile(t, path) != edited {
+		t.Error("set replaced an agent edited by hand")
+	}
+	if !strings.Contains(r.stderr, path) || !strings.Contains(r.stderr, "changed since the harness wrote it") {
+		t.Errorf("set did not name the kept agent:\n%s", r.stderr)
+	}
+	if !strings.Contains(agentFile(t, base, "claude", "code-search"), "model: opus\n") {
+		t.Error("an edited agent stopped the others from applying")
+	}
+	ok(t, runModels(t, base, "set", "code-search", "--tier", "fast"), "a second set over the same edit")
+	if readFile(t, path) != edited {
+		t.Error("a second set replaced the edited agent")
+	}
 }

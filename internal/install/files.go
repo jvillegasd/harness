@@ -3,6 +3,7 @@ package install
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -75,6 +76,14 @@ func (in *installer) assigned() map[string]agents.Assigned {
 	}
 	in.assignments = assigned
 	return assigned
+}
+
+// reportOut is where the role-agent render and check print their report.
+func (in *installer) reportOut() io.Writer {
+	if in.quietReport {
+		return io.Discard
+	}
+	return in.stdout
 }
 
 func (in *installer) agentOut() string {
@@ -175,7 +184,7 @@ func (in *installer) installFiles() {
 				in.ensureManagedDir(pair[1], true)
 			}
 		}
-		if code := agents.Generate(in.dir.Root, in.agentOut(), in.assigned(), in.stdout, in.stderr); code != 0 {
+		if code := agents.Generate(in.dir.Root, in.agentOut(), in.assigned(), in.reportOut(), in.stderr); code != 0 {
 			die("Generating the role agents failed with status %d.", code)
 		}
 	}
@@ -207,7 +216,17 @@ func (in *installer) installFiles() {
 		}
 		current, source := digest(e.Path), digest(e.source)
 		if current != source {
-			if current != "" && current != recorded[e.Path] {
+			edited := current != "" && current != recorded[e.Path]
+			if edited && in.keepEdited {
+				in.warn("%s changed since the harness wrote it, so it stays; `harness install agents` archives it and renders the choice.", e.Path)
+				want[i].Digest = recorded[e.Path]
+				if in.keptEdited == nil {
+					in.keptEdited = map[string]bool{}
+				}
+				in.keptEdited[e.Path] = true
+				continue
+			}
+			if edited {
 				in.backupExisting(e.Path, "")
 			}
 			copyManaged(e.source, e.Path)
@@ -222,14 +241,14 @@ func (in *installer) installFiles() {
 
 func (in *installer) checkFiles() {
 	for _, e := range in.installed {
-		if digest(e.Path) != e.Digest {
+		if !in.keptEdited[e.Path] && digest(e.Path) != e.Digest {
 			die("Managed copy missing or changed: %s", e.Path)
 		}
 	}
 	if !in.has("agents") {
 		return
 	}
-	if code := agents.Check(in.dir.Root, in.agentOut(), in.assigned(), in.stdout, in.stderr); code != 0 {
+	if code := agents.Check(in.dir.Root, in.agentOut(), in.assigned(), in.reportOut(), in.stderr); code != 0 {
 		die("Role agents in %s are missing, drifted, or widened.", in.agentOut())
 	}
 }

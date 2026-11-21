@@ -66,7 +66,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case "statusline":
 		return statusline.Command(args[1:], os.Stdin, stdout, stderr)
 	case "models":
-		return models.Command(args[1:], stdout, stderr)
+		return models.Command(args[1:], stdout, stderr, install.ApplyAgents)
 	case "change-map":
 		return changemap.Command(args[1:], stdout, stderr)
 	case "review":

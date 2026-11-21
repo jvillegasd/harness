@@ -135,6 +135,12 @@ type installer struct {
 	backupRoot          string
 	assignments         map[string]agents.Assigned
 	stdout, stderr      io.Writer
+	// quietReport keeps the role-agent render's assignment report off stdout.
+	quietReport bool
+	// keepEdited leaves a managed copy changed since it was recorded in place,
+	// with its record, instead of archiving and replacing it.
+	keepEdited bool
+	keptEdited map[string]bool
 }
 
 func (in *installer) log(format string, args ...any) {
