@@ -22,6 +22,14 @@ type tierView struct {
 	Problem string `json:"problem,omitempty"`
 	// Fallback is the tier its roles fall back to when its model is not listed.
 	Fallback string `json:"fallback,omitempty"`
+	// Others is what each other client runs at this tier, for a role set to
+	// that client; a client with no model for the tier is left out.
+	Others []clientModel `json:"others"`
+}
+
+type clientModel struct {
+	Client string `json:"client"`
+	Model  string `json:"model"`
 }
 
 type roleView struct {
@@ -50,6 +58,15 @@ func (c Choice) report(cat *Catalog) report {
 		v := tierView{Tier: tier, Client: b.Client, Model: orUnavailable(model), Source: source, Problem: problem(err)}
 		if next, ok := fallback[tier]; ok && errors.Is(err, ErrNotListed) {
 			v.Fallback = next
+		}
+		v.Others = []clientModel{}
+		for _, client := range Clients {
+			if client == b.Client {
+				continue
+			}
+			if other, err := c.Model(tier, client, cat); err == nil {
+				v.Others = append(v.Others, clientModel{client, other})
+			}
 		}
 		out.Tiers = append(out.Tiers, v)
 	}
@@ -99,10 +116,7 @@ func drawTree(s ui.Style, rep report, w io.Writer) {
 	fmt.Fprintln(w, s.Title("harness models", "preset "+rep.Preset, "~/.harness/state.json"))
 	for i, t := range rep.Tiers {
 		fmt.Fprintln(w)
-		fmt.Fprintln(w, drawTier(s, i, t))
-		if t.Problem != "" {
-			fmt.Fprintln(w, "  "+s.Warn(tierProblem(t)))
-		}
+		drawTierLines(s, i, t, w)
 		var members []roleView
 		for _, r := range rep.Roles {
 			if r.Tier == t.Tier {
@@ -126,6 +140,18 @@ func drawTree(s ui.Style, rep report, w io.Writer) {
 
 func drawTier(s ui.Style, i int, t tierView) string {
 	return s.Pill(ui.Hue(i), t.Tier, 8) + "  " + s.Resolved(t.Client, ui.Pad(t.Model, 14)) + "  " + drawSource(s, t.Source)
+}
+
+// drawOthers lists what a role set to another client would run at the tier.
+func drawOthers(s ui.Style, t tierView) string {
+	if len(t.Others) == 0 {
+		return ""
+	}
+	var parts []string
+	for _, o := range t.Others {
+		parts = append(parts, o.Client+" "+s.Dim("›")+" "+o.Model)
+	}
+	return "  " + s.Dim("also "+strings.Join(parts, s.Dim(" · ")))
 }
 
 func tierProblem(t tierView) string {
@@ -194,10 +220,18 @@ func drawTiers(s ui.Style, rep report, w io.Writer) {
 	fmt.Fprintln(w, s.Title("harness models tier", "preset "+rep.Preset))
 	fmt.Fprintln(w)
 	for i, t := range rep.Tiers {
-		fmt.Fprintln(w, drawTier(s, i, t))
-		if t.Problem != "" {
-			fmt.Fprintln(w, "  "+s.Warn(tierProblem(t)))
-		}
+		drawTierLines(s, i, t, w)
+	}
+}
+
+// drawTierLines draws a tier, its problem, and what other clients run at it.
+func drawTierLines(s ui.Style, i int, t tierView, w io.Writer) {
+	fmt.Fprintln(w, drawTier(s, i, t))
+	if t.Problem != "" {
+		fmt.Fprintln(w, "  "+s.Warn(tierProblem(t)))
+	}
+	if others := drawOthers(s, t); others != "" {
+		fmt.Fprintln(w, others)
 	}
 }
 
