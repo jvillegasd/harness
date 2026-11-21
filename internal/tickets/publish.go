@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 type Forge func(args ...string) ([]byte, error)
@@ -86,17 +88,23 @@ func Body(t Ticket, issues map[int]int) string {
 }
 
 func Plan(ts []Ticket, out io.Writer) {
+	s := ui.For(out)
+	fmt.Fprintln(out, s.Title("harness tickets publish", "dry run"))
+	var rows [][]string
 	for _, t := range Order(ts) {
 		if t.Issue != "" {
-			fmt.Fprintf(out, "exists %02d %s\n", t.Number, t.Issue)
+			rows = append(rows, []string{s.Good("exists"), fmt.Sprintf("%02d", t.Number), t.Issue})
 			continue
 		}
-		fmt.Fprintf(out, "create %02d %q\n", t.Number, t.Title)
+		rows = append(rows, []string{s.Accent("create"), fmt.Sprintf("%02d", t.Number), t.Title})
 	}
 	for _, t := range Order(ts) {
 		for _, b := range t.BlockedBy {
-			fmt.Fprintf(out, "edge   %02d blocked by %02d\n", t.Number, b)
+			rows = append(rows, []string{"edge", fmt.Sprintf("%02d", t.Number), fmt.Sprintf("blocked by %02d", b)})
 		}
+	}
+	for _, line := range s.Table([]string{"action", "ticket", "detail"}, rows) {
+		fmt.Fprintln(out, line)
 	}
 }
 

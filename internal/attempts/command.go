@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 const usage = `Usage: harness attempts <command> [arguments]
@@ -172,6 +174,7 @@ func add(args []string, stdout, stderr io.Writer) int {
 	if err := writeRecord(file, values); err != nil {
 		return operational(stderr, "add", err)
 	}
+	fmt.Fprintln(stdout, ui.For(stdout).OK(fmt.Sprintf("added attempt %d", r.ID)))
 	return 0
 }
 

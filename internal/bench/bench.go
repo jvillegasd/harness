@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jvillegasd/harness/internal/checkout"
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 const usage = `Usage: harness bench [--split <date>] [--since <date>] [--client <name>] [--home <dir>] [--rows]
@@ -79,7 +80,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness bench: %v\n", err)
 		return 1
 	}
-	out, err := Report(Options{Home: home, Clients: clients, Work: patterns(c, stderr), Since: sinceDate, Split: splitDate, Rows: rows})
+	out, err := report(ui.For(stdout), Options{Home: home, Clients: clients, Work: patterns(c, stderr), Since: sinceDate, Split: splitDate, Rows: rows})
 	if err != nil {
 		fmt.Fprintf(stderr, "harness bench: %v\n", err)
 		return 1
@@ -97,7 +98,9 @@ type Options struct {
 	Rows    bool
 }
 
-func Report(opts Options) (string, error) {
+func Report(opts Options) (string, error) { return report(ui.Plain, opts) }
+
+func report(style ui.Style, opts Options) (string, error) {
 	if !opts.Rows && opts.Split == nil {
 		return "", errors.New("a report needs a split date")
 	}
@@ -109,7 +112,7 @@ func Report(opts Options) (string, error) {
 		return renderRows(sessions), nil
 	}
 	split := startOfDay(*opts.Split)
-	return renderReport(sessions, split, opts.Since) + "\n", nil
+	return renderReport(style, sessions, split, opts.Since) + "\n", nil
 }
 
 type clientList []string

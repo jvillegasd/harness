@@ -12,6 +12,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/charmbracelet/x/term"
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 const usage = `Usage: harness review <command> [arguments]
@@ -304,7 +307,11 @@ func remove(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if removed {
-		fmt.Fprintln(stdout, dir)
+		if terminal(stdout) {
+			fmt.Fprintln(stdout, ui.For(stdout).OK("removed "+dir))
+		} else {
+			fmt.Fprintln(stdout, dir)
+		}
 	}
 	return 0
 }
@@ -343,7 +350,16 @@ func prune(args []string, stdout, stderr io.Writer) int {
 	}
 	removed, held, err := Prune(dir, func(b string) bool { return live[b] }, *dryRun)
 	for _, d := range removed {
-		fmt.Fprintln(stdout, d)
+		if terminal(stdout) {
+			s := ui.For(stdout)
+			if *dryRun {
+				fmt.Fprintln(stdout, s.Dim("would remove "+d))
+			} else {
+				fmt.Fprintln(stdout, s.OK("removed "+d))
+			}
+		} else {
+			fmt.Fprintln(stdout, d)
+		}
 	}
 	for _, d := range held {
 		fmt.Fprintf(stderr, "harness review prune: kept %s: worktree.txt records a review worktree that still exists\n", d)
@@ -464,7 +480,7 @@ func worktreeCommand(args []string, stdout, stderr io.Writer) int {
 	}
 	done, err := RetireWorktree(root, key, allowIgnored)
 	for _, line := range done {
-		fmt.Fprintln(stdout, line)
+		fmt.Fprintln(stdout, ui.For(stdout).OK(line))
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness review %s: %v\n", name, err)
@@ -680,7 +696,44 @@ func evals(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail(err)
 	}
-	out, _ := json.MarshalIndent(c, "", "  ")
-	fmt.Fprintln(stdout, string(out))
+	if terminal(stdout) {
+		drawScore(stdout, c)
+	} else {
+		out, _ := json.MarshalIndent(c, "", "  ")
+		fmt.Fprintln(stdout, string(out))
+	}
 	return 0
+}
+
+func terminal(w io.Writer) bool {
+	f, ok := w.(*os.File)
+	return ok && term.IsTerminal(f.Fd())
+}
+
+func drawScore(w io.Writer, c Comparison) {
+	s := ui.For(w)
+	fmt.Fprintln(w, s.Title("harness review evals score", c.Summary.Date))
+	state := s.Dim("no previous run")
+	if c.Previous != nil {
+		state = s.Good("no regression")
+	}
+	if c.Regression {
+		state = s.Bad("regression")
+	}
+	for _, line := range s.Fields(
+		[2]string{"cases", strconv.Itoa(c.Summary.BugCases)},
+		[2]string{"caught", strconv.Itoa(c.Summary.Caught)},
+		[2]string{"recall", strconv.FormatFloat(c.Summary.Recall, 'f', -1, 64)},
+		[2]string{"false positives", strconv.Itoa(c.Summary.FalsePositives)},
+		[2]string{"dropped", strconv.Itoa(c.Summary.Dropped)},
+		[2]string{"dropped catches", strconv.Itoa(c.Summary.DroppedCatches)},
+		[2]string{"comparison", state},
+	) {
+		fmt.Fprintln(w, line)
+	}
+	if c.Previous == nil {
+		fmt.Fprintln(w, s.Dim("  no previous run on these cases"))
+	} else {
+		fmt.Fprintln(w, s.Dim(fmt.Sprintf("  previous: recall %g, false positives %d", c.Previous.Recall, c.Previous.FalsePositives)))
+	}
 }

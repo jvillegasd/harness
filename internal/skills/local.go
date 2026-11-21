@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/jvillegasd/harness/internal/checkout"
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 func group(p paths, name string) (string, error) {
@@ -151,17 +152,19 @@ func newSkill(c checkout.Checkout, args []string, stdout io.Writer) error {
 		}
 		rest = append(rest, a)
 	}
+	fmt.Fprintln(stdout, ui.For(stdout).Title("harness skills new", rest[0]))
 	done, err := New(c, rest[0], rest[1], guarded)
 	for _, line := range done {
-		fmt.Fprintln(stdout, line)
+		fmt.Fprintln(stdout, ui.For(stdout).OK(line))
 	}
 	return err
 }
 
 func moveSkill(c checkout.Checkout, args []string, stdout io.Writer) error {
+	fmt.Fprintln(stdout, ui.For(stdout).Title("harness skills move", args[0]))
 	done, err := Move(c, args[0], args[1])
 	for _, line := range done {
-		fmt.Fprintln(stdout, line)
+		fmt.Fprintln(stdout, ui.For(stdout).OK(line))
 	}
 	return err
 }

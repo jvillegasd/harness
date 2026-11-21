@@ -10,6 +10,7 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 	"github.com/jvillegasd/harness/internal/install"
 	"github.com/jvillegasd/harness/internal/skills"
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 var components = []string{"packages", "clients", "mcps", "skills"}
@@ -237,8 +238,16 @@ func (r *runner) reconcile(t target, ready bool, outcomes map[string]bool) {
 }
 
 func (r *runner) summary() {
-	fmt.Fprintln(r.out, "Update summary:")
+	s := ui.For(r.out)
+	fmt.Fprintln(r.out, s.Title("harness update", "summary"))
 	for _, result := range r.results {
-		fmt.Fprintln(r.out, result)
+		switch {
+		case strings.HasPrefix(result, "failed:"):
+			fmt.Fprintln(r.out, s.Fail(result))
+		case strings.HasPrefix(result, "skipped:"):
+			fmt.Fprintln(r.out, s.Warn(result))
+		default:
+			fmt.Fprintln(r.out, s.OK(result))
+		}
 	}
 }

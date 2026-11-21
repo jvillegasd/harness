@@ -80,7 +80,7 @@ func TestTicketsPublishCommand(t *testing.T) {
 	if err := os.WriteFile(config, []byte(`{"tracker":"github"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if r := run(forge, "tickets", "publish", "demo", "--dry-run"); r.code != 0 || r.stdout != "create 01 \"Alpha\"\n" {
+	if r := run(forge, "tickets", "publish", "demo", "--dry-run"); r.code != 0 || r.stdout != "harness tickets publish  dry run\nACTION  TICKET  DETAIL\ncreate  01      Alpha\n" {
 		t.Errorf("dry run exited %d: %q %s", r.code, r.stdout, r.stderr)
 	}
 	if _, err := os.Stat(log); err == nil {

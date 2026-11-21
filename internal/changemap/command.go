@@ -9,6 +9,9 @@ import (
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/charmbracelet/x/term"
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 const usage = `Usage: harness change-map [--base <ref>] [--json]
@@ -109,7 +112,11 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		}
 		return 0
 	}
-	fmt.Fprint(stdout, report.Text())
+	if f, ok := stdout.(*os.File); ok && term.IsTerminal(f.Fd()) {
+		report.draw(stdout)
+	} else {
+		fmt.Fprint(stdout, report.Text())
+	}
 	return 0
 }
 
@@ -157,4 +164,23 @@ func (r Report) Text() string {
 		fmt.Fprintf(&out, "total\t%s\t%d\n", Tiers[i], r.Totals[Tiers[i]])
 	}
 	return out.String()
+}
+
+func (r Report) draw(w io.Writer) {
+	s := ui.For(w)
+	fmt.Fprintln(w, s.Title("harness change-map", "base "+r.Base))
+	var rows [][]string
+	for _, f := range r.Files {
+		reason := f.Reason
+		if f.Files > 0 {
+			reason = fmt.Sprintf("%d files: %s", f.Files, reason)
+		}
+		rows = append(rows, []string{s.Caution(string(f.Tier)), f.Path, s.Dim(reason)})
+	}
+	for _, line := range s.Table([]string{"tier", "path", "reason"}, rows) {
+		fmt.Fprintln(w, line)
+	}
+	for i := len(Tiers) - 1; i >= 0; i-- {
+		fmt.Fprintln(w, s.Dim(fmt.Sprintf("total %s %d", Tiers[i], r.Totals[Tiers[i]])))
+	}
 }

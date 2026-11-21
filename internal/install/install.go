@@ -15,7 +15,9 @@ import (
 
 	"github.com/jvillegasd/harness/internal/agents"
 	"github.com/jvillegasd/harness/internal/checkout"
+	"github.com/jvillegasd/harness/internal/models"
 	"github.com/jvillegasd/harness/internal/skills"
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 const (
@@ -23,7 +25,7 @@ const (
 	agentBrowserFormula = "agent-browser"
 )
 
-const usage = `Usage: harness install [<component>...] [--client <name>]... [--no-backup]
+const usage = `Usage: harness install [<component>...] [--client <name>]... [--no-backup] [--verbose]
 
 Install the named components, or every component when none is named. Each
 choice applies to this run only.
@@ -47,6 +49,8 @@ Components:
   --no-backup  Delete files at managed paths instead of archiving them in
                ~/.dotfiles-backups. Private skills and hand-edited configs at
                those paths will be lost.
+  --verbose    List every file the run writes, removes, or keeps, instead of
+               a count per component.
 
 A tool counts as installed when it is on PATH, however it got there, and is
 never reinstalled or upgraded; Homebrew and the network are used only for a
@@ -62,7 +66,7 @@ any directory.
 Details: docs/cli.md#install-and-uninstall
 `
 
-const uninstallUsage = `Usage: harness uninstall [<component>...] [--client <name>]... [--all] [--yes]
+const uninstallUsage = `Usage: harness uninstall [<component>...] [--client <name>]... [--all] [--yes] [--verbose]
        harness uninstall --clear-backups
 
 Remove the named components. With none named, remove the managed config of
@@ -74,6 +78,8 @@ registrations) and leave every tool installed.
   --all        Remove every component, the tools included, and then
                ~/.local/bin/harness. Not combined with component names.
   --yes        Skip the confirmation.
+  --verbose    List every file removed or kept, instead of a count per
+               component.
   --clear-backups
                Delete every archive under ~/.dotfiles-backups/harness/.
                These archives hold files displaced from managed paths.
@@ -89,28 +95,24 @@ when nothing recorded remains. Prompts before removing anything.
 Details: docs/cli.md#install-and-uninstall
 `
 
-const summaryText = `Next steps (interactive; not run by this installer):
-  1. Authenticate: claude auth login
-  2. Authenticate Codex: codex login
-  3. Authenticate OpenCode natively: /connect inside OpenCode, then OpenAI, then
-     ChatGPT Plus/Pro. "Manually enter API Key" bills the API instead.
-  4. Authenticate: gh auth login
-  5. Restart Claude Code, Codex, and OpenCode.
-  6. In Codex, open /hooks and trust the harness compaction hook in
-     ~/.codex/hooks.json; Codex skips a new or changed hook until then.
-  7. Invoke setup-harness in each project that should use a tracker or critical paths.
+// nextSteps are what the human runs after a full install.
+var nextSteps = []string{
+	"Authenticate: claude auth login",
+	"Authenticate Codex: codex login",
+	"Authenticate OpenCode natively: /connect inside OpenCode, then OpenAI, then ChatGPT Plus/Pro. \"Manually enter API Key\" bills the API instead.",
+	"Authenticate: gh auth login",
+	"Restart Claude Code, Codex, and OpenCode.",
+	"In Codex, open /hooks and trust the harness compaction hook in ~/.codex/hooks.json; Codex skips a new or changed hook until then.",
+	"Invoke setup-harness in each project that should use a tracker or critical paths.",
+}
 
-Status line: harness statusline, which Claude Code runs on every draw.
-Codex and OpenCode get none from the harness.
-
-Workflow skills also answer to /name in Claude Code and OpenCode, and to
-$name in Codex.
-Yolo aliases (ccyolo, cxyolo, ocyolo) are sourced from ~/.harness/aliases.sh;
-open a new shell to load them.
-
-Standalone third-party skills were not downloaded or updated. Their committed
-bodies and skills-lock.json are the reviewed source of truth.
-`
+// closingNotes follow the next steps after a full install.
+var closingNotes = []string{
+	"Status line: harness statusline, which Claude Code runs on every draw. Codex and OpenCode get none from the harness.",
+	"Workflow skills also answer to /name in Claude Code and OpenCode, and to $name in Codex.",
+	"Yolo aliases (ccyolo, cxyolo, ocyolo) are sourced from ~/.harness/aliases.sh; open a new shell to load them.",
+	"Standalone third-party skills were not downloaded or updated. Their committed bodies and skills-lock.json are the reviewed source of truth.",
+}
 
 type fatal string
 
@@ -129,26 +131,18 @@ type installer struct {
 	dir                 checkout.Checkout
 	verb                string
 	noBackup, yes, all  bool
+	verbose             bool
+	book                logbook
 	clients, components []string
 	installed           []entry
 	aliasesStripped     []string
 	backupRoot          string
 	assignments         map[string]agents.Assigned
 	stdout, stderr      io.Writer
-	// quietReport keeps the role-agent render's assignment report off stdout.
-	quietReport bool
 	// keepEdited leaves a managed copy changed since it was recorded in place,
 	// with its record, instead of archiving and replacing it.
 	keepEdited bool
 	keptEdited map[string]bool
-}
-
-func (in *installer) log(format string, args ...any) {
-	fmt.Fprintf(in.stdout, "\033[1;34m==>\033[0m "+format+"\n", args...)
-}
-
-func (in *installer) warn(format string, args ...any) {
-	fmt.Fprintf(in.stderr, "\033[1;33mharness %s:\033[0m "+format+"\n", append([]any{in.verb}, args...)...)
 }
 
 func recoverFatal(verb string, stderr io.Writer, code *int) {
@@ -157,7 +151,7 @@ func recoverFatal(verb string, stderr io.Writer, code *int) {
 		if !ok {
 			panic(r)
 		}
-		fmt.Fprintf(stderr, "\033[1;31mharness %s:\033[0m %s\n", verb, msg)
+		fmt.Fprintln(stderr, ui.For(stderr).Fail(fmt.Sprintf("harness %s: %s", verb, msg)))
 		*code = 1
 	}
 }
@@ -215,6 +209,8 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 		switch arg := args[i]; arg {
 		case "--no-backup":
 			in.noBackup = true
+		case "--verbose":
+			in.verbose = true
 		case "-h", "--help":
 			fmt.Fprint(stdout, usage)
 			return 0
@@ -244,6 +240,8 @@ func UninstallCommand(args []string, stdout, stderr io.Writer) (code int) {
 			in.all = true
 		case "--clear-backups":
 			clearBackups = true
+		case "--verbose":
+			in.verbose = true
 		case "-h", "--help":
 			fmt.Fprint(stdout, uninstallUsage)
 			return 0
@@ -266,6 +264,7 @@ func UninstallCommand(args []string, stdout, stderr io.Writer) (code int) {
 
 	in.noBackup = true
 	in.resolveLocations()
+	fmt.Fprintln(stdout, ui.For(stdout).Title("harness uninstall"))
 	if clearBackups {
 
 		in.clearBackups()
@@ -304,6 +303,7 @@ func (in *installer) resolveTargets() {
 }
 
 func (in *installer) install() {
+	defer in.flushOnPanic()
 
 	unguarded, err := skills.Unguarded(in.dir)
 	if err != nil {
@@ -316,21 +316,61 @@ func (in *installer) install() {
 		in.components = slices.Clone(allComponents)
 	}
 
-	if in.has("mcps") && !in.has("settings") {
-		in.log("mcps: also reconciling settings, which engram setup rewrites")
+	alsoSettings := in.has("mcps") && !in.has("settings")
+	if alsoSettings {
 		in.components = append(in.components, "settings")
 	}
 	in.components = inOrder(in.components, allComponents)
 	in.usePATH()
 	in.resolveTargets()
+	scope := "all components"
+	if len(in.components) < len(allComponents) {
+		scope = strings.Join(in.components, ", ")
+	}
+	fmt.Fprintln(in.stdout, in.style().Title("harness install", strings.Join(in.clients, ", "), scope))
+	if alsoSettings {
+		in.log("mcps: also reconciling settings, which engram setup rewrites")
+	}
 
 	if in.targets("opencode") && in.has("settings") {
 		in.openCodeConfig()
 	}
+	in.begin("tools", "this binary and the tools the components need")
 	in.installBinary()
 	in.installTools()
+	in.end("ready")
 	if slices.ContainsFunc(in.components, func(c string) bool { return c != "mcps" && slices.Contains(configComponents, c) }) {
+		in.book.deferring = true
 		in.installFiles()
+		in.book.deferring = false
+	}
+	if in.has("skills") {
+		in.begin("skills", "for "+strings.Join(in.clients, ", "))
+		in.flush("skills")
+		in.end(in.counted("skills"))
+	}
+	if in.has("agents") {
+		in.begin("agents", fmt.Sprintf("%d roles for %s", len(models.AllRoles), strings.Join(in.clients, ", ")))
+		in.drawAssignments()
+		in.flush("agents")
+		in.end(in.counted("agents"))
+	}
+	var config []string
+	for _, c := range []string{"floor", "settings", "aliases", "mcps"} {
+		if in.has(c) {
+			config = append(config, c)
+		}
+	}
+	if len(config) > 0 || slices.ContainsFunc(in.book.deferred, func(line heldLine) bool {
+		return slices.Contains([]string{"floor", "settings", "aliases", ""}, line.component)
+	}) {
+		in.begin("config", strings.Join(config, ", "))
+		for _, c := range []string{"floor", "settings", "aliases"} {
+			if in.has(c) && in.book.files[c] != nil {
+				in.log("%s  %s", ui.Pad(c, 8), in.style().Dim(in.counted(c)))
+			}
+		}
+		in.flush("floor", "settings", "aliases", "")
 	}
 	if in.has("aliases") {
 		in.reconcileAliases(false)
@@ -365,6 +405,7 @@ func (in *installer) install() {
 			}
 		}
 	})
+	in.end("reconciled")
 	in.checkInstall()
 	in.summary()
 }
@@ -571,12 +612,17 @@ func (in *installer) opencodeLoaded(path string) (plugins []any, servers map[str
 
 func (in *installer) summary() {
 	if len(in.components) < len(allComponents) {
-		fmt.Fprintf(in.stdout, "\n\033[1;32m✓ Harness AI installed: %s for %s.\033[0m\n", strings.Join(in.components, ", "), strings.Join(in.clients, ", "))
+		in.summarize(fmt.Sprintf("Harness AI installed: %s for %s.", strings.Join(in.components, ", "), strings.Join(in.clients, ", ")))
 	} else {
-		fmt.Fprint(in.stdout, "\n\033[1;32m✓ Harness AI installed.\033[0m\n\n"+summaryText)
+		in.summarize("Harness AI installed.")
+		in.drawList("Next steps "+in.style().Dim("interactive; not run by this installer"), numbered(nextSteps))
+		fmt.Fprintln(in.stdout)
+		for _, note := range closingNotes {
+			fmt.Fprintln(in.stdout, in.style().Dim(note))
+		}
 	}
 	if in.backupRoot != "" {
-		fmt.Fprintf(in.stdout, "\nBackups: %s\n", in.backupRoot)
+		fmt.Fprintln(in.stdout, "\n"+in.style().Dim("Backups")+"  "+in.tilde(in.backupRoot))
 	}
 }
 

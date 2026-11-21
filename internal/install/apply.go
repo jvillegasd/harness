@@ -5,6 +5,8 @@ import (
 	"io"
 	"slices"
 	"strings"
+
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 // ApplyAgents renders the role agents again for each client whose agents the
@@ -12,7 +14,7 @@ import (
 // install. It installs nothing new and leaves every other component alone.
 func ApplyAgents(stdout, stderr io.Writer) (code int) {
 	defer recoverFatal("models", stderr, &code)
-	in := &installer{verb: "models", stdout: stdout, stderr: stderr, quietReport: true, keepEdited: true}
+	in := &installer{verb: "models", stdout: stdout, stderr: stderr, keepEdited: true}
 	in.resolveLocations()
 	installed := in.loadState().Installed
 	for _, client := range allClients {
@@ -28,6 +30,6 @@ func ApplyAgents(stdout, stderr io.Writer) (code int) {
 	defer in.extractAssets()()
 	in.installFiles()
 	in.checkFiles()
-	fmt.Fprintf(stdout, "Applied to the role agents of %s.\n", strings.Join(in.clients, ", "))
+	fmt.Fprintln(stdout, ui.For(stdout).OK(fmt.Sprintf("Applied to the role agents of %s.", strings.Join(in.clients, ", "))))
 	return 0
 }

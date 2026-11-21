@@ -50,10 +50,10 @@ At `high`, a **specialist** digs deeper into one area where the change needs it:
 - **Requirements:** does the change do exactly what the ticket or spec asked, no more and no less?
 - **Risk:** trust boundaries, data loss, failing dependencies, or concurrency.
 
-Each kind of reviewer is its own role: `review-bugs`, `review-spec`, `review-risk`, and `reviewer` for rechecking a fix. They all run at the tier and effort you chose for `reviewer` with `harness models` (`high` unless you change it). To give one of them its own tier, set it directly:
+Each kind of reviewer is its own role: `review-bugs`, `review-spec`, `review-risk`, and `reviewer` for rechecking a fix. They all run at the tier and effort you chose for `reviewer` with `harness models` (`high` at `low` effort unless you change it). To give one of them its own tier, set it directly:
 
 ```sh
-harness models set review-risk --tier heavy --effort high
+harness models role set review-risk --tier heavy --effort high
 ```
 
 ## What happens during a review

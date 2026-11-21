@@ -121,8 +121,8 @@ func TestReviewLevelCommand(t *testing.T) {
 		t.Error("a rejected level rewrote state.json")
 	}
 	ok(t, runInstaller(t, base, "agents"), "install")
-	if r := ok(t, level(), "level"); strings.TrimSpace(r.stdout) != "high (global)" {
-		t.Errorf("after install the level is %q, want high (global)", r.stdout)
+	if r := ok(t, level(), "level"); !strings.Contains(r.stdout, "level   high") || !strings.Contains(r.stdout, "source  global") {
+		t.Errorf("after install the level is %q, want high and global", r.stdout)
 	}
 	if r := ok(t, level("--help"), "level --help"); r.stdout == "" {
 		t.Error("level --help printed nothing")

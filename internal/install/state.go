@@ -205,11 +205,12 @@ func (in *installer) removeManaged(e entry) {
 		return
 	}
 	if current != e.Digest {
-		in.warn("%s changed since the harness wrote it, so it stays.", e.Path)
+		in.warnFor(e.Component, "%s changed since the harness wrote it, so it stays.", e.Path)
+		in.file(e.Component, "kept", e.Path)
 		return
 	}
 	must(os.RemoveAll(e.Path))
-	in.log("Removed %s", e.Path)
+	in.file(e.Component, "removed", e.Path)
 }
 
 func (in *installer) desired() []entry {

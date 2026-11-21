@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 const usage = `Usage: harness land <command> [arguments]
@@ -256,7 +258,7 @@ func syncCommand(args []string, stdout, stderr io.Writer) int {
 	}
 	a, err := Sync(e)
 	if a.Text != "" {
-		fmt.Fprintln(stdout, a)
+		printActions(stdout, "land sync", []Action{a})
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness land sync: %v\n", err)
@@ -296,14 +298,29 @@ func finish(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	actions, err := Finish(e, numbers, o)
-	for _, a := range actions {
-		fmt.Fprintln(stdout, a)
-	}
+	printActions(stdout, "land finish", actions)
 	if err != nil {
 		fmt.Fprintf(stderr, "harness land finish: %v\n", err)
 		return 1
 	}
 	return 0
+}
+
+func printActions(w io.Writer, title string, actions []Action) {
+	if len(actions) == 0 {
+		return
+	}
+	s := ui.For(w)
+	if len(actions) > 1 {
+		fmt.Fprintln(w, s.Title(title))
+	}
+	for _, a := range actions {
+		if a.Done {
+			fmt.Fprintln(w, s.OK(a.Text))
+		} else {
+			fmt.Fprintln(w, s.Warn("kept "+a.Text))
+		}
+	}
 }
 
 func repair(args []string, stdout, stderr io.Writer) int {
