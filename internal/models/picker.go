@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/jvillegasd/harness/internal/ui"
 )
@@ -45,6 +46,8 @@ type picker struct {
 	style              ui.Style
 	// refused is why the last pick could not be applied; the picker stays on its step.
 	refused string
+	// width is the terminal's, from its size message; 0 until one arrives.
+	width int
 }
 
 func newPicker(catalog *Catalog, choice Choice) picker {
@@ -153,6 +156,10 @@ func (p picker) pending() Choice {
 func (p picker) Init() tea.Cmd { return nil }
 
 func (p picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if size, ok := msg.(tea.WindowSizeMsg); ok {
+		p.width = size.Width
+		return p, nil
+	}
 	key, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		return p, nil
@@ -223,11 +230,14 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 		if opt == reset {
 			return p.queue(stepRoleTier, at, []string{"role", "reset", p.name})
 		}
+		// keep clears an earlier pick of this step, such as one made before esc.
+		p.tier = ""
 		if opt != keep {
 			p.tier = opt
 		}
 		p.step = stepRoleClient
 	case stepRoleClient:
+		p.client = ""
 		if opt != keep {
 			p.client = opt
 		}
@@ -360,7 +370,20 @@ func (p picker) View() tea.View {
 		back = "esc quit"
 	}
 	b.WriteString("\n" + s.Dim("↑/↓ move  enter select  "+back+"  q quit without writing") + "\n")
-	return tea.NewView(b.String())
+	return tea.NewView(p.fit(b.String()))
+}
+
+// fit cuts each line to the terminal's width, so a long model id or command
+// cannot wrap and break the layout.
+func (p picker) fit(view string) string {
+	if p.width <= 0 {
+		return view
+	}
+	lines := strings.Split(view, "\n")
+	for i, line := range lines {
+		lines[i] = ansi.Truncate(line, p.width, "…")
+	}
+	return strings.Join(lines, "\n")
 }
 
 // label is how an option reads: a tier in its hue, save accented, an
@@ -432,25 +455,29 @@ func (p picker) detail(opt string) string {
 		return s.Dim(ui.Pad(r.Tier, 10)+ui.Pad(r.Client, 6)+" › "+orUnavailable(r.Model)) + mark
 	case stepTierModel:
 		if opt == newest {
-			if model := p.newestModel(); model != "" {
-				return s.Dim("now " + model)
-			}
+			return p.newestDetail()
 		}
 	}
 	return ""
 }
 
-// newestModel is what newest resolves to for the tier on the client being
-// picked: Claude's alias, or Codex's newest listed slug of the tier's family.
-func (p picker) newestModel() string {
-	switch p.client {
-	case "claude":
-		return tierModels["claude"][p.name]
-	case "codex":
-		listed, _ := p.catalog.Codex()
-		return newestCodex(listed, tierModels["codex"][p.name])
+// newestDetail says what a role at the tier runs on once it is served by the
+// client's newest model: that model, the fallback when the client lists none
+// for the tier, or that nothing can run.
+func (p picker) newestDetail() string {
+	s := p.style
+	next, err := change(p.applied(), []string{"tier", "set", p.name, "--client", p.client}, p.catalog)
+	if err != nil {
+		return s.Caution(err.Error())
 	}
-	return ""
+	m, _ := next.underPreset(p.name, next.preset(), p.catalog)
+	switch {
+	case m.Problem != "":
+		return s.Caution("none listed for " + p.name)
+	case m.Tier != "":
+		return s.Dim("falls back to " + m.Tier + ": " + m.Client + " › " + m.Model)
+	}
+	return s.Dim("now " + m.Model)
 }
 
 // presetPreview is what each tier would run on under a preset.
@@ -458,7 +485,7 @@ func (p picker) presetPreview(preset string) []string {
 	s := p.style
 	var pairs [][2]string
 	for _, tier := range Tiers {
-		m, alternatives := p.choice.underPreset(tier, preset, p.catalog)
+		m, alternatives := p.applied().underPreset(tier, preset, p.catalog)
 		pairs = append(pairs, [2]string{tier, drawChoice(s, m, alternatives)})
 	}
 	return s.Fields(pairs...)

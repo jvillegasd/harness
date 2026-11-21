@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 var (
@@ -335,5 +336,54 @@ func TestPickerResetsATierAndARole(t *testing.T) {
 	}
 	if opts := choose(t, p, "executor").options(); slices.Contains(opts, reset) {
 		t.Errorf("reset offered for a role with nothing set: %v", opts)
+	}
+}
+
+func TestPickerKeepClearsAPickMadeBeforeEsc(t *testing.T) {
+	listingPath(t)
+	back := func(p picker) picker { next, _ := p.Update(keyEsc); return next.(picker) }
+	p := choose(t, choose(t, choose(t, newPicker(new(Catalog), Choice{}), "custom"), "reviewer"), "fast")
+	p = choose(t, choose(t, choose(t, back(p), keep), keep), "")
+	q := choose(t, choose(t, choose(t, choose(t, newPicker(new(Catalog), Choice{}), "custom"), "executor"), keep), "codex")
+	q = choose(t, choose(t, back(q), keep), "")
+	if len(p.sets)+len(q.sets) != 0 {
+		t.Errorf("keep after esc still queued the earlier pick: %v %v", p.sets, q.sets)
+	}
+}
+
+func TestPickerPresetPreviewIncludesPendingChanges(t *testing.T) {
+	listingPath(t)
+	p := choose(t, choose(t, choose(t, choose(t, newPicker(new(Catalog), Choice{}), "custom"), "high"), "claude"), "sonnet")
+	next, _ := p.Update(keyEsc)
+	p = drive(t, next.(picker), keyDown)
+	if view := p.View().Content; !strings.Contains(view, "  high      claude › sonnet") {
+		t.Errorf("the claude preset preview ignores the pending high pin:\n%s", view)
+	}
+}
+
+func TestPickerNewestSaysWhenNothingOrAFallbackRuns(t *testing.T) {
+	for tier, want := range map[string]string{"standard": "none listed for standard", "heavy": "falls back to high: codex › gpt-6.1-sol"} {
+		p := choose(t, choose(t, choose(t, newPicker(codexCatalogOf(), Choice{Preset: "codex"}), "custom"), tier), "codex")
+		var row string
+		for _, line := range strings.Split(p.View().Content, "\n") {
+			if strings.HasPrefix(line, "› newest") {
+				row = line
+			}
+		}
+		if !strings.HasSuffix(row, want) {
+			t.Errorf("%s: newest row %q, want it to end with %q", tier, row, want)
+		}
+	}
+}
+
+func TestPickerFitsTheTerminalWidth(t *testing.T) {
+	p := newPicker(new(Catalog), Choice{})
+	next, _ := p.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	p = next.(picker)
+	p.step, p.sets = stepName, [][]string{{"tier", "set", "fast", "--client", "opencode", "--model", "opencode-go/" + strings.Repeat("x", 60)}}
+	for _, line := range strings.Split(p.View().Content, "\n") {
+		if w := ansi.StringWidth(line); w > 80 {
+			t.Errorf("line is %d columns wide: %q", w, line)
+		}
 	}
 }
