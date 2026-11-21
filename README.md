@@ -166,15 +166,25 @@ On autopilot the agent **may** commit, push, and open pull requests, including s
 
 ## Models
 
-Each helper role (such as the executor or the reviewer) runs on a client, model, and effort level that you choose.
+Each helper role (such as the executor or the reviewer) runs at a tier, the kind of work its model is meant for. You choose which client and model serve each tier, and which tier and effort each role runs at.
+
+| Tier | Work | Claude | Codex |
+| --- | --- | --- | --- |
+| `heavy` | System design, architecture | Opus (default) | newest `-astra` |
+| `high` | Defects, engineering, analysis (and design when no heavy model is listed) | Opus | newest `-sol` |
+| `standard` | Scoped work with tests | Sonnet | newest `-terra` |
+| `fast` | Classification, gathering data in volume, boilerplate | Haiku | newest `-luna` |
 
 ```sh
-harness models                      # pick interactively
-harness models show                 # see the current assignments
-harness models set --preset economy # balanced (default), performance, economy, or diversity
+harness models                                   # pick interactively
+harness models show                              # see each tier and role
+harness models set --preset claude               # balanced (default), claude, or codex serves the tiers
+harness models set high --client codex           # serve a tier from another client
+harness models set heavy --client claude --model fable  # run a tier on another model
+harness models set reviewer --tier heavy --effort high   # move a role to another tier
 ```
 
-Run `harness install agents` after a change so the clients pick it up. A role assigned to the client you are in runs as a normal subagent. A role assigned to another client runs through T3 Code. The [delegation guide](docs/subagents.md) explains the roles.
+On Claude, the recommended models for `heavy` are Fable and Opus. It defaults to Opus because Fable is not on every plan; when yours includes Fable, map heavy to it with the `set heavy` line above. OpenCode has no tier names, so it serves a tier only with a model you name: `harness models set fast --client opencode --model <provider/model>`. Run `harness install agents` after a change so the clients pick it up. A role assigned to the client you are in runs as a normal subagent. A role assigned to another client runs through T3 Code. The [delegation guide](docs/subagents.md) explains the roles.
 
 ## Shell aliases
 

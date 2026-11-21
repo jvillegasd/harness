@@ -2,15 +2,20 @@ package agents
 
 import "errors"
 
+// Role is one kind of subagent. Tier and Effort are its defaults; a lens has
+// neither and follows the reviewer. A generic role takes its tier and client
+// at each launch, for subagents no other role describes.
 type Role struct {
 	Name, Definition, Access string
-	Lens                     bool
+	Tier, Effort             string
+	Lens, Generic            bool
 }
 
 var Roles = []Role{
-	{Name: "executor", Definition: "roles/executor.md", Access: "implement"},
-	{Name: "code-search", Definition: "roles/code-search.md", Access: "read-search"},
-	{Name: "reviewer", Definition: "skills/delivery/review/roles/reviewer.md", Access: "read-search"},
+	{Name: "executor", Definition: "roles/executor.md", Access: "implement", Tier: "standard"},
+	{Name: "code-search", Definition: "roles/code-search.md", Access: "read-search", Tier: "fast"},
+	{Name: "worker", Definition: "roles/worker.md", Access: "implement", Tier: "standard", Generic: true},
+	{Name: "reviewer", Definition: "skills/delivery/review/roles/reviewer.md", Access: "read-search", Tier: "high", Effort: "medium"},
 	{Name: "review-bugs", Definition: "skills/delivery/review/roles/review-bugs.md", Access: "read-search", Lens: true},
 	{Name: "review-spec", Definition: "skills/delivery/review/roles/review-spec.md", Access: "read-search", Lens: true},
 	{Name: "review-risk", Definition: "skills/delivery/review/roles/review-risk.md", Access: "read-search", Lens: true},
@@ -79,7 +84,8 @@ func codexTail(level string) string {
 
 var gaps = []string{
 	"gap: claude: the executor keeps Bash, because a disallowedTools specifier removes the whole tool, so its commit, push, pull request, merge, and tracker limits are instructions only",
-	"gap: claude: a model parameter passed at launch overrides an agent's model frontmatter, and an availableModels allowlist substitutes a blocked model with a warning, so the policy forbids the parameter and neither is enforced",
+	"gap: claude: a model parameter passed at launch overrides an agent's model frontmatter, and an availableModels allowlist substitutes a blocked model with a warning, so the policy allows the parameter only for the worker's resolved tier model and neither is enforced",
+	"gap: codex, opencode: a native launch by name keeps the installed agent's model, so the worker runs at its configured tier there unless T3 Code's delegate_task launches it at another",
 	"gap: codex: an agent file inherits the parent's sandbox and approval policy, so a native Codex subagent's read-search and executor limits are instructions only",
 	"gap: opencode: the executor's bash denies match command prefixes, so the same action spelled another way is not denied",
 	"gap: t3: a role delegated through T3 Code's delegate_task runs as a fresh provider session that loads no installed role agent, and T3 has no read-only runtime mode, so its role definition and access limits travel in the brief as instructions only",

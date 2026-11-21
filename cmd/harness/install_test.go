@@ -127,7 +127,7 @@ esac`,
 
 		"codex": `printf 'CODEX_HOME=%s\n' "$CODEX_HOME" >> '` + filepath.Join(filepath.Dir(shims), "shims.log") + `'
 case "$*" in
-"debug models") echo '{"models":[{"slug":"gpt-6-luna","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"high"}]},{"slug":"gpt-5.6-luna","visibility":"list","supported_reasoning_levels":[{"effort":"low"}]},{"slug":"gpt-6.1-sol","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"high"}]}]}' ;;
+"debug models") echo '{"models":[{"slug":"gpt-6-luna","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"high"}]},{"slug":"gpt-5.6-luna","visibility":"list","supported_reasoning_levels":[{"effort":"low"}]},{"slug":"gpt-6.1-terra","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"}]},{"slug":"gpt-6.1-sol","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"high"}]}]}' ;;
 "mcp add agent-browser"*) touch '` + filepath.Join(shims, ".codex-agent-browser") + `' ;;
 "mcp remove agent-browser") rm -f '` + filepath.Join(shims, ".codex-agent-browser") + `' ;;
 "mcp get agent-browser") [ -e '` + filepath.Join(shims, ".codex-agent-browser") + `' ] || exit 1 ;;

@@ -60,22 +60,17 @@ func (in *installer) assigned() map[string]agents.Assigned {
 	if err != nil {
 		die("Reading the model choice failed: %v", err)
 	}
-	assigned := choice.ForRender()
-	catalog := new(models.Catalog)
+	assigned, all := choice.ForRender(new(models.Catalog))
 	for _, role := range models.AllRoles {
-		a := assigned[role]
-		err := catalog.Runnable(models.Assignment{Client: a.Client, Model: a.Model, Effort: a.Effort})
-
-		quiet := a.Source == "reviewer"
+		r := all[role]
 		switch {
-		case err != nil && quiet:
-			delete(assigned, role)
-		case errors.Is(err, models.ErrNotListed):
-			in.warn("%s is assigned %s model %s, which this machine does not list (%v); its agent keeps the client default until `harness models` names one this machine can run.", role, a.Client, a.Model, err)
-			delete(assigned, role)
-		case err != nil:
-			in.warn("%v; %s keeps the %s client default.", err, role, a.Client)
-			delete(assigned, role)
+		case r.Err != nil && r.Source == "reviewer":
+		case errors.Is(r.Err, models.ErrNotListed):
+			in.warn("%s runs at the %s tier on %s, which this machine cannot serve (%v); its agent keeps the client default until `harness models` names a model this machine can run.", role, r.Tier, r.Client, r.Err)
+		case r.Err != nil:
+			in.warn("%v; %s keeps the %s client default.", r.Err, role, r.Client)
+		case r.Note != "" && r.Source != "reviewer":
+			in.warn("%s: %s.", role, r.Note)
 		}
 	}
 	in.assignments = assigned
