@@ -222,7 +222,7 @@ These stages describe the intended workflow. Nothing enforces them centrally, an
 
 ### Task documents
 
-For longer work, the agent keeps the requirements, decisions, evidence, and next step in `docs/agents/tasks/<feature>.md`, committed on the task branch. Small tasks do not need one.
+For longer work, the agent keeps the requirements, decisions, evidence, and next step in `docs/agents/tasks/<feature>.md`, committed on the task branch. It merges with the work and stays in the repository as a record of what was done and why. Small tasks do not need one.
 
 ## Larger builds
 
