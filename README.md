@@ -318,7 +318,7 @@ git diff --check
 git diff --cached --check
 ```
 
-The tests check the code's behavior, not whether an agent follows the written rules. Testing live agent behavior needs a model budget that you approve.
+The tests check the code's behavior, not whether an agent follows the written rules.
 
 ## Guides
 
