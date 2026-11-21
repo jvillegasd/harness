@@ -47,8 +47,8 @@ func TestModelsShowDefaultsToBalanced(t *testing.T) {
 			t.Errorf("show --json lacks %q:\n%s", want, got)
 		}
 	}
-	if r := ok(t, runModels(t, base, "show"), "models show"); !strings.Contains(r.stdout, " STANDARD   codex  › gpt-6.1-terra") {
-		t.Errorf("show does not draw the tier tree:\n%s", r.stdout)
+	if r := ok(t, runModels(t, base, "show"), "models show"); !strings.Contains(r.stdout, " STANDARD   scoped work with tests\n  runs on      codex  › gpt-6.1-terra\n") {
+		t.Errorf("show does not draw the standard tier's card:\n%s", r.stdout)
 	}
 }
 
