@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"slices"
 	"strings"
 
@@ -30,6 +31,44 @@ type tierView struct {
 type clientModel struct {
 	Client string `json:"client"`
 	Model  string `json:"model"`
+	// Tier is the tier it falls back to, when the client lists no model for this one.
+	Tier string `json:"tier,omitempty"`
+}
+
+// others lists every model a role set to a tier may run on besides the one
+// that serves it: each client's model for the tier, falling back as Resolve
+// does, and each other Claude alias made for the tier, such as fable for heavy.
+func (c Choice) others(tier string, served clientModel, cat *Catalog) []clientModel {
+	out := []clientModel{}
+	add := func(m clientModel) {
+		if (m.Client != served.Client || m.Model != served.Model) && !slices.Contains(out, m) {
+			out = append(out, m)
+		}
+	}
+	for _, client := range Clients {
+		at := tier
+		model, err := c.Model(at, client, cat)
+		for next, ok := fallback[at]; ok && errors.Is(err, ErrNotListed); next, ok = fallback[at] {
+			at = next
+			model, err = c.Model(at, client, cat)
+		}
+		if err != nil {
+			continue
+		}
+		m := clientModel{Client: client, Model: model}
+		if at != tier {
+			m.Tier = at
+		}
+		add(m)
+		if client == "claude" {
+			for _, alias := range slices.Sorted(maps.Keys(claudeTiers)) {
+				if claudeTiers[alias] == tier {
+					add(clientModel{Client: client, Model: alias})
+				}
+			}
+		}
+	}
+	return out
 }
 
 type roleView struct {
@@ -59,15 +98,7 @@ func (c Choice) report(cat *Catalog) report {
 		if next, ok := fallback[tier]; ok && errors.Is(err, ErrNotListed) {
 			v.Fallback = next
 		}
-		v.Others = []clientModel{}
-		for _, client := range Clients {
-			if client == b.Client {
-				continue
-			}
-			if other, err := c.Model(tier, client, cat); err == nil {
-				v.Others = append(v.Others, clientModel{client, other})
-			}
-		}
+		v.Others = c.others(tier, clientModel{Client: b.Client, Model: model}, cat)
 		out.Tiers = append(out.Tiers, v)
 	}
 	for _, name := range AllRoles {
@@ -149,7 +180,11 @@ func drawOthers(s ui.Style, t tierView) string {
 	}
 	var parts []string
 	for _, o := range t.Others {
-		parts = append(parts, o.Client+" "+s.Dim("›")+" "+o.Model)
+		part := o.Client + " " + s.Dim("›") + " " + o.Model
+		if o.Tier != "" {
+			part += " " + s.Dim("at "+o.Tier)
+		}
+		parts = append(parts, part)
 	}
 	return "  " + s.Dim("also "+strings.Join(parts, s.Dim(" · ")))
 }

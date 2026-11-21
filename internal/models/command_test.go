@@ -444,7 +444,7 @@ func TestShowDrawsRolesUnderTheirTier(t *testing.T) {
 		" HIGH       claude › opus            preset\n  also codex › gpt-6.1-sol\n  ├─ reviewer      effort low\n  ├─ review-bugs   effort low      via reviewer\n  └─ review-risk   effort low      via reviewer\n",
 		" STANDARD   codex  › gpt-6.1-terra   preset\n  also claude › sonnet\n  ├─ executor      effort default\n  └─ worker        effort default  tier chosen at launch\n",
 		"  └─ review-spec   effort default  set\n     ! claude haiku does not support effort \"low\"",
-		" HEAVY      claude › opus            preset\n  └─ no roles",
+		" HEAVY      claude › opus            preset\n  also claude › fable · codex › gpt-6.1-sol at high\n  └─ no roles",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("show lacks %q:\n%s", want, out)
@@ -475,13 +475,17 @@ func TestEachTierListsWhatOtherClientsRunAtIt(t *testing.T) {
 	for _, v := range rep.Tiers {
 		var parts []string
 		for _, o := range v.Others {
-			parts = append(parts, o.Client+"="+o.Model)
+			part := o.Client + "=" + o.Model
+			if o.Tier != "" {
+				part += "@" + o.Tier
+			}
+			parts = append(parts, part)
 		}
 		got[v.Tier] = strings.Join(parts, " ")
 	}
 	want := map[string]string{
-		"heavy":    "",
-		"high":     "codex=gpt-6.1-sol",
+		"heavy":    "claude=fable codex=gpt-6.1-sol@high",
+		"high":     "claude=opus codex=gpt-6.1-sol",
 		"standard": "claude=sonnet",
 		"fast":     "codex=gpt-6-luna opencode=opencode-go/glm-5.3",
 	}
@@ -490,7 +494,10 @@ func TestEachTierListsWhatOtherClientsRunAtIt(t *testing.T) {
 			t.Errorf("%s lists %q from other clients, want %q", tier, got[tier], w)
 		}
 	}
-	if out := runOK(t, path, "tier", "show"); !strings.Contains(out, " HEAVY      claude › opus            preset\n HIGH ") {
-		t.Errorf("a tier no other client serves drew an also line:\n%s", out)
+	if got := resolved(t, path, "worker", "--tier", "heavy", "--client", "codex"); got["model"] != "gpt-6.1-sol" || got["tier"] != "high" {
+		t.Errorf("the listing disagrees with what a role on codex at heavy resolves to: %v", got)
+	}
+	if out := runOK(t, path, "tier", "show"); !strings.Contains(out, " HEAVY      claude › opus            preset\n  also claude › fable · codex › gpt-6.1-sol at high\n") {
+		t.Errorf("tier show does not draw heavy's fallback:\n%s", out)
 	}
 }
