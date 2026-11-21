@@ -34,6 +34,16 @@ func stored(path string) (Choice, error) {
 	return c, nil
 }
 
+// forReset reads the choice a reset starts from: the loaded one, so a reset
+// clears what a migration made, or the stored block when Load refuses it, so
+// a reset can still clear a bad one.
+func forReset(path string) (Choice, error) {
+	if c, err := Load(path); err == nil {
+		return c, nil
+	}
+	return stored(path)
+}
+
 // Load reads the choice, migrating what older versions saved and refusing
 // what this version cannot run, each refusal naming the reset that clears it.
 func Load(path string) (Choice, error) {

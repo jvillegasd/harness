@@ -382,3 +382,14 @@ func TestTierAndRoleCommandsTouchOnlyTheirHalf(t *testing.T) {
 		t.Errorf("role reset kept an override or dropped the preset: %v", got)
 	}
 }
+
+func TestTierResetClearsAPinALegacyOverrideMade(t *testing.T) {
+	listingPath(t)
+	for _, reset := range [][]string{{"tier", "reset", "heavy"}, {"tier", "reset"}} {
+		path := seeded(t, `{"roles": {"reviewer": {"client": "claude", "model": "fable"}}}`)
+		runOK(t, path, reset...)
+		if out := runOK(t, path, "tier", "show"); !strings.Contains(out, "heavy client=claude model=opus (preset:balanced)") {
+			t.Errorf("%v left the migrated pin:\n%s", reset, out)
+		}
+	}
+}

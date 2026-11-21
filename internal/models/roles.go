@@ -275,13 +275,13 @@ func setRole(choice Choice, args []string, cat *Catalog) (Choice, error) {
 	return choice, nil
 }
 
-// resetRole drops one role's override, or every override. It reads the
-// stored block without validating it, so it can clear a bad one.
+// resetRole drops one role's override, or every override, starting from
+// forReset so it clears a migrated override and a bad one alike.
 func resetRole(path string, args []string) (bool, error) {
 	if len(args) > 1 {
 		return false, errors.New("role reset takes at most one role")
 	}
-	choice, err := stored(path)
+	choice, err := forReset(path)
 	if err != nil {
 		return false, err
 	}

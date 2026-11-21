@@ -293,13 +293,13 @@ func setTier(choice Choice, args []string, cat *Catalog) (Choice, error) {
 	return choice, nil
 }
 
-// resetTier drops one tier's setting, or every tier setting and the preset.
-// It reads the stored block without validating it, so it can clear a bad one.
+// resetTier drops one tier's setting, or every tier setting and the preset,
+// starting from forReset so it clears a migrated pin and a bad one alike.
 func resetTier(path string, args []string) (bool, error) {
 	if len(args) > 1 {
 		return false, errors.New("tier reset takes at most one tier")
 	}
-	choice, err := stored(path)
+	choice, err := forReset(path)
 	if err != nil {
 		return false, err
 	}
