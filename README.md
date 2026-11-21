@@ -146,7 +146,7 @@ Asking for a review always runs one at your level. [How review works](docs/revie
 
 ## jvillegasd-mode
 
-`/jvillegasd-mode <task>` makes the agent follow a fixed playbook instead of choosing skills on its own. The agent picks the playbook that fits (bug fix, feature, investigation, refactor, performance, hillclimb, forensics, design, skill authoring, eval, large change, or one of the existing skills), then copies every step into its todo list. A step it skips stays in the list as `skip: <reason>`, so you can see what was left out and why.
+`/jvillegasd-mode <task>` makes the agent follow a fixed playbook instead of choosing skills on its own. The agent picks the playbook that fits (bug fix, feature, investigation, refactor, performance, hillclimb, forensics, design, skill authoring, large change, or one of the existing skills), then copies every step into its todo list. A step it skips stays in the list as `skip: <reason>`, so you can see what was left out and why.
 
 For a code change, jvillegasd-mode always ends with a change summary (`change-map`) and a review at your level. A plan request writes an epic with sliced tickets and asks whether to build it. Merging still goes through you or `/land`.
 
@@ -289,10 +289,9 @@ Many skill steps are `harness` commands rather than written instructions, so the
 | --- | --- | --- |
 | `harness pr status` | Whether a PR is ready to merge, and its first blocker | `open-pr`, `address-review` |
 | `harness land check`, `merge`, `sync`, `finish`, `repair` | Whether a PR can land, the merge itself, then the cleanup after it | `/land` |
-| `harness review target`, `verdict`, `evals` | What a review reads, the one verdict comment a review posts on its PR, and the review skill's own evals | `review`, `open-pr` |
+| `harness review target`, `verdict` | What a review reads, and the one verdict comment a review posts on its PR | `review`, `open-pr` |
 | `harness worktree audit`, `retire` | List worktrees and remove one without losing work | `/land`, `/cleanup`, `build` |
 | `harness tickets check`, `frontier`, `publish` | Validate slice drafts, pick the ready ones, and publish them to GitHub | `epic`, `build` |
-| `harness eval plant`, `run`, `clean` | Blinded comparisons of two versions of a skill | `/jvillegasd-mode`'s eval playbook |
 | `harness attempts add`, `list` | The log of measured attempts | `/jvillegasd-mode`'s hillclimb playbook |
 
 The [command-line reference](docs/cli.md) explains each one. `harness <command> --help` lists the flags.

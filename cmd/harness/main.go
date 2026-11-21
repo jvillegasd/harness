@@ -8,7 +8,6 @@ import (
 	"github.com/jvillegasd/harness/internal/attempts"
 	"github.com/jvillegasd/harness/internal/bench"
 	"github.com/jvillegasd/harness/internal/changemap"
-	"github.com/jvillegasd/harness/internal/eval"
 	"github.com/jvillegasd/harness/internal/install"
 	"github.com/jvillegasd/harness/internal/land"
 	"github.com/jvillegasd/harness/internal/models"
@@ -41,7 +40,6 @@ Commands:
   land       Report whether pull requests can land, and how
   pr         Report a pull request's readiness and what blocks it
   tickets    Check, order, and publish ticket drafts
-  eval       Plant, run, and clean blinded skill comparisons
   attempts   Keep the attempt log for measured loops
 `
 
@@ -79,8 +77,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return land.PrCommand(args[1:], stdout, stderr)
 	case "tickets":
 		return tickets.Command(args[1:], stdout, stderr)
-	case "eval":
-		return eval.Command(args[1:], stdout, stderr)
 	case "resume":
 		return resume.Command(args[1:], stdout, stderr)
 	case "-h", "--help", "help":

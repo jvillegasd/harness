@@ -93,7 +93,7 @@ stateDiagram-v2
 
 ### Why unproven findings are dropped
 
-Dropping unproven findings means some real bugs slip through. In exchange, every finding you read has been run, so you can trust the report. The review evals count the real bugs this rule drops, so the cost of the trade stays measured. They only run when you ask. `harness review evals seed` suggests cases from past fixes: for each `fix:` or revert commit, it finds the commit that introduced the lines it fixed. A case counts only once you confirm it. `harness review evals score` grades a run against the confirmed cases and says whether recall dropped or false positives rose since the last run on the same cases.
+Dropping unproven findings means some real bugs slip through. In exchange, every finding you read has been run, so you can trust the report.
 
 ## What you get at the end
 

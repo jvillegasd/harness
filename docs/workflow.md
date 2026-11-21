@@ -82,7 +82,6 @@ The agent picks the playbook from the task:
 | A runtime symptom or a captured profile to diagnose, with no fix | Forensics playbook (read-only) |
 | A shape or interface to choose, with no precedent | Design playbook |
 | Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | Skill playbook |
-| Whether a skill or instruction change changes agent behavior | Eval playbook |
 | A prototype, spike, or mock-up | `proto`'s steps |
 | A plan before anything is built, or tickets from a brief, findings, or a request | `epic`'s steps |
 | A ticket or production error to analyze, with no fix requested | `triage`'s steps |
@@ -97,7 +96,7 @@ The agent picks the playbook from the task:
 
 When a row names a skill, jvillegasd-mode runs that skill's own steps. It adds its checklist and its reply, never a second copy of the skill.
 
-Two playbooks lean on their own commands. The eval playbook plants blinded copies of a project with [`harness eval`](cli.md#eval-commands), runs one session per copy and model, and shows you the model budget with `--dry-run` before anything starts. The hillclimb playbook logs every attempt, kept or reverted, with [`harness attempts`](cli.md#attempt-log).
+The hillclimb playbook leans on its own command: it logs every attempt, kept or reverted, with [`harness attempts`](cli.md#attempt-log).
 
 How each kind of task ends:
 

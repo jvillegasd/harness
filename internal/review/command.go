@@ -7,11 +7,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/x/term"
 	"github.com/jvillegasd/harness/internal/ui"
@@ -33,39 +30,6 @@ Commands:
   worktree  Add or retire the one worktree a review may create
   remove    Delete a key's review directory, its worktree record and patches
   prune     Delete the review directories of branches that exist nowhere
-  evals     Seed candidate eval cases and score an eval run
-`
-
-const evalsUsage = `Usage: harness review evals seed [<revision range>] [--max <n>]
-       harness review evals score <run file> [--depth <level>] [--model <role>=<model>]... [--revision <rev>] [--date <date>]
-
-The review evals live in <git-common-dir>/harness-review/evals: evals.jsonl
-holds the cases and runs/<date>.jsonl the runs. Only a case with
-confirmed_by set counts.
-
-seed prints, as JSON lines, one candidate bug case per commit that
-introduced lines a fix or revert commit in the range (default HEAD) changed,
-for the newest --max fixes (default 20). It blames each fix's changed lines
-at its parent, so the expected lines are those lines as they stood in the
-introducing commit, and a pure insertion is placed by the lines around it.
-It writes nothing: show each candidate to the human, and add a confirmed one
-to evals.jsonl with confirmed_by set.
-
-score reads the run file's findings, one JSON line each with case, path,
-lines, severity, and disposition (confirmed or dropped). A bug case is
-caught when a confirmed bug or risk overlaps one of its expected path and
-line ranges, each confirmed bug or risk on a clean case is a false positive,
-and a dropped finding inside a bug case's expected range is a dropped catch.
-It appends the summary line to the run file, refuses a run file already
-scored, and prints the summary beside the last run on the same cases, with
-regression true when recall dropped or false positives rose.
-
-  --max       The newest fix commits seed reads (default 20)
-  --depth     The review depth the run used
-  --model     A hunter's resolved model, as role=model; repeatable
-  --revision  The harness revision of skills/delivery/review (default: the
-              last commit that touched it)
-  --date      The run's date (default: today)
 `
 
 const verdictUsage = `Usage: harness review verdict <pr> --result <PASS|PASS+NOTES|FAIL> --base <base> --sha <sha> --level <medium|high> [--notes <file>] [--dry-run]
@@ -192,8 +156,6 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return level(args[1:], stdout, stderr)
 	case "target":
 		return target(args[1:], stdout, stderr)
-	case "evals":
-		return evals(args[1:], stdout, stderr)
 	case "worktree":
 		return worktreeCommand(args[1:], stdout, stderr)
 	}
@@ -588,152 +550,7 @@ func verdict(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-type models map[string]string
-
-func (m models) String() string { return "" }
-
-func (m models) Set(v string) error {
-	role, model, ok := strings.Cut(v, "=")
-	if !ok || role == "" || model == "" {
-		return fmt.Errorf("--model takes role=model, not %q", v)
-	}
-	m[role] = model
-	return nil
-}
-
-func evals(args []string, stdout, stderr io.Writer) int {
-	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" || args[0] == "help" {
-		w := stdout
-		if len(args) == 0 {
-			w = stderr
-		}
-		fmt.Fprint(w, evalsUsage)
-		if len(args) == 0 {
-			return 2
-		}
-		return 0
-	}
-	sub, args := args[0], args[1:]
-	if sub != "seed" && sub != "score" {
-		fmt.Fprintf(stderr, "harness review evals: unknown command %q; run harness review evals --help\n", sub)
-		return 2
-	}
-	flags := flag.NewFlagSet("evals "+sub, flag.ContinueOnError)
-	maxFixes := flags.Int("max", 20, "")
-	depth := flags.String("depth", "", "")
-	revision := flags.String("revision", "", "")
-	date := flags.String("date", "", "")
-	byRole := models{}
-	flags.Var(byRole, "model", "")
-	var positional []string
-	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
-		positional, args = args[:1], args[1:]
-	}
-	if code := parse(flags, args, evalsUsage, stdout, stderr); code >= 0 {
-		return code
-	}
-	usage := func(format string, a ...any) int {
-		fmt.Fprintf(stderr, "harness review evals %s: "+format+"; run harness review evals --help\n", append([]any{sub}, a...)...)
-		return 2
-	}
-	switch {
-	case sub == "seed" && (*depth != "" || *revision != "" || *date != "" || len(byRole) > 0):
-		return usage("seed takes only a revision range and --max")
-	case sub == "seed" && *maxFixes <= 0:
-		return usage("--max takes a positive number")
-	case sub == "score" && len(positional) != 1:
-		return usage("score takes the run file")
-	case *depth != "" && !slices.Contains([]string{"none", "medium", "high"}, *depth):
-		return usage("--depth is none, medium, or high")
-	}
-	cwd, err := os.Getwd()
-	root := ""
-	if err == nil {
-		root, err = git(cwd, "rev-parse", "--show-toplevel")
-	}
-	if err != nil {
-		fmt.Fprintf(stderr, "harness review evals %s: not inside a git repository\n", sub)
-		return 2
-	}
-	fail := func(err error) int {
-		fmt.Fprintf(stderr, "harness review evals %s: %v\n", sub, err)
-		return 1
-	}
-	if sub == "seed" {
-		rev := "HEAD"
-		if len(positional) == 1 {
-			rev = positional[0]
-		}
-		cases, err := Seed(root, rev, *maxFixes)
-		if err != nil {
-			return fail(err)
-		}
-		for _, c := range cases {
-			line, _ := json.Marshal(c)
-			fmt.Fprintln(stdout, string(line))
-		}
-		return 0
-	}
-	dir, err := EvalsDir(root)
-	if err != nil {
-		return fail(err)
-	}
-	if *revision == "" {
-		*revision, _ = git(root, "log", "-1", "--format=%h", "--", "skills/delivery/review")
-	}
-	if *date == "" {
-		*date = time.Now().Format("2006-01-02")
-	}
-	run, err := filepath.Abs(positional[0])
-	if err != nil {
-		return fail(err)
-	}
-	c, err := ScoreRun(filepath.Join(dir, "evals.jsonl"), run, Summary{Date: *date, Revision: *revision, Depth: *depth, Models: byRole})
-	if errors.Is(err, ErrInvalid) {
-		fmt.Fprintf(stderr, "harness review evals score: %v\n", err)
-		return 2
-	}
-	if err != nil {
-		return fail(err)
-	}
-	if terminal(stdout) {
-		drawScore(stdout, c)
-	} else {
-		out, _ := json.MarshalIndent(c, "", "  ")
-		fmt.Fprintln(stdout, string(out))
-	}
-	return 0
-}
-
 func terminal(w io.Writer) bool {
 	f, ok := w.(*os.File)
 	return ok && term.IsTerminal(f.Fd())
-}
-
-func drawScore(w io.Writer, c Comparison) {
-	s := ui.For(w)
-	fmt.Fprintln(w, s.Title("harness review evals score", c.Summary.Date))
-	state := s.Dim("no previous run")
-	if c.Previous != nil {
-		state = s.Good("no regression")
-	}
-	if c.Regression {
-		state = s.Bad("regression")
-	}
-	for _, line := range s.Fields(
-		[2]string{"cases", strconv.Itoa(c.Summary.BugCases)},
-		[2]string{"caught", strconv.Itoa(c.Summary.Caught)},
-		[2]string{"recall", strconv.FormatFloat(c.Summary.Recall, 'f', -1, 64)},
-		[2]string{"false positives", strconv.Itoa(c.Summary.FalsePositives)},
-		[2]string{"dropped", strconv.Itoa(c.Summary.Dropped)},
-		[2]string{"dropped catches", strconv.Itoa(c.Summary.DroppedCatches)},
-		[2]string{"comparison", state},
-	) {
-		fmt.Fprintln(w, line)
-	}
-	if c.Previous == nil {
-		fmt.Fprintln(w, s.Dim("  no previous run on these cases"))
-	} else {
-		fmt.Fprintln(w, s.Dim(fmt.Sprintf("  previous: recall %g, false positives %d", c.Previous.Recall, c.Previous.FalsePositives)))
-	}
 }
