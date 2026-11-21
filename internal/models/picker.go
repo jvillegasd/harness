@@ -317,6 +317,25 @@ func (p picker) detail(opt string) string {
 		}
 		r := c.Resolve(opt, Launch{}, p.catalog)
 		return s.Dim(ui.Pad(r.Tier, 10) + ui.Pad(r.Client, 6) + " › " + orUnavailable(r.Model))
+	case stepTierModel:
+		if opt == newest {
+			if model := p.newestModel(); model != "" {
+				return s.Dim("now " + model)
+			}
+		}
+	}
+	return ""
+}
+
+// newestModel is what newest resolves to for the tier on the client being
+// picked: Claude's alias, or Codex's newest listed slug of the tier's family.
+func (p picker) newestModel() string {
+	switch p.client {
+	case "claude":
+		return tierModels["claude"][p.name]
+	case "codex":
+		listed, _ := p.catalog.Codex()
+		return newestCodex(listed, tierModels["codex"][p.name])
 	}
 	return ""
 }

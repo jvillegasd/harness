@@ -248,3 +248,20 @@ func TestPickerMapsAClaudeTierToAnAlias(t *testing.T) {
 		t.Errorf("tier set %v", p.sets)
 	}
 }
+
+func TestPickerSaysWhatNewestResolvesTo(t *testing.T) {
+	listingPath(t)
+	for tier, want := range map[string]string{"high codex": "now gpt-6.1-sol", "heavy claude": "now opus"} {
+		name, client, _ := strings.Cut(tier, " ")
+		p := choose(t, choose(t, choose(t, newPicker(new(Catalog), Choice{}), "custom"), name), client)
+		var row string
+		for _, line := range strings.Split(p.View().Content, "\n") {
+			if strings.HasPrefix(line, "› newest") {
+				row = line
+			}
+		}
+		if !strings.HasSuffix(row, want) {
+			t.Errorf("%s: newest row %q does not end with %q", tier, row, want)
+		}
+	}
+}
