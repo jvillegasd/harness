@@ -23,10 +23,12 @@ var Tiers = []string{"heavy", "high", "standard", "fast"}
 // fallback is the tier a tier falls back to when its model is unavailable.
 var fallback = map[string]string{"heavy": "high"}
 
-// tierModels is each client's model family for a tier: Claude's alias, and
-// the suffix of Codex's model slugs. OpenCode has no tier names.
+// tierModels is each client's default model family for a tier: Claude's
+// alias, and the suffix of Codex's model slugs. OpenCode has no tier names.
+// Claude's heavy defaults to opus, since fable is not on every plan; a human
+// who has fable names it with set heavy --client claude --model fable.
 var tierModels = map[string]map[string]string{
-	"claude": {"heavy": "fable", "high": "opus", "standard": "sonnet", "fast": "haiku"},
+	"claude": {"heavy": "opus", "high": "opus", "standard": "sonnet", "fast": "haiku"},
 	"codex":  {"heavy": "astra", "high": "sol", "standard": "terra", "fast": "luna"},
 }
 
@@ -215,13 +217,19 @@ func versionOf(s string) []int {
 
 // TierOf names the tier of a Claude alias or a Codex slug, or "".
 func TierOf(client, model string) string {
+	if client == "claude" {
+		return claudeTiers[model]
+	}
 	for tier, family := range tierModels[client] {
-		if model == family || (client == "codex" && strings.HasSuffix(model, "-"+family)) {
+		if strings.HasSuffix(model, "-"+family) {
 			return tier
 		}
 	}
 	return ""
 }
+
+// claudeTiers is the tier each Claude alias was made for.
+var claudeTiers = map[string]string{"fable": "heavy", "opus": "high", "sonnet": "standard", "haiku": "fast"}
 
 // binding is the tier's binding with the preset's client filled in.
 func (c Choice) binding(tier string) (Binding, string) {

@@ -11,7 +11,7 @@ import (
 
 var presetNotes = map[string]string{
 	"balanced": "Codex serves standard; Claude serves heavy, high, and fast (default)",
-	"claude":   "Claude serves every tier: fable, opus, sonnet, haiku",
+	"claude":   "Claude serves every tier: opus for heavy and high, sonnet, haiku",
 	"codex":    "Codex serves every tier: its newest astra, sol, terra, luna",
 }
 

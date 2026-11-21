@@ -70,7 +70,7 @@ func resolved(t *testing.T, path string, args ...string) map[string]string {
 func TestTiersResolveToEachClientsModel(t *testing.T) {
 	listingPath(t)
 	path := seeded(t, "")
-	for tier, want := range map[string]string{"heavy": "fable", "high": "opus", "standard": "sonnet", "fast": "haiku"} {
+	for tier, want := range map[string]string{"heavy": "opus", "high": "opus", "standard": "sonnet", "fast": "haiku"} {
 		if got := resolved(t, path, "worker", "--tier", tier, "--client", "claude"); got["model"] != want {
 			t.Errorf("claude %s = %s, want %s", tier, got["model"], want)
 		}
@@ -104,7 +104,7 @@ func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
 	path := seeded(t, "")
 	out := runOK(t, path, "show")
 	for _, want := range []string{
-		"heavy client=claude model=fable (preset:balanced)",
+		"heavy client=claude model=opus (preset:balanced)",
 		"standard client=codex model=gpt-6.1-terra (preset:balanced)",
 		"executor tier=standard client=codex model=gpt-6.1-terra effort=inherit (preset:balanced)",
 		"code-search tier=fast client=claude model=haiku effort=inherit (preset:balanced)",
@@ -120,7 +120,7 @@ func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
 	runOK(t, path, "set", "review-spec", "--tier", "fast")
 	out = runOK(t, path, "show")
 	for _, want := range []string{
-		"review-risk tier=heavy client=claude model=fable effort=medium (reviewer)",
+		"review-risk tier=heavy client=claude model=opus effort=medium (reviewer)",
 		"review-spec tier=fast client=claude model=haiku effort=inherit (override)",
 	} {
 		if !strings.Contains(out, want) {
@@ -128,7 +128,7 @@ func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
 		}
 	}
 	runOK(t, path, "reset", "review-spec")
-	if out := runOK(t, path, "show"); !strings.Contains(out, "review-spec tier=heavy client=claude model=fable effort=medium (reviewer)") {
+	if out := runOK(t, path, "show"); !strings.Contains(out, "review-spec tier=heavy client=claude model=opus effort=medium (reviewer)") {
 		t.Errorf("a reset lens does not return to the reviewer:\n%s", out)
 	}
 }

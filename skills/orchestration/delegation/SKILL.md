@@ -27,7 +27,7 @@ A tier names the kind of work a model is meant for. `harness models` maps each t
 
 | Tier | Work | Claude | Codex |
 | --- | --- | --- | --- |
-| `heavy` | System design, architecture | fable, unless the human maps it to another model | newest `-astra` |
+| `heavy` | System design, architecture | opus, or fable when the human maps it | newest `-astra` |
 | `high` | Defects, engineering, analysis, judging; design when no heavy model is listed | opus | newest `-sol` |
 | `standard` | Scoped work with tests | sonnet | newest `-terra` |
 | `fast` | Classification, gathering data in volume, boilerplate | haiku | newest `-luna` |

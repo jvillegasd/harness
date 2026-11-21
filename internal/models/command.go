@@ -32,7 +32,7 @@ const usage = `usage: harness models [show|set|reset|resolve]
 
 Tiers, strongest first: heavy (system design, architecture), high (defects, engineering, analysis),
 standard (scoped work with tests), fast (classification, gathering data in volume, boilerplate).
-Claude runs fable, opus, sonnet, haiku; Codex its newest listed -astra, -sol, -terra, -luna model;
+Claude runs opus for heavy and high (fable also fits heavy), sonnet, haiku; Codex its newest listed -astra, -sol, -terra, -luna model;
 OpenCode only a model named with set <tier>. heavy falls back to high when no heavy model is listed.
 
 The choice is stored in ~/.harness/state.json; ` + "`harness install`" + ` renders it into each client's role agents.

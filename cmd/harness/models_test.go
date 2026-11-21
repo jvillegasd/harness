@@ -97,7 +97,7 @@ func TestModelsResolveReportsTheAssignment(t *testing.T) {
 	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil {
 		t.Fatalf("resolve output is not JSON: %v\n%s", err, r.stdout)
 	}
-	if got["role"] != "worker" || got["tier"] != "heavy" || got["client"] != "claude" || got["model"] != "fable" || got["effort"] != "inherit" || got["source"] != "launch" {
+	if got["role"] != "worker" || got["tier"] != "heavy" || got["client"] != "claude" || got["model"] != "opus" || got["effort"] != "inherit" || got["source"] != "launch" {
 		t.Errorf("worker at heavy: %v", got)
 	}
 	if r := runModels(t, base, "resolve", "reviewer", "--tier", "fast"); r.code == 0 {
