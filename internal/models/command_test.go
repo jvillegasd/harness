@@ -3,10 +3,13 @@ package models
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 const codexListing = `{"models":[` +
@@ -102,7 +105,7 @@ func TestHeavyFallsBackToHighWhenNoHeavyModelIsListed(t *testing.T) {
 func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
 	listingPath(t)
 	path := seeded(t, "")
-	out := runOK(t, path, "show")
+	out := flat(t, path)
 	for _, want := range []string{
 		"heavy client=claude model=opus (preset:balanced)",
 		"standard client=codex model=gpt-6.1-terra (preset:balanced)",
@@ -118,7 +121,7 @@ func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
 	}
 	runOK(t, path, "role", "set", "reviewer", "--tier", "heavy")
 	runOK(t, path, "role", "set", "review-spec", "--tier", "fast")
-	out = runOK(t, path, "show")
+	out = flat(t, path)
 	for _, want := range []string{
 		"review-risk tier=heavy client=claude model=opus effort=low (reviewer)",
 		"review-spec tier=fast client=claude model=haiku effort=inherit (override)",
@@ -128,7 +131,7 @@ func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
 		}
 	}
 	runOK(t, path, "role", "reset", "review-spec")
-	if out := runOK(t, path, "show"); !strings.Contains(out, "review-spec tier=heavy client=claude model=opus effort=low (reviewer)") {
+	if out := flat(t, path); !strings.Contains(out, "review-spec tier=heavy client=claude model=opus effort=low (reviewer)") {
 		t.Errorf("a reset lens does not return to the reviewer:\n%s", out)
 	}
 }
@@ -194,7 +197,7 @@ func TestSetTierNamesOrClearsAModel(t *testing.T) {
 	if got := resolved(t, path, "reviewer"); got["model"] != "gpt-6-sol" || got["client"] != "codex" {
 		t.Errorf("named model not used: %v", got)
 	}
-	if out := runOK(t, path, "show"); !strings.Contains(out, "high client=codex model=gpt-6-sol (set)") {
+	if out := flat(t, path); !strings.Contains(out, "high client=codex model=gpt-6-sol (set)") {
 		t.Errorf("show does not report the set tier:\n%s", out)
 	}
 	runOK(t, path, "tier", "set", "high", "--client", "codex")
@@ -236,7 +239,7 @@ func TestResolveFailsWhenTheTierCannotBeServed(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "listing Codex models failed") {
 		t.Errorf("resolve without a Codex catalog: %v", err)
 	}
-	if out := runOK(t, path, "show"); !strings.Contains(out, "executor tier=standard client=codex model=unavailable effort=inherit (preset:balanced) [unverified: listing Codex models failed") {
+	if out := flat(t, path); !strings.Contains(out, "executor tier=standard client=codex model=unavailable effort=inherit (preset:balanced) [unverified: listing Codex models failed") {
 		t.Errorf("show does not mark the unservable tier:\n%s", out)
 	}
 	if got := resolved(t, path, "code-search"); got["model"] != "haiku" {
@@ -283,7 +286,7 @@ func TestLoadMigratesAndRejects(t *testing.T) {
 			t.Errorf("%s: show returned %v, want harness models %s named", name, err, strings.Join(reset, " "))
 		}
 		runOK(t, path, reset...)
-		runOK(t, path, "show")
+		flat(t, path)
 	}
 }
 
@@ -366,10 +369,10 @@ func TestTierAndRoleCommandsTouchOnlyTheirHalf(t *testing.T) {
 	runOK(t, path, "tier", "preset", "claude")
 	runOK(t, path, "tier", "set", "high", "--client", "codex")
 	runOK(t, path, "role", "set", "executor", "--tier", "high")
-	if out := runOK(t, path, "tier", "show"); !strings.Contains(out, "high client=codex") || strings.Contains(out, "executor") {
+	if out := runOK(t, path, "tier", "show"); !strings.Contains(out, " HIGH       codex  › gpt-6.1-sol") || strings.Contains(out, "executor") {
 		t.Errorf("tier show prints more or less than the tiers:\n%s", out)
 	}
-	if out := runOK(t, path, "role", "show"); !strings.Contains(out, "executor tier=high client=codex") || strings.Contains(out, "\nhigh client=") {
+	if out := runOK(t, path, "role", "show"); !strings.Contains(out, "executor      high      codex  › gpt-6.1-sol") || strings.Contains(out, " HIGH ") {
 		t.Errorf("role show prints more or less than the roles:\n%s", out)
 	}
 	runOK(t, path, "tier", "reset")
@@ -388,7 +391,7 @@ func TestTierResetClearsAPinALegacyOverrideMade(t *testing.T) {
 	for _, reset := range [][]string{{"tier", "reset", "heavy"}, {"tier", "reset"}} {
 		path := seeded(t, `{"roles": {"reviewer": {"client": "claude", "model": "fable"}}}`)
 		runOK(t, path, reset...)
-		if out := runOK(t, path, "tier", "show"); !strings.Contains(out, "heavy client=claude model=opus (preset:balanced)") {
+		if out := flat(t, path); !strings.Contains(out, "heavy client=claude model=opus (preset:balanced)") {
 			t.Errorf("%v left the migrated pin:\n%s", reset, out)
 		}
 	}
@@ -398,7 +401,62 @@ func TestAnInheritedEffortTheModelLacksIsDroppedWithANote(t *testing.T) {
 	listingPath(t)
 	path := seeded(t, "")
 	runOK(t, path, "role", "set", "reviewer", "--tier", "fast", "--client", "claude")
-	if out := runOK(t, path, "role", "show"); !strings.Contains(out, `reviewer tier=fast client=claude model=haiku effort=inherit (override) [claude haiku does not support effort "low", so it runs at the client default effort]`) {
+	if out := flat(t, path); !strings.Contains(out, `reviewer tier=fast client=claude model=haiku effort=inherit (override) [claude haiku does not support effort "low", so it runs at the client default effort]`) {
 		t.Errorf("the reviewer's default effort on haiku was not dropped with a note:\n%s", out)
+	}
+}
+
+// flat reads `show --json` and prints one line per tier and role, so tests
+// assert on the report rather than on how it is drawn.
+func flat(t *testing.T, path string) string {
+	t.Helper()
+	var rep report
+	if err := json.Unmarshal([]byte(runOK(t, path, "show", "--json")), &rep); err != nil {
+		t.Fatal(err)
+	}
+	var b strings.Builder
+	for _, v := range rep.Tiers {
+		fmt.Fprintf(&b, "%s client=%s model=%s (%s)", v.Tier, v.Client, v.Model, v.Source)
+		if v.Problem != "" {
+			b.WriteString(" [" + tierProblem(v) + "]")
+		}
+		b.WriteString("\n")
+	}
+	for _, r := range rep.Roles {
+		fmt.Fprintf(&b, "%s tier=%s client=%s model=%s effort=%s (%s)", r.Role, r.Tier, r.Client, r.Model, r.Effort, r.Source)
+		for _, p := range []string{r.Note, r.Problem} {
+			if p != "" {
+				b.WriteString(" [" + p + "]")
+			}
+		}
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+func TestShowDrawsRolesUnderTheirTier(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, "")
+	runOK(t, path, "role", "set", "review-spec", "--tier", "fast")
+	out := runOK(t, path, "show")
+	for _, want := range []string{
+		"harness models  preset balanced",
+		" HIGH       claude › opus            preset\n  ├─ reviewer      effort low\n  ├─ review-bugs   effort low      via reviewer\n  └─ review-risk   effort low      via reviewer\n",
+		" STANDARD   codex  › gpt-6.1-terra   preset\n  ├─ executor      effort default\n  └─ worker        effort default  tier chosen at launch\n",
+		"  └─ review-spec   effort default  set\n     ! claude haiku does not support effort \"low\"",
+		" HEAVY      claude › opus            preset\n  └─ no roles",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("show lacks %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "\x1b[") {
+		t.Errorf("show wrote color to a non-terminal:\n%q", out)
+	}
+	var tree strings.Builder
+	choice, _ := Load(path)
+	drawTree(ui.Colored, choice.report(new(Catalog)), &tree)
+	if !strings.Contains(tree.String(), "\x1b[1;30;46m HIGH     \x1b[0m") {
+		t.Errorf("the colored tree does not draw the high tier's pill:\n%q", tree.String())
 	}
 }

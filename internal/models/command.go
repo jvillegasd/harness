@@ -1,7 +1,6 @@
 package models
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +8,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/term"
+
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 const usage = `usage: harness models [show|reset|tier <command>|role <command>]
@@ -17,17 +18,17 @@ A tier is a kind of work, served by one client and model. A role runs at a tier,
 and may run on another client or at another effort.
 
   (no arguments, in a terminal)                 Pick a preset, or set tiers and roles one by one
-  show                                          Print every tier, then every role
+  show [--json]                                 Print every tier with the roles that run at it
   reset                                         Drop every tier and role setting
 
 Tiers: which client and model serve each kind of work
-  tier show                                     Print each tier's client and model
+  tier show [--json]                            Print each tier's client and model
   tier preset <name>                            Choose which client serves each tier: balanced (default), claude, codex
   tier set <tier> --client <c> [--model <m>]    Serve a tier from a client, on a named model or the tier's newest
   tier reset [<tier>]                           Drop one tier's setting, or every tier setting and the preset
 
 Roles: which tier, client, and effort each role runs at
-  role show                                     Print each role's tier, client, model, effort, and source
+  role show [--json]                            Print each role's tier, client, model, effort, and source
   role set <role> [--tier <t>] [--client <c>] [--effort <e>]
                                                 Override a role; what it leaves out stays as it was
   role reset [<role>]                           Drop one role's override, or every override
@@ -120,16 +121,19 @@ func run(path string, args []string, stdout io.Writer) (bool, error) {
 	case "role":
 		return roleCommand(path, args[1:], stdout)
 	case "show":
-		if len(args) > 1 {
-			return false, errors.New("show takes no arguments; see `harness models tier show` and `role show`")
+		asJSON, err := jsonFlag("show", args[1:])
+		if err != nil {
+			return false, err
 		}
 		choice, err := Load(path)
 		if err != nil {
 			return false, err
 		}
-		cat := new(Catalog)
-		showTiers(choice, cat, stdout)
-		showRoles(choice, cat, stdout)
+		rep := choice.report(new(Catalog))
+		if asJSON {
+			return false, writeJSON(stdout, rep)
+		}
+		drawTree(ui.For(stdout), rep, stdout)
 		return false, nil
 	case "reset":
 		if len(args) > 1 {
@@ -138,6 +142,17 @@ func run(path string, args []string, stdout io.Writer) (bool, error) {
 		return true, Save(path, Choice{})
 	}
 	return false, fmt.Errorf("unknown subcommand %q\n%s", args[0], usage)
+}
+
+// jsonFlag reads a show command's only flag, --json.
+func jsonFlag(command string, args []string) (bool, error) {
+	switch {
+	case len(args) == 0:
+		return false, nil
+	case len(args) == 1 && args[0] == "--json":
+		return true, nil
+	}
+	return false, fmt.Errorf("%s takes only --json", command)
 }
 
 // change applies one of the picker's queued edits, each spelled as the
@@ -152,21 +167,4 @@ func change(choice Choice, args []string, cat *Catalog) (Choice, error) {
 		return setRole(choice, args[2:], cat)
 	}
 	return choice, fmt.Errorf("unknown change %q", strings.Join(args, " "))
-}
-
-func orUnavailable(model string) string {
-	if model == "" {
-		return "unavailable"
-	}
-	return model
-}
-
-func problem(err error) string {
-	switch {
-	case err == nil:
-		return ""
-	case errors.Is(err, ErrNotListed):
-		return " [" + err.Error() + "; install renders the client default]"
-	}
-	return " [unverified: " + err.Error() + "]"
 }

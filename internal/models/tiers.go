@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 // This file is tier handling: which client and model serve each kind of work,
@@ -199,10 +201,15 @@ func tierCommand(path string, args []string, stdout io.Writer) (bool, error) {
 	}
 	switch sub {
 	case "show":
-		if len(rest) > 0 {
-			return false, errors.New("tier show takes no arguments")
+		asJSON, err := jsonFlag("tier show", rest)
+		if err != nil {
+			return false, err
 		}
-		showTiers(choice, new(Catalog), stdout)
+		rep := choice.report(new(Catalog))
+		if asJSON {
+			return false, writeJSON(stdout, map[string]any{"preset": rep.Preset, "tiers": rep.Tiers})
+		}
+		drawTiers(ui.For(stdout), rep, stdout)
 		return false, nil
 	case "preset":
 		choice, err = setPreset(choice, rest)
@@ -215,18 +222,6 @@ func tierCommand(path string, args []string, stdout io.Writer) (bool, error) {
 		return false, err
 	}
 	return true, Save(path, choice)
-}
-
-func showTiers(choice Choice, cat *Catalog, stdout io.Writer) {
-	for _, tier := range Tiers {
-		b, source := choice.binding(tier)
-		model, err := choice.Model(tier, b.Client, cat)
-		note := problem(err)
-		if next, ok := fallback[tier]; ok && errors.Is(err, ErrNotListed) {
-			note = " [" + err.Error() + "; roles at " + tier + " fall back to " + next + "]"
-		}
-		fmt.Fprintf(stdout, "%s client=%s model=%s (%s)%s\n", tier, b.Client, orUnavailable(model), source, note)
-	}
 }
 
 // setPreset applies `tier preset <name>`.

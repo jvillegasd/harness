@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,16 +36,19 @@ func agentFile(t *testing.T, base, client, role string) string {
 
 func TestModelsShowDefaultsToBalanced(t *testing.T) {
 	base := modelsBase(t)
-	r := ok(t, runModels(t, base, "show"), "models show")
+	got := shown(t, base)
 	for _, want := range []string{
 		"standard client=codex model=gpt-6.1-terra (preset:balanced)",
 		"executor tier=standard client=codex model=gpt-6.1-terra effort=inherit (preset:balanced)",
 		"worker tier=standard client=codex model=gpt-6.1-terra effort=inherit (preset:balanced)",
 		"reviewer tier=high client=claude model=opus effort=low (preset:balanced)",
 	} {
-		if !strings.Contains(r.stdout, want) {
-			t.Errorf("show lacks %q:\n%s", want, r.stdout)
+		if !strings.Contains(got, want) {
+			t.Errorf("show --json lacks %q:\n%s", want, got)
 		}
+	}
+	if r := ok(t, runModels(t, base, "show"), "models show"); !strings.Contains(r.stdout, " STANDARD   codex  › gpt-6.1-terra") {
+		t.Errorf("show does not draw the tier tree:\n%s", r.stdout)
 	}
 }
 
@@ -72,10 +76,10 @@ func TestModelsSetKeepsOtherStateKeysAndRejectsWithoutWriting(t *testing.T) {
 	}
 	ok(t, runModels(t, base, "tier", "preset", "codex"), "set preset")
 	ok(t, runModels(t, base, "role", "set", "code-search", "--tier", "high"), "set role")
-	r := ok(t, runModels(t, base, "show"), "models show")
+	got := shown(t, base)
 	for _, want := range []string{"reviewer tier=high client=codex model=gpt-6.1-sol effort=low (preset:codex)", "heavy client=codex model=unavailable (preset:codex) [codex lists no heavy (astra) model; run `codex debug models`: not listed; roles at heavy fall back to high]", "code-search tier=high client=codex model=gpt-6.1-sol effort=inherit (override)"} {
-		if !strings.Contains(r.stdout, want) {
-			t.Errorf("show lacks %q:\n%s", want, r.stdout)
+		if !strings.Contains(got, want) {
+			t.Errorf("show lacks %q:\n%s", want, got)
 		}
 	}
 	var s map[string]any
@@ -212,4 +216,31 @@ func TestModelsSetKeepsAnAgentEditedByHand(t *testing.T) {
 	if readFile(t, path) != edited {
 		t.Error("a second set replaced the edited agent")
 	}
+}
+
+// shown reads `models show --json` as one line per tier and role.
+func shown(t *testing.T, base string) string {
+	t.Helper()
+	r := ok(t, runModels(t, base, "show", "--json"), "models show --json")
+	var rep struct {
+		Tiers []struct{ Tier, Client, Model, Source, Problem, Fallback string }
+		Roles []struct{ Role, Tier, Client, Model, Effort, Source, Note, Problem string }
+	}
+	if err := json.Unmarshal([]byte(r.stdout), &rep); err != nil {
+		t.Fatalf("show --json: %v\n%s", err, r.stdout)
+	}
+	var b strings.Builder
+	for _, v := range rep.Tiers {
+		fmt.Fprintf(&b, "%s client=%s model=%s (%s)", v.Tier, v.Client, v.Model, v.Source)
+		if v.Fallback != "" {
+			fmt.Fprintf(&b, " [%s; roles at %s fall back to %s]", strings.TrimSuffix(v.Problem, "; install renders the client default"), v.Tier, v.Fallback)
+		} else if v.Problem != "" {
+			b.WriteString(" [" + v.Problem + "]")
+		}
+		b.WriteString("\n")
+	}
+	for _, v := range rep.Roles {
+		fmt.Fprintf(&b, "%s tier=%s client=%s model=%s effort=%s (%s)\n", v.Role, v.Tier, v.Client, v.Model, v.Effort, v.Source)
+	}
+	return b.String()
 }

@@ -42,11 +42,7 @@ func choose(t *testing.T, p picker, opt string) picker {
 
 func show(t *testing.T, path string) string {
 	t.Helper()
-	var out strings.Builder
-	if _, err := run(path, []string{"show"}, &out); err != nil {
-		t.Fatal(err)
-	}
-	return out.String()
+	return flat(t, path)
 }
 
 func catalogOf(opencode []string, err error) *Catalog {

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/jvillegasd/harness/internal/agents"
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 // This file is role handling: the tier, client, and effort each role runs at,
@@ -197,10 +198,15 @@ func roleCommand(path string, args []string, stdout io.Writer) (bool, error) {
 	}
 	switch sub {
 	case "show":
-		if len(rest) > 0 {
-			return false, errors.New("role show takes no arguments")
+		asJSON, err := jsonFlag("role show", rest)
+		if err != nil {
+			return false, err
 		}
-		showRoles(choice, new(Catalog), stdout)
+		rep := choice.report(new(Catalog))
+		if asJSON {
+			return false, writeJSON(stdout, rep.Roles)
+		}
+		drawRoles(ui.For(stdout), rep.Roles, stdout)
 		return false, nil
 	case "resolve":
 		return false, resolve(choice, rest, stdout)
@@ -211,27 +217,6 @@ func roleCommand(path string, args []string, stdout io.Writer) (bool, error) {
 		return true, Save(path, choice)
 	}
 	return false, fmt.Errorf("unknown role command %q; choose show, set, reset, or resolve", sub)
-}
-
-func showRoles(choice Choice, cat *Catalog, stdout io.Writer) {
-	for _, name := range AllRoles {
-		fmt.Fprintln(stdout, line(choice.Resolve(name, Launch{}, cat)))
-	}
-}
-
-func line(r Resolved) string {
-	text := fmt.Sprintf("%s tier=%s client=%s model=%s effort=%s (%s)", r.Role, r.Tier, r.Client, orUnavailable(r.Model), effortOrInherit(r.Effort), r.Source)
-	if r.Note != "" {
-		text += " [" + r.Note + "]"
-	}
-	return text + problem(r.Err)
-}
-
-func effortOrInherit(e string) string {
-	if e == "" {
-		return "inherit"
-	}
-	return e
 }
 
 // setRole applies `role set <role> [--tier <t>] [--client <c>] [--effort <e>]`,
@@ -337,8 +322,8 @@ func resolve(choice Choice, args []string, stdout io.Writer) error {
 		return fmt.Errorf("%s has no runnable model here: %v", name, r.Err)
 	}
 	if *asJSON {
-		return json.NewEncoder(stdout).Encode(map[string]string{"role": name, "tier": r.Tier, "client": r.Client, "model": r.Model, "effort": effortOrInherit(r.Effort), "source": r.Source, "note": r.Note})
+		return json.NewEncoder(stdout).Encode(view(r))
 	}
-	_, err := fmt.Fprintln(stdout, line(r))
-	return err
+	drawRoles(ui.For(stdout), []roleView{view(r)}, stdout)
+	return nil
 }
