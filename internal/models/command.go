@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"strings"
 
@@ -98,7 +99,9 @@ func pickAndSave(path string, stdout io.Writer) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	final, err := tea.NewProgram(newPicker(new(Catalog), choice), tea.WithOutput(stdout), tea.WithInput(os.Stdin)).Run()
+	p := newPicker(new(Catalog), choice)
+	p.style = ui.For(stdout)
+	final, err := tea.NewProgram(p, tea.WithOutput(stdout), tea.WithInput(os.Stdin)).Run()
 	if err != nil {
 		return false, err
 	}
@@ -165,6 +168,20 @@ func change(choice Choice, args []string, cat *Catalog) (Choice, error) {
 		return setTier(choice, args[2:], cat)
 	case "role set":
 		return setRole(choice, args[2:], cat)
+	case "tier reset":
+		if len(args) != 3 || knownTier(args[2]) != nil {
+			return choice, fmt.Errorf("tier reset takes one tier")
+		}
+		choice.Tiers = maps.Clone(choice.Tiers)
+		delete(choice.Tiers, args[2])
+		return choice, nil
+	case "role reset":
+		if len(args) != 3 || knownRole(args[2]) != nil {
+			return choice, fmt.Errorf("role reset takes one role")
+		}
+		choice.Roles = maps.Clone(choice.Roles)
+		delete(choice.Roles, args[2])
+		return choice, nil
 	}
 	return choice, fmt.Errorf("unknown change %q", strings.Join(args, " "))
 }

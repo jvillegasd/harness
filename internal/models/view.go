@@ -107,26 +107,7 @@ func (c Choice) report(cat *Catalog) report {
 		v.Others = c.others(tier, clientModel{Client: b.Client, Model: model}, cat)
 		v.Presets, v.alternatives = map[string]clientModel{}, map[string][]string{}
 		for _, name := range presetNames() {
-			under := c
-			under.Preset = name
-			at := tier
-			pb, _ := under.binding(at)
-			pm, err := under.Model(at, pb.Client, cat)
-			// A role at the tier falls back as Resolve does when the client lists
-			// no model, to the next tier served by that tier's own binding.
-			for next, ok := fallback[at]; ok && errors.Is(err, ErrNotListed); next, ok = fallback[at] {
-				at = next
-				pb, _ = under.binding(at)
-				pm, err = under.Model(at, pb.Client, cat)
-			}
-			m := clientModel{Client: pb.Client, Model: orUnavailable(pm), Problem: problem(err)}
-			if at != tier {
-				m.Tier = at
-			} else {
-				// A fallback runs at another tier, so only a direct model lists the tier's other models.
-				v.alternatives[name] = sameClient(under.others(tier, clientModel{Client: pb.Client, Model: pm}, cat), pb.Client)
-			}
-			v.Presets[name] = m
+			v.Presets[name], v.alternatives[name] = c.underPreset(tier, name, cat)
 		}
 		out.Tiers = append(out.Tiers, v)
 	}
@@ -134,6 +115,30 @@ func (c Choice) report(cat *Catalog) report {
 		out.Roles = append(out.Roles, view(c.Resolve(name, Launch{}, cat)))
 	}
 	return out
+}
+
+// underPreset is what a role at the tier runs on under a preset, resolved as
+// Resolve does: when the client lists no model it falls back to the next
+// tier, served by that tier's own binding. A direct model also returns its
+// client's other models for the tier; a fallback runs at another tier, so it
+// returns none.
+func (c Choice) underPreset(tier, preset string, cat *Catalog) (clientModel, []string) {
+	under := c
+	under.Preset = preset
+	at := tier
+	b, _ := under.binding(at)
+	model, err := under.Model(at, b.Client, cat)
+	for next, ok := fallback[at]; ok && errors.Is(err, ErrNotListed); next, ok = fallback[at] {
+		at = next
+		b, _ = under.binding(at)
+		model, err = under.Model(at, b.Client, cat)
+	}
+	m := clientModel{Client: b.Client, Model: orUnavailable(model), Problem: problem(err)}
+	if at != tier {
+		m.Tier = at
+		return m, nil
+	}
+	return m, sameClient(under.others(tier, clientModel{Client: b.Client, Model: model}, cat), b.Client)
 }
 
 // sameClient is the models in others that run on client.
@@ -278,7 +283,7 @@ func tierProblem(t tierView) string {
 // on, and where it came from.
 func drawMember(s ui.Style, r roleView) string {
 	line := ui.Pad(r.Role, 13) + " " + s.Dim("effort") + " " + drawEffort(s, r.Effort)
-	line += "  " + s.Dim("on") + " " + s.Resolved(r.Client, r.Model)
+	line += "  " + s.Resolved(r.Client, r.Model)
 	if a := annotation(s, r); a != "" {
 		line += "  " + a
 	}

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 var (
@@ -17,6 +18,7 @@ var (
 	keyDown  = tea.KeyPressMsg{Code: tea.KeyDown}
 	keyEnter = tea.KeyPressMsg{Code: tea.KeyEnter}
 	keyEsc   = tea.KeyPressMsg{Code: tea.KeyEscape}
+	keyQ     = tea.KeyPressMsg{Code: 'q', Text: "q"}
 )
 
 func drive(t *testing.T, p picker, keys ...tea.KeyPressMsg) picker {
@@ -154,12 +156,12 @@ func TestPickerCancelWritesNothing(t *testing.T) {
 		"after an edit": choose(t, choose(t, custom, "claude"), "high"),
 	} {
 		p = drive(t, p, keyDown, keyUp)
-		next, cmd := p.Update(keyEsc)
+		next, cmd := p.Update(keyQ)
 		if cmd == nil {
-			t.Fatalf("%s: esc did not quit", name)
+			t.Fatalf("%s: q did not quit", name)
 		}
 		if _, ok := cmd().(tea.QuitMsg); !ok {
-			t.Errorf("%s: esc did not quit", name)
+			t.Errorf("%s: q did not quit", name)
 		}
 		p = next.(picker)
 		path := statePath(t)
@@ -182,7 +184,7 @@ func TestPickerViewKeepsCursorOnScreen(t *testing.T) {
 		p = drive(t, p, keyDown)
 	}
 	view := p.View().Content
-	if !strings.Contains(view, "> p/m40") || strings.Contains(view, "p/m00") {
+	if !strings.Contains(view, "› p/m40") || strings.Contains(view, "p/m00") {
 		t.Errorf("view does not follow the cursor:\n%s", view)
 	}
 	if got := strings.Count(view, "p/m"); got != visibleRows {
@@ -191,7 +193,7 @@ func TestPickerViewKeepsCursorOnScreen(t *testing.T) {
 	for range 20 {
 		p = drive(t, p, keyDown)
 	}
-	if view := p.View().Content; !strings.Contains(view, "> p/m48") || strings.Count(view, "p/m") != visibleRows {
+	if view := p.View().Content; !strings.Contains(view, "› p/m48") || strings.Count(view, "p/m") != visibleRows {
 		t.Errorf("view at the end of the list:\n%s", view)
 	}
 }
@@ -246,5 +248,142 @@ func TestPickerMapsAClaudeTierToAnAlias(t *testing.T) {
 	p = choose(t, choose(t, p, "fable"), "save")
 	if !slices.Equal(p.sets[0], []string{"tier", "set", "heavy", "--client", "claude", "--model", "fable"}) {
 		t.Errorf("tier set %v", p.sets)
+	}
+}
+
+func TestPickerSaysWhatNewestResolvesTo(t *testing.T) {
+	listingPath(t)
+	for tier, want := range map[string]string{"high codex": "now gpt-6.1-sol", "heavy claude": "now opus"} {
+		name, client, _ := strings.Cut(tier, " ")
+		p := choose(t, choose(t, choose(t, newPicker(new(Catalog), Choice{}), "custom"), name), client)
+		var row string
+		for _, line := range strings.Split(p.View().Content, "\n") {
+			if strings.HasPrefix(line, "› newest") {
+				row = line
+			}
+		}
+		if !strings.HasSuffix(row, want) {
+			t.Errorf("%s: newest row %q does not end with %q", tier, row, want)
+		}
+	}
+}
+
+func TestPickerOffersOnlyClientsWithAModelAtTheRolesTier(t *testing.T) {
+	listingPath(t)
+	p := choose(t, choose(t, choose(t, newPicker(new(Catalog), Choice{}), "custom"), "reviewer"), keep)
+	if got := p.options(); slices.Contains(got, "opencode") || !slices.Contains(got, "codex") {
+		t.Errorf("clients offered for the reviewer at high: %v, want codex and not opencode", got)
+	}
+}
+
+func TestPickerRefusesAChangeSaveWouldRefuse(t *testing.T) {
+	listingPath(t)
+	p := choose(t, newPicker(new(Catalog), Choice{}), "custom")
+	p = choose(t, choose(t, choose(t, p, "high"), "codex"), newest)
+	p.name, p.tier, p.client, p.step = "reviewer", "", "opencode", stepRoleEffort
+	p = choose(t, p, "")
+	if p.step != stepRoleEffort || !strings.Contains(p.View().Content, "! opencode has no model for the high tier") {
+		t.Errorf("a refused pick left step %d:\n%s", p.step, p.View().Content)
+	}
+	if len(p.sets) != 1 {
+		t.Fatalf("pending = %v, want only the tier change", p.sets)
+	}
+	p.step, p.cursor = stepName, len(p.options())-1
+	p = choose(t, p, "save")
+	path := statePath(t)
+	if wrote, err := p.save(path); err != nil || !wrote {
+		t.Fatalf("the valid change was not saved: wrote=%v err=%v", wrote, err)
+	}
+}
+
+func TestPickerDefaultEffortClearsAnEffortTheNewModelLacks(t *testing.T) {
+	listingPath(t)
+	p := choose(t, newPicker(new(Catalog), Choice{}), "custom")
+	p = choose(t, choose(t, choose(t, choose(t, p, "reviewer"), keep), keep), "high")
+	p = choose(t, choose(t, choose(t, choose(t, p, "reviewer"), "fast"), keep), "")
+	p = choose(t, p, "save")
+	path := statePath(t)
+	if wrote, err := p.save(path); err != nil || !wrote {
+		t.Fatalf("moving the reviewer to haiku was not saved: wrote=%v err=%v", wrote, err)
+	}
+	choice, _ := Load(path)
+	if ov := choice.Roles["reviewer"]; ov.Tier != "fast" || ov.Effort != "" {
+		t.Errorf("reviewer override = %+v, want tier fast and no effort", ov)
+	}
+}
+
+func TestPickerEscGoesBackOneStep(t *testing.T) {
+	p := choose(t, choose(t, fresh(catalogOf(nil, nil)), "custom"), "reviewer")
+	for _, want := range []int{stepName, stepMenu} {
+		next, _ := p.Update(keyEsc)
+		if p = next.(picker); p.step != want {
+			t.Fatalf("esc went to step %d, want %d", p.step, want)
+		}
+	}
+	if _, cmd := p.Update(keyEsc); cmd == nil {
+		t.Error("esc on the first step did not quit")
+	}
+}
+
+func TestPickerResetsATierAndARole(t *testing.T) {
+	listingPath(t)
+	choice := Choice{Tiers: map[string]Binding{"high": {Client: "codex"}}, Roles: map[string]Override{"reviewer": {Client: "codex"}}}
+	p := choose(t, newPicker(new(Catalog), choice), "custom")
+	p = choose(t, choose(t, p, "high"), reset)
+	p = choose(t, choose(t, p, "reviewer"), reset)
+	if got := fmt.Sprint(p.sets); got != "[[tier reset high] [role reset reviewer]]" {
+		t.Fatalf("pending = %s", got)
+	}
+	if opts := choose(t, p, "executor").options(); slices.Contains(opts, reset) {
+		t.Errorf("reset offered for a role with nothing set: %v", opts)
+	}
+}
+
+func TestPickerKeepClearsAPickMadeBeforeEsc(t *testing.T) {
+	listingPath(t)
+	back := func(p picker) picker { next, _ := p.Update(keyEsc); return next.(picker) }
+	p := choose(t, choose(t, choose(t, newPicker(new(Catalog), Choice{}), "custom"), "reviewer"), "fast")
+	p = choose(t, choose(t, choose(t, back(p), keep), keep), "")
+	q := choose(t, choose(t, choose(t, choose(t, newPicker(new(Catalog), Choice{}), "custom"), "executor"), keep), "codex")
+	q = choose(t, choose(t, back(q), keep), "")
+	if len(p.sets)+len(q.sets) != 0 {
+		t.Errorf("keep after esc still queued the earlier pick: %v %v", p.sets, q.sets)
+	}
+}
+
+func TestPickerPresetPreviewIncludesPendingChanges(t *testing.T) {
+	listingPath(t)
+	p := choose(t, choose(t, choose(t, choose(t, newPicker(new(Catalog), Choice{}), "custom"), "high"), "claude"), "sonnet")
+	next, _ := p.Update(keyEsc)
+	p = drive(t, next.(picker), keyDown)
+	if view := p.View().Content; !strings.Contains(view, "  high      claude › sonnet") {
+		t.Errorf("the claude preset preview ignores the pending high pin:\n%s", view)
+	}
+}
+
+func TestPickerNewestSaysWhenNothingOrAFallbackRuns(t *testing.T) {
+	for tier, want := range map[string]string{"standard": "none listed for standard", "heavy": "falls back to high: codex › gpt-6.1-sol"} {
+		p := choose(t, choose(t, choose(t, newPicker(codexCatalogOf(), Choice{Preset: "codex"}), "custom"), tier), "codex")
+		var row string
+		for _, line := range strings.Split(p.View().Content, "\n") {
+			if strings.HasPrefix(line, "› newest") {
+				row = line
+			}
+		}
+		if !strings.HasSuffix(row, want) {
+			t.Errorf("%s: newest row %q, want it to end with %q", tier, row, want)
+		}
+	}
+}
+
+func TestPickerFitsTheTerminalWidth(t *testing.T) {
+	p := newPicker(new(Catalog), Choice{})
+	next, _ := p.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	p = next.(picker)
+	p.step, p.sets = stepName, [][]string{{"tier", "set", "fast", "--client", "opencode", "--model", "opencode-go/" + strings.Repeat("x", 60)}}
+	for _, line := range strings.Split(p.View().Content, "\n") {
+		if w := ansi.StringWidth(line); w > 80 {
+			t.Errorf("line is %d columns wide: %q", w, line)
+		}
 	}
 }
