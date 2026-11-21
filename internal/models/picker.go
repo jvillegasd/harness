@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 var presetNotes = map[string]string{
@@ -39,6 +41,7 @@ type picker struct {
 	name, tier, client string
 	sets               [][]string
 	done               bool
+	style              ui.Style
 }
 
 func newPicker(catalog *Catalog, choice Choice) picker {
@@ -95,9 +98,8 @@ func (p picker) options() []string {
 	return append(presetNames(), "custom")
 }
 
-// pending is the choice with the role being picked set to its tier and client
-// so far, so the effort step lists what that model takes.
-func (p picker) pending() Choice {
+// applied is the choice with every pending set applied.
+func (p picker) applied() Choice {
 	c := p.choice
 	c.Roles = maps.Clone(p.choice.Roles)
 	c.Tiers = maps.Clone(p.choice.Tiers)
@@ -106,6 +108,13 @@ func (p picker) pending() Choice {
 			c = next
 		}
 	}
+	return c
+}
+
+// pending is the choice with the role being picked set to its tier and client
+// so far, so the effort step lists what that model takes.
+func (p picker) pending() Choice {
+	c := p.applied()
 	c.Roles = maps.Clone(c.Roles)
 	if c.Roles == nil {
 		c.Roles = map[string]Override{}
@@ -197,52 +206,130 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 	return p, nil
 }
 
+// stepTitles say what each step asks for, after the command's name.
+var stepTitles = []string{
+	"choose a preset, or custom to set tiers and roles one by one",
+	"choose a tier or a role to set, or save",
+	"client to serve %s",
+	"model for %s on %s",
+	"tier for %s",
+	"client for %s, or keep the tier's",
+	"effort for %s",
+}
+
+// View draws the step with the ui design system: a title, the options with
+// the cursor's row accented and their details dim, then what the step needs
+// beside them, and the keys.
 func (p picker) View() tea.View {
+	s := p.style
 	var b strings.Builder
-	b.WriteString([]string{
-		"Choose a preset, or custom to set tiers and roles one by one",
-		"Choose a tier or a role to set, or save",
-		"Client to serve " + p.name,
-		"Model for " + p.name + " on " + p.client,
-		"Tier for " + p.name,
-		"Client for " + p.name + ", or keep the tier's",
-		"Effort for " + p.name,
-	}[p.step] + "\n\n")
+	title := stepTitles[p.step]
+	switch strings.Count(title, "%s") {
+	case 1:
+		title = fmt.Sprintf(title, p.name)
+	case 2:
+		title = fmt.Sprintf(title, p.name, p.client)
+	}
+	b.WriteString(s.Title("harness models", title) + "\n\n")
 	opts := p.options()
 	first := min(max(p.cursor-visibleRows/2, 0), max(len(opts)-visibleRows, 0))
+	var rows [][]string
 	for i := first; i < min(first+visibleRows, len(opts)); i++ {
-		opt := opts[i]
-		mark := "  "
+		mark, label := "  ", p.label(opts[i])
 		if i == p.cursor {
-			mark = "> "
+			mark, label = s.Accent("›")+" ", s.Bold(label)
 		}
-		line := opt
-		switch {
-		case p.step == stepMenu && opt != "custom":
-			line = fmt.Sprintf("%-12s %s", opt, presetNotes[opt])
-		case p.step == stepRoleEffort:
-			line = effortOrInherit(opt)
-		}
-		b.WriteString(mark + line + "\n")
+		rows = append(rows, []string{mark + label, p.detail(opts[i])})
+	}
+	for _, line := range s.Table(nil, rows) {
+		b.WriteString(line + "\n")
 	}
 	if len(opts) > visibleRows {
-		fmt.Fprintf(&b, "  (%d of %d)\n", p.cursor+1, len(opts))
+		b.WriteString("  " + s.Dim(fmt.Sprintf("%d of %d", p.cursor+1, len(opts))) + "\n")
+	}
+	if p.step == stepMenu && p.cursor < len(opts) && opts[p.cursor] != "custom" {
+		b.WriteString("\n" + s.Title(opts[p.cursor], "runs each tier on") + "\n")
+		for _, line := range p.presetPreview(opts[p.cursor]) {
+			b.WriteString(line + "\n")
+		}
 	}
 	if p.step == stepTierClient || p.step == stepRoleClient {
 		if _, err := p.catalog.Codex(); err != nil {
-			b.WriteString("\ncodex unavailable: " + err.Error() + "\n")
+			b.WriteString("\n" + s.Warn("codex unavailable: "+err.Error()) + "\n")
 		}
 		if _, err := p.catalog.OpenCode(); err != nil {
-			b.WriteString("\nopencode unavailable: " + err.Error() + "\n")
+			b.WriteString("\n" + s.Warn("opencode unavailable: "+err.Error()) + "\n")
 		}
 	}
-	if p.step == stepName {
-		for _, s := range p.sets {
-			b.WriteString("\npending: " + strings.Join(s, " "))
+	if p.step == stepName && len(p.sets) > 0 {
+		b.WriteString("\n" + s.Title("pending", "written on save") + "\n")
+		for _, set := range p.sets {
+			b.WriteString("  harness models " + strings.Join(set, " ") + "\n")
 		}
 	}
-	b.WriteString("\n\n↑/↓ move, enter select, esc cancel without writing\n")
+	b.WriteString("\n" + s.Dim("↑/↓ move  enter select  esc cancel without writing") + "\n")
 	return tea.NewView(b.String())
+}
+
+// label is how an option reads: a tier in its hue, save accented, an
+// inherited effort as default.
+func (p picker) label(opt string) string {
+	s := p.style
+	switch {
+	case p.step == stepRoleEffort:
+		if opt == "" {
+			return s.Dim("default")
+		}
+	case p.step == stepName && opt == "save":
+		return s.Accent(opt)
+	case (p.step == stepName || p.step == stepRoleTier) && slices.Contains(Tiers, opt):
+		return s.Color(ui.Hue(slices.Index(Tiers, opt)), opt)
+	}
+	return opt
+}
+
+// detail is an option's dim note: what a preset does, or what a tier or role
+// runs on now, pending sets included.
+func (p picker) detail(opt string) string {
+	s := p.style
+	switch p.step {
+	case stepMenu:
+		note := presetNotes[opt]
+		if opt == "custom" {
+			note = "set tiers and roles one by one"
+		}
+		if opt == p.choice.preset() {
+			note += "  " + s.Accent("current")
+		}
+		return s.Dim(note)
+	case stepName:
+		c := p.applied()
+		switch {
+		case slices.Contains(Tiers, opt):
+			b, _ := c.binding(opt)
+			model, _ := c.Model(opt, b.Client, p.catalog)
+			return s.Dim(ui.Pad("", 10) + ui.Pad(b.Client, 6) + " › " + orUnavailable(model))
+		case opt == "save":
+			if len(p.sets) == 1 {
+				return s.Dim("write 1 pending change")
+			}
+			return s.Dim(fmt.Sprintf("write %d pending changes", len(p.sets)))
+		}
+		r := c.Resolve(opt, Launch{}, p.catalog)
+		return s.Dim(ui.Pad(r.Tier, 10) + ui.Pad(r.Client, 6) + " › " + orUnavailable(r.Model))
+	}
+	return ""
+}
+
+// presetPreview is what each tier would run on under a preset.
+func (p picker) presetPreview(preset string) []string {
+	s := p.style
+	var pairs [][2]string
+	for _, tier := range Tiers {
+		m, alternatives := p.choice.underPreset(tier, preset, p.catalog)
+		pairs = append(pairs, [2]string{tier, drawChoice(s, m, alternatives)})
+	}
+	return s.Fields(pairs...)
 }
 
 func (p picker) save(path string) (bool, error) {

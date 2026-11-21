@@ -105,22 +105,7 @@ func (c Choice) report(cat *Catalog) report {
 		v.Others = c.others(tier, clientModel{Client: b.Client, Model: model}, cat)
 		v.Presets, v.alternatives = map[string]clientModel{}, map[string][]string{}
 		for _, name := range presetNames() {
-			under := c
-			under.Preset = name
-			pb, _ := under.binding(tier)
-			pm, err := under.Model(tier, pb.Client, cat)
-			at := tier
-			// A role at the tier falls back as Resolve does when the client lists no model.
-			for next, ok := fallback[at]; ok && errors.Is(err, ErrNotListed); next, ok = fallback[at] {
-				at = next
-				pm, err = under.Model(at, pb.Client, cat)
-			}
-			m := clientModel{Client: pb.Client, Model: orUnavailable(pm)}
-			if at != tier {
-				m.Tier = at
-			}
-			v.Presets[name] = m
-			v.alternatives[name] = sameClient(under.others(tier, clientModel{Client: pb.Client, Model: pm}, cat), pb.Client)
+			v.Presets[name], v.alternatives[name] = c.underPreset(tier, name, cat)
 		}
 		out.Tiers = append(out.Tiers, v)
 	}
@@ -128,6 +113,25 @@ func (c Choice) report(cat *Catalog) report {
 		out.Roles = append(out.Roles, view(c.Resolve(name, Launch{}, cat)))
 	}
 	return out
+}
+
+// underPreset is what serves the tier under a preset, falling back as Resolve
+// does when the client lists no model, and that client's other models for it.
+func (c Choice) underPreset(tier, preset string, cat *Catalog) (clientModel, []string) {
+	under := c
+	under.Preset = preset
+	b, _ := under.binding(tier)
+	model, err := under.Model(tier, b.Client, cat)
+	at := tier
+	for next, ok := fallback[at]; ok && errors.Is(err, ErrNotListed); next, ok = fallback[at] {
+		at = next
+		model, err = under.Model(at, b.Client, cat)
+	}
+	m := clientModel{Client: b.Client, Model: orUnavailable(model)}
+	if at != tier {
+		m.Tier = at
+	}
+	return m, sameClient(under.others(tier, clientModel{Client: b.Client, Model: model}, cat), b.Client)
 }
 
 // sameClient is the models in others that run on client.

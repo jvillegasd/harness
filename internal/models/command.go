@@ -98,7 +98,9 @@ func pickAndSave(path string, stdout io.Writer) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	final, err := tea.NewProgram(newPicker(new(Catalog), choice), tea.WithOutput(stdout), tea.WithInput(os.Stdin)).Run()
+	p := newPicker(new(Catalog), choice)
+	p.style = ui.For(stdout)
+	final, err := tea.NewProgram(p, tea.WithOutput(stdout), tea.WithInput(os.Stdin)).Run()
 	if err != nil {
 		return false, err
 	}

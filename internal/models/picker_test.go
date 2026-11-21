@@ -182,7 +182,7 @@ func TestPickerViewKeepsCursorOnScreen(t *testing.T) {
 		p = drive(t, p, keyDown)
 	}
 	view := p.View().Content
-	if !strings.Contains(view, "> p/m40") || strings.Contains(view, "p/m00") {
+	if !strings.Contains(view, "› p/m40") || strings.Contains(view, "p/m00") {
 		t.Errorf("view does not follow the cursor:\n%s", view)
 	}
 	if got := strings.Count(view, "p/m"); got != visibleRows {
@@ -191,7 +191,7 @@ func TestPickerViewKeepsCursorOnScreen(t *testing.T) {
 	for range 20 {
 		p = drive(t, p, keyDown)
 	}
-	if view := p.View().Content; !strings.Contains(view, "> p/m48") || strings.Count(view, "p/m") != visibleRows {
+	if view := p.View().Content; !strings.Contains(view, "› p/m48") || strings.Count(view, "p/m") != visibleRows {
 		t.Errorf("view at the end of the list:\n%s", view)
 	}
 }
