@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/jvillegasd/harness/internal/statefile"
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 var Levels = []string{"off", "medium", "high"}
@@ -116,6 +117,14 @@ func level(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, string(out))
 		return 0
 	}
-	fmt.Fprintf(stdout, "%s (%s)\n", lvl, source)
+	s := ui.For(stdout)
+	if len(value) == 1 {
+		fmt.Fprintln(stdout, s.OK("review level set to "+lvl))
+	} else {
+		fmt.Fprintln(stdout, s.Title("harness review level"))
+		for _, line := range s.Fields([2]string{"level", s.Accent(lvl)}, [2]string{"source", s.Dim(source)}) {
+			fmt.Fprintln(stdout, line)
+		}
+	}
 	return 0
 }
