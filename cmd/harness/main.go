@@ -31,6 +31,7 @@ Commands:
   uninstall  Remove harness components, and with --all the harness itself
   skills     Manage the reviewed third-party skill locks
   statusline Print the Claude Code status line for the payload on stdin
+  resume     Print the task context a client restores after compaction
   models     Choose each delegated role's client, model, and effort
   change-map Classify this branch's changed files into review tiers
   review     Post review verdicts and keep review scratch
