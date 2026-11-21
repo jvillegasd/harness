@@ -255,8 +255,8 @@ func TestLoadMigratesAndRejects(t *testing.T) {
 	if got := c.Roles["executor"]; got != (Override{Tier: "fast", Client: "codex"}) {
 		t.Errorf("executor migrated to %+v", got)
 	}
-	if _, ok := c.Roles["code-search"]; ok {
-		t.Error("an override with no tier to infer was kept")
+	if got := c.Roles["code-search"]; got != (Override{Client: "opencode"}) || c.Tiers["fast"].Models["opencode"] != "opencode-go/glm-5.3" {
+		t.Errorf("an OpenCode override migrated to %+v with tiers %+v", got, c.Tiers)
 	}
 	if _, ok := c.Roles["reviewer-b"]; ok {
 		t.Error("a retired role was kept")
@@ -311,5 +311,33 @@ func TestEveryRoleHasATierAndEveryPresetServesEveryTier(t *testing.T) {
 	}
 	if !errors.Is(new(Choice).Resolve("worker", Launch{Client: "opencode"}, &Catalog{opencodeDone: true}).Err, ErrNotListed) {
 		t.Error("an OpenCode tier with no named model is not reported as not listed")
+	}
+}
+
+func TestSetMergesIntoARolesOverride(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, "")
+	runOK(t, path, "set", "executor", "--tier", "high")
+	runOK(t, path, "set", "executor", "--effort", "high")
+	if got := resolved(t, path, "executor"); got["tier"] != "high" || got["effort"] != "high" {
+		t.Errorf("a second set dropped the first one's tier: %v", got)
+	}
+}
+
+func TestAnOverriddenLensInheritsWhatItDidNotSet(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, "")
+	runOK(t, path, "set", "reviewer", "--client", "codex", "--effort", "high")
+	runOK(t, path, "set", "review-bugs", "--tier", "fast")
+	if got := resolved(t, path, "review-bugs"); got["client"] != "codex" || got["model"] != "gpt-6-luna" || got["tier"] != "fast" {
+		t.Errorf("the lens dropped the reviewer's client: %v", got)
+	}
+}
+
+func TestLoadMovesALegacyOpenCodeModelIntoItsTier(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, `{"roles": {"code-search": {"client": "opencode", "model": "opencode-go/glm-5.3"}}}`)
+	if got := resolved(t, path, "code-search"); got["client"] != "opencode" || got["model"] != "opencode-go/glm-5.3" || got["tier"] != "fast" {
+		t.Errorf("a legacy OpenCode override was not kept: %v", got)
 	}
 }

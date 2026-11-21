@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -324,10 +325,13 @@ func (c Choice) Resolve(name string, launch Launch, cat *Catalog) Resolved {
 		out.Role, out.Source = name, "reviewer"
 		return out
 	}
-	defaults := r
+	// An overridden lens takes what it did not set from the reviewer.
+	defaults, defaultClient := r, ""
 	if r.Lens {
+		reviewer := c.Roles["reviewer"]
 		defaults = role("reviewer")
-		defaults.Tier = first(c.Roles["reviewer"].Tier, defaults.Tier)
+		defaults.Tier, defaults.Effort = first(reviewer.Tier, defaults.Tier), first(reviewer.Effort, defaults.Effort)
+		defaultClient = reviewer.Client
 	}
 	out := Resolved{Role: name, Tier: first(launch.Tier, ov.Tier, defaults.Tier), Effort: first(launch.Effort, ov.Effort, defaults.Effort)}
 	source := ""
@@ -339,7 +343,7 @@ func (c Choice) Resolve(name string, launch Launch, cat *Catalog) Resolved {
 	}
 	for {
 		b, tierSource := c.binding(out.Tier)
-		out.Client = first(launch.Client, ov.Client, b.Client)
+		out.Client = first(launch.Client, ov.Client, defaultClient, b.Client)
 		out.Source = first(source, tierSource)
 		out.Model, out.Err = c.Model(out.Tier, out.Client, cat)
 		next, ok := fallback[out.Tier]
@@ -425,8 +429,7 @@ func Load(path string) (Choice, error) {
 			return Choice{}, fmt.Errorf("%s: %v; run `harness models reset`", path, err)
 		}
 		if ov.Model != "" {
-			ov.Tier, ov.Model = first(ov.Tier, TierOf(ov.Client, ov.Model)), ""
-			if ov.Tier == "" {
+			if !c.migrate(name, &ov) {
 				delete(c.Roles, name)
 				continue
 			}
@@ -437,6 +440,38 @@ func Load(path string) (Choice, error) {
 		}
 	}
 	return c, nil
+}
+
+// migrate turns an override saved before tiers into one: a Claude or Codex
+// model into the tier it implies, and an OpenCode model into the model that
+// serves the role's tier on OpenCode. It reports false for nothing to keep.
+func (c *Choice) migrate(name string, ov *Override) bool {
+	model := ov.Model
+	ov.Model = ""
+	if ov.Client != "opencode" {
+		ov.Tier = first(ov.Tier, TierOf(ov.Client, model))
+		return ov.Tier != ""
+	}
+	if !strings.Contains(model, "/") {
+		return false
+	}
+	tier := role(name).Tier
+	if tier == "" {
+		tier = role("reviewer").Tier
+	}
+	b := c.Tiers[tier]
+	if b.Models["opencode"] == "" {
+		b.Models = maps.Clone(b.Models)
+		if b.Models == nil {
+			b.Models = map[string]string{}
+		}
+		b.Models["opencode"] = model
+		if c.Tiers == nil {
+			c.Tiers = map[string]Binding{}
+		}
+		c.Tiers[tier] = b
+	}
+	return true
 }
 
 func checkBinding(tier string, b Binding) error {

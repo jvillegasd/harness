@@ -191,10 +191,12 @@ func apply(choice Choice, args []string, cat *Catalog) (Choice, error) {
 	if *model != "" {
 		return choice, fmt.Errorf("a role takes a tier, not a model; name the model with set <tier> --client <c> --model <m>")
 	}
-	ov := Override{Tier: *tier, Client: *client, Effort: *effort}
-	if ov == (Override{}) {
+	given := Override{Tier: *tier, Client: *client, Effort: *effort}
+	if given == (Override{}) {
 		return choice, fmt.Errorf("set %s takes --tier, --client, or --effort", name)
 	}
+	ov := choice.Roles[name]
+	ov.Tier, ov.Client, ov.Effort = first(given.Tier, ov.Tier), first(given.Client, ov.Client), first(given.Effort, ov.Effort)
 	if err := checkOverride(name, ov); err != nil {
 		return choice, err
 	}

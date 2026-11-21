@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -98,9 +99,16 @@ func (p picker) options() []string {
 // so far, so the effort step lists what that model takes.
 func (p picker) pending() Choice {
 	c := p.choice
-	c.Roles = map[string]Override{}
-	for k, v := range p.choice.Roles {
-		c.Roles[k] = v
+	c.Roles = maps.Clone(p.choice.Roles)
+	c.Tiers = maps.Clone(p.choice.Tiers)
+	for _, set := range p.sets {
+		if next, err := apply(c, set, p.catalog); err == nil {
+			c = next
+		}
+	}
+	c.Roles = maps.Clone(c.Roles)
+	if c.Roles == nil {
+		c.Roles = map[string]Override{}
 	}
 	ov := c.Roles[p.name]
 	if p.tier != "" {

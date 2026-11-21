@@ -215,3 +215,32 @@ func TestPickerTablesMatch(t *testing.T) {
 		}
 	}
 }
+
+func TestPickerOffersEffortsAfterTheTiersItQueued(t *testing.T) {
+	p := choose(t, choose(t, choose(t, fresh(codexCatalogOf()), "custom"), "high"), "codex")
+	p = choose(t, p, newest)
+	p = choose(t, choose(t, choose(t, p, "reviewer"), keep), keep)
+	if got := p.options(); !slices.Equal(got, []string{"", "low", "high", "ultra"}) {
+		t.Errorf("efforts ignore the queued codex tier: %v", got)
+	}
+}
+
+func TestPickerKeepLeavesAnExistingOverride(t *testing.T) {
+	listingPath(t)
+	path := filepath.Join(t.TempDir(), "state.json")
+	if err := run(path, []string{"set", "executor", "--tier", "high"}, &strings.Builder{}); err != nil {
+		t.Fatal(err)
+	}
+	choice, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := choose(t, choose(t, choose(t, choose(t, newPicker(new(Catalog), choice), "custom"), "executor"), keep), keep)
+	p = choose(t, choose(t, p, "xhigh"), "save")
+	if _, err := p.save(path); err != nil {
+		t.Fatal(err)
+	}
+	if out := show(t, path); !strings.Contains(out, "executor tier=high client=claude model=opus effort=xhigh (override)") {
+		t.Errorf("keep did not keep the tier:\n%s", out)
+	}
+}
