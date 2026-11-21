@@ -37,6 +37,8 @@ type clientModel struct {
 	Model  string `json:"model"`
 	// Tier is the tier it falls back to, when the client lists no model for this one.
 	Tier string `json:"tier,omitempty"`
+	// Problem says why the model cannot run, as role resolve would.
+	Problem string `json:"problem,omitempty"`
 }
 
 // others lists every model a role set to a tier may run on besides the one
@@ -115,21 +117,26 @@ func (c Choice) report(cat *Catalog) report {
 	return out
 }
 
-// underPreset is what serves the tier under a preset, falling back as Resolve
-// does when the client lists no model, and that client's other models for it.
+// underPreset is what a role at the tier runs on under a preset, resolved as
+// Resolve does: when the client lists no model it falls back to the next
+// tier, served by that tier's own binding. A direct model also returns its
+// client's other models for the tier; a fallback runs at another tier, so it
+// returns none.
 func (c Choice) underPreset(tier, preset string, cat *Catalog) (clientModel, []string) {
 	under := c
 	under.Preset = preset
-	b, _ := under.binding(tier)
-	model, err := under.Model(tier, b.Client, cat)
 	at := tier
+	b, _ := under.binding(at)
+	model, err := under.Model(at, b.Client, cat)
 	for next, ok := fallback[at]; ok && errors.Is(err, ErrNotListed); next, ok = fallback[at] {
 		at = next
+		b, _ = under.binding(at)
 		model, err = under.Model(at, b.Client, cat)
 	}
-	m := clientModel{Client: b.Client, Model: orUnavailable(model)}
+	m := clientModel{Client: b.Client, Model: orUnavailable(model), Problem: problem(err)}
 	if at != tier {
 		m.Tier = at
+		return m, nil
 	}
 	return m, sameClient(under.others(tier, clientModel{Client: b.Client, Model: model}, cat), b.Client)
 }
@@ -226,7 +233,10 @@ func drawCards(s ui.Style, rep report, w io.Writer) {
 	for i, t := range rep.Tiers {
 		fmt.Fprintln(w)
 		fmt.Fprintln(w, s.Pill(ui.Hue(i), t.Tier, 8)+"  "+s.Dim(tierWork[t.Tier]))
-		runs := drawChoice(s, clientModel{Client: t.Client, Model: t.Model}, t.alternatives[rep.Preset])
+		// The tier's own problem is its warning line below, so runs on does not mark it again.
+		active := t.Presets[rep.Preset]
+		active.Problem = ""
+		runs := drawChoice(s, active, t.alternatives[rep.Preset])
 		if t.Source == "set" {
 			runs += "  " + s.Accent("set")
 		}
@@ -252,6 +262,9 @@ func drawChoice(s ui.Style, m clientModel, alternatives []string) string {
 	text := s.Resolved(m.Client, m.Model)
 	if m.Tier != "" {
 		text += " " + s.Dim("at "+m.Tier)
+	}
+	if m.Problem != "" {
+		text += " " + s.Caution("not runnable")
 	}
 	for _, alt := range alternatives {
 		text += s.Dim(" or " + alt)
