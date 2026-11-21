@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/jvillegasd/harness/internal/checkout"
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 const skillsCLI = "skills@1.8.1"
@@ -335,7 +336,7 @@ func copyTree(src, dst string) error {
 
 func reviewPaths(p paths, stdout io.Writer) error {
 	if insideWorkTree(p.root) {
-		fmt.Fprint(stdout, "\nLocked-skill changes:\n")
+		fmt.Fprintln(stdout, "\n"+ui.For(stdout).Title("harness skills", "locked-skill changes"))
 		within := func(abs string) string {
 			rel, err := filepath.Rel(p.root, abs)
 			if err != nil {
@@ -348,7 +349,7 @@ func reviewPaths(p paths, stdout io.Writer) error {
 		cmd.Stderr = io.Discard
 		_ = cmd.Run()
 	}
-	fmt.Fprint(stdout, "\nReview the upstream body and lockfile before running harness install; commit only the approved change\n")
+	fmt.Fprintln(stdout, "\n"+ui.For(stdout).Warn("Review the upstream body and lockfile before running harness install; commit only the approved change"))
 	return nil
 }
 

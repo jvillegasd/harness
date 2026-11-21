@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/jvillegasd/harness/internal/checkout"
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 type LockResult struct {
@@ -59,16 +60,18 @@ func verify(c checkout.Checkout, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
+	s := ui.For(stdout)
+	fmt.Fprintln(stdout, s.Title("harness skills verify"))
 	var drifted, unverifiable int
 	for _, r := range results {
 		switch r.Status {
 		case "match":
-			fmt.Fprintf(stdout, "%s: match\n", r.Name)
+			fmt.Fprintln(stdout, s.OK(r.Name+": match"))
 		case "drift":
-			fmt.Fprintf(stdout, "%s: drift (%s)\n", r.Name, r.Detail)
+			fmt.Fprintln(stdout, s.Fail(fmt.Sprintf("%s: drift (%s)", r.Name, r.Detail)))
 			drifted++
 		default:
-			fmt.Fprintf(stdout, "%s: unverifiable\n", r.Name)
+			fmt.Fprintln(stdout, s.Warn(r.Name+": unverifiable"))
 			unverifiable++
 		}
 	}
@@ -80,7 +83,7 @@ func verify(c checkout.Checkout, stdout, stderr io.Writer) error {
 		return err
 	}
 	for _, problem := range unguarded {
-		fmt.Fprintln(stdout, problem)
+		fmt.Fprintln(stdout, s.Warn(problem))
 	}
 	if drifted > 0 || len(unguarded) > 0 {
 		return fmt.Errorf("%d skill(s) drifted, %d invocation guard(s) missing", drifted, len(unguarded))

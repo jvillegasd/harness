@@ -16,6 +16,7 @@ import (
 	"github.com/jvillegasd/harness/internal/agents"
 	"github.com/jvillegasd/harness/internal/checkout"
 	"github.com/jvillegasd/harness/internal/skills"
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 const (
@@ -144,7 +145,7 @@ type installer struct {
 }
 
 func (in *installer) log(format string, args ...any) {
-	fmt.Fprintf(in.stdout, "\033[1;34m==>\033[0m "+format+"\n", args...)
+	fmt.Fprintln(in.stdout, ui.For(in.stdout).OK(fmt.Sprintf(format, args...)))
 }
 
 func (in *installer) warn(format string, args ...any) {
@@ -227,6 +228,7 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 		}
 	}
 	in.resolveLocations()
+	fmt.Fprintln(stdout, ui.For(stdout).Title("harness install"))
 	defer in.extractAssets()()
 	in.install()
 	return 0
@@ -266,6 +268,7 @@ func UninstallCommand(args []string, stdout, stderr io.Writer) (code int) {
 
 	in.noBackup = true
 	in.resolveLocations()
+	fmt.Fprintln(stdout, ui.For(stdout).Title("harness uninstall"))
 	if clearBackups {
 
 		in.clearBackups()
@@ -571,9 +574,9 @@ func (in *installer) opencodeLoaded(path string) (plugins []any, servers map[str
 
 func (in *installer) summary() {
 	if len(in.components) < len(allComponents) {
-		fmt.Fprintf(in.stdout, "\n\033[1;32m✓ Harness AI installed: %s for %s.\033[0m\n", strings.Join(in.components, ", "), strings.Join(in.clients, ", "))
+		fmt.Fprintln(in.stdout, "\n"+ui.For(in.stdout).OK(fmt.Sprintf("Harness AI installed: %s for %s.", strings.Join(in.components, ", "), strings.Join(in.clients, ", "))))
 	} else {
-		fmt.Fprint(in.stdout, "\n\033[1;32m✓ Harness AI installed.\033[0m\n\n"+summaryText)
+		fmt.Fprint(in.stdout, "\n"+ui.For(in.stdout).OK("Harness AI installed.")+"\n\n"+summaryText)
 	}
 	if in.backupRoot != "" {
 		fmt.Fprintf(in.stdout, "\nBackups: %s\n", in.backupRoot)

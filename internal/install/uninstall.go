@@ -14,6 +14,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 var engramToolPrefixes = []string{"mcp__engram__", "mcp__plugin_engram_engram__"}
@@ -171,7 +173,7 @@ func (in *installer) uninstallSelected() {
 		}
 	}
 
-	fmt.Fprint(in.stdout, "\n\033[1;32m✓ Harness AI removed.\033[0m\n")
+	fmt.Fprintln(in.stdout, "\n"+ui.For(in.stdout).OK("Harness AI removed."))
 	for _, note := range notes {
 		fmt.Fprintln(in.stdout, note)
 	}
