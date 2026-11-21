@@ -58,7 +58,7 @@ func block(style ui.Style, label string, cohort []*session, split time.Time, hue
 			after = append(after, s)
 		}
 	}
-	lines := []string{"", style.Pill(ui.Hue(hue), label, len(label))}
+	lines := []string{"", strings.TrimRight(style.Pill(ui.Hue(hue), label, len(label)), " ")}
 	rows := [][]string{{"sessions", strconv.Itoa(len(before)), strconv.Itoa(len(after)), "-"}}
 	for _, metric := range metrics {
 		b, a := median(before, metric), median(after, metric)
@@ -88,6 +88,7 @@ func renderReport(style ui.Style, sessions []*session, split time.Time, since *t
 			break
 		}
 	}
+	cohortIndex := 0
 	for _, client := range defaultClients {
 		for _, group := range groups {
 			var selected []*session
@@ -103,7 +104,8 @@ func renderReport(style ui.Style, sessions []*session, split time.Time, since *t
 			if group != "" {
 				label = client + "  " + group
 			}
-			lines = append(lines, block(style, label, selected, split, len(lines))...)
+			lines = append(lines, block(style, label, selected, split, cohortIndex)...)
+			cohortIndex++
 		}
 	}
 	if len(lines) == 1 {

@@ -351,11 +351,12 @@ func prune(args []string, stdout, stderr io.Writer) int {
 	removed, held, err := Prune(dir, func(b string) bool { return live[b] }, *dryRun)
 	for _, d := range removed {
 		if terminal(stdout) {
-			action := "removed "
+			s := ui.For(stdout)
 			if *dryRun {
-				action = "would remove "
+				fmt.Fprintln(stdout, s.Dim("would remove "+d))
+			} else {
+				fmt.Fprintln(stdout, s.OK("removed "+d))
 			}
-			fmt.Fprintln(stdout, ui.For(stdout).OK(action+d))
 		} else {
 			fmt.Fprintln(stdout, d)
 		}

@@ -96,19 +96,20 @@ A role delegated through T3 Code works the other way. It runs as a top-level ses
 ## Read the report
 
 ```text
-split 2026-09-02  since 2026-08-01
+harness bench  split 2026-09-05  since 2026-09-01
 
-claude  work
-  metric          before     after     delta
-  sessions            34        29
-  turns              4.0       3.0      -1.0
-  tool_calls        41.0      38.0      -3.0
-  minutes            9.4       7.1      -2.3
-  commands           1.0       2.0      +1.0
-  delegation         0.0      12.0     +12.0
-  interrupts         1.0       0.0      -1.0
-  denials            0.0       0.0      +0.0
-  errors             2.0       2.0      +0.0
+ CLAUDE  WORK
+  METRIC      BEFORE  AFTER  DELTA
+  sessions    2       1      -
+  turns       1.0     1.0    +0.0
+  tool_calls  1.5     1.0    -0.5
+  minutes     0.7     0.5    -0.2
+  commands    0.5     0.0    -0.5
+  delegation  1.0     0.0    -1.0
+  interrupts  0.5     0.0    -0.5
+  denials     0.5     0.0    -0.5
+  errors      0.5     0.0    -0.5
+  ! a cohort has fewer than 20 sessions; noise, not a result.
 ```
 
 Each heading is the client name, followed by `work` or `personal` once a work pattern matches a session in the window.
