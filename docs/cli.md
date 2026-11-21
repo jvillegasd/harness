@@ -107,6 +107,33 @@ The summary lists version changes, unchanged versions, commands that succeeded w
 
 After an update, read the changed skill bodies and the lockfile, then run `harness install` to deploy them. The updater does not commit or publish anything. It does not install missing tools or update the harness itself.
 
+## Models
+
+`harness models` chooses which client and model serve each tier, and which tier, client, and effort each role runs at. The [README](../README.md#models) lists the tiers and the common commands.
+
+```sh
+harness models show                                    # every tier with its roles
+harness models tier preset codex                       # codex serves every tier
+harness models tier set high --client codex            # one tier from another client
+harness models role set reviewer --client codex        # one role on another client, at its own tier
+harness models role resolve reviewer                   # the model the role launches on
+harness models role reset                              # drop every role override
+harness models reset                                   # drop every tier and role setting
+```
+
+A preset and a role override are separate settings. `tier preset` changes only the tiers, so a role you set earlier keeps its client and effort until you run `role reset`. A role on another client runs at that client's model for the same tier: a reviewer set to `--client codex` at `high` runs on Codex's newest `-sol` model even while Claude serves `high`.
+
+`show` labels where each line comes from:
+
+| Label | Meaning |
+| --- | --- |
+| `preset` | The tier comes from the preset (`balanced` unless you chose another) |
+| `set` | You set this tier or role, and it is saved in `~/.harness/state.json` |
+| `via reviewer` | A review lens with no setting of its own follows the reviewer |
+| `tier chosen at launch` | The `worker`, whose tier the agent picks for each launch |
+
+A role whose client or model differs from its tier's also shows `on <client> › <model>`. The settings live on each machine, so two machines can show different results until you set them the same way on both.
+
 ## Review commands
 
 `harness review` sets how much review happens on its own, and posts a review's verdict on its PR. [How review works](review.md) explains the review itself.
@@ -304,3 +331,10 @@ harness attempts list --log ~/attempts.tsv --json
 ```
 
 The log is a tab-separated file outside the repository. `add` fills in the id, the time, and the change as a number and a percent. A value that is not a number, or an unknown `--gate` or `--outcome`, is refused and nothing is written.
+
+## Hook commands
+
+The client settings the harness installs call two commands that you rarely run yourself:
+
+- **`harness statusline`** reads Claude Code's status payload as JSON on stdin and prints the status line. An empty payload prints `Claude` alone.
+- **`harness resume`** prints what a client restores after it compacts a session: the branch, its head commit, and the state and next action of every task document under `docs/agents/tasks/` that the branch changed. The compaction hooks in Claude Code, Codex, and OpenCode run it from the session's working directory. It prints nothing outside a Git checkout and always exits 0, so it never blocks compaction.
