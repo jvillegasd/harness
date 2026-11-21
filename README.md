@@ -314,7 +314,7 @@ git diff --check
 git diff --cached --check
 ```
 
-[AGENTS.md](AGENTS.md) describes what the tests cover. The tests check the code's behavior, not whether an agent follows the written rules. Testing live agent behavior needs a model budget that you approve. [Bench](bench/README.md) compares session cost and friction before and after a change, but it does not prove the change is correct.
+The tests check the code's behavior, not whether an agent follows the written rules. Testing live agent behavior needs a model budget that you approve. [Bench](bench/README.md) compares session cost and friction before and after a change, but it does not prove the change is correct.
 
 ## Guides
 

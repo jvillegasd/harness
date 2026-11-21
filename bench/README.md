@@ -2,7 +2,7 @@
 
 `harness bench` answers one question: **did a change to the harness move cost and friction in the sessions people actually ran?**
 
-It compares real sessions from before a change with real sessions after it. Rereading the harness's prose and judging that it sounds better proves nothing, so this repository's `AGENTS.md` makes bench the measurement for a harness change. Bench does not judge quality. For that, a person still reads the transcripts.
+It compares real sessions from before a change with real sessions after it. Rereading the harness's prose and judging that it sounds better proves nothing, so bench is the measurement for a harness change. Bench does not judge quality. For that, a person still reads the transcripts.
 
 ### Why real sessions and not test tasks
 
