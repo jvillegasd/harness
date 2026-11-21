@@ -37,10 +37,15 @@ Codex runs its newest listed -astra, -sol, -terra, -luna model.
 OpenCode runs only a model named with set <tier>.
 heavy falls back to high when no heavy model is listed.
 
-The choice is stored in ~/.harness/state.json; ` + "`harness install`" + ` renders it into each client's role agents.
+The choice is stored in ~/.harness/state.json. Saving it with set, reset, or the picker renders the
+role agents again for each client that already has them; ` + "`harness install agents`" + ` renders them for the rest.
 `
 
-func Command(args []string, stdout, stderr io.Writer) int {
+// Apply renders the role agents again from the saved choice and returns an
+// exit status. The installer provides it, so this package writes no client file.
+type Apply func(stdout, stderr io.Writer) int
+
+func Command(args []string, stdout, stderr io.Writer, apply Apply) int {
 	if len(args) == 1 && args[0] == "read-guard" {
 		return ReadGuard(os.Stdin, stdout)
 	}
@@ -62,38 +67,42 @@ func Command(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	path := StatePath(home)
+	saved := false
 	if len(args) == 0 {
-		if err := pickAndSave(path, stdout); err != nil {
-			fmt.Fprintf(stderr, "harness models: %v\n", err)
-			return 1
-		}
-		return 0
+		saved, err = pickAndSave(path, stdout)
+	} else {
+		saved, err = args[0] == "set" || args[0] == "reset", run(path, args, stdout)
 	}
-	if err := run(path, args, stdout); err != nil {
+	if err != nil {
 		fmt.Fprintf(stderr, "harness models: %v\n", err)
 		return 1
+	}
+	if saved && apply != nil {
+		if code := apply(stdout, stderr); code != 0 {
+			fmt.Fprintln(stderr, "harness models: the choice is saved, but the role agents were not rendered; run `harness install agents`")
+			return code
+		}
 	}
 	return 0
 }
 
-func pickAndSave(path string, stdout io.Writer) error {
+func pickAndSave(path string, stdout io.Writer) (bool, error) {
 	choice, err := Load(path)
 	if err != nil {
-		return err
+		return false, err
 	}
 	final, err := tea.NewProgram(newPicker(new(Catalog), choice), tea.WithOutput(stdout), tea.WithInput(os.Stdin)).Run()
 	if err != nil {
-		return err
+		return false, err
 	}
 	wrote, err := final.(picker).save(path)
-	if err != nil {
-		return err
+	if err != nil || !wrote {
+		if err == nil {
+			_, err = fmt.Fprintln(stdout, "nothing written")
+		}
+		return false, err
 	}
-	if !wrote {
-		_, err := fmt.Fprintln(stdout, "nothing written")
-		return err
-	}
-	return run(path, []string{"show"}, stdout)
+	return true, run(path, []string{"show"}, stdout)
 }
 
 func run(path string, args []string, stdout io.Writer) error {

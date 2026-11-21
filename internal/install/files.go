@@ -3,6 +3,7 @@ package install
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -75,6 +76,14 @@ func (in *installer) assigned() map[string]agents.Assigned {
 	}
 	in.assignments = assigned
 	return assigned
+}
+
+// reportOut is where the role-agent render and check print their report.
+func (in *installer) reportOut() io.Writer {
+	if in.quietReport {
+		return io.Discard
+	}
+	return in.stdout
 }
 
 func (in *installer) agentOut() string {
@@ -175,7 +184,7 @@ func (in *installer) installFiles() {
 				in.ensureManagedDir(pair[1], true)
 			}
 		}
-		if code := agents.Generate(in.dir.Root, in.agentOut(), in.assigned(), in.stdout, in.stderr); code != 0 {
+		if code := agents.Generate(in.dir.Root, in.agentOut(), in.assigned(), in.reportOut(), in.stderr); code != 0 {
 			die("Generating the role agents failed with status %d.", code)
 		}
 	}
@@ -229,7 +238,7 @@ func (in *installer) checkFiles() {
 	if !in.has("agents") {
 		return
 	}
-	if code := agents.Check(in.dir.Root, in.agentOut(), in.assigned(), in.stdout, in.stderr); code != 0 {
+	if code := agents.Check(in.dir.Root, in.agentOut(), in.assigned(), in.reportOut(), in.stderr); code != 0 {
 		die("Role agents in %s are missing, drifted, or widened.", in.agentOut())
 	}
 }

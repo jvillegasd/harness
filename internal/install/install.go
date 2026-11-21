@@ -135,6 +135,8 @@ type installer struct {
 	backupRoot          string
 	assignments         map[string]agents.Assigned
 	stdout, stderr      io.Writer
+	// quietReport keeps the role-agent render's assignment report off stdout.
+	quietReport bool
 }
 
 func (in *installer) log(format string, args ...any) {
