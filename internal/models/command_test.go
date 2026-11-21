@@ -508,7 +508,7 @@ func TestEachTierListsWhatOtherClientsAndPresetsRunItOn(t *testing.T) {
 	}
 	for key, w := range map[string]string{
 		"heavy balanced":    "claude=opus",
-		"heavy codex":       "codex=gpt-6.1-sol@high",
+		"heavy codex":       "claude=fable@high",
 		"high codex":        "claude=fable",
 		"standard balanced": "codex=gpt-6.1-terra",
 		"standard claude":   "claude=sonnet",
@@ -518,7 +518,31 @@ func TestEachTierListsWhatOtherClientsAndPresetsRunItOn(t *testing.T) {
 			t.Errorf("under preset %s serves %q, want %q (a tier set by hand keeps its client)", key, presets[key], w)
 		}
 	}
-	if out := runOK(t, path, "tier", "show"); !strings.Contains(out, " HEAVY      system design, architecture\n  runs on      claude › opus or fable\n  with claude  claude › opus or fable\n  with codex   codex  › gpt-6.1-sol at high\n") {
+	if out := runOK(t, path, "tier", "show"); !strings.Contains(out, " HEAVY      system design, architecture\n  runs on      claude › opus or fable\n  with claude  claude › opus or fable\n  with codex   claude › fable at high\n") {
 		t.Errorf("tier show does not draw heavy's card with its fallback:\n%s", out)
+	}
+	// The preview is what a role at heavy runs on once the preset is chosen.
+	runOK(t, path, "tier", "preset", "codex")
+	if got := resolved(t, path, "worker", "--tier", "heavy"); got["client"] != "claude" || got["model"] != "fable" || got["tier"] != "high" {
+		t.Errorf("under preset codex a role at heavy resolves to %v, not what the card showed", got)
+	}
+}
+
+func TestACardRunsOnTheFallbackAndMarksAModelThatCannotRun(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, `{"preset": "codex", "tiers": {"fast": {"client": "codex", "models": {"codex": "gpt-6.0-luna"}}}}`)
+	out := runOK(t, path, "tier", "show")
+	if !strings.Contains(out, " HEAVY      system design, architecture\n  runs on        codex  › gpt-6.1-sol at high\n  ! codex lists no heavy (astra) model") {
+		t.Errorf("heavy under codex without astra does not run on its fallback:\n%s", out)
+	}
+	if !strings.Contains(out, "  with claude    codex  › gpt-6.0-luna not runnable\n") {
+		t.Errorf("an unlisted pinned model is not marked:\n%s", out)
+	}
+	var rep report
+	if err := json.Unmarshal([]byte(runOK(t, path, "tier", "show", "--json")), &rep); err != nil {
+		t.Fatal(err)
+	}
+	if p := rep.Tiers[3].Presets["claude"].Problem; !strings.Contains(p, `codex has no model "gpt-6.0-luna"`) {
+		t.Errorf("the JSON preset entry carries no problem: %q", p)
 	}
 }
