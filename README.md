@@ -180,6 +180,7 @@ harness models                                   # pick interactively
 harness models show                              # see each tier and role
 harness models set --preset claude               # balanced (default), claude, or codex serves the tiers
 harness models set high --client codex           # serve a tier from another client
+harness models set heavy --client claude --model opus   # run a tier on another model, such as opus when fable is out of reach
 harness models set reviewer --tier heavy --effort high   # move a role to another tier
 ```
 
