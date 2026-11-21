@@ -8,4 +8,4 @@
 4. Validate what tooling can see: frontmatter, guards, and every file and skill the document names. In this harness, that is its deterministic checks.
 5. Finish, as jvillegasd-mode's Finish lists.
 
-**Reply:** what the document now makes the agent do, the design choices, and the validation run. When the change claims to change agent behavior, also name the `harness bench` metric you expect it to move, to check with `--split` set to the date it merges.
+**Reply:** what the document now makes the agent do, the design choices, and the validation run.

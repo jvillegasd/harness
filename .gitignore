@@ -12,7 +12,4 @@
 .opencode/
 .engram/
 
-# Names clients and employers. The committed example names nobody.
-bench/cohorts.json
-
 *.backup.*

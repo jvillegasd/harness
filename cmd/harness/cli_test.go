@@ -97,7 +97,6 @@ func TestCommandHelpMatrix(t *testing.T) {
 		{"update", "clients"},
 		{"update", "clients", "mcps"},
 		{"uninstall"},
-		{"bench"},
 		{"attempts"},
 		{"attempts", "add"},
 		{"attempts", "list"},
@@ -182,12 +181,9 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"uninstall", "--all", "skills"},
 		{"uninstall", "--client", "cursor"},
 		{"uninstall", "--no-backup"},
-		{"bench"},
 		{"attempts"},
 		{"attempts", "bogus"},
 		{"attempts", "add", "--bogus"},
-		{"bench", "--split", "2026-01-01", "extra"},
-		{"bench", "--bogus"},
 		{"skills"},
 		{"skills", "bogus"},
 		{"skills", "add"},
@@ -308,7 +304,6 @@ func TestOperationalFailuresExitOne(t *testing.T) {
 	outside := t.TempDir()
 	for _, args := range [][]string{
 		{"skills", "verify"},
-		{"bench", "--split", "2026-01-01", "--home", t.TempDir()},
 	} {
 		if r := runBinary(t, outside, args...); r.code != 1 || r.stderr == "" {
 			t.Errorf("%v outside a checkout or configured repository exited %d with stderr %q, want 1 and a diagnostic", args, r.code, r.stderr)

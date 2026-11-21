@@ -306,7 +306,6 @@ The [command-line reference](docs/cli.md) explains each one. `harness <command> 
 | `skills/` | The skills, grouped by purpose |
 | `clients/`, `roles/` | Client settings and role definitions |
 | `docs/agents/` | Tracker settings, task documents (`tasks/`), and ticket drafts (`tickets/`) |
-| `bench/` | Measurement of cost and friction in real sessions |
 
 Run every check before you hand off a change:
 
@@ -319,7 +318,7 @@ git diff --check
 git diff --cached --check
 ```
 
-The tests check the code's behavior, not whether an agent follows the written rules. Testing live agent behavior needs a model budget that you approve. [Bench](bench/README.md) compares session cost and friction before and after a change, but it does not prove the change is correct.
+The tests check the code's behavior, not whether an agent follows the written rules. Testing live agent behavior needs a model budget that you approve.
 
 ## Guides
 
@@ -332,7 +331,6 @@ These pages are written for people. Agents keep them accurate but never take ins
 | [Delegation](docs/subagents.md) | Learn the helper roles and their limits |
 | [Installation and your files](docs/installation.md) | See how install and uninstall treat files already on your machine |
 | [Command-line reference](docs/cli.md) | Look up `harness` command behavior beyond `--help` |
-| [Bench](bench/README.md) | Measure whether a harness change helped |
 
 ## Acknowledgments
 
