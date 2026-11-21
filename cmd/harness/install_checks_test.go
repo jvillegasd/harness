@@ -242,8 +242,8 @@ func TestCodexInstallsIntoHomeCodexAndUninstallsAlone(t *testing.T) {
 	if readFile(t, filepath.Join(codexHome, "AGENTS.md")) != readFile(t, filepath.Join(base, "checkout", "FLOOR.md")) {
 		t.Error("~/.codex/AGENTS.md is not the floor")
 	}
-	if !strings.Contains(readFile(t, filepath.Join(codexHome, "agents", "executor.toml")), "\nmodel = \"gpt-6-luna\"\n") {
-		t.Error("the Codex executor lacks the balanced model")
+	if !strings.Contains(readFile(t, filepath.Join(codexHome, "agents", "executor.toml")), "\nmodel = \"gpt-6.1-terra\"\n") {
+		t.Error("the Codex executor lacks the balanced standard-tier model")
 	}
 	if _, err := os.Stat(elsewhere); err == nil {
 		t.Error("the install wrote into CODEX_HOME")

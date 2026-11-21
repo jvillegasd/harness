@@ -9,74 +9,108 @@ import (
 )
 
 var presetNotes = map[string]string{
-	"balanced":    "Codex GPT-6 Luna implements; Haiku searches; Sonnet reviews at medium (default)",
-	"performance": "Opus implements at medium; Sonnet searches; Fable reviews at medium",
-	"economy":     "Codex GPT-5.6 Luna implements; Haiku searches; Sonnet reviews at low",
-	"diversity":   "Sonnet implements at medium; Haiku searches; Codex GPT-6.1 Sol reviews at low",
+	"balanced": "Codex serves standard; Claude serves heavy, high, and fast (default)",
+	"claude":   "Claude serves every tier: fable, opus, sonnet, haiku",
+	"codex":    "Codex serves every tier: its newest astra, sol, terra, luna",
 }
 
-var claudeModels = []string{"inherit", "fable", "opus", "sonnet", "haiku"}
-
-const visibleRows = 15
+const (
+	visibleRows = 15
+	keep        = "keep"
+	newest      = "newest"
+)
 
 const (
 	stepMenu = iota
-	stepRole
-	stepClient
-	stepModel
-	stepEffort
+	stepName
+	stepTierClient
+	stepTierModel
+	stepRoleTier
+	stepRoleClient
+	stepRoleEffort
 )
 
 type picker struct {
-	step         int
-	cursor       int
-	catalog      *Catalog
-	role, client string
-	model        string
-	sets         [][]string
-	done         bool
+	step               int
+	cursor             int
+	catalog            *Catalog
+	choice             Choice
+	name, tier, client string
+	sets               [][]string
+	done               bool
 }
 
-func newPicker(catalog *Catalog) picker {
-	return picker{catalog: catalog}
+func newPicker(catalog *Catalog, choice Choice) picker {
+	return picker{catalog: catalog, choice: choice}
+}
+
+func (p picker) clients() []string {
+	clients := []string{"claude"}
+	if listed, _ := p.catalog.Codex(); len(listed) > 0 {
+		clients = append(clients, "codex")
+	}
+	if listed, _ := p.catalog.OpenCode(); len(listed) > 0 {
+		clients = append(clients, "opencode")
+	}
+	return clients
 }
 
 func (p picker) options() []string {
 	switch p.step {
-	case stepRole:
-		return append(slices.Clone(AllRoles), "save")
-	case stepClient:
-		clients := []string{"claude"}
-		if listed, _ := p.catalog.Codex(); len(listed) > 0 {
-			clients = append(clients, "codex")
-		}
-		if listed, _ := p.catalog.OpenCode(); len(listed) > 0 {
-			clients = append(clients, "opencode")
-		}
-		return clients
-	case stepModel:
+	case stepName:
+		return slices.Concat(Tiers, AllRoles, []string{"save"})
+	case stepTierClient:
+		return p.clients()
+	case stepTierModel:
 		switch p.client {
 		case "claude":
-			return claudeModels
+			return []string{newest}
 		case "codex":
 			listed, _ := p.catalog.Codex()
-			return slices.Concat([]string{"inherit"}, listed)
+			return slices.Concat([]string{newest}, listed)
 		}
 		listed, _ := p.catalog.OpenCode()
 		return listed
-	case stepEffort:
-		switch p.client {
+	case stepRoleTier:
+		return slices.Concat([]string{keep}, Tiers)
+	case stepRoleClient:
+		return slices.Concat([]string{keep}, p.clients())
+	case stepRoleEffort:
+		r := p.pending().Resolve(p.name, Launch{}, p.catalog)
+		switch r.Client {
 		case "claude":
-			return claudeEfforts[p.model]
+			if efforts, ok := claudeEfforts[r.Model]; ok {
+				return efforts
+			}
 		case "codex":
-			return p.catalog.CodexEfforts(p.model)
-		}
-		if strings.HasPrefix(p.model, "openai/") {
-			return openaiEfforts
+			return p.catalog.CodexEfforts(r.Model)
+		case "opencode":
+			if strings.HasPrefix(r.Model, "openai/") {
+				return openaiEfforts
+			}
 		}
 		return []string{""}
 	}
 	return append(presetNames(), "custom")
+}
+
+// pending is the choice with the role being picked set to its tier and client
+// so far, so the effort step lists what that model takes.
+func (p picker) pending() Choice {
+	c := p.choice
+	c.Roles = map[string]Override{}
+	for k, v := range p.choice.Roles {
+		c.Roles[k] = v
+	}
+	ov := c.Roles[p.name]
+	if p.tier != "" {
+		ov.Tier = p.tier
+	}
+	if p.client != "" {
+		ov.Client = p.client
+	}
+	c.Roles[p.name] = ov
+	return c
 }
 
 func (p picker) Init() tea.Cmd { return nil }
@@ -107,27 +141,65 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 			p.sets, p.done = [][]string{{"--preset", opt}}, true
 			return p, tea.Quit
 		}
-		p.step = stepRole
-	case stepRole:
+		p.step = stepName
+	case stepName:
 		if opt == "save" {
 			p.done = true
 			return p, tea.Quit
 		}
-		p.role, p.step = opt, stepClient
-	case stepClient:
-		p.client, p.step = opt, stepModel
-	case stepModel:
-		p.model, p.step = opt, stepEffort
-	case stepEffort:
-		p.sets = append(p.sets, []string{p.role, "--client", p.client, "--model", p.model, "--effort", opt})
-		p.step = stepRole
+		p.name, p.tier, p.client = opt, "", ""
+		p.step = stepRoleTier
+		if slices.Contains(Tiers, opt) {
+			p.step = stepTierClient
+		}
+	case stepTierClient:
+		p.client, p.step = opt, stepTierModel
+	case stepTierModel:
+		set := []string{p.name, "--client", p.client}
+		if opt != newest {
+			set = append(set, "--model", opt)
+		}
+		p.sets, p.step = append(p.sets, set), stepName
+	case stepRoleTier:
+		if opt != keep {
+			p.tier = opt
+		}
+		p.step = stepRoleClient
+	case stepRoleClient:
+		if opt != keep {
+			p.client = opt
+		}
+		p.step = stepRoleEffort
+	case stepRoleEffort:
+		set := []string{p.name}
+		if p.tier != "" {
+			set = append(set, "--tier", p.tier)
+		}
+		if p.client != "" {
+			set = append(set, "--client", p.client)
+		}
+		if opt != "" {
+			set = append(set, "--effort", opt)
+		}
+		if len(set) > 1 {
+			p.sets = append(p.sets, set)
+		}
+		p.step = stepName
 	}
 	return p, nil
 }
 
 func (p picker) View() tea.View {
 	var b strings.Builder
-	b.WriteString([]string{"Choose a preset, or custom to set roles one by one", "Choose a role to override, or save", "Client for " + p.role, "Model for " + p.role, "Effort for " + p.role + " on " + p.model}[p.step] + "\n\n")
+	b.WriteString([]string{
+		"Choose a preset, or custom to set tiers and roles one by one",
+		"Choose a tier or a role to set, or save",
+		"Client to serve " + p.name,
+		"Model for " + p.name + " on " + p.client,
+		"Tier for " + p.name,
+		"Client for " + p.name + ", or keep the tier's",
+		"Effort for " + p.name,
+	}[p.step] + "\n\n")
 	opts := p.options()
 	first := min(max(p.cursor-visibleRows/2, 0), max(len(opts)-visibleRows, 0))
 	for i := first; i < min(first+visibleRows, len(opts)); i++ {
@@ -140,7 +212,7 @@ func (p picker) View() tea.View {
 		switch {
 		case p.step == stepMenu && opt != "custom":
 			line = fmt.Sprintf("%-12s %s", opt, presetNotes[opt])
-		case p.step == stepEffort:
+		case p.step == stepRoleEffort:
 			line = effortOrInherit(opt)
 		}
 		b.WriteString(mark + line + "\n")
@@ -148,7 +220,7 @@ func (p picker) View() tea.View {
 	if len(opts) > visibleRows {
 		fmt.Fprintf(&b, "  (%d of %d)\n", p.cursor+1, len(opts))
 	}
-	if p.step == stepClient {
+	if p.step == stepTierClient || p.step == stepRoleClient {
 		if _, err := p.catalog.Codex(); err != nil {
 			b.WriteString("\ncodex unavailable: " + err.Error() + "\n")
 		}
@@ -156,7 +228,7 @@ func (p picker) View() tea.View {
 			b.WriteString("\nopencode unavailable: " + err.Error() + "\n")
 		}
 	}
-	if p.step == stepRole {
+	if p.step == stepName {
 		for _, s := range p.sets {
 			b.WriteString("\npending: " + strings.Join(s, " "))
 		}
@@ -174,7 +246,7 @@ func (p picker) save(path string) (bool, error) {
 		return false, err
 	}
 	for _, args := range p.sets {
-		if choice, err = apply(choice, args); err != nil {
+		if choice, err = apply(choice, args, p.catalog); err != nil {
 			return false, err
 		}
 	}

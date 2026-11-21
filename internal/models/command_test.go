@@ -1,14 +1,23 @@
 package models
 
 import (
+	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-const codexListing = `{"models":[{"slug":"gpt-6-luna","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"}]},{"slug":"gpt-6.1-sol","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"high"},{"effort":"ultra"}]},{"slug":"gpt-reserve","visibility":"hide","supported_reasoning_levels":[{"effort":"low"}]}]}`
+const codexListing = `{"models":[` +
+	`{"slug":"gpt-6-luna","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"}]},` +
+	`{"slug":"gpt-6.1-terra","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"}]},` +
+	`{"slug":"gpt-6-sol","visibility":"list","supported_reasoning_levels":[{"effort":"low"}]},` +
+	`{"slug":"gpt-6.1-sol","visibility":"list","supported_reasoning_levels":[{"effort":"low"},{"effort":"high"},{"effort":"ultra"}]},` +
+	`{"slug":"gpt-5.6-sol","visibility":"list","supported_reasoning_levels":[{"effort":"low"}]},` +
+	`{"slug":"gpt-9-sol","visibility":"hide","supported_reasoning_levels":[{"effort":"low"}]}]}`
 
+// listingPath puts stand-in opencode and codex binaries on PATH.
 func listingPath(t *testing.T) {
 	t.Helper()
 	dir := t.TempDir()
@@ -16,7 +25,7 @@ func listingPath(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Setenv("CODEX_HOME", "/elsewhere")
 	scripts := map[string]string{
-		"opencode": "#!/bin/sh\ncase \"$1\" in models) printf 'opencode-go/glm-5.3\\nopencode-go/deepseek-v4-flash\\nopenai/gpt-5.6-sol\\n' ;; esac\n",
+		"opencode": "#!/bin/sh\ncase \"$1\" in models) printf 'opencode-go/glm-5.3\\nopenai/gpt-5.6-sol\\n' ;; esac\n",
 		"codex":    "#!/bin/sh\n[ \"$CODEX_HOME\" = \"" + home + "/.codex\" ] || exit 9\n[ \"$1 $2\" = \"debug models\" ] && printf '%s' '" + codexListing + "'\n",
 	}
 	for name, script := range scripts {
@@ -27,122 +36,280 @@ func listingPath(t *testing.T) {
 	t.Setenv("PATH", dir)
 }
 
+func seeded(t *testing.T, block string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "state.json")
+	text := `{"version": 1, "installed": {}, "files": []}` + "\n"
+	if block != "" {
+		text = `{"version": 1, "installed": {}, "files": [], "models": ` + block + "}\n"
+	}
+	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func runOK(t *testing.T, path string, args ...string) string {
+	t.Helper()
+	var out strings.Builder
+	if err := run(path, args, &out); err != nil {
+		t.Fatalf("%v: %v", args, err)
+	}
+	return out.String()
+}
+
+func resolved(t *testing.T, path string, args ...string) map[string]string {
+	t.Helper()
+	var got map[string]string
+	if err := json.Unmarshal([]byte(runOK(t, path, append(append([]string{"resolve"}, args...), "--json")...)), &got); err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
+func TestTiersResolveToEachClientsModel(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, "")
+	for tier, want := range map[string]string{"heavy": "fable", "high": "opus", "standard": "sonnet", "fast": "haiku"} {
+		if got := resolved(t, path, "worker", "--tier", tier, "--client", "claude"); got["model"] != want {
+			t.Errorf("claude %s = %s, want %s", tier, got["model"], want)
+		}
+	}
+	if got := resolved(t, path, "worker", "--tier", "high", "--client", "codex"); got["model"] != "gpt-6.1-sol" {
+		t.Errorf("codex high = %v, want the newest listed sol, not an older or hidden one", got)
+	}
+	if got := resolved(t, path, "worker", "--tier", "standard", "--client", "codex"); got["model"] != "gpt-6.1-terra" {
+		t.Errorf("codex standard = %v", got)
+	}
+	var out strings.Builder
+	if err := run(path, []string{"resolve", "worker", "--client", "opencode"}, &out); err == nil || !strings.Contains(err.Error(), "--client opencode --model") {
+		t.Errorf("an OpenCode tier with no named model resolved: %v", err)
+	}
+}
+
+func TestHeavyFallsBackToHighWhenNoHeavyModelIsListed(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, "")
+	got := resolved(t, path, "worker", "--tier", "heavy", "--client", "codex")
+	if got["tier"] != "high" || got["model"] != "gpt-6.1-sol" || !strings.Contains(got["note"], "heavy unavailable on codex") {
+		t.Errorf("heavy on codex without astra = %v, want high with a note", got)
+	}
+	if got := resolved(t, path, "worker", "--tier", "fast", "--client", "codex"); got["tier"] != "fast" || got["model"] != "gpt-6-luna" {
+		t.Errorf("fast does not fall back, so it resolves on its own: %v", got)
+	}
+}
+
+func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, "")
+	out := runOK(t, path, "show")
+	for _, want := range []string{
+		"heavy client=claude model=fable (preset:balanced)",
+		"standard client=codex model=gpt-6.1-terra (preset:balanced)",
+		"executor tier=standard client=codex model=gpt-6.1-terra effort=inherit (preset:balanced)",
+		"code-search tier=fast client=claude model=haiku effort=inherit (preset:balanced)",
+		"worker tier=standard client=codex model=gpt-6.1-terra effort=inherit (preset:balanced)",
+		"reviewer tier=high client=claude model=opus effort=medium (preset:balanced)",
+		"review-risk tier=high client=claude model=opus effort=medium (reviewer)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("show lacks %q:\n%s", want, out)
+		}
+	}
+	runOK(t, path, "set", "reviewer", "--tier", "heavy")
+	runOK(t, path, "set", "review-spec", "--tier", "fast")
+	out = runOK(t, path, "show")
+	for _, want := range []string{
+		"review-risk tier=heavy client=claude model=fable effort=medium (reviewer)",
+		"review-spec tier=fast client=claude model=haiku effort=inherit (override)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("show lacks %q:\n%s", want, out)
+		}
+	}
+	runOK(t, path, "reset", "review-spec")
+	if out := runOK(t, path, "show"); !strings.Contains(out, "review-spec tier=heavy client=claude model=fable effort=medium (reviewer)") {
+		t.Errorf("a reset lens does not return to the reviewer:\n%s", out)
+	}
+}
+
+func TestARoleOnAnotherClientTakesThatClientsModelForItsTier(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, "")
+	runOK(t, path, "set", "reviewer", "--client", "codex", "--effort", "high")
+	if got := resolved(t, path, "reviewer"); got["client"] != "codex" || got["model"] != "gpt-6.1-sol" || got["effort"] != "high" || got["source"] != "override" {
+		t.Errorf("reviewer on codex = %v", got)
+	}
+	runOK(t, path, "set", "high", "--client", "claude", "--model", "claude-opus-5-5")
+	if got := resolved(t, path, "review-bugs"); got["model"] != "gpt-6.1-sol" {
+		t.Errorf("a model named for claude leaked into the codex reviewer: %v", got)
+	}
+	if got := resolved(t, path, "worker", "--tier", "high"); got["model"] != "claude-opus-5-5" || got["client"] != "claude" {
+		t.Errorf("the named claude model is not used for the tier: %v", got)
+	}
+}
+
 func TestSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
 	listingPath(t)
-	const seed = `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}` + "\n"
+	const block = `{"preset": "claude"}`
 	for name, args := range map[string][]string{
-		"unknown opencode id":       {"reviewer", "--client", "opencode", "--model", "openai/nope"},
-		"unknown codex model":       {"reviewer", "--client", "codex", "--model", "gpt-nope"},
-		"hidden codex model":        {"reviewer", "--client", "codex", "--model", "gpt-reserve"},
-		"unsupported codex effort":  {"reviewer", "--client", "codex", "--model", "gpt-6-luna", "--effort", "ultra"},
-		"codex provider id":         {"reviewer", "--client", "codex", "--model", "openai/gpt-6-luna"},
-		"codex inherit with effort": {"reviewer", "--client", "codex", "--model", "inherit", "--effort", "high"},
-		"unknown claude alias":      {"reviewer", "--client", "claude", "--model", "claudius"},
-		"unsupported haiku effort":  {"reviewer", "--client", "claude", "--model", "haiku", "--effort", "high"},
-		"unknown role":              {"planner", "--client", "claude", "--model", "opus"},
-		"unknown preset":            {"--preset", "lavish"},
-		"unknown client":            {"reviewer", "--client", "cursor", "--model", "opus"},
+		"unknown preset":              {"--preset", "lavish"},
+		"unknown tier":                {"reviewer", "--tier", "ultra"},
+		"unknown client":              {"reviewer", "--client", "cursor"},
+		"unknown role or tier":        {"planner", "--tier", "high"},
+		"a role given a model":        {"reviewer", "--model", "opus"},
+		"a role given nothing":        {"reviewer"},
+		"effort the model lacks":      {"code-search", "--effort", "high"},
+		"effort the codex model lack": {"executor", "--client", "codex", "--effort", "ultra"},
+		"tier without a client":       {"high", "--model", "opus"},
+		"tier given an effort":        {"high", "--client", "claude", "--effort", "high"},
+		"unlisted codex model":        {"high", "--client", "codex", "--model", "gpt-nope"},
+		"hidden codex model":          {"high", "--client", "codex", "--model", "gpt-9-sol"},
+		"unlisted opencode model":     {"high", "--client", "opencode", "--model", "openai/nope"},
+		"opencode with no model":      {"high", "--client", "opencode"},
+		"unknown claude model":        {"high", "--client", "claude", "--model", "claudius"},
+		"opencode role, no mapping":   {"reviewer", "--client", "opencode"},
+		"a preset and a role":         {"reviewer", "--preset", "codex"},
 	} {
-		path := filepath.Join(t.TempDir(), "state.json")
-		if err := os.WriteFile(path, []byte(seed), 0o644); err != nil {
-			t.Fatal(err)
-		}
+		path := seeded(t, block)
+		before, _ := os.ReadFile(path)
 		if err := run(path, append([]string{"set"}, args...), &strings.Builder{}); err == nil {
 			t.Errorf("%s: set was accepted", name)
 		}
-		got, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if string(got) != seed {
-			t.Errorf("%s: a rejected set rewrote the state file:\n%s", name, got)
+		if after, _ := os.ReadFile(path); string(after) != string(before) {
+			t.Errorf("%s: a rejected set rewrote the state file:\n%s", name, after)
 		}
 	}
 }
 
-func TestSetAcceptsValidValues(t *testing.T) {
+func TestSetTierNamesOrClearsAModel(t *testing.T) {
 	listingPath(t)
-	path := filepath.Join(t.TempDir(), "state.json")
-	for _, args := range [][]string{
-		{"reviewer", "--client", "codex", "--model", "gpt-6.1-sol", "--effort", "ultra"},
-		{"executor", "--client", "codex", "--model", "inherit"},
-		{"reviewer", "--client", "claude", "--model", "sonnet", "--effort", "xhigh"},
-	} {
-		if err := run(path, append([]string{"set"}, args...), &strings.Builder{}); err != nil {
-			t.Errorf("set %v: %v", args, err)
-		}
+	path := seeded(t, "")
+	runOK(t, path, "set", "high", "--client", "codex", "--model", "gpt-6-sol")
+	if got := resolved(t, path, "reviewer"); got["model"] != "gpt-6-sol" || got["client"] != "codex" {
+		t.Errorf("named model not used: %v", got)
+	}
+	if out := runOK(t, path, "show"); !strings.Contains(out, "high client=codex model=gpt-6-sol (set)") {
+		t.Errorf("show does not report the set tier:\n%s", out)
+	}
+	runOK(t, path, "set", "high", "--client", "codex")
+	if got := resolved(t, path, "reviewer"); got["model"] != "gpt-6.1-sol" {
+		t.Errorf("omitting --model does not return to the newest: %v", got)
+	}
+	runOK(t, path, "set", "high", "--client", "opencode", "--model", "openai/gpt-5.6-sol")
+	if got := resolved(t, path, "reviewer"); got["client"] != "opencode" || got["model"] != "openai/gpt-5.6-sol" || got["effort"] != "medium" {
+		t.Errorf("opencode tier: %v", got)
+	}
+	runOK(t, path, "reset", "high")
+	if got := resolved(t, path, "reviewer"); got["client"] != "claude" || got["source"] != "preset:balanced" {
+		t.Errorf("reset tier did not return to the preset: %v", got)
 	}
 }
 
-func TestShowRejectsAStaleChoice(t *testing.T) {
+func TestResolveTakesLaunchChoicesOnlyForTheWorker(t *testing.T) {
 	listingPath(t)
-	for name, block := range map[string]string{
-		"unknown preset":   `{"preset": "lavish"}`,
-		"malformed role":   `{"roles": {"executor": {"client": "claude", "model": "claudius"}}}`,
-		"unknown role key": `{"roles": {"planner": {"client": "claude", "model": "opus"}}}`,
+	path := seeded(t, "")
+	if got := resolved(t, path, "worker", "--tier", "high", "--effort", "xhigh"); got["model"] != "opus" || got["effort"] != "xhigh" || got["source"] != "launch" {
+		t.Errorf("worker launch: %v", got)
+	}
+	for name, args := range map[string][]string{
+		"a role's tier at launch": {"executor", "--tier", "heavy"},
+		"unknown launch tier":     {"worker", "--tier", "ultra"},
+		"unsupported effort":      {"worker", "--tier", "fast", "--client", "claude", "--effort", "high"},
+		"stray argument":          {"worker", "extra"},
 	} {
-		path := filepath.Join(t.TempDir(), "state.json")
-		if err := os.WriteFile(path, []byte(`{"version": 1, "installed": {}, "files": [], "models": `+block+"}\n"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		err := run(path, []string{"show"}, &strings.Builder{})
-		if err == nil || !strings.Contains(err.Error(), "harness models reset") {
-			t.Errorf("%s: show returned %v, want the reset named", name, err)
-		}
-		if err := run(path, []string{"reset"}, &strings.Builder{}); err != nil {
-			t.Errorf("%s: the recommended reset failed: %v", name, err)
-		}
-		if err := run(path, []string{"show"}, &strings.Builder{}); err != nil {
-			t.Errorf("%s: show after reset failed: %v", name, err)
+		if err := run(path, append([]string{"resolve"}, args...), &strings.Builder{}); err == nil {
+			t.Errorf("%s: resolve was accepted", name)
 		}
 	}
 }
 
-func TestLoadDropsRetiredRoleOverrides(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "state.json")
-	block := `{"roles": {"reviewer-b": {"client": "claude", "model": "opus"}, "review-refuter": {"client": "claude", "model": "opus"}, "reviewer": {"client": "claude", "model": "sonnet"}}}`
-	if err := os.WriteFile(path, []byte(`{"version": 1, "installed": {}, "files": [], "models": `+block+"}\n"), 0o644); err != nil {
-		t.Fatal(err)
+func TestResolveFailsWhenTheTierCannotBeServed(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	path := seeded(t, "")
+	err := run(path, []string{"resolve", "executor"}, &strings.Builder{})
+	if err == nil || !strings.Contains(err.Error(), "listing Codex models failed") {
+		t.Errorf("resolve without a Codex catalog: %v", err)
 	}
-	c, err := Load(path)
+	if out := runOK(t, path, "show"); !strings.Contains(out, "executor tier=standard client=codex model=unavailable effort=inherit (preset:balanced) [unverified: listing Codex models failed") {
+		t.Errorf("show does not mark the unservable tier:\n%s", out)
+	}
+	if got := resolved(t, path, "code-search"); got["model"] != "haiku" {
+		t.Errorf("a Claude tier needs no catalog: %v", got)
+	}
+}
+
+func TestLoadMigratesAndRejects(t *testing.T) {
+	listingPath(t)
+	legacy := `{"preset": "economy", "roles": {"reviewer": {"client": "claude", "model": "opus", "effort": "high"}, "executor": {"client": "codex", "model": "gpt-5.6-luna"}, "code-search": {"client": "opencode", "model": "opencode-go/glm-5.3"}, "reviewer-b": {"client": "claude", "model": "opus"}}}`
+	c, err := Load(seeded(t, legacy))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(c.Roles) != 1 || c.Roles["reviewer"].Model != "sonnet" {
-		t.Errorf("Roles = %v, want only the reviewer override", c.Roles)
+	if c.Preset != "" {
+		t.Errorf("a retired preset was kept: %q", c.Preset)
+	}
+	if got := c.Roles["reviewer"]; got != (Override{Tier: "high", Client: "claude", Effort: "high"}) {
+		t.Errorf("reviewer migrated to %+v", got)
+	}
+	if got := c.Roles["executor"]; got != (Override{Tier: "fast", Client: "codex"}) {
+		t.Errorf("executor migrated to %+v", got)
+	}
+	if _, ok := c.Roles["code-search"]; ok {
+		t.Error("an override with no tier to infer was kept")
+	}
+	if _, ok := c.Roles["reviewer-b"]; ok {
+		t.Error("a retired role was kept")
+	}
+	for name, block := range map[string]string{
+		"unknown preset":   `{"preset": "lavish"}`,
+		"unknown tier key": `{"tiers": {"ultra": {"client": "claude"}}}`,
+		"bad tier client":  `{"tiers": {"high": {"client": "cursor"}}}`,
+		"bad role tier":    `{"roles": {"executor": {"tier": "ultra"}}}`,
+		"unknown role key": `{"roles": {"planner": {"tier": "high"}}}`,
+	} {
+		path := seeded(t, block)
+		if err := run(path, []string{"show"}, &strings.Builder{}); err == nil || !strings.Contains(err.Error(), "harness models reset") {
+			t.Errorf("%s: show returned %v, want the reset named", name, err)
+		}
+		runOK(t, path, "reset")
+		runOK(t, path, "show")
 	}
 }
 
-func TestLensFollowsTheReviewerUntilSet(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "state.json")
-	show := func() string {
-		var out strings.Builder
-		if err := run(path, []string{"show"}, &out); err != nil {
-			t.Fatal(err)
+func TestResetDropsOneSettingThenTheBlock(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, "")
+	runOK(t, path, "set", "--preset", "claude")
+	runOK(t, path, "set", "executor", "--tier", "high")
+	runOK(t, path, "reset", "executor")
+	if got := resolved(t, path, "executor"); got["tier"] != "standard" || got["model"] != "sonnet" || got["source"] != "preset:claude" {
+		t.Errorf("reset role did not fall back: %v", got)
+	}
+	runOK(t, path, "reset")
+	raw, _ := os.ReadFile(path)
+	if strings.Contains(string(raw), `"models"`) || !strings.Contains(string(raw), `"installed"`) {
+		t.Errorf("reset left the models block or dropped another key:\n%s", raw)
+	}
+	if err := run(path, []string{"reset", "planner"}, &strings.Builder{}); err == nil {
+		t.Error("reset accepted an unknown name")
+	}
+}
+
+func TestEveryRoleHasATierAndEveryPresetServesEveryTier(t *testing.T) {
+	for _, name := range Roles {
+		if role(name).Tier == "" {
+			t.Errorf("role %s has no default tier", name)
 		}
-		return out.String()
 	}
-	if got := show(); !strings.Contains(got, "review-risk client=claude model=sonnet effort=medium (reviewer)") {
-		t.Errorf("an unset lens does not follow the reviewer:\n%s", got)
-	}
-	for _, args := range [][]string{
-		{"set", "reviewer", "--client", "claude", "--model", "sonnet"},
-		{"set", "review-spec", "--client", "claude", "--model", "haiku"},
-	} {
-		if err := run(path, args, &strings.Builder{}); err != nil {
-			t.Fatal(err)
+	for preset, table := range Presets {
+		for _, tier := range Tiers {
+			if table[tier] == "" {
+				t.Errorf("preset %s serves no client for %s", preset, tier)
+			}
 		}
 	}
-	got := show()
-	for _, want := range []string{"review-risk client=claude model=sonnet effort=inherit (reviewer)", "review-spec client=claude model=haiku effort=inherit (override)"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("show lacks %q:\n%s", want, got)
-		}
-	}
-	if err := run(path, []string{"reset", "review-spec"}, &strings.Builder{}); err != nil {
-		t.Fatal(err)
-	}
-	if got := show(); !strings.Contains(got, "review-spec client=claude model=sonnet effort=inherit (reviewer)") {
-		t.Errorf("a reset lens does not return to the reviewer:\n%s", got)
+	if !errors.Is(new(Choice).Resolve("worker", Launch{Client: "opencode"}, &Catalog{opencodeDone: true}).Err, ErrNotListed) {
+		t.Error("an OpenCode tier with no named model is not reported as not listed")
 	}
 }

@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/jvillegasd/harness/internal/models"
 )
 
 func modelsBase(t *testing.T) string {
@@ -23,13 +21,25 @@ func runModels(t *testing.T, base string, args ...string) result {
 
 func stateFile(base string) string { return filepath.Join(base, "home", ".harness", "state.json") }
 
+func agentFile(t *testing.T, base, client, role string) string {
+	t.Helper()
+	switch client {
+	case "codex":
+		return readFile(t, filepath.Join(base, "home", ".codex", "agents", role+".toml"))
+	case "opencode":
+		return readFile(t, filepath.Join(base, "home", ".config", "opencode", "agents", role+".md"))
+	}
+	return readFile(t, filepath.Join(base, "home", ".claude", "agents", role+".md"))
+}
+
 func TestModelsShowDefaultsToBalanced(t *testing.T) {
 	base := modelsBase(t)
 	r := ok(t, runModels(t, base, "show"), "models show")
 	for _, want := range []string{
-		"executor client=codex model=gpt-6-luna effort=inherit (preset:balanced)",
-		"code-search client=claude model=haiku effort=inherit (preset:balanced)",
-		"reviewer client=claude model=sonnet effort=medium (preset:balanced)",
+		"standard client=codex model=gpt-6.1-terra (preset:balanced)",
+		"executor tier=standard client=codex model=gpt-6.1-terra effort=inherit (preset:balanced)",
+		"worker tier=standard client=codex model=gpt-6.1-terra effort=inherit (preset:balanced)",
+		"reviewer tier=high client=claude model=opus effort=medium (preset:balanced)",
 	} {
 		if !strings.Contains(r.stdout, want) {
 			t.Errorf("show lacks %q:\n%s", want, r.stdout)
@@ -42,20 +52,30 @@ func TestModelsWithoutTTYPrintsUsage(t *testing.T) {
 	if r.code == 0 {
 		t.Fatalf("bare models without a TTY exited 0")
 	}
-	for _, want := range []string{"show ", "set --preset", "set <role>"} {
+	for _, want := range []string{"show ", "set --preset", "set <tier>", "set <role>", "resolve <role>"} {
 		if !strings.Contains(r.stderr, want) {
 			t.Errorf("usage lacks %q:\n%s", want, r.stderr)
 		}
 	}
 }
 
-func TestModelsSetPresetKeepsOtherStateKeys(t *testing.T) {
+func TestModelsSetKeepsOtherStateKeysAndRejectsWithoutWriting(t *testing.T) {
 	base := modelsBase(t)
-	writeMode(t, stateFile(base), `{"version": 1, "installed": {"claude": ["policy"]}, "files": []}`+"\n", 0o644)
-	ok(t, runModels(t, base, "set", "--preset", "diversity"), "set preset")
+	seed := `{"version": 1, "installed": {"claude": ["policy"]}, "files": []}` + "\n"
+	writeMode(t, stateFile(base), seed, 0o644)
+	if r := runModels(t, base, "set", "reviewer", "--tier", "ultra"); r.code == 0 {
+		t.Error("set accepted an unknown tier")
+	}
+	if readFile(t, stateFile(base)) != seed {
+		t.Error("a rejected set rewrote state.json")
+	}
+	ok(t, runModels(t, base, "set", "--preset", "codex"), "set preset")
+	ok(t, runModels(t, base, "set", "code-search", "--tier", "high"), "set role")
 	r := ok(t, runModels(t, base, "show"), "models show")
-	if !strings.Contains(r.stdout, "reviewer client=codex model=gpt-6.1-sol effort=low (preset:diversity)") {
-		t.Errorf("show does not report diversity:\n%s", r.stdout)
+	for _, want := range []string{`reviewer tier=high client=codex model=gpt-6.1-sol effort=inherit (preset:codex) [codex gpt-6.1-sol does not support effort "medium"`, "heavy client=codex model=unavailable (preset:codex) [codex lists no heavy (astra) model; run `codex debug models`: not listed; roles at heavy fall back to high]", "code-search tier=high client=codex model=gpt-6.1-sol effort=inherit (override)"} {
+		if !strings.Contains(r.stdout, want) {
+			t.Errorf("show lacks %q:\n%s", want, r.stdout)
+		}
 	}
 	var s map[string]any
 	if err := json.Unmarshal([]byte(readFile(t, stateFile(base))), &s); err != nil {
@@ -64,44 +84,7 @@ func TestModelsSetPresetKeepsOtherStateKeys(t *testing.T) {
 	if _, ok := s["installed"]; !ok {
 		t.Error("set dropped the installer's keys from state.json")
 	}
-}
-
-func TestModelsSetRoleOverridesOnlyThatRole(t *testing.T) {
-	base := modelsBase(t)
-	ok(t, runModels(t, base, "set", "reviewer", "--client", "opencode", "--model", "openai/gpt-5.6-sol"), "set role")
-	r := ok(t, runModels(t, base, "show"), "models show")
-	if !strings.Contains(r.stdout, "reviewer client=opencode model=openai/gpt-5.6-sol effort=inherit (override)") {
-		t.Errorf("override not reported:\n%s", r.stdout)
-	}
-	if !strings.Contains(r.stdout, "code-search client=claude model=haiku effort=inherit (preset:balanced)") {
-		t.Errorf("the override leaked into another role:\n%s", r.stdout)
-	}
-}
-
-func TestModelsSetRejectsAnInvalidValue(t *testing.T) {
-	base := modelsBase(t)
-	seed := `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy"}}` + "\n"
-	writeMode(t, stateFile(base), seed, 0o644)
-	if r := runModels(t, base, "set", "reviewer", "--client", "claude", "--model", "claudius"); r.code == 0 {
-		t.Error("set exited 0")
-	}
-	if readFile(t, stateFile(base)) != seed {
-		t.Error("a rejected set rewrote state.json")
-	}
-}
-
-func TestModelsResetRemovesOverrideThenBlock(t *testing.T) {
-	base := modelsBase(t)
-	ok(t, runModels(t, base, "set", "--preset", "economy"), "set preset")
-	ok(t, runModels(t, base, "set", "reviewer", "--client", "claude", "--model", "opus", "--effort", "high"), "set role")
-	ok(t, runModels(t, base, "reset", "reviewer"), "reset role")
-	if r := ok(t, runModels(t, base, "show"), "show"); !strings.Contains(r.stdout, "reviewer client=claude model=sonnet effort=low (preset:economy)") {
-		t.Errorf("reset role did not fall back to the preset:\n%s", r.stdout)
-	}
 	ok(t, runModels(t, base, "reset"), "reset all")
-	if r := ok(t, runModels(t, base, "show"), "show"); !strings.Contains(r.stdout, "(preset:balanced)") {
-		t.Errorf("reset did not fall back to balanced:\n%s", r.stdout)
-	}
 	if strings.Contains(readFile(t, stateFile(base)), `"models"`) {
 		t.Error("reset left a models block")
 	}
@@ -109,73 +92,60 @@ func TestModelsResetRemovesOverrideThenBlock(t *testing.T) {
 
 func TestModelsResolveReportsTheAssignment(t *testing.T) {
 	base := modelsBase(t)
-	resolved := func(role string) map[string]string {
-		t.Helper()
-		r := ok(t, runModels(t, base, "resolve", role, "--json"), "resolve")
-		var out map[string]string
-		if err := json.Unmarshal([]byte(r.stdout), &out); err != nil {
-			t.Fatalf("resolve output is not JSON: %v\n%s", err, r.stdout)
-		}
-		return out
+	r := ok(t, runModels(t, base, "resolve", "worker", "--tier", "heavy", "--json"), "resolve")
+	var got map[string]string
+	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil {
+		t.Fatalf("resolve output is not JSON: %v\n%s", err, r.stdout)
 	}
-	if got := resolved("executor"); got["client"] != "codex" || got["model"] != "gpt-6-luna" || got["source"] != "preset:balanced" {
-		t.Errorf("executor: %v", got)
+	if got["role"] != "worker" || got["tier"] != "heavy" || got["client"] != "claude" || got["model"] != "fable" || got["effort"] != "inherit" || got["source"] != "launch" {
+		t.Errorf("worker at heavy: %v", got)
 	}
-
-	if got := resolved("reviewer"); got["client"] != "claude" || got["route"] != "" {
-		t.Errorf("reviewer: %v", got)
-	}
-	if r := ok(t, runModels(t, base, "resolve", "reviewer"), "resolve, plain"); !strings.Contains(r.stdout, "reviewer client=claude model=sonnet effort=medium (preset:balanced)") || strings.Contains(r.stdout, "route=") {
-		t.Errorf("plain resolve: %s", r.stdout)
+	if r := runModels(t, base, "resolve", "reviewer", "--tier", "fast"); r.code == 0 {
+		t.Error("resolve gave a non-generic role a launch tier")
 	}
 }
 
-func TestInstallRendersTheResolvedAssignments(t *testing.T) {
+func TestInstallRendersTheResolvedTiers(t *testing.T) {
 	base := modelsBase(t)
 	r := ok(t, runInstaller(t, base, "agents"), "install with the default preset")
-	if !strings.Contains(r.stdout, "assignment: codex executor model=gpt-6-luna (preset:balanced)") {
-		t.Errorf("install did not report the preset source:\n%s", r.stdout)
+	if !strings.Contains(r.stdout, "assignment: codex executor model=gpt-6.1-terra (standard, preset:balanced)") {
+		t.Errorf("install did not report the tier and source:\n%s", r.stdout)
 	}
-	agent := func(client, role string) string {
-		switch client {
-		case "codex":
-			return readFile(t, filepath.Join(base, "home", ".codex", "agents", role+".toml"))
-		case "opencode":
-			return readFile(t, filepath.Join(base, "home", ".config", "opencode", "agents", role+".md"))
-		}
-		return readFile(t, filepath.Join(base, "home", ".claude", "agents", role+".md"))
+	if !strings.Contains(agentFile(t, base, "codex", "executor"), "\nmodel = \"gpt-6.1-terra\"\n") {
+		t.Error("the Codex executor does not carry the standard tier's model")
 	}
-	if !strings.Contains(agent("codex", "executor"), "\nmodel = \"gpt-6-luna\"\n") {
-		t.Error("the Codex executor does not carry the balanced model")
+	if !strings.Contains(agentFile(t, base, "claude", "executor"), "model: inherit\n") {
+		t.Error("the Claude executor, served by Codex, does not keep the client default")
 	}
-	if !strings.Contains(agent("claude", "executor"), "model: inherit\n") {
-		t.Error("the Claude executor, assigned to Codex, does not keep the client default")
+	if a := agentFile(t, base, "claude", "reviewer"); !strings.Contains(a, "model: opus\n") || !strings.Contains(a, "effort: medium\n") {
+		t.Errorf("claude reviewer lacks opus at medium effort:\n%s", a)
 	}
-	if strings.Contains(agent("opencode", "executor"), "model:") {
-		t.Error("the OpenCode executor, assigned to Codex, carries a model instead of the client default")
+	if !strings.Contains(agentFile(t, base, "codex", "worker"), "\nmodel = \"gpt-6.1-terra\"\n") {
+		t.Error("the Codex worker does not carry its default tier's model")
 	}
-	ok(t, runModels(t, base, "set", "--preset", "performance"), "set performance")
-	ok(t, runInstaller(t, base, "agents"), "install with performance")
-	if r := ok(t, runModels(t, base, "show"), "show after install"); !strings.Contains(r.stdout, "(preset:performance)") {
-		t.Errorf("install dropped the model choice:\n%s", r.stdout)
+	ok(t, runModels(t, base, "set", "high", "--client", "opencode", "--model", "openai/gpt-5.6-sol"), "serve high from OpenCode")
+	ok(t, runInstaller(t, base, "agents"), "install with OpenCode serving high")
+	if a := agentFile(t, base, "opencode", "review-bugs"); !strings.Contains(a, "model: openai/gpt-5.6-sol\n") || !strings.Contains(a, "reasoningEffort: medium\n") {
+		t.Errorf("the OpenCode lens does not follow the reviewer's tier:\n%s", a)
 	}
-	if a := agent("claude", "reviewer"); !strings.Contains(a, "model: fable\n") || !strings.Contains(a, "effort: medium\n") {
-		t.Errorf("claude reviewer lacks fable at medium effort:\n%s", a)
-	}
-	if strings.Contains(agent("opencode", "reviewer"), "model:") {
-		t.Error("opencode reviewer, assigned to Claude, carries a model instead of the client default")
+	if strings.Contains(agentFile(t, base, "claude", "reviewer"), "model: opus") {
+		t.Error("the Claude reviewer kept a model after its tier moved to OpenCode")
 	}
 }
 
-func TestModelsSetBeforeTheFirstInstall(t *testing.T) {
+func TestInstallFallsBackWhenATierCannotBeServed(t *testing.T) {
 	base := modelsBase(t)
-	ok(t, runModels(t, base, "set", "--preset", "performance"), "set before install")
-	ok(t, runInstaller(t, base, "agents"), "first install over a models-only state")
-	if r := ok(t, runModels(t, base, "show"), "show"); !strings.Contains(r.stdout, "(preset:performance)") {
-		t.Errorf("the first install dropped the choice:\n%s", r.stdout)
+	writeShim(t, base, "codex", `case "$*" in "debug models") echo '{"models":[{"slug":"gpt-6.1-sol","visibility":"list"}]}' ;; esac`)
+	r := ok(t, runInstaller(t, base, "agents"), "install without a terra model")
+	if !strings.Contains(r.stderr+r.stdout, "executor runs at the standard tier on codex, which this machine cannot serve") {
+		t.Errorf("no fallback warning:\n%s%s", r.stdout, r.stderr)
 	}
-	ok(t, runModels(t, base, "reset"), "reset all")
-	ok(t, runInstaller(t, base, "agents"), "install over a reset state")
+	if strings.Contains(agentFile(t, base, "codex", "executor"), "model = ") {
+		t.Error("the Codex executor carries a model this machine cannot run")
+	}
+	if strings.Contains(r.stderr+r.stdout, "review-bugs runs") {
+		t.Errorf("a lens that follows the reviewer warned on its own:\n%s%s", r.stdout, r.stderr)
+	}
 }
 
 func TestModelsRejectsAStaleChoice(t *testing.T) {
@@ -186,59 +156,4 @@ func TestModelsRejectsAStaleChoice(t *testing.T) {
 	}
 	ok(t, runModels(t, base, "reset"), "the recommended reset")
 	ok(t, runInstaller(t, base, "agents"), "install after reset")
-
-	writeMode(t, stateFile(base), `{"version": 1, "installed": {}, "files": [], "models": {"preset": "economy", "roles": {"executor": {"client": "claude", "model": "claudius"}}}}`+"\n", 0o644)
-	ok(t, runModels(t, base, "reset", "executor"), "reset the malformed role")
-	if r := ok(t, runModels(t, base, "show"), "show after role reset"); !strings.Contains(r.stdout, "executor client=codex model=gpt-5.6-luna effort=inherit (preset:economy)") {
-		t.Errorf("role reset lost the preset:\n%s", r.stdout)
-	}
-}
-
-func TestModelsPresetNeedsNoCatalog(t *testing.T) {
-	base := sandbox(t)
-	writeShim(t, base, "codex", `case "$*" in "debug models") exit 1 ;; esac`)
-	ok(t, runModels(t, base, "set", "--preset", "balanced"), "set balanced without a Codex catalog")
-	if r := ok(t, runModels(t, base, "show"), "show"); !strings.Contains(r.stdout, "executor client=codex model=gpt-6-luna effort=inherit (preset:balanced) [unverified:") {
-		t.Errorf("show does not mark the unverifiable Codex model:\n%s", r.stdout)
-	}
-	r := ok(t, runInstaller(t, base, "agents"), "install without a Codex catalog")
-	if got := strings.Count(r.stderr+r.stdout, "listing Codex models failed"); got != 1 {
-		t.Errorf("want one listing-failure warning, got %d:\n%s%s", got, r.stdout, r.stderr)
-	}
-}
-
-func TestInstallFallsBackForAnUnlistedModel(t *testing.T) {
-	base := modelsBase(t)
-	ok(t, runModels(t, base, "set", "reviewer", "--client", "opencode", "--model", "openai/gpt-5.6-sol"), "assign the reviewer to OpenCode")
-	writeShim(t, base, "opencode", `case "$1" in models) echo 'opencode-go/glm-5.3' ;; esac`)
-	writeShim(t, base, "codex", `case "$*" in "debug models") echo '{"models":[{"slug":"gpt-6.1-sol","visibility":"list"}]}' ;; esac`)
-	r := ok(t, runInstaller(t, base, "agents"), "install without the assigned models")
-	for _, want := range []string{"executor is assigned codex model gpt-6-luna, which this machine does not list", "reviewer is assigned opencode model openai/gpt-5.6-sol, which this machine does not list"} {
-		if !strings.Contains(r.stderr+r.stdout, want) {
-			t.Errorf("no fallback warning %q:\n%s%s", want, r.stdout, r.stderr)
-		}
-	}
-	if strings.Contains(readFile(t, filepath.Join(base, "home", ".codex", "agents", "executor.toml")), "model = ") {
-		t.Error("the Codex executor carries a model this machine cannot run")
-	}
-	if strings.Contains(readFile(t, filepath.Join(base, "home", ".config", "opencode", "agents", "reviewer.md")), "model:") {
-		t.Error("the OpenCode reviewer carries a model this machine cannot run")
-	}
-
-	if strings.Contains(r.stderr+r.stdout, "review-bugs is assigned") {
-		t.Errorf("a lens that follows the reviewer warned on its own:\n%s%s", r.stdout, r.stderr)
-	}
-	if strings.Contains(readFile(t, filepath.Join(base, "home", ".config", "opencode", "agents", "review-bugs.md")), "model:") {
-		t.Error("the OpenCode review-bugs lens carries a model this machine cannot run")
-	}
-}
-
-func TestEveryPresetAssignsEveryRole(t *testing.T) {
-	for _, role := range models.Roles {
-		for preset, table := range models.Presets {
-			if _, ok := table[role]; !ok {
-				t.Errorf("preset %q has no assignment for %q, so Resolve yields an empty client", preset, role)
-			}
-		}
-	}
 }

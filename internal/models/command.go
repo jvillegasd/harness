@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"slices"
 	"sort"
@@ -19,12 +20,20 @@ import (
 
 const usage = `usage: harness models [show|set|reset|resolve]
 
-  (no arguments, in a terminal)                 Pick a preset, or each role's client, model, and effort
-  show                                          Print each role's client, model, effort, and source
-  set --preset <name>                           Choose a preset: balanced (default), performance, economy, diversity
-  set <role> --client <c> --model <m> [--effort <e>]   Override one role
-  reset [<role>]                                Drop one override, or the whole choice
-  resolve <role> [--json]                       Print the role's client, model, effort, and source
+  (no arguments, in a terminal)                       Pick a preset, or set tiers and roles one by one
+  show                                                Print each tier's model, then each role's tier, model, and effort
+  set --preset <name>                                 Choose which client serves each tier: balanced (default), claude, codex
+  set <tier> --client <c> [--model <m>]               Serve a tier from a client, on a named model or the tier's newest
+  set <role> [--tier <t>] [--client <c>] [--effort <e>]   Override one role
+  reset [<tier>|<role>]                               Drop one tier or role setting, or the whole choice
+  resolve <role> [--tier <t>] [--client <c>] [--effort <e>] [--json]
+                                                      Print the role's tier, client, model, effort, and source;
+                                                      --tier, --client, and --effort are the worker's launch choices
+
+Tiers, strongest first: heavy (system design, architecture), high (defects, engineering, analysis),
+standard (scoped work with tests), fast (classification, gathering data in volume, boilerplate).
+Claude runs fable, opus, sonnet, haiku; Codex its newest listed -astra, -sol, -terra, -luna model;
+OpenCode only a model named with set <tier>. heavy falls back to high when no heavy model is listed.
 
 The choice is stored in ~/.harness/state.json; ` + "`harness install`" + ` renders it into each client's role agents.
 `
@@ -66,10 +75,11 @@ func Command(args []string, stdout, stderr io.Writer) int {
 }
 
 func pickAndSave(path string, stdout io.Writer) error {
-	if _, err := Load(path); err != nil {
+	choice, err := Load(path)
+	if err != nil {
 		return err
 	}
-	final, err := tea.NewProgram(newPicker(new(Catalog)), tea.WithOutput(stdout), tea.WithInput(os.Stdin)).Run()
+	final, err := tea.NewProgram(newPicker(new(Catalog), choice), tea.WithOutput(stdout), tea.WithInput(os.Stdin)).Run()
 	if err != nil {
 		return err
 	}
@@ -96,21 +106,22 @@ func run(path string, args []string, stdout io.Writer) error {
 	}
 	switch sub {
 	case "show":
-		resolved := choice.Resolve()
-		catalog := new(Catalog)
-		for _, role := range AllRoles {
-			r := resolved[role]
-			note := ""
-			if err := catalog.Runnable(r.Assignment); errors.Is(err, ErrNotListed) {
-				note = " [not listed by " + r.Client + " here; install renders the client default]"
-			} else if err != nil {
-				note = " [unverified: " + err.Error() + "]"
+		cat := new(Catalog)
+		for _, tier := range Tiers {
+			b, source := choice.binding(tier)
+			model, err := choice.Model(tier, b.Client, cat)
+			note := problem(err)
+			if next, ok := fallback[tier]; ok && errors.Is(err, ErrNotListed) {
+				note = " [" + err.Error() + "; roles at " + tier + " fall back to " + next + "]"
 			}
-			fmt.Fprintf(stdout, "%s client=%s model=%s effort=%s (%s)%s\n", role, r.Client, r.Model, effortOrInherit(r.Effort), r.Source, note)
+			fmt.Fprintf(stdout, "%s client=%s model=%s (%s)%s\n", tier, b.Client, orUnavailable(model), source, note)
+		}
+		for _, name := range AllRoles {
+			fmt.Fprintln(stdout, line(choice.Resolve(name, Launch{}, cat)))
 		}
 		return nil
 	case "set":
-		choice, err := apply(choice, rest)
+		choice, err := apply(choice, rest, new(Catalog))
 		if err != nil {
 			return err
 		}
@@ -121,54 +132,135 @@ func run(path string, args []string, stdout io.Writer) error {
 	return fmt.Errorf("unknown subcommand %q\n%s", sub, usage)
 }
 
-func apply(choice Choice, args []string) (Choice, error) {
-	var role string
+func line(r Resolved) string {
+	text := fmt.Sprintf("%s tier=%s client=%s model=%s effort=%s (%s)", r.Role, r.Tier, r.Client, orUnavailable(r.Model), effortOrInherit(r.Effort), r.Source)
+	if r.Note != "" {
+		text += " [" + r.Note + "]"
+	}
+	return text + problem(r.Err)
+}
+
+func orUnavailable(model string) string {
+	if model == "" {
+		return "unavailable"
+	}
+	return model
+}
+
+func problem(err error) string {
+	switch {
+	case err == nil:
+		return ""
+	case errors.Is(err, ErrNotListed):
+		return " [" + err.Error() + "; install renders the client default]"
+	}
+	return " [unverified: " + err.Error() + "]"
+}
+
+func apply(choice Choice, args []string, cat *Catalog) (Choice, error) {
+	var name string
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
-		role, args = args[0], args[1:]
+		name, args = args[0], args[1:]
 	}
 	fs := flag.NewFlagSet("set", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	preset := fs.String("preset", "", "")
-	a := Assignment{}
-	fs.StringVar(&a.Client, "client", "", "")
-	fs.StringVar(&a.Model, "model", "", "")
-	fs.StringVar(&a.Effort, "effort", "", "")
+	tier := fs.String("tier", "", "")
+	client := fs.String("client", "", "")
+	model := fs.String("model", "", "")
+	effort := fs.String("effort", "", "")
 	if err := fs.Parse(args); err != nil || fs.NArg() > 0 {
-		return choice, fmt.Errorf("set takes --preset <name>, or <role> --client --model [--effort]")
+		return choice, fmt.Errorf("set takes --preset <name>, <tier> --client [--model], or <role> [--tier] [--client] [--effort]")
 	}
-	if role == "" {
+	if name == "" {
 		if _, ok := Presets[*preset]; !ok {
 			return choice, fmt.Errorf("unknown preset %q; choose %s", *preset, strings.Join(presetNames(), ", "))
 		}
-
 		choice.Preset = *preset
 		return choice, nil
 	}
 	if *preset != "" {
-		return choice, fmt.Errorf("set a preset or a role, not both")
+		return choice, fmt.Errorf("set a preset, a tier, or a role, not two")
 	}
-	if err := knownRole(role); err != nil {
-		return choice, err
+	if slices.Contains(Tiers, name) {
+		return setTier(choice, name, *client, *model, *tier+*effort, cat)
 	}
-	if err := Validate(a); err != nil {
+	if err := knownRole(name); err != nil {
+		return choice, fmt.Errorf("%v, or a tier: %s", err, strings.Join(Tiers, ", "))
+	}
+	if *model != "" {
+		return choice, fmt.Errorf("a role takes a tier, not a model; name the model with set <tier> --client <c> --model <m>")
+	}
+	ov := Override{Tier: *tier, Client: *client, Effort: *effort}
+	if ov == (Override{}) {
+		return choice, fmt.Errorf("set %s takes --tier, --client, or --effort", name)
+	}
+	if err := checkOverride(name, ov); err != nil {
 		return choice, err
 	}
 	if choice.Roles == nil {
-		choice.Roles = map[string]Assignment{}
+		choice.Roles = map[string]Override{}
 	}
-	choice.Roles[role] = a
+	choice.Roles[name] = ov
+	if r := choice.Resolve(name, Launch{}, cat); r.EffortErr != nil && ov.Effort != "" {
+		return choice, r.EffortErr
+	} else if r.Err != nil && ov.Client == "opencode" {
+		return choice, r.Err
+	}
+	return choice, nil
+}
+
+func setTier(choice Choice, tier, client, model, extra string, cat *Catalog) (Choice, error) {
+	if extra != "" {
+		return choice, fmt.Errorf("set %s takes --client and --model only", tier)
+	}
+	if client == "" {
+		return choice, fmt.Errorf("set %s takes --client <c> [--model <m>]", tier)
+	}
+	b := choice.Tiers[tier]
+	b.Client = client
+	if model != "" {
+		if err := modelShape(client, model); err != nil {
+			return choice, err
+		}
+		if err := Runnable(client, model, "", cat); err != nil {
+			return choice, err
+		}
+		b.Models = maps.Clone(b.Models)
+		if b.Models == nil {
+			b.Models = map[string]string{}
+		}
+		b.Models[client] = model
+	} else if b.Models[client] != "" {
+		b.Models = maps.Clone(b.Models)
+		delete(b.Models, client)
+	}
+	if err := checkBinding(tier, b); err != nil {
+		return choice, err
+	}
+	if client == "opencode" && model == "" && b.Models["opencode"] == "" {
+		return choice, fmt.Errorf("opencode has no tier names; serve %s with --model <provider/model>", tier)
+	}
+	choice.Tiers = maps.Clone(choice.Tiers)
+	if choice.Tiers == nil {
+		choice.Tiers = map[string]Binding{}
+	}
+	choice.Tiers[tier] = b
 	return choice, nil
 }
 
 func reset(path string, args []string) error {
 	if len(args) > 1 {
-		return fmt.Errorf("reset takes at most one role")
+		return fmt.Errorf("reset takes at most one tier or role")
 	}
 	if len(args) == 0 {
 		return Save(path, Choice{})
 	}
-	if err := knownRole(args[0]); err != nil {
-		return err
+	name := args[0]
+	if !slices.Contains(Tiers, name) {
+		if err := knownRole(name); err != nil {
+			return err
+		}
 	}
 	doc, err := statefile.Read(path)
 	if err != nil {
@@ -177,36 +269,57 @@ func reset(path string, args []string) error {
 	var choice Choice
 	if raw, ok := doc["models"]; ok {
 		if err := json.Unmarshal(raw, &choice); err != nil {
-			return fmt.Errorf("%s: models: %w; run `harness models reset` with no role", path, err)
+			return fmt.Errorf("%s: models: %w; run `harness models reset` with no name", path, err)
 		}
 	}
-	if _, ok := choice.Roles[args[0]]; !ok {
+	_, isTier := choice.Tiers[name]
+	_, isRole := choice.Roles[name]
+	if !isTier && !isRole {
 		return nil
 	}
-	delete(choice.Roles, args[0])
+	delete(choice.Tiers, name)
+	delete(choice.Roles, name)
 	return Save(path, choice)
 }
 
 func resolve(choice Choice, args []string, stdout io.Writer) error {
+	const want = "resolve takes <role> [--tier <t>] [--client <c>] [--effort <e>] [--json]"
 	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
-		return fmt.Errorf("resolve takes <role> [--json]")
+		return errors.New(want)
 	}
-	role := args[0]
+	name := args[0]
 	fs := flag.NewFlagSet("resolve", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	asJSON := fs.Bool("json", false, "")
+	var launch Launch
+	fs.StringVar(&launch.Tier, "tier", "", "")
+	fs.StringVar(&launch.Client, "client", "", "")
+	fs.StringVar(&launch.Effort, "effort", "", "")
 	if err := fs.Parse(args[1:]); err != nil || fs.NArg() > 0 {
-		return fmt.Errorf("resolve takes <role> [--json]")
+		return errors.New(want)
 	}
-	if err := knownRole(role); err != nil {
+	if err := knownRole(name); err != nil {
 		return err
 	}
-	r := choice.Resolve()[role]
-	out := map[string]string{"role": role, "client": r.Client, "model": r.Model, "effort": effortOrInherit(r.Effort), "source": r.Source}
-	if *asJSON {
-		return json.NewEncoder(stdout).Encode(out)
+	if launch != (Launch{}) {
+		if !role(name).Generic {
+			return fmt.Errorf("%s runs at its configured tier; only a generic role (worker) takes --tier, --client, or --effort at launch", name)
+		}
+		if err := checkOverride(name, Override{Tier: launch.Tier, Client: launch.Client, Effort: launch.Effort}); err != nil {
+			return err
+		}
 	}
-	_, err := fmt.Fprintf(stdout, "%s client=%s model=%s effort=%s (%s)\n", role, out["client"], out["model"], out["effort"], out["source"])
+	r := choice.Resolve(name, launch, new(Catalog))
+	if r.EffortErr != nil && launch.Effort != "" {
+		return r.EffortErr
+	}
+	if r.Err != nil {
+		return fmt.Errorf("%s has no runnable model here: %v", name, r.Err)
+	}
+	if *asJSON {
+		return json.NewEncoder(stdout).Encode(map[string]string{"role": name, "tier": r.Tier, "client": r.Client, "model": r.Model, "effort": effortOrInherit(r.Effort), "source": r.Source, "note": r.Note})
+	}
+	_, err := fmt.Fprintln(stdout, line(r))
 	return err
 }
 
