@@ -102,7 +102,7 @@ func (p picker) pending() Choice {
 	c.Roles = maps.Clone(p.choice.Roles)
 	c.Tiers = maps.Clone(p.choice.Tiers)
 	for _, set := range p.sets {
-		if next, err := apply(c, set, p.catalog); err == nil {
+		if next, err := change(c, set, p.catalog); err == nil {
 			c = next
 		}
 	}
@@ -146,7 +146,7 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 	switch p.step {
 	case stepMenu:
 		if opt != "custom" {
-			p.sets, p.done = [][]string{{"--preset", opt}}, true
+			p.sets, p.done = [][]string{{"tier", "preset", opt}}, true
 			return p, tea.Quit
 		}
 		p.step = stepName
@@ -163,7 +163,7 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 	case stepTierClient:
 		p.client, p.step = opt, stepTierModel
 	case stepTierModel:
-		set := []string{p.name, "--client", p.client}
+		set := []string{"tier", "set", p.name, "--client", p.client}
 		if opt != newest {
 			set = append(set, "--model", opt)
 		}
@@ -179,7 +179,7 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 		}
 		p.step = stepRoleEffort
 	case stepRoleEffort:
-		set := []string{p.name}
+		set := []string{"role", "set", p.name}
 		if p.tier != "" {
 			set = append(set, "--tier", p.tier)
 		}
@@ -189,7 +189,7 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 		if opt != "" {
 			set = append(set, "--effort", opt)
 		}
-		if len(set) > 1 {
+		if len(set) > 3 {
 			p.sets = append(p.sets, set)
 		}
 		p.step = stepName
@@ -254,7 +254,7 @@ func (p picker) save(path string) (bool, error) {
 		return false, err
 	}
 	for _, args := range p.sets {
-		if choice, err = apply(choice, args, p.catalog); err != nil {
+		if choice, err = change(choice, args, p.catalog); err != nil {
 			return false, err
 		}
 	}

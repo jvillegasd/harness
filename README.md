@@ -176,15 +176,21 @@ Each helper role (such as the executor or the reviewer) runs at a tier, the kind
 | `fast` | Classification, gathering data in volume, boilerplate | Haiku | newest `-luna` |
 
 ```sh
-harness models                                   # pick interactively
-harness models show                              # see each tier and role
-harness models set --preset claude               # balanced (default), claude, or codex serves the tiers
-harness models set high --client codex           # serve a tier from another client
-harness models set heavy --client claude --model fable  # run a tier on another model
-harness models set reviewer --tier heavy --effort high   # move a role to another tier
+harness models                                        # pick interactively
+harness models show                                   # see each tier and role
+
+# Tiers: which client and model serve each kind of work
+harness models tier preset claude                     # balanced (default), claude, or codex serves the tiers
+harness models tier set high --client codex           # serve a tier from another client
+harness models tier set heavy --client claude --model fable  # run a tier on another model
+harness models tier reset                             # back to the balanced preset
+
+# Roles: which tier, client, and effort each role runs at
+harness models role set reviewer --tier heavy --effort high  # move a role to another tier
+harness models role reset reviewer                    # the role back to its default
 ```
 
-On Claude, the recommended models for `heavy` are Fable and Opus. It defaults to Opus because Fable is not on every plan; when yours includes Fable, map heavy to it with the `set heavy` line above. OpenCode has no tier names, so it serves a tier only with a model you name: `harness models set fast --client opencode --model <provider/model>`. `set`, `reset`, and the picker apply a change to the role agents of every client that already has them, so the clients pick it up without a reinstall; `harness install agents` renders them for a client that has none yet. A role assigned to the client you are in runs as a normal subagent. A role assigned to another client runs through T3 Code. The [delegation guide](docs/subagents.md) explains the roles.
+On Claude, the recommended models for `heavy` are Fable and Opus. It defaults to Opus because Fable is not on every plan; when yours includes Fable, map heavy to it with the `tier set heavy` line above. OpenCode has no tier names, so it serves a tier only with a model you name: `harness models tier set fast --client opencode --model <provider/model>`. Each command that saves a choice, and the picker, applies it to the role agents of every client that already has them, so the clients pick it up without a reinstall; `harness install agents` renders them for a client that has none yet. A role assigned to the client you are in runs as a normal subagent. A role assigned to another client runs through T3 Code. The [delegation guide](docs/subagents.md) explains the roles.
 
 ## Shell aliases
 

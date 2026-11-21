@@ -43,7 +43,7 @@ func choose(t *testing.T, p picker, opt string) picker {
 func show(t *testing.T, path string) string {
 	t.Helper()
 	var out strings.Builder
-	if err := run(path, []string{"show"}, &out); err != nil {
+	if _, err := run(path, []string{"show"}, &out); err != nil {
 		t.Fatal(err)
 	}
 	return out.String()
@@ -67,7 +67,7 @@ func fresh(cat *Catalog) picker { return newPicker(cat, Choice{}) }
 func TestPickerPresetStoresWhatSetStores(t *testing.T) {
 	for name := range Presets {
 		viaSet, viaPicker := statePath(t), statePath(t)
-		if err := run(viaSet, []string{"set", "--preset", name}, &strings.Builder{}); err != nil {
+		if _, err := run(viaSet, []string{"tier", "preset", name}, &strings.Builder{}); err != nil {
 			t.Fatal(err)
 		}
 		p := choose(t, fresh(catalogOf(nil, nil)), name)
@@ -132,7 +132,7 @@ func TestPickerServesATierFromAClient(t *testing.T) {
 		t.Errorf("codex models offered %v", got)
 	}
 	p := choose(t, choose(t, models, "gpt-6.1-sol"), "save")
-	if !slices.Equal(p.sets[0], []string{"high", "--client", "codex", "--model", "gpt-6.1-sol"}) {
+	if !slices.Equal(p.sets[0], []string{"tier", "set", "high", "--client", "codex", "--model", "gpt-6.1-sol"}) {
 		t.Errorf("tier set %v", p.sets)
 	}
 	opencode := choose(t, choose(t, choose(t, fresh(catalogOf([]string{"openai/gpt-5.6-sol"}, nil)), "custom"), "fast"), "opencode")
@@ -228,7 +228,7 @@ func TestPickerOffersEffortsAfterTheTiersItQueued(t *testing.T) {
 func TestPickerKeepLeavesAnExistingOverride(t *testing.T) {
 	listingPath(t)
 	path := filepath.Join(t.TempDir(), "state.json")
-	if err := run(path, []string{"set", "executor", "--tier", "high"}, &strings.Builder{}); err != nil {
+	if _, err := run(path, []string{"role", "set", "executor", "--tier", "high"}, &strings.Builder{}); err != nil {
 		t.Fatal(err)
 	}
 	choice, err := Load(path)
@@ -248,7 +248,7 @@ func TestPickerKeepLeavesAnExistingOverride(t *testing.T) {
 func TestPickerMapsAClaudeTierToAnAlias(t *testing.T) {
 	p := choose(t, choose(t, choose(t, fresh(catalogOf(nil, nil)), "custom"), "heavy"), "claude")
 	p = choose(t, choose(t, p, "fable"), "save")
-	if !slices.Equal(p.sets[0], []string{"heavy", "--client", "claude", "--model", "fable"}) {
+	if !slices.Equal(p.sets[0], []string{"tier", "set", "heavy", "--client", "claude", "--model", "fable"}) {
 		t.Errorf("tier set %v", p.sets)
 	}
 }

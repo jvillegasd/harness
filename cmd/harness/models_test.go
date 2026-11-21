@@ -53,7 +53,7 @@ func TestModelsWithoutTTYPrintsUsage(t *testing.T) {
 	if r.code == 0 {
 		t.Fatalf("bare models without a TTY exited 0")
 	}
-	for _, want := range []string{"show ", "set --preset", "set <tier>", "set <role>", "resolve <role>"} {
+	for _, want := range []string{"show ", "tier preset <name>", "tier set <tier>", "tier reset", "role set <role>", "role reset", "role resolve <role>"} {
 		if !strings.Contains(r.stderr, want) {
 			t.Errorf("usage lacks %q:\n%s", want, r.stderr)
 		}
@@ -64,14 +64,14 @@ func TestModelsSetKeepsOtherStateKeysAndRejectsWithoutWriting(t *testing.T) {
 	base := modelsBase(t)
 	seed := `{"version": 1, "installed": {"claude": ["policy"]}, "files": []}` + "\n"
 	writeMode(t, stateFile(base), seed, 0o644)
-	if r := runModels(t, base, "set", "reviewer", "--tier", "ultra"); r.code == 0 {
+	if r := runModels(t, base, "role", "set", "reviewer", "--tier", "ultra"); r.code == 0 {
 		t.Error("set accepted an unknown tier")
 	}
 	if readFile(t, stateFile(base)) != seed {
 		t.Error("a rejected set rewrote state.json")
 	}
-	ok(t, runModels(t, base, "set", "--preset", "codex"), "set preset")
-	ok(t, runModels(t, base, "set", "code-search", "--tier", "high"), "set role")
+	ok(t, runModels(t, base, "tier", "preset", "codex"), "set preset")
+	ok(t, runModels(t, base, "role", "set", "code-search", "--tier", "high"), "set role")
 	r := ok(t, runModels(t, base, "show"), "models show")
 	for _, want := range []string{`reviewer tier=high client=codex model=gpt-6.1-sol effort=inherit (preset:codex) [codex gpt-6.1-sol does not support effort "medium"`, "heavy client=codex model=unavailable (preset:codex) [codex lists no heavy (astra) model; run `codex debug models`: not listed; roles at heavy fall back to high]", "code-search tier=high client=codex model=gpt-6.1-sol effort=inherit (override)"} {
 		if !strings.Contains(r.stdout, want) {
@@ -93,7 +93,7 @@ func TestModelsSetKeepsOtherStateKeysAndRejectsWithoutWriting(t *testing.T) {
 
 func TestModelsResolveReportsTheAssignment(t *testing.T) {
 	base := modelsBase(t)
-	r := ok(t, runModels(t, base, "resolve", "worker", "--tier", "heavy", "--json"), "resolve")
+	r := ok(t, runModels(t, base, "role", "resolve", "worker", "--tier", "heavy", "--json"), "resolve")
 	var got map[string]string
 	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil {
 		t.Fatalf("resolve output is not JSON: %v\n%s", err, r.stdout)
@@ -101,7 +101,7 @@ func TestModelsResolveReportsTheAssignment(t *testing.T) {
 	if got["role"] != "worker" || got["tier"] != "heavy" || got["client"] != "claude" || got["model"] != "opus" || got["effort"] != "inherit" || got["source"] != "launch" {
 		t.Errorf("worker at heavy: %v", got)
 	}
-	if r := runModels(t, base, "resolve", "reviewer", "--tier", "fast"); r.code == 0 {
+	if r := runModels(t, base, "role", "resolve", "reviewer", "--tier", "fast"); r.code == 0 {
 		t.Error("resolve gave a non-generic role a launch tier")
 	}
 }
@@ -124,7 +124,7 @@ func TestInstallRendersTheResolvedTiers(t *testing.T) {
 	if !strings.Contains(agentFile(t, base, "codex", "worker"), "\nmodel = \"gpt-6.1-terra\"\n") {
 		t.Error("the Codex worker does not carry its default tier's model")
 	}
-	ok(t, runModels(t, base, "set", "high", "--client", "opencode", "--model", "openai/gpt-5.6-sol"), "serve high from OpenCode")
+	ok(t, runModels(t, base, "tier", "set", "high", "--client", "opencode", "--model", "openai/gpt-5.6-sol"), "serve high from OpenCode")
 	ok(t, runInstaller(t, base, "agents"), "install with OpenCode serving high")
 	if a := agentFile(t, base, "opencode", "review-bugs"); !strings.Contains(a, "model: openai/gpt-5.6-sol\n") || !strings.Contains(a, "reasoningEffort: medium\n") {
 		t.Errorf("the OpenCode lens does not follow the reviewer's tier:\n%s", a)
@@ -152,17 +152,17 @@ func TestInstallFallsBackWhenATierCannotBeServed(t *testing.T) {
 func TestModelsRejectsAStaleChoice(t *testing.T) {
 	base := modelsBase(t)
 	writeMode(t, stateFile(base), `{"version": 1, "installed": {}, "files": [], "models": {"preset": "lavish"}}`+"\n", 0o644)
-	if r := runInstaller(t, base, "agents"); r.code == 0 || !strings.Contains(r.stderr, "harness models reset") {
+	if r := runInstaller(t, base, "agents"); r.code == 0 || !strings.Contains(r.stderr, "harness models tier reset") {
 		t.Errorf("install over a stale choice: exit %d, stderr %q", r.code, r.stderr)
 	}
-	ok(t, runModels(t, base, "reset"), "the recommended reset")
+	ok(t, runModels(t, base, "tier", "reset"), "the recommended reset")
 	ok(t, runInstaller(t, base, "agents"), "install after reset")
 }
 
 func TestModelsSetAppliesToTheInstalledAgentsOnly(t *testing.T) {
 	base := modelsBase(t)
 	ok(t, runInstaller(t, base, "agents", "--client", "claude"), "install Claude's agents alone")
-	r := ok(t, runModels(t, base, "set", "reviewer", "--tier", "fast"), "set without a reinstall")
+	r := ok(t, runModels(t, base, "role", "set", "reviewer", "--tier", "fast"), "set without a reinstall")
 	if !strings.Contains(r.stdout, "Applied to the role agents of claude.") || strings.Contains(r.stdout, "assignment:") {
 		t.Errorf("set did not report a quiet apply:\n%s", r.stdout)
 	}
@@ -183,7 +183,7 @@ func TestModelsSetAppliesToTheInstalledAgentsOnly(t *testing.T) {
 
 func TestModelsSetBeforeAnyInstallRendersNothing(t *testing.T) {
 	base := modelsBase(t)
-	r := ok(t, runModels(t, base, "set", "reviewer", "--tier", "fast"), "set before install")
+	r := ok(t, runModels(t, base, "role", "set", "reviewer", "--tier", "fast"), "set before install")
 	if !strings.Contains(r.stdout, "`harness install agents` renders them") {
 		t.Errorf("set does not say the agents wait for an install:\n%s", r.stdout)
 	}
@@ -198,7 +198,7 @@ func TestModelsSetKeepsAnAgentEditedByHand(t *testing.T) {
 	path := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
 	edited := readFile(t, path) + "\nMy own note.\n"
 	writeMode(t, path, edited, 0o644)
-	r := ok(t, runModels(t, base, "set", "code-search", "--tier", "high"), "set with an edited agent")
+	r := ok(t, runModels(t, base, "role", "set", "code-search", "--tier", "high"), "set with an edited agent")
 	if readFile(t, path) != edited {
 		t.Error("set replaced an agent edited by hand")
 	}
@@ -208,7 +208,7 @@ func TestModelsSetKeepsAnAgentEditedByHand(t *testing.T) {
 	if !strings.Contains(agentFile(t, base, "claude", "code-search"), "model: opus\n") {
 		t.Error("an edited agent stopped the others from applying")
 	}
-	ok(t, runModels(t, base, "set", "code-search", "--tier", "fast"), "a second set over the same edit")
+	ok(t, runModels(t, base, "role", "set", "code-search", "--tier", "fast"), "a second set over the same edit")
 	if readFile(t, path) != edited {
 		t.Error("a second set replaced the edited agent")
 	}

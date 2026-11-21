@@ -52,7 +52,7 @@ func seeded(t *testing.T, block string) string {
 func runOK(t *testing.T, path string, args ...string) string {
 	t.Helper()
 	var out strings.Builder
-	if err := run(path, args, &out); err != nil {
+	if _, err := run(path, args, &out); err != nil {
 		t.Fatalf("%v: %v", args, err)
 	}
 	return out.String()
@@ -61,7 +61,7 @@ func runOK(t *testing.T, path string, args ...string) string {
 func resolved(t *testing.T, path string, args ...string) map[string]string {
 	t.Helper()
 	var got map[string]string
-	if err := json.Unmarshal([]byte(runOK(t, path, append(append([]string{"resolve"}, args...), "--json")...)), &got); err != nil {
+	if err := json.Unmarshal([]byte(runOK(t, path, append(append([]string{"role", "resolve"}, args...), "--json")...)), &got); err != nil {
 		t.Fatal(err)
 	}
 	return got
@@ -82,7 +82,7 @@ func TestTiersResolveToEachClientsModel(t *testing.T) {
 		t.Errorf("codex standard = %v", got)
 	}
 	var out strings.Builder
-	if err := run(path, []string{"resolve", "worker", "--client", "opencode"}, &out); err == nil || !strings.Contains(err.Error(), "--client opencode --model") {
+	if _, err := run(path, []string{"role", "resolve", "worker", "--client", "opencode"}, &out); err == nil || !strings.Contains(err.Error(), "--client opencode --model") {
 		t.Errorf("an OpenCode tier with no named model resolved: %v", err)
 	}
 }
@@ -116,8 +116,8 @@ func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
 			t.Errorf("show lacks %q:\n%s", want, out)
 		}
 	}
-	runOK(t, path, "set", "reviewer", "--tier", "heavy")
-	runOK(t, path, "set", "review-spec", "--tier", "fast")
+	runOK(t, path, "role", "set", "reviewer", "--tier", "heavy")
+	runOK(t, path, "role", "set", "review-spec", "--tier", "fast")
 	out = runOK(t, path, "show")
 	for _, want := range []string{
 		"review-risk tier=heavy client=claude model=opus effort=medium (reviewer)",
@@ -127,7 +127,7 @@ func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
 			t.Errorf("show lacks %q:\n%s", want, out)
 		}
 	}
-	runOK(t, path, "reset", "review-spec")
+	runOK(t, path, "role", "reset", "review-spec")
 	if out := runOK(t, path, "show"); !strings.Contains(out, "review-spec tier=heavy client=claude model=opus effort=medium (reviewer)") {
 		t.Errorf("a reset lens does not return to the reviewer:\n%s", out)
 	}
@@ -136,11 +136,11 @@ func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
 func TestARoleOnAnotherClientTakesThatClientsModelForItsTier(t *testing.T) {
 	listingPath(t)
 	path := seeded(t, "")
-	runOK(t, path, "set", "reviewer", "--client", "codex", "--effort", "high")
+	runOK(t, path, "role", "set", "reviewer", "--client", "codex", "--effort", "high")
 	if got := resolved(t, path, "reviewer"); got["client"] != "codex" || got["model"] != "gpt-6.1-sol" || got["effort"] != "high" || got["source"] != "override" {
 		t.Errorf("reviewer on codex = %v", got)
 	}
-	runOK(t, path, "set", "high", "--client", "claude", "--model", "claude-opus-5-5")
+	runOK(t, path, "tier", "set", "high", "--client", "claude", "--model", "claude-opus-5-5")
 	if got := resolved(t, path, "review-bugs"); got["model"] != "gpt-6.1-sol" {
 		t.Errorf("a model named for claude leaked into the codex reviewer: %v", got)
 	}
@@ -153,28 +153,33 @@ func TestSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
 	listingPath(t)
 	const block = `{"preset": "claude"}`
 	for name, args := range map[string][]string{
-		"unknown preset":              {"--preset", "lavish"},
-		"unknown tier":                {"reviewer", "--tier", "ultra"},
-		"unknown client":              {"reviewer", "--client", "cursor"},
-		"unknown role or tier":        {"planner", "--tier", "high"},
-		"a role given a model":        {"reviewer", "--model", "opus"},
-		"a role given nothing":        {"reviewer"},
-		"effort the model lacks":      {"code-search", "--effort", "high"},
-		"effort the codex model lack": {"executor", "--client", "codex", "--effort", "ultra"},
-		"tier without a client":       {"high", "--model", "opus"},
-		"tier given an effort":        {"high", "--client", "claude", "--effort", "high"},
-		"unlisted codex model":        {"high", "--client", "codex", "--model", "gpt-nope"},
-		"hidden codex model":          {"high", "--client", "codex", "--model", "gpt-9-sol"},
-		"unlisted opencode model":     {"high", "--client", "opencode", "--model", "openai/nope"},
-		"opencode with no model":      {"high", "--client", "opencode"},
-		"unknown claude model":        {"high", "--client", "claude", "--model", "claudius"},
-		"opencode role, no mapping":   {"reviewer", "--client", "opencode"},
-		"a preset and a role":         {"reviewer", "--preset", "codex"},
+		"unknown preset":              {"tier", "preset", "lavish"},
+		"two presets":                 {"tier", "preset", "claude", "codex"},
+		"unknown tier":                {"role", "set", "reviewer", "--tier", "ultra"},
+		"unknown client":              {"role", "set", "reviewer", "--client", "cursor"},
+		"unknown role":                {"role", "set", "planner", "--tier", "high"},
+		"a tier set as a role":        {"role", "set", "high", "--tier", "fast"},
+		"a role set as a tier":        {"tier", "set", "reviewer", "--client", "claude"},
+		"a role given a model":        {"role", "set", "reviewer", "--model", "opus"},
+		"a role given nothing":        {"role", "set", "reviewer"},
+		"effort the model lacks":      {"role", "set", "code-search", "--effort", "high"},
+		"effort the codex model lack": {"role", "set", "executor", "--client", "codex", "--effort", "ultra"},
+		"tier without a client":       {"tier", "set", "high", "--model", "opus"},
+		"tier given an effort":        {"tier", "set", "high", "--client", "claude", "--effort", "high"},
+		"unlisted codex model":        {"tier", "set", "high", "--client", "codex", "--model", "gpt-nope"},
+		"hidden codex model":          {"tier", "set", "high", "--client", "codex", "--model", "gpt-9-sol"},
+		"unlisted opencode model":     {"tier", "set", "high", "--client", "opencode", "--model", "openai/nope"},
+		"opencode with no model":      {"tier", "set", "high", "--client", "opencode"},
+		"unknown claude model":        {"tier", "set", "high", "--client", "claude", "--model", "claudius"},
+		"opencode role, no mapping":   {"role", "set", "reviewer", "--client", "opencode"},
+		"a tier command without one":  {"tier"},
+		"an unknown role command":     {"role", "pin", "reviewer"},
+		"reset given a name":          {"reset", "high"},
 	} {
 		path := seeded(t, block)
 		before, _ := os.ReadFile(path)
-		if err := run(path, append([]string{"set"}, args...), &strings.Builder{}); err == nil {
-			t.Errorf("%s: set was accepted", name)
+		if _, err := run(path, args, &strings.Builder{}); err == nil {
+			t.Errorf("%s: %v was accepted", name, args)
 		}
 		if after, _ := os.ReadFile(path); string(after) != string(before) {
 			t.Errorf("%s: a rejected set rewrote the state file:\n%s", name, after)
@@ -185,22 +190,22 @@ func TestSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
 func TestSetTierNamesOrClearsAModel(t *testing.T) {
 	listingPath(t)
 	path := seeded(t, "")
-	runOK(t, path, "set", "high", "--client", "codex", "--model", "gpt-6-sol")
+	runOK(t, path, "tier", "set", "high", "--client", "codex", "--model", "gpt-6-sol")
 	if got := resolved(t, path, "reviewer"); got["model"] != "gpt-6-sol" || got["client"] != "codex" {
 		t.Errorf("named model not used: %v", got)
 	}
 	if out := runOK(t, path, "show"); !strings.Contains(out, "high client=codex model=gpt-6-sol (set)") {
 		t.Errorf("show does not report the set tier:\n%s", out)
 	}
-	runOK(t, path, "set", "high", "--client", "codex")
+	runOK(t, path, "tier", "set", "high", "--client", "codex")
 	if got := resolved(t, path, "reviewer"); got["model"] != "gpt-6.1-sol" {
 		t.Errorf("omitting --model does not return to the newest: %v", got)
 	}
-	runOK(t, path, "set", "high", "--client", "opencode", "--model", "openai/gpt-5.6-sol")
+	runOK(t, path, "tier", "set", "high", "--client", "opencode", "--model", "openai/gpt-5.6-sol")
 	if got := resolved(t, path, "reviewer"); got["client"] != "opencode" || got["model"] != "openai/gpt-5.6-sol" || got["effort"] != "medium" {
 		t.Errorf("opencode tier: %v", got)
 	}
-	runOK(t, path, "reset", "high")
+	runOK(t, path, "tier", "reset", "high")
 	if got := resolved(t, path, "reviewer"); got["client"] != "claude" || got["source"] != "preset:balanced" {
 		t.Errorf("reset tier did not return to the preset: %v", got)
 	}
@@ -218,7 +223,7 @@ func TestResolveTakesLaunchChoicesOnlyForTheWorker(t *testing.T) {
 		"unsupported effort":      {"worker", "--tier", "fast", "--client", "claude", "--effort", "high"},
 		"stray argument":          {"worker", "extra"},
 	} {
-		if err := run(path, append([]string{"resolve"}, args...), &strings.Builder{}); err == nil {
+		if _, err := run(path, append([]string{"role", "resolve"}, args...), &strings.Builder{}); err == nil {
 			t.Errorf("%s: resolve was accepted", name)
 		}
 	}
@@ -227,7 +232,7 @@ func TestResolveTakesLaunchChoicesOnlyForTheWorker(t *testing.T) {
 func TestResolveFailsWhenTheTierCannotBeServed(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	path := seeded(t, "")
-	err := run(path, []string{"resolve", "executor"}, &strings.Builder{})
+	_, err := run(path, []string{"role", "resolve", "executor"}, &strings.Builder{})
 	if err == nil || !strings.Contains(err.Error(), "listing Codex models failed") {
 		t.Errorf("resolve without a Codex catalog: %v", err)
 	}
@@ -261,18 +266,23 @@ func TestLoadMigratesAndRejects(t *testing.T) {
 	if _, ok := c.Roles["reviewer-b"]; ok {
 		t.Error("a retired role was kept")
 	}
-	for name, block := range map[string]string{
-		"unknown preset":   `{"preset": "lavish"}`,
-		"unknown tier key": `{"tiers": {"ultra": {"client": "claude"}}}`,
-		"bad tier client":  `{"tiers": {"high": {"client": "cursor"}}}`,
-		"bad role tier":    `{"roles": {"executor": {"tier": "ultra"}}}`,
-		"unknown role key": `{"roles": {"planner": {"tier": "high"}}}`,
+	for name, c := range map[string]struct {
+		block string
+		reset []string
+	}{
+		"unknown preset":   {`{"preset": "lavish"}`, []string{"tier", "reset"}},
+		"unknown tier key": {`{"tiers": {"ultra": {"client": "claude"}}}`, []string{"tier", "reset"}},
+		"bad tier client":  {`{"tiers": {"high": {"client": "cursor"}}}`, []string{"tier", "reset", "high"}},
+		"bad role tier":    {`{"roles": {"executor": {"tier": "ultra"}}}`, []string{"role", "reset", "executor"}},
+		"unknown role key": {`{"roles": {"planner": {"tier": "high"}}}`, []string{"role", "reset"}},
+		"malformed block":  {`{"roles": []}`, []string{"reset"}},
 	} {
-		path := seeded(t, block)
-		if err := run(path, []string{"show"}, &strings.Builder{}); err == nil || !strings.Contains(err.Error(), "harness models reset") {
-			t.Errorf("%s: show returned %v, want the reset named", name, err)
+		path, reset := seeded(t, c.block), c.reset
+		_, err := run(path, []string{"show"}, &strings.Builder{})
+		if err == nil || !strings.Contains(err.Error(), "run `harness models "+reset[0]) {
+			t.Errorf("%s: show returned %v, want harness models %s named", name, err, strings.Join(reset, " "))
 		}
-		runOK(t, path, "reset")
+		runOK(t, path, reset...)
 		runOK(t, path, "show")
 	}
 }
@@ -280,9 +290,9 @@ func TestLoadMigratesAndRejects(t *testing.T) {
 func TestResetDropsOneSettingThenTheBlock(t *testing.T) {
 	listingPath(t)
 	path := seeded(t, "")
-	runOK(t, path, "set", "--preset", "claude")
-	runOK(t, path, "set", "executor", "--tier", "high")
-	runOK(t, path, "reset", "executor")
+	runOK(t, path, "tier", "preset", "claude")
+	runOK(t, path, "role", "set", "executor", "--tier", "high")
+	runOK(t, path, "role", "reset", "executor")
 	if got := resolved(t, path, "executor"); got["tier"] != "standard" || got["model"] != "sonnet" || got["source"] != "preset:claude" {
 		t.Errorf("reset role did not fall back: %v", got)
 	}
@@ -291,7 +301,7 @@ func TestResetDropsOneSettingThenTheBlock(t *testing.T) {
 	if strings.Contains(string(raw), `"models"`) || !strings.Contains(string(raw), `"installed"`) {
 		t.Errorf("reset left the models block or dropped another key:\n%s", raw)
 	}
-	if err := run(path, []string{"reset", "planner"}, &strings.Builder{}); err == nil {
+	if _, err := run(path, []string{"role", "reset", "planner"}, &strings.Builder{}); err == nil {
 		t.Error("reset accepted an unknown name")
 	}
 }
@@ -317,8 +327,8 @@ func TestEveryRoleHasATierAndEveryPresetServesEveryTier(t *testing.T) {
 func TestSetMergesIntoARolesOverride(t *testing.T) {
 	listingPath(t)
 	path := seeded(t, "")
-	runOK(t, path, "set", "executor", "--tier", "high")
-	runOK(t, path, "set", "executor", "--effort", "high")
+	runOK(t, path, "role", "set", "executor", "--tier", "high")
+	runOK(t, path, "role", "set", "executor", "--effort", "high")
 	if got := resolved(t, path, "executor"); got["tier"] != "high" || got["effort"] != "high" {
 		t.Errorf("a second set dropped the first one's tier: %v", got)
 	}
@@ -327,8 +337,8 @@ func TestSetMergesIntoARolesOverride(t *testing.T) {
 func TestAnOverriddenLensInheritsWhatItDidNotSet(t *testing.T) {
 	listingPath(t)
 	path := seeded(t, "")
-	runOK(t, path, "set", "reviewer", "--client", "codex", "--effort", "high")
-	runOK(t, path, "set", "review-bugs", "--tier", "fast")
+	runOK(t, path, "role", "set", "reviewer", "--client", "codex", "--effort", "high")
+	runOK(t, path, "role", "set", "review-bugs", "--tier", "fast")
 	if got := resolved(t, path, "review-bugs"); got["client"] != "codex" || got["model"] != "gpt-6-luna" || got["tier"] != "fast" {
 		t.Errorf("the lens dropped the reviewer's client: %v", got)
 	}
@@ -347,5 +357,28 @@ func TestLoadKeepsALegacyFableOverrideOnFable(t *testing.T) {
 	path := seeded(t, `{"roles": {"reviewer": {"client": "claude", "model": "fable"}}}`)
 	if got := resolved(t, path, "reviewer"); got["tier"] != "heavy" || got["model"] != "fable" {
 		t.Errorf("a legacy fable override moved to another model: %v", got)
+	}
+}
+
+func TestTierAndRoleCommandsTouchOnlyTheirHalf(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, "")
+	runOK(t, path, "tier", "preset", "claude")
+	runOK(t, path, "tier", "set", "high", "--client", "codex")
+	runOK(t, path, "role", "set", "executor", "--tier", "high")
+	if out := runOK(t, path, "tier", "show"); !strings.Contains(out, "high client=codex") || strings.Contains(out, "executor") {
+		t.Errorf("tier show prints more or less than the tiers:\n%s", out)
+	}
+	if out := runOK(t, path, "role", "show"); !strings.Contains(out, "executor tier=high client=codex") || strings.Contains(out, "\nhigh client=") {
+		t.Errorf("role show prints more or less than the roles:\n%s", out)
+	}
+	runOK(t, path, "tier", "reset")
+	if got := resolved(t, path, "executor"); got["tier"] != "high" || got["client"] != "claude" || got["source"] != "override" {
+		t.Errorf("tier reset dropped the role override or kept a tier setting: %v", got)
+	}
+	runOK(t, path, "tier", "preset", "codex")
+	runOK(t, path, "role", "reset")
+	if got := resolved(t, path, "executor"); got["tier"] != "standard" || got["source"] != "preset:codex" {
+		t.Errorf("role reset kept an override or dropped the preset: %v", got)
 	}
 }
