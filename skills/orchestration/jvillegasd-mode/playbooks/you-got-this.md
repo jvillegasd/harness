@@ -1,4 +1,4 @@
-# Large
+# You got this
 
 **You own the workflow.** No narrower playbook fits, so design one: phases that scale rigor to the task, run as experiments, and leave a trail the human can audit.
 

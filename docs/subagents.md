@@ -4,13 +4,13 @@ Sometimes the main agent hands a piece of work to a helper agent, called a role.
 
 ## When the agent delegates
 
-By default the agent does the work itself. It hands work to a role only for one of three reasons:
+The main conversation's context is its working memory, and reasoning gets worse as it fills. So the main agent leads: it plans, writes briefs, reviews, and verifies, and it hands bulk work to roles, keeping only their short results. It delegates for one of three reasons:
 
+- **Protecting the context:** a search across many files, a long log or trace, a broad mechanical sweep, or an implementation big enough to bury the plan. The main agent reads the diff or the finding instead of producing it.
 - **Independent inspection:** a fresh agent that has not seen the author's reasoning, such as a reviewer.
 - **Useful parallel work:** separate pieces that can run at the same time.
-- **Context isolation:** a large search or task that would crowd the main conversation.
 
-Touching many files is not, on its own, a reason to delegate.
+Small edits stay with the main agent, because writing the brief would cost more context than the work. Briefs point at files instead of pasting them, and roles report a conclusion with file and line pointers, not raw output.
 
 ## The roles
 

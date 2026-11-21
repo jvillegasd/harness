@@ -92,7 +92,7 @@ The agent picks the playbook from the task:
 | A merge, or "it merged, clean up" | Nothing. The agent tells you to run `/land` |
 | "Clean up old worktrees" | Nothing. The agent tells you to run `/cleanup` |
 | Pick up earlier work | `checkpoint`'s resume steps, then the recorded playbook |
-| Large, multi-part, or none of the above | Large playbook |
+| Large, multi-part, or none of the above | You-got-this playbook |
 
 When a row names a skill, jvillegasd-mode runs that skill's own steps. It adds its checklist and its reply, never a second copy of the skill.
 
@@ -228,13 +228,14 @@ For longer work, the agent keeps the requirements, decisions, evidence, and next
 
 `build` implements an epic's slices without you watching:
 
-- It works on one integration branch.
-- Workers each take a bounded piece, in their own worktrees.
-- The main agent checks and commits each worker's result, then checks and reviews the combined change.
+- It plans one small pull request per slice before writing code. A slice that builds on another is stacked on it, and a slice that builds on nothing branches from the default branch on its own.
+- The blast radius decides what may share a pull request. A slice that touches a critical path or is hard to reverse always gets its own. Only small, low-risk slices, such as docs beside the behavior they describe, share one.
+- Workers each take one slice, in their own worktrees.
+- The main agent checks and commits each worker's result on its slice's branch, then verifies, maps, and reviews each branch on its own, from the bottom of the stack up.
 
 Use it when the work is settled enough to hand off. Resolve missing acceptance criteria, disputed test seams, or shared assumptions first.
 
-`/jvillegasd-mode` on a settled epic starts `build` for you. An epic without slices is first cut into them, as local drafts that [`harness tickets check`](cli.md#ticket-commands) validates. `build` picks the next slices with `harness tickets frontier`: those whose blockers are all done. Publishing still needs your request, and merging still needs `/land`. Under `/jvillegasd-mode` autopilot, your step-away request also counts as the request to publish.
+`/jvillegasd-mode` on a settled epic starts `build` for you. An epic without slices is first cut into them, as local drafts that [`harness tickets check`](cli.md#ticket-commands) validates. `build` picks the next slices with `harness tickets frontier`: those whose blockers are all done. Publishing still needs your request, and merging still needs `/land`, one pull request at a time; after a parent merges, `/land` repairs the pull requests stacked on it. Under `/jvillegasd-mode` autopilot, your step-away request also counts as the request to publish.
 
 ## Optional tracking
 

@@ -11,7 +11,13 @@ Launch a role at the tier and effort this machine assigns it, and check what it 
 
 ## Why
 
-Work inline by default. Delegate for a named benefit: independent inspection, useful parallel work, or context isolation, never because of file count or diff size. When an invoked skill's own method requires isolated subagents, that method is the named benefit: launch each one as the `worker` at the tier its work fits, giving it the brief the skill describes.
+The session's context is the run's working memory: it holds the goal, the plan, and the judgment that checks every result, and it degrades as it fills (`principle-guard-the-context-window`, read it in full). So the session leads, planning, briefing, reviewing, and verifying, and routes bulk to roles, keeping only their reduced results. Delegate for one of these benefits, and name it in the brief:
+
+- **Context:** work whose raw material would crowd the session. A search or read across many files, a long log, transcript, trace, or profile, a broad sweep of mechanical edits, or an implementation large enough that typing it would bury the plan. The session reviews the diff or the finding rather than producing it.
+- **Independent inspection:** a fresh agent without the author's reasoning, such as a reviewer.
+- **Parallel work:** independent pieces that can run at once, each with its own output.
+
+Keep work inline when the brief would cost more context than the work: a small edit, a read of the file you are about to change, or a step whose reasoning the session needs to hold. When an invoked skill's own method requires isolated subagents, that method is the named benefit: launch each one as the `worker` at the tier its work fits, giving it the brief the skill describes.
 
 ## Roles
 
@@ -51,14 +57,14 @@ A skill that ships its own named agents, such as `impeccable`'s reviewers, launc
 
 ## Brief
 
-Write each brief to stand alone: the goal, the scope it may touch, the base commit, how to verify it, and what to report. A delegated executor never commits; the parent commits its result.
+Write each brief to stand alone: open with the goal, then the scope it may touch, the base commit, how to verify it, and what to report. Point at files, tickets, and documents by path or link rather than pasting them, so the brief stays small and the child reads only what it needs. Ask for a reduced result: the conclusion, the evidence as `path:line` pointers or commands with their outcome, and the gaps, never a raw dump of logs, files, or search hits. A delegated executor never commits; the parent commits its result.
 
 Give new work, a fix round, or a retry to a fresh agent whose brief consolidates the original brief, every later directive, and the prior agent's result and branch. Resume or message an existing agent only when the work needs state that lives in it and is costly to move: its checkout, its uncommitted changes, or a process it still runs. A resumed agent can drop directives it was given earlier, so its "done" is checked like any result.
 
 ## Results
 
-Check each result against its assigned scope and the actual Git state; a completion message alone is not evidence. Keep complete results before releasing disposable resources when recovery may need them.
+Check each result against its assigned scope and the actual Git state; a completion message alone is not evidence. Check it by the pointers it gives, reading the diff and the cited lines and rerunning its verification commands rather than redoing the task here, then keep your own short summary in the session and let the raw result go. Keep complete results before releasing disposable resources when recovery may need them.
 
 ## Output
 
-Each role launched, where it ran, its result checked against scope, and any role that could not launch.
+Each role launched, the benefit it was launched for, where it ran, its result checked against scope, and any role that could not launch.
