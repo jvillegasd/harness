@@ -97,7 +97,6 @@ func TestCommandHelpMatrix(t *testing.T) {
 		{"update", "clients"},
 		{"update", "clients", "mcps"},
 		{"uninstall"},
-		{"bench"},
 		{"attempts"},
 		{"attempts", "add"},
 		{"attempts", "list"},
@@ -119,9 +118,6 @@ func TestCommandHelpMatrix(t *testing.T) {
 		{"review", "worktree", "retire"},
 		{"review", "snapshot"},
 		{"review", "verdict"},
-		{"review", "evals"},
-		{"review", "evals", "seed"},
-		{"review", "evals", "score"},
 		{"worktree"},
 		{"worktree", "audit"},
 		{"worktree", "retire"},
@@ -145,10 +141,6 @@ func TestCommandHelpMatrix(t *testing.T) {
 		{"tickets", "check"},
 		{"tickets", "frontier"},
 		{"tickets", "publish"},
-		{"eval"},
-		{"eval", "plant"},
-		{"eval", "run"},
-		{"eval", "clean"},
 		{"resume"},
 	}
 	for _, command := range commands {
@@ -189,12 +181,9 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"uninstall", "--all", "skills"},
 		{"uninstall", "--client", "cursor"},
 		{"uninstall", "--no-backup"},
-		{"bench"},
 		{"attempts"},
 		{"attempts", "bogus"},
 		{"attempts", "add", "--bogus"},
-		{"bench", "--split", "2026-01-01", "extra"},
-		{"bench", "--bogus"},
 		{"skills"},
 		{"skills", "bogus"},
 		{"skills", "add"},
@@ -243,14 +232,6 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"review", "verdict", "7", "8", "--result", "PASS", "--base", "a", "--sha", "b", "--level", "medium"},
 		{"review", "verdict", "--bogus", "7"},
 		{"review", "prune", "--forge"},
-		{"review", "evals"},
-		{"review", "evals", "bogus"},
-		{"review", "evals", "score"},
-		{"review", "evals", "seed", "--depth", "high"},
-		{"review", "evals", "seed", "--max", "0"},
-		{"review", "evals", "score", "r.jsonl", "--model", "x"},
-		{"review", "evals", "score", "r.jsonl", "--depth", "deep"},
-		{"review", "evals", "score", "r.jsonl", "extra"},
 		{"land"},
 		{"land", "bogus"},
 		{"land", "check", "--bogus"},
@@ -297,17 +278,6 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"tickets", "publish"},
 		{"tickets", "publish", "a", "b"},
 		{"tickets", "publish", "../a"},
-		{"eval"},
-		{"eval", "bogus"},
-		{"eval", "plant"},
-		{"eval", "plant", "--variant", "a", "--baseline", "b", "--client", "cursor", "--runs", "1"},
-		{"eval", "plant", "--variant", "a", "--baseline", "b", "--client", "claude"},
-		{"eval", "clean"},
-		{"eval", "clean", "a", "b"},
-		{"eval", "run"},
-		{"eval", "run", "x", "--model", "m"},
-		{"eval", "run", "x", "--prompt-file", "p"},
-		{"eval", "run", "x", "y", "--prompt-file", "p", "--model", "m"},
 		{"resume", "extra"},
 	}
 	for _, want := range args {
@@ -334,7 +304,6 @@ func TestOperationalFailuresExitOne(t *testing.T) {
 	outside := t.TempDir()
 	for _, args := range [][]string{
 		{"skills", "verify"},
-		{"bench", "--split", "2026-01-01", "--home", t.TempDir()},
 	} {
 		if r := runBinary(t, outside, args...); r.code != 1 || r.stderr == "" {
 			t.Errorf("%v outside a checkout or configured repository exited %d with stderr %q, want 1 and a diagnostic", args, r.code, r.stderr)

@@ -153,7 +153,6 @@ harness review prune --dry-run           # review scratch of branches that exist
 | `worktree add`, `worktree retire` | Creates the one temporary worktree a review may use, outside your checkout with Git hooks off, and removes it later. Anything it holds is saved as a patch in the review directory before removal |
 | `snapshot` | Saves uncommitted work under the named paths as one patch and prints its digest, so a review of work not yet committed reads exactly that content. It leaves your index and working tree as they were |
 | `remove`, `prune` | Delete a review directory, the scratch a review run leaves in the Git directory (saved patches and the worktree record). `/land` removes a merged branch's directory; `prune` removes those of branches that exist nowhere. Both leave a directory alone while the review worktree it records still exists |
-| `evals seed`, `evals score` | The review skill's own evals. `seed` lists candidate bug cases from past `fix:` and revert commits, with the lines each introducing commit got wrong, for you to confirm. `score` grades a run against the confirmed cases (recall, false positives, dropped findings) and says whether it regressed against the last run on the same cases |
 
 ## Worktree commands
 
@@ -292,23 +291,6 @@ harness tickets publish my-feature
 - **`check`** prints each problem as `path:line: message`: a missing or empty section, a reused number, a blocker that is not in the feature, or a cycle. A draft needs a title and five sections: What to build, Acceptance criteria, Seam, Blocked by, and Out of scope.
 - **`frontier`** is how `build` picks the next tickets. A ticket is done when `--done` names it or its draft says `Status: done`, and ready once every ticket blocking it is done.
 - **`publish`** creates GitHub issues, blockers first, with native dependency links. It records each issue in its draft as it goes, so a rerun after a failure creates no duplicates, and removes a draft once its issue reads back correctly. It refuses a repository whose tracker is not GitHub. It writes to GitHub, so agents run it only when you ask to publish. `--dry-run` shows every issue and link and writes nothing.
-
-## Eval commands
-
-The eval playbook in `/jvillegasd-mode` uses these to test whether a skill change changes agent behavior, with blinded sessions:
-
-```sh
-harness eval plant --variant <skill dir> --baseline <skill dir> --client claude --runs 3
-harness eval run <run id> --prompt-file prompt.md --model <a> --model <b> --dry-run
-harness eval run <run id> --prompt-file prompt.md --model <a> --model <b>
-harness eval clean <run id>
-```
-
-- **`plant`** makes `--runs` directories per version under `~/.scratch-projects` (or `$HARNESS_SCRATCH_ROOT`). Each looks like an ordinary project and holds one version of the skill where the client loads it. Your installed skills are never touched. The key that says which directory holds which version stays in `~/.harness/eval/<run id>/`, outside every candidate.
-- **`run`** starts one headless session per directory and model, each allowed to edit only its own directory, and saves the outputs by neutral label. Every model runs against both versions. `--dry-run` prints every command so you can approve the model budget first. A run runs once.
-- **`clean`** deletes the run's directories, key, and records, and nothing else.
-
-`harness bench` is the other half: it measures cost and friction in real sessions after a change ships. See [Bench](../bench/README.md).
 
 ## Attempt log
 

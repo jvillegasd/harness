@@ -11,7 +11,7 @@ Get independent eyes on a change at the depth the human's review level allows. B
 
 ## Why
 
-A reviewer that has not heard the implementer's reasoning judges the code, not the story. Hunters favor recall and raise whatever they can trace; the review keeps only what a run proves, so the human reads defects instead of triaging guesses. A finding is dropped because no run proved it, never on the author's word. Each hunter's dropped count is reported, and the evals in `references/evals.md` show whether the rule costs recall. A review that cannot run independently is reported as unverified, never replaced by self-review.
+A reviewer that has not heard the implementer's reasoning judges the code, not the story. Hunters favor recall and raise whatever they can trace; the review keeps only what a run proves, so the human reads defects instead of triaging guesses. A finding is dropped because no run proved it, never on the author's word. Each hunter's dropped count is reported. A review that cannot run independently is reported as unverified, never replaced by self-review.
 
 ## Level and coverage
 
@@ -111,4 +111,4 @@ A change to the reviewed revision invalidates the verdict until the affected evi
 
 - [Reviewer role](roles/reviewer.md), the shared text each lens extends and the recheck's role
 - Lens roles: [bugs](roles/review-bugs.md), [spec](roles/review-spec.md), [risk](roles/review-risk.md)
-- [Verify briefs](references/verify.md), [evals](references/evals.md)
+- [Verify briefs](references/verify.md)

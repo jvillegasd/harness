@@ -128,8 +128,6 @@ func (c Checkout) Clients() string { return filepath.Join(c.Root, "clients") }
 
 func (c Checkout) Generated() string { return filepath.Join(c.Root, ".generated") }
 
-func (c Checkout) Bench() string { return filepath.Join(c.Root, "bench") }
-
 func (c Checkout) Lock() string { return filepath.Join(c.Root, "skills-lock.json") }
 
 func (c Checkout) AgentSkills() string { return filepath.Join(c.Root, ".agents", "skills") }

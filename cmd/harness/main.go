@@ -6,9 +6,7 @@ import (
 	"os"
 
 	"github.com/jvillegasd/harness/internal/attempts"
-	"github.com/jvillegasd/harness/internal/bench"
 	"github.com/jvillegasd/harness/internal/changemap"
-	"github.com/jvillegasd/harness/internal/eval"
 	"github.com/jvillegasd/harness/internal/install"
 	"github.com/jvillegasd/harness/internal/land"
 	"github.com/jvillegasd/harness/internal/models"
@@ -31,7 +29,6 @@ Commands:
   install    Install or reconcile the harness components on this machine
   update     Update installed tools or locked upstream skills explicitly
   uninstall  Remove harness components, and with --all the harness itself
-  bench      Compare the session population before and after a harness change
   skills     Manage the reviewed third-party skill locks
   statusline Print the Claude Code status line for the payload on stdin
   models     Choose each delegated role's client, model, and effort
@@ -41,7 +38,6 @@ Commands:
   land       Report whether pull requests can land, and how
   pr         Report a pull request's readiness and what blocks it
   tickets    Check, order, and publish ticket drafts
-  eval       Plant, run, and clean blinded skill comparisons
   attempts   Keep the attempt log for measured loops
 `
 
@@ -57,8 +53,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return update.Command(args[1:], stdout, stderr)
 	case "uninstall":
 		return install.UninstallCommand(args[1:], stdout, stderr)
-	case "bench":
-		return bench.Command(args[1:], stdout, stderr)
 	case "attempts":
 		return attempts.Command(args[1:], stdout, stderr)
 	case "skills":
@@ -79,8 +73,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return land.PrCommand(args[1:], stdout, stderr)
 	case "tickets":
 		return tickets.Command(args[1:], stdout, stderr)
-	case "eval":
-		return eval.Command(args[1:], stdout, stderr)
 	case "resume":
 		return resume.Command(args[1:], stdout, stderr)
 	case "-h", "--help", "help":
