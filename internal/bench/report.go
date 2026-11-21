@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 var metrics = []string{"turns", "tool_calls", "minutes", "commands", "delegation", "interrupts", "denials", "errors"}
@@ -47,7 +49,7 @@ func deltaCell(before, after *float64) string {
 	return fmt.Sprintf("%+10.1f", *after-*before)
 }
 
-func block(label string, cohort []*session, split time.Time) []string {
+func block(style ui.Style, label string, cohort []*session, split time.Time, hue int) []string {
 	var before, after []*session
 	for _, s := range cohort {
 		if s.date.Before(split) {
@@ -56,29 +58,28 @@ func block(label string, cohort []*session, split time.Time) []string {
 			after = append(after, s)
 		}
 	}
-	lines := []string{
-		"",
-		label,
-		fmt.Sprintf("  %-12s%10s%10s%10s", "metric", "before", "after", "delta"),
-		fmt.Sprintf("  %-12s%10d%10d%10s", "sessions", len(before), len(after), ""),
-	}
+	lines := []string{"", style.Pill(ui.Hue(hue), label, len(label))}
+	rows := [][]string{{"sessions", strconv.Itoa(len(before)), strconv.Itoa(len(after)), "-"}}
 	for _, metric := range metrics {
 		b, a := median(before, metric), median(after, metric)
-		lines = append(lines, fmt.Sprintf("  %-12s%s%s%s", metric, cell(b), cell(a), deltaCell(b, a)))
+		rows = append(rows, []string{metric, strings.TrimSpace(cell(b)), strings.TrimSpace(cell(a)), strings.TrimSpace(deltaCell(b, a))})
+	}
+	for _, line := range style.Table([]string{"metric", "before", "after", "delta"}, rows) {
+		lines = append(lines, "  "+line)
 	}
 	if len(before) < thin || len(after) < thin {
-		lines = append(lines, fmt.Sprintf("  warning: a cohort has fewer than %d sessions; noise, not a result.", thin))
+		lines = append(lines, "  "+style.Warn(fmt.Sprintf("a cohort has fewer than %d sessions; noise, not a result.", thin)))
 	}
 	return lines
 }
 
-func renderReport(sessions []*session, split time.Time, since *time.Time) string {
+func renderReport(style ui.Style, sessions []*session, split time.Time, since *time.Time) string {
 
 	header := fmt.Sprintf("split %s", split.Format("2006-01-02"))
 	if since != nil {
 		header += fmt.Sprintf("  since %s", since.Format("2006-01-02"))
 	}
-	lines := []string{header}
+	lines := []string{style.Title("harness bench", header)}
 
 	groups := []string{""}
 	for _, s := range sessions {
@@ -102,11 +103,11 @@ func renderReport(sessions []*session, split time.Time, since *time.Time) string
 			if group != "" {
 				label = client + "  " + group
 			}
-			lines = append(lines, block(label, selected, split)...)
+			lines = append(lines, block(style, label, selected, split, len(lines))...)
 		}
 	}
 	if len(lines) == 1 {
-		lines = append(lines, "no sessions found")
+		lines = append(lines, style.Dim("no sessions found"))
 	}
 	return strings.Join(lines, "\n")
 }

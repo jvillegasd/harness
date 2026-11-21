@@ -17,6 +17,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 type Session struct {
@@ -153,12 +155,15 @@ func Run(home, run string, o RunOptions, out io.Writer) ([]Session, error) {
 		return nil, err
 	}
 	if o.DryRun {
-		for _, s := range sessions {
+		style := ui.For(out)
+		fmt.Fprintln(out, style.Title("harness eval run", run, "dry run"))
+		for i, s := range sessions {
 			note := ""
 			if s.Copy != "" {
 				note = " (a copy of " + s.Copy + ")"
 			}
-			fmt.Fprintf(out, "%s %s%s\n  %s\n", s.Label, s.Model, note, s.Shell(o.PromptFile))
+			fmt.Fprintln(out, style.Branch(i == len(sessions)-1)+s.Label+" "+style.Accent(s.Model)+style.Dim(note))
+			fmt.Fprintln(out, style.Stem(i == len(sessions)-1)+s.Shell(o.PromptFile))
 		}
 		return sessions, nil
 	}

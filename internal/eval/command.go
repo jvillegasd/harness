@@ -4,10 +4,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/ui"
 	"io"
 	"os"
 	"path/filepath"
-	"text/tabwriter"
 )
 
 const usage = `Usage: harness eval <command> [arguments]
@@ -177,7 +177,7 @@ func clean(args []string, stdout, stderr io.Writer) int {
 	}
 	removed, err := Clean(h, flags.Arg(0))
 	for _, path := range removed {
-		fmt.Fprintln(stdout, "removed "+path)
+		fmt.Fprintln(stdout, ui.For(stdout).OK("removed "+path))
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness eval clean: %v\n", err)
@@ -230,21 +230,28 @@ func runCommand(args []string, stdout, stderr io.Writer) int {
 	if o.DryRun {
 		return 0
 	}
-	table := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(table, "LABEL\tMODEL\tSTATUS\tOUTPUT\tRECORD")
+	style := ui.For(stdout)
+	fmt.Fprintln(stdout, style.Title("harness eval run", run))
+	var rows [][]string
 	failed := 0
 	for _, s := range sessions {
 		record := s.Record
 		if record == "" {
 			record = "-"
 		}
-		fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\n", s.Label, s.Model, s.Status, s.Output, record)
+		status := style.Good(s.Status)
+		if s.Status != "ok" {
+			status = style.Bad(s.Status)
+		}
+		rows = append(rows, []string{s.Label, s.Model, status, s.Output, record})
 		if s.Status != "ok" {
 			failed++
 			fmt.Fprintf(stderr, "harness eval run: %s failed (exit %d) %s\n", s.Label, s.Exit, s.Error)
 		}
 	}
-	table.Flush()
+	for _, line := range style.Table([]string{"label", "model", "status", "output", "record"}, rows) {
+		fmt.Fprintln(stdout, line)
+	}
 	if failed > 0 {
 		return 1
 	}
