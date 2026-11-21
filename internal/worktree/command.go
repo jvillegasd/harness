@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"text/tabwriter"
+	"strconv"
+
+	"github.com/jvillegasd/harness/internal/ui"
 )
 
 const usage = `Usage: harness worktree <command> [arguments]
@@ -137,12 +139,13 @@ func audit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness worktree audit: %v\n", err)
 		return 1
 	}
-	table := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
+	style := ui.For(stdout)
+	header := []string{"state", "changes", "ignored", "branch", "head"}
 	if *withForge {
-		fmt.Fprintf(table, "STATE\tCHANGES\tIGNORED\tBRANCH\tHEAD\tPR\tINTO\tPATH\n")
-	} else {
-		fmt.Fprintf(table, "STATE\tCHANGES\tIGNORED\tBRANCH\tHEAD\tPATH\n")
+		header = append(header, "pr", "into")
 	}
+	header = append(header, "path")
+	var rows [][]string
 	for _, t := range trees {
 		if t.Main {
 			continue
@@ -165,12 +168,15 @@ func audit(args []string, stdout, stderr io.Writer) int {
 			if into == "" {
 				into = "-"
 			}
-			fmt.Fprintf(table, "%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\n", s.State, len(s.Changes), len(s.Ignored), branch, head, p, into, s.Path)
+			rows = append(rows, []string{state(style, s.State), strconv.Itoa(len(s.Changes)), strconv.Itoa(len(s.Ignored)), branch, style.Dim(head), fmt.Sprint(p), into, s.Path})
 			continue
 		}
-		fmt.Fprintf(table, "%s\t%d\t%d\t%s\t%s\t%s\n", s.State, len(s.Changes), len(s.Ignored), branch, head, s.Path)
+		rows = append(rows, []string{state(style, s.State), strconv.Itoa(len(s.Changes)), strconv.Itoa(len(s.Ignored)), branch, style.Dim(head), s.Path})
 	}
-	table.Flush()
+	fmt.Fprintln(stdout, style.Title("harness worktree audit", "into "+*into))
+	for _, line := range style.Table(header, rows) {
+		fmt.Fprintln(stdout, line)
+	}
 	return 0
 }
 
@@ -235,11 +241,18 @@ func retire(args []string, stdout, stderr io.Writer) int {
 		done, err = Retire(dir, path, o)
 	}
 	for _, line := range done {
-		fmt.Fprintln(stdout, line)
+		fmt.Fprintln(stdout, ui.For(stdout).OK(line))
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness worktree retire: %v\n", err)
 		return 1
 	}
 	return 0
+}
+
+func state(s ui.Style, value string) string {
+	if value == "safe" {
+		return s.Good(value)
+	}
+	return s.Caution(value)
 }

@@ -204,7 +204,7 @@ func TestPlanListsEveryIssueAndEdge(t *testing.T) {
 	root, rel := threeDrafts(t)
 	var out strings.Builder
 	Plan(checked(t, root, rel), &out)
-	want := "create 01 \"Alpha\"\ncreate 02 \"Beta\"\ncreate 03 \"Gamma\"\nedge   03 blocked by 01\nedge   03 blocked by 02\n"
+	want := "harness tickets publish  dry run\nACTION  TICKET  DETAIL\ncreate  01      Alpha\ncreate  02      Beta\ncreate  03      Gamma\nedge    03      blocked by 01\nedge    03      blocked by 02\n"
 	if out.String() != want {
 		t.Errorf("plan:\n%s\nwant:\n%s", out.String(), want)
 	}
