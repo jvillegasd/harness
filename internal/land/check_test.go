@@ -627,21 +627,3 @@ func (f *fixture) read(name string) string {
 	}
 	return string(raw)
 }
-
-func TestTrunk(t *testing.T) {
-	f := setup(t)
-	f.git(f.dir, "branch", "project/app", "main")
-	f.git(f.dir, "push", "-q", "origin", "project/app")
-	f.open(1, "slice", "project/app", map[string]string{"README.md": "slice\n"})
-
-	holds(t, f.one(1), "not the default branch")
-
-	checks, err := Run(Env{Dir: f.dir, Forge: f.forge, State: f.state, Trunk: "project/app"}, []int{1}, false, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	holds(t, checks[0])
-	if checks[0].Default != "project/app" {
-		t.Fatalf("default %q, want the trunk project/app", checks[0].Default)
-	}
-}

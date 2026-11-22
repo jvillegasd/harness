@@ -78,6 +78,7 @@ A plain request works the way it always does. For the harness's procedures (plan
 | --- | --- |
 | Run a task step by step, with every step visible | `/jvillegasd-mode <task>` |
 | Leave a task running while you step away | `/jvillegasd-mode autopilot, I'm stepping away: <goal>` |
+| Let the agent land its own verified PRs too | add `full`: `/jvillegasd-mode autopilot full: <goal>` |
 | Think an unclear idea through, recording ADRs and glossary terms | `/grill-with-docs` |
 | Turn a settled plan into an epic with sliced tickets | `/jvillegasd-mode plan <idea>` |
 | Build one ticket, or an epic's slices | `/jvillegasd-mode build <ticket or epic>` |
@@ -163,7 +164,7 @@ Add "autopilot" or "I'm stepping away", plus a goal:
 
 The agent writes down a pass or fail definition of done (or proposes one), then works without checking in until the goal is met, the goal is ruled out, or every approach has hit a dead end. There is no time limit; say stop to end it.
 
-On autopilot the agent **may** commit, push, and open pull requests, including separate PRs for problems it finds along the way. It **never** merges, writes to the issue tracker, or messages anyone. When it hits a decision only you could make, it takes the simplest safe option and lists it at the top of its report, with what to tell it if you want something else. Without a goal, autopilot does not start.
+On autopilot the agent **may** commit, push, and open pull requests, including separate PRs for problems it finds along the way. It leaves the PRs stacked for you to land, and merges them itself only when you say **full** (`/jvillegasd-mode autopilot full: <goal>`). It **never** writes to the issue tracker or messages anyone. When it hits a decision only you could make, it takes the simplest safe option and lists it at the top of its report, with what to tell it if you want something else. Without a goal, autopilot does not start.
 
 ## Models
 

@@ -1,6 +1,6 @@
 # Autopilot
 
-**You own the finish line.** The human has stepped away, so the run drives to its definition of done without checkpoints and without a time limit, and stops at verified, open pull requests. It never merges.
+**You own the finish line.** The human has stepped away, so the run drives to its definition of done without checkpoints and without a time limit, and stops at verified, open pull requests, stacked for the human to land; it merges only when the request says full (jvillegasd-mode's Stack or full).
 
 ## Frame
 
@@ -11,7 +11,7 @@
 
 ## What the grant covers
 
-The floor already delivers the run's work: commits, pushes of the run's own branches, opening pull requests ready (never as drafts), pull requests for side fixes, and repairs of their checks. The grant adds the decisions the human would make, taken as `agent` defaults below. It never covers a merge, a tracker write, a message to a person, or anything the floor holds back. A pushed branch is never rewritten: a fix goes on the branch that owns the code, and a stacked child picks it up when `/land` repairs the child after its parent merges.
+The floor already delivers the run's work: commits, pushes of the run's own branches, opening pull requests ready (never as drafts), pull requests for side fixes, and repairs of their checks. The grant adds the decisions the human would make, taken as `agent` defaults below. It never covers a merge unless the request says full, a tracker write, a message to a person, or anything the floor holds back. A pushed branch is never rewritten: a fix goes on the branch that owns the code, and a stacked child picks it up when `/land` repairs the child after its parent merges.
 
 ## Running
 
@@ -19,10 +19,9 @@ jvillegasd-mode's Deciding and getting stuck rules run the work, with one change
 
 ## Stopping
 
-- **Done:** each pull request is verified and green at its current head, with `open-pr`'s readiness report.
+- **Done:** each pull request is verified and green at its current head, with `open-pr`'s readiness report; in a full run, each is landed or stopped at merge-ready by a hold only the human can clear.
 - **Dead end:** every remaining unit is parked with its evidence and the replan finds no new approach. Push what is verified, pause the rest with `checkpoint`'s Pause (a `wip:` commit and the next action), then report.
 - **Epic written:** when the goal is a plan, the committed epic and its slices are done, and the run ends without building it.
-- **Project delivered:** for a project, done is the integration branch's pull request open, verified, and green, with every milestone landed on the integration branch.
 - **Goal ruled out:** when the evidence rules out the goal itself, as jvillegasd-mode's Start step 1 describes, stop and report that evidence, since there is nothing left to drive toward.
 
 "Keep going" and "going to bed" never trigger a pause; only done, a written epic, a dead end, a ruled-out goal, or the human's stop ends the run.

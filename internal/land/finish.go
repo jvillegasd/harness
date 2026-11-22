@@ -35,9 +35,6 @@ func (e Env) defaultBranch() (root, def string, err error) {
 	if repo.DefaultBranchRef.Name == "" {
 		return "", "", errors.New("the forge reports no default branch")
 	}
-	if e.Trunk != "" {
-		return root, e.Trunk, nil
-	}
 	return root, repo.DefaultBranchRef.Name, nil
 }
 

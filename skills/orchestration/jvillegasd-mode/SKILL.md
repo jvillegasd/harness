@@ -40,7 +40,7 @@ jvillegasd-mode lasts the conversation. "New task" means match again from step 1
 | Review a diff, a branch, or a PR | `review`'s steps, at the depth the human asked |
 | An existing PR: review comments, red checks, conflicts | `address-review`'s steps, with its mode declared |
 | Open a PR, ship this | `open-pr`'s steps |
-| Merge, or "it merged, clean up" | Reply "run `/land` in this worktree" and stop. Merging and cleanup belong to the human through `land` |
+| Merge, or "it merged, clean up" | Reply "run `/land` in this worktree" and stop, unless the run is full (Stack or full below). Merging and cleanup belong to the human through `land` |
 | Clean up old worktrees or branches | Reply "run `/cleanup`" and stop. The human names what a sweep removes |
 | Resume or pick up earlier work | `checkpoint`'s Resume, then continue the playbook and step it recorded, or match what is left |
 | A project: several features toward one product goal, or a whole app | [project](playbooks/project.md) |
@@ -101,13 +101,19 @@ Each entry is when it applies, then the rule.
 - `principle-never-block-on-the-human`: tempted to ask whether to do reversible work. Do it, show the result, and let the human correct it.
 - `principle-encode-lessons-in-structure`: writing the same instruction a second time, or a recurring correction. Encode it as a check, lint, type, or script instead of more text.
 
+## Stack or full
+
+- **Stack, the default.** The run ends at verified, open pull requests, stacked where one builds on another, and the human lands them (`/land merge stack <tip>`). The run never merges.
+- **Full, only when the human's request says so** ("/jvillegasd-mode full: ...", "autopilot full"). Once each pull request is verified, reviewed, and green, the run lands its own pull requests by running `land`'s steps as the invocation `/land merge stack <tip>` would, bottom-up, which merges, repairs the dependents above, syncs, and cleans up. A hold only the human can clear (a review or run-as-user hold `land` would ask them to accept by name) is never accepted on their behalf: that pull request and the ones above it stop at merge-ready and are reported. Never give or bypass an approval the forge enforces.
+
 ## Finish
 
-A playbook's Finish step is these three, each its own item in the todo list (the project playbook's Deliver step replaces them):
+A playbook's Finish step is these, each its own item in the todo list (the project playbook's Deliver step replaces them):
 
 1. Run `change-map`.
 2. Run `review` at the level `harness review level` reports.
 3. Run `open-pr`, unless the human said to keep the work local.
+4. In a full run, land the pull requests as Stack or full describes.
 
 ## Reply
 

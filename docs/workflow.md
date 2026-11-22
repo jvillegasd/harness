@@ -152,7 +152,8 @@ Here is what the agent does:
 What it may and may not do:
 
 - **May:** commit, push, and open ready pull requests, including separate PRs for problems it finds along the way.
-- **Never:** merge, write to the issue tracker, or message anyone.
+- **Merge only with full:** it leaves the PRs stacked for you to land. With `full` in the request, it lands its own verified PRs bottom-up through `/land`'s steps, and stops at any hold only you can accept.
+- **Never:** write to the issue tracker or message anyone.
 
 ```mermaid
 stateDiagram-v2
@@ -233,7 +234,7 @@ For longer work, the agent keeps the requirements, decisions, evidence, and next
 
 `/jvillegasd-mode` on a settled epic starts `build` for you. An epic without slices is first cut into them, as local drafts that [`harness tickets check`](cli.md#ticket-commands) validates. `build` picks the next slices with `harness tickets frontier`: those whose blockers are all done. Publishing still needs your request, and merging still needs `/land`, one pull request at a time; after a parent merges, `/land` repairs the pull requests stacked on it. Pull requests open on their own once the work is verified, unless you said to keep it local.
 
-For a whole app or several features toward one goal, the project playbook plans milestones, each an epic, and shows you the roadmap once before it starts (autopilot skips that). Everything lands on one integration branch, `project/<slug>`: the agent merges its own pull requests into it once each passes `harness land check --into project/<slug>`, with a review verdict and green checks. At the end it opens one pull request from the integration branch to the default branch, and you merge that.
+For a whole app or several features toward one goal, the project playbook plans milestones, each an epic, and shows you the roadmap once before it starts (autopilot skips that). Each milestone's pull requests stack on the milestone they build on, and the run hands you the stack to land bottom-up with `/land merge stack <tip>`. Say `full` in the request to have the agent land each milestone's verified pull requests itself before starting the next.
 
 ## Optional tracking
 

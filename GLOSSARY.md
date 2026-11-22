@@ -9,7 +9,7 @@ The opt-in rigor a human turns on by invoking `/jvillegasd-mode`: the task is ma
 _Avoid_: work mode, poteto mode, workflow
 
 **Autopilot**:
-jvillegasd-mode under the human's step-away grant and stated goal: the work runs without checkpoints or a time limit to verified, open pull requests, and never merges. Without a goal from the human it does not start.
+jvillegasd-mode under the human's step-away grant and stated goal: the work runs without checkpoints or a time limit to verified, open pull requests, stacked for the human to land, and merges them itself only when the request says full. Without a goal from the human it does not start.
 _Avoid_: yolo, unattended mode, full autonomy
 
 **Playbook**:

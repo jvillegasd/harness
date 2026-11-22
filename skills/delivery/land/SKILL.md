@@ -13,7 +13,7 @@ Pull requests: $ARGUMENTS
 
 ## Why
 
-Merging publishes to the shared default branch and is hard to undo, so the human merges. This skill merges only when the human's own `/land` invocation says so (`/land merge`, "land and merge it"), and that request is the whole approval for the pull requests it names. Cleanup phrasing and a ready branch are not that request. Reached any other way, stop and tell the human to invoke `/land`. Scope the human left vague, such as "all prs", stops and asks for the numbers.
+Merging publishes to the shared default branch and is hard to undo, so the human merges. This skill merges only when the human's own `/land` invocation says so (`/land merge`, "land and merge it"), and that request is the whole approval for the pull requests it names. Cleanup phrasing and a ready branch are not that request. A `/jvillegasd-mode` run the human marked full counts as that request for its own pull requests (see the floor). Reached any other way, stop and tell the human to invoke `/land`. Scope the human left vague, such as "all prs", stops and asks for the numbers.
 
 `harness land check` owns the rules for whether and how a pull request lands; `harness land check --help` explains each field. This skill acts on its verdict and changes no application code.
 
