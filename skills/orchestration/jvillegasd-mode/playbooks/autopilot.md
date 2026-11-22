@@ -15,14 +15,7 @@ The floor already delivers the run's work: commits, pushes of the run's own bran
 
 ## Running
 
-- **Each iteration** makes the smallest change the evidence justifies, verifies it against the definition of done, commits it when it advanced, and reverts it when it did not.
-- **A decision only the human could make**, including a skill's human checkpoint such as `epic`'s seam agreement, gets the simplest safe default. Record it as an `agent` row in the `## Decisions` table with the alternative it beat, and keep going; asking would stall the run until the human returns.
-- **Discoveries that support the goal** are yours: a broken skill, a related bug, a flaky check, a tooling failure. Fix each in its own pull request, then return to the goal. A problem that does not block the goal becomes a follow-up in the report.
-- **A plateau** means changing approach, not stopping.
-- **Two fixes that share one premise** have failed the same check: read `principle-attack-the-premise` and test the premise directly before another fix assumes it.
-- **A failed unit** is retried by its cause: a smaller scope after a context or memory limit, the same start after a dropped connection, and a different model after a tool error. After two retries, drop the unit and replan around it.
-- **A dead end** that survives the replan is parked with its evidence for the report.
-- **The definition of done** never loosens to declare victory.
+jvillegasd-mode's Deciding and getting stuck rules run the work, with one change: nothing waits for the human, so a product or preference call takes the default too, and so does a gate the mode would hold for the human's approval.
 
 ## Stopping
 

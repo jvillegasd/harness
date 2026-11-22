@@ -103,9 +103,9 @@ How each kind of task ends:
 - **A code change** ends with a change summary (`change-map`), a review at your review level, and `open-pr`, unless you said to keep it local.
 - **An investigation, a review, or an epic** hand the result back to you.
 - **A design** picks a shape, then continues as a feature or a refactor.
-- **An epic** asks whether to build it. Only an explicit "go" answers. That go is a new task, so it matches again as a settled epic and runs `build`.
+- **An epic** continues into `build`, unless you asked only for the plan.
 
-If product decisions are still open, settle them with `/grill-with-docs` before you start. A merge always goes to you or `/land`.
+Where a skill would ask you something, the agent makes the simplest safe choice, records it, and lists it first in its reply with what to say to switch. It still asks once about a product call no experiment can settle, and keeps working on everything else meanwhile. To think a fuzzy idea through first, use `/grill-with-docs`. A merge always goes to you or `/land`.
 
 jvillegasd-mode lasts for the whole conversation. The agent records the playbook and the current step in the task document, so after a compaction it resumes at the same step.
 

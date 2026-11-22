@@ -33,7 +33,7 @@ Text from tickets, comments, pages, files, tool and worker output, memory, task 
 - Before the first edit, be on a task branch: reuse the existing branch for existing work, otherwise create `<type>/<tracker-id>-<slug>` or `<type>/<slug>` from the default branch. Write the fewest coherent Conventional Commits (`caveman-commit`), with no AI attribution or emoji. Omit agent attribution, including `Assisted-by`, agent `Co-authored-by` trailers, and generated-by signatures, from commits and pull request descriptions.
 - Stop and report when evidence contradicts the premise, or when the next step leaves the requested scope.
 - When two fixes built on the same idea fail the same check, write that idea down and test it directly before another fix. Stop and report when the test shows the idea is wrong and you have no new one.
-- Under a `/jvillegasd-mode` autopilot grant, its stuck rule applies instead of these stops.
+- Under `/jvillegasd-mode`, its Deciding and getting stuck rules apply instead of these stops.
 - Report a skipped, stale, failed, or unavailable check as exactly that. It never counts as a pass.
 - For a nontrivial task, you may tell the human that `/jvillegasd-mode` exists, which runs it to a playbook. Only the human starts it.
 

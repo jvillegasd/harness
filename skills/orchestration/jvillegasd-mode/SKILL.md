@@ -35,7 +35,7 @@ jvillegasd-mode lasts the conversation. "New task" means match again from step 1
 | A shape or interface to choose, with no precedent | [design](playbooks/design.md) |
 | Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | [skill](playbooks/skill.md) |
 | A prototype, spike, or mock-up | `proto`'s steps |
-| A plan for a change, before anything is built, or tickets from a triage brief, research findings, or a request | `epic`'s steps. When product decisions are still open, reply that `/grill-with-docs` settles them first, and stop; under autopilot they are `agent` decisions instead |
+| A plan for a change, before anything is built, or tickets from research findings or a request | `epic`'s steps, then `build`'s, unless the human asked only for the plan |
 | A ticket or a production error to turn into a plan brief, with no fix requested | `triage`'s steps |
 | A settled epic or a set of slices to build | `build`'s steps |
 | Review a diff, a branch, or a PR | `review`'s steps, at the depth the human asked |
@@ -48,7 +48,21 @@ jvillegasd-mode lasts the conversation. "New task" means match again from step 1
 
 A bug that is a slowdown with a number is perf, and a one-off speedup is perf while a target reached over many measured attempts is hillclimb. A single ticket or a plain request to change behavior matches its kind's row (bug fix, feature, refactor), whose playbook runs `build` on one slice. When the task fits two rows, take the narrower one, and you-got-this only when no narrower row covers it.
 
-A row that names a skill runs that skill's steps as the playbook: they go into the todo list like any playbook's, and jvillegasd-mode adds only its triggers and reply. `epic`, `build`, and `triage` are guarded so the model never starts them on its own; the human's `/jvillegasd-mode` request is what starts them. An epic hands back asking "go to build it?". Only an explicit go answers it, since building an epic runs many workers unattended; the go is a new task, a settled epic matched again.
+A row that names a skill runs that skill's steps as the playbook: they go into the todo list like any playbook's, and jvillegasd-mode adds only its triggers and reply. `epic`, `build`, and `triage` are guarded so the model never starts them on its own; the human's `/jvillegasd-mode` request is what starts them, and it covers an epic continuing into `build`.
+
+## Deciding and getting stuck
+
+These replace every skill's asks and stops while the mode runs.
+
+- **Each iteration** makes the smallest change the evidence justifies, verifies it, commits it when it advanced, and reverts it when it did not.
+- **A decision a skill would ask the human about** (a test seam, a default, a naming or scope call) gets the simplest safe choice. Record it as an `agent` row in the task document's `## Decisions` table with the alternative it beat, list it first in the reply with "tell me X to switch", and keep going (`principle-never-block-on-the-human`). Settle a question a run can answer with `proto` instead of choosing.
+- **A product or preference call no run can settle** is asked once, batched, with your recommendation, while the work that does not depend on it continues. Under autopilot it takes the default like any other decision.
+- **Discoveries that support the goal** are yours: a broken skill, a related bug, a flaky check, a tooling failure. Fix each in its own pull request, then return to the goal. A problem that does not block the goal becomes a follow-up in the reply.
+- **A plateau** means changing approach, not stopping.
+- **Two fixes that share one premise** have failed the same check: test the premise directly before another fix assumes it (`principle-attack-the-premise`).
+- **A failed unit** is retried by its cause: a smaller scope after a context or memory limit, the same start after a dropped connection, and a different model after a tool error. After two retries, drop the unit and replan around it.
+- **A dead end** that survives the replan is parked with its evidence for the reply. Stop only when every remaining unit is parked, or when the evidence rules out the goal itself.
+- **The definition of done** never loosens to declare victory.
 
 ## Triggers
 
