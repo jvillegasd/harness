@@ -72,32 +72,34 @@ These hold at every step of every playbook.
 - **A step that verifies** passes only on the surface it names. Inconclusive, or green or measured on another surface, is not a pass.
 - **A subagent to launch** (executor, code-search, reviewer, a review lens, or any other, which runs as the `worker` at a tier): launch it through `delegation`.
 - **Bulk that would crowd the context** (a broad search, a long log, transcript, trace, or profile, a sweep of mechanical edits, an implementation big enough to bury the plan): route it to a role through `delegation` and keep only its reduced result, so this session stays on planning, review, and verification (`principle-guard-the-context-window`).
-- **A principle applies** (the index below): read that principle's `SKILL.md` in full from the installed skills (`~/.claude/skills` in Claude Code, `~/.agents/skills` in Codex and OpenCode) before acting on it, and name in the reply each principle that changed a decision.
+- **A principle applies** (the index below): apply its rule. Read the principle's `SKILL.md` from the installed skills (`~/.claude/skills` in Claude Code, `~/.agents/skills` in Codex and OpenCode) only when you need more than the rule, and name in the reply each principle that changed a decision.
 
 ### Principles
 
-- `principle-laziness-protocol`: refactoring, sizing a diff, or tempted to add abstractions or layers.
-- `principle-foundational-thinking`: before writing logic, when choosing core types, data structures, and what concurrent actors share.
-- `principle-attack-the-premise`: two or more fixes that share one premise have failed the same gate.
-- `principle-redesign-from-first-principles`: integrating a new requirement into an existing design.
-- `principle-subtract-before-you-add`: sequencing an addition, refactor, or rewrite.
-- `principle-minimize-reader-load`: reviewing or shaping code that is hard to trace.
-- `principle-experience-first`: product, UX, or feature-scope tradeoffs.
-- `principle-build-the-lever`: non-trivial work a tool could do or prove.
-- `principle-model-the-domain`: stateful logic, or code that branches a lot or repeats a shape assumption.
-- `principle-boundary-discipline`: wiring validation, error handling, or framework adapters.
-- `principle-type-system-discipline`: designing types or a signature in a typed language.
-- `principle-make-operations-idempotent`: commands, lifecycle steps, or loops that run amid crashes and retries.
-- `principle-migrate-callers-then-delete-legacy-apis`: a new internal API while old callers exist.
-- `principle-separate-before-serializing-shared-state`: concurrent actors that might write the same file, branch, key, or object.
-- `principle-prove-it-works`: before declaring a task done.
-- `principle-fix-root-causes`: debugging.
-- `principle-sequence-verifiable-units`: multi-step work, and how commits and pull requests stack.
-- `principle-test-behavior-not-implementation`: writing, changing, or keeping a test.
-- `principle-explain-the-number`: before measuring, and before trusting or acting on a measured number.
-- `principle-guard-the-context-window`: large outputs, long files, repeated reads, or fan-out planning.
-- `principle-never-block-on-the-human`: tempted to ask whether to do reversible work.
-- `principle-encode-lessons-in-structure`: writing the same instruction a second time, or a recurring correction.
+Each entry is when it applies, then the rule.
+
+- `principle-laziness-protocol`: refactoring, sizing a diff, or tempted to add abstractions or layers. Bias to deletion and the smallest change that solves the problem.
+- `principle-foundational-thinking`: before writing logic. Choose the core types, data structures, and what concurrent actors share first; scaffold before features.
+- `principle-redesign-from-first-principles`: integrating a new requirement into an existing design. Redesign as if it had been there from day one instead of bolting it on.
+- `principle-attack-the-premise`: two or more fixes that share one premise have failed the same check. Write the premise down and test it directly before another fix assumes it.
+- `principle-subtract-before-you-add`: sequencing an addition, refactor, or rewrite. Remove dead weight first, then build on the simpler base.
+- `principle-minimize-reader-load`: code that is hard to trace. Count layers and hidden state, collapse one-caller wrappers, shrink mutable scope.
+- `principle-experience-first`: product, UX, or scope tradeoffs. Choose what the user experiences over implementation convenience.
+- `principle-build-the-lever`: non-trivial work a tool could do or prove. Build the codemod, script, or generator instead of doing it by hand; the tool is what a reviewer reruns.
+- `principle-model-the-domain`: stateful logic, or code that branches a lot or repeats a shape assumption. Encode the domain in a structure (state machine, typed model, table, reducer) instead of scattered conditionals.
+- `principle-boundary-discipline`: validation, error handling, or framework adapters. Guard at system boundaries, trust internal types, keep business logic pure.
+- `principle-type-system-discipline`: designing types or a signature in a typed language. Make illegal states unrepresentable and parse external data at the boundary.
+- `principle-make-operations-idempotent`: commands, lifecycle steps, or loops that run amid crashes and retries. Every rerun converges to the same end state.
+- `principle-migrate-callers-then-delete-legacy-apis`: a new internal API while old callers exist. Migrate every caller and delete the old API in the same wave.
+- `principle-separate-before-serializing-shared-state`: concurrent actors that might write the same file, branch, key, or object. Eliminate the sharing first; serialize only for a real invariant.
+- `principle-prove-it-works`: before declaring a task done. Verify against the real artifact on the surface the user touches, not a proxy or "it compiles".
+- `principle-fix-root-causes`: debugging. Trace each symptom to the first place the system went wrong and fix it there; a guard is a fix only when the state it handles is legitimate.
+- `principle-sequence-verifiable-units`: multi-step work, and how commits and pull requests stack. Small units that each end in a check, each verified before the next.
+- `principle-test-behavior-not-implementation`: writing, changing, or keeping a test. Assert what callers observe, so the test fails when behavior breaks and passes when only internals change.
+- `principle-explain-the-number`: before measuring, and before trusting or acting on a number. Find what limits it, and rule out that it measured something other than the work.
+- `principle-guard-the-context-window`: large outputs, long files, repeated reads, or fan-out planning. Route bulk to roles and keep only their reduced results.
+- `principle-never-block-on-the-human`: tempted to ask whether to do reversible work. Do it, show the result, and let the human correct it.
+- `principle-encode-lessons-in-structure`: writing the same instruction a second time, or a recurring correction. Encode it as a check, lint, type, or script instead of more text.
 
 ## Finish
 
