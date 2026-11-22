@@ -336,6 +336,6 @@ These pages are written for people. Agents keep them accurate but never take ins
 
 This harness takes inspiration from these projects:
 
-- [Matt Pocock's skills](https://github.com/mattpocock/skills), the source of several locked skills, among them `tdd`, `diagnosing-bugs`, `grill-with-docs`, and `domain-modeling`.
+- [Matt Pocock's skills](https://github.com/mattpocock/skills), the source of several locked skills, among them `tdd`, `diagnosing-bugs`, `grill-with-docs`, and `domain-modeling`, and of the local `teach` (MIT, Copyright (c) 2026 Matt Pocock).
 - [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai), which configures several coding agents from one setup, as this installer does.
 - [pstack](https://github.com/backnotprop/pstack), the source of the principle skills and the verification skills, and the model for jvillegasd-mode's playbooks and autopilot.
