@@ -92,7 +92,7 @@ The floor's rules about commands and secrets are not only written in `FLOOR.md`.
 
 OpenCode applies the last rule that matches, which is why the harness's rules go after yours. If you set a pattern stricter than the harness's, your setting stays. Uninstall takes out only the harness's rules.
 
-The `external_directory` rules are the exception. OpenCode v2 allows every path outside the project by default, so the harness makes it ask, and allows the skill directories and OpenCode's own output and temporary directories. These defaults go before your rules, so any path rule of yours wins. If you set `external_directory` to `allow` or `deny` yourself, the harness leaves it alone.
+The `external_directory` rules are the exception. OpenCode v2 allows every path outside the project by default, so the harness makes it ask, and allows the skill directories and OpenCode's own output and temporary directories. These defaults go before your rules, so any path rule of yours wins, and your rules keep their order. Once `external_directory` has a `*` rule, or `permission` has a `*` of `ask` or `deny`, an install adds nothing there, so your later edits stay. The harness records the rules it added in `~/.harness/state.json`, and uninstall removes only those, and only while you have not changed them.
 
 Codex rules can only cover commands. In Codex, the agent keeps secrets unread because its instructions say so, not because a rule blocks it.
 

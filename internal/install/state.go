@@ -47,6 +47,8 @@ type state struct {
 
 	Tools map[string]string `json:"tools,omitempty"`
 
+	OpenCodeDefaults []string `json:"opencode_external_directory,omitempty"`
+
 	Models json.RawMessage `json:"models,omitempty"`
 	Review json.RawMessage `json:"review,omitempty"`
 }

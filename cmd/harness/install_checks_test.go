@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"io/fs"
 	"os"
@@ -1148,6 +1149,147 @@ func TestOpenCodeAsksOutsideTheProject(t *testing.T) {
 				t.Errorf("the uninstall dropped the user's %s:\n%s", last, left)
 			}
 		})
+	}
+}
+
+func externalDirectory(t *testing.T, config string) string {
+	t.Helper()
+	var doc struct {
+		Permission json.RawMessage `json:"permission"`
+	}
+	if err := json.Unmarshal([]byte(readFileOr(config)), &doc); err != nil {
+		return ""
+	}
+	var classes map[string]json.RawMessage
+	if json.Unmarshal(doc.Permission, &classes) != nil {
+		return ""
+	}
+	var out bytes.Buffer
+	if raw, ok := classes["external_directory"]; ok {
+		_ = json.Compact(&out, raw)
+	}
+	return out.String()
+}
+
+func TestOpenCodeKeepsTheUsersExternalRules(t *testing.T) {
+	const skills = `"~/.agents/skills/*":"allow"`
+	for name, c := range map[string]struct {
+		user               string
+		edit               func(string) string
+		install, uninstall string
+		order              []string
+	}{
+		"user rules keep their order after every added rule": {
+			user:      `{"permission":{"external_directory":{"~/.agents/*":"allow","~/.agents/skills/*":"deny"}}}`,
+			order:     []string{`"/private/var/folders/*/T/opencode/*":"allow"`, `"~/.agents/*":"allow"`, `"~/.agents/skills/*":"deny"`},
+			uninstall: `{"~/.agents/*":"allow","~/.agents/skills/*":"deny"}`,
+		},
+		"the user's ask survives": {
+			user:    `{"permission":{"external_directory":"ask"}}`,
+			install: `"ask"`, uninstall: `"ask"`,
+		},
+		"the user's catch-all key survives": {
+			user:    `{"permission":{"external_directory":{"*":"allow"}}}`,
+			install: `{"*":"allow"}`, uninstall: `{"*":"allow"}`,
+		},
+		"a top-level ask is the user's catch-all": {
+			user:    `{"permission":{"*":"ask"}}`,
+			install: ``, uninstall: ``,
+		},
+		"an edited generated rule survives": {
+			user:      `{}`,
+			edit:      func(s string) string { return strings.Replace(s, `"*": "ask"`, `"*": "deny"`, 1) },
+			order:     []string{`"*":"deny"`, skills},
+			uninstall: `{"*":"deny"}`,
+		},
+		"a user's rule equal to a tracked one survives": {
+			user:      `{"permission":{"external_directory":{"~/.agents/skills/*":"allow"}}}`,
+			order:     []string{`"*":"ask"`, skills},
+			uninstall: `{"~/.agents/skills/*":"allow"}`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			base := sandbox(t)
+			config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
+			writeMode(t, config, c.user+"\n", 0o644)
+			ok(t, runInstaller(t, base, "settings", "--client", "opencode"), "install")
+			if c.edit != nil {
+				writeMode(t, config, c.edit(readFile(t, config)), 0o644)
+			}
+			installed := externalDirectory(t, config)
+			if c.install != "" || len(c.order) == 0 {
+				if installed != c.install {
+					t.Errorf("the install left external_directory as %s, want %s", installed, c.install)
+				}
+			}
+			rest := installed
+			for _, want := range c.order {
+				i := strings.Index(rest, want)
+				if i < 0 {
+					t.Fatalf("want %s in that order:\n%s", c.order, installed)
+				}
+				rest = rest[i+len(want):]
+			}
+			whole := readFile(t, config)
+			ok(t, runInstaller(t, base, "settings", "--client", "opencode"), "reinstall")
+			if readFile(t, config) != whole {
+				t.Errorf("a reinstall changed the config:\n%s", readFile(t, config))
+			}
+			ok(t, runUninstaller(t, base, "settings", "--client", "opencode", "--yes"), "uninstall")
+			if left := externalDirectory(t, config); left != c.uninstall {
+				t.Errorf("the uninstall left external_directory as %s, want %s", left, c.uninstall)
+			}
+		})
+	}
+}
+
+func TestOpenCodeDefaultsOutliveLaterEdits(t *testing.T) {
+	settings := []string{"settings", "--client", "opencode"}
+	const ask, skill = `"*": "ask",`, `"~/.agents/skills/*": "allow",`
+	for name, c := range map[string]struct {
+		edit      func(string) string
+		reinstall bool
+		uninstall string
+	}{
+		"deleted catch-all": {func(s string) string { return strings.Replace(s, ask, "", 1) }, true, ""},
+		"deleted allow":     {func(s string) string { return strings.Replace(s, skill, "", 1) }, true, ""},
+		"user rule first":   {func(s string) string { return strings.Replace(s, ask, `"~/work/*": "allow", `+ask, 1) }, true, `{"~/work/*":"allow"}`},
+		"deleted catch-all under a top-level deny": {func(s string) string {
+			return strings.Replace(strings.Replace(s, ask, "", 1), `"permission": {`, `"permission": {"*": "deny",`, 1)
+		}, false, ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			base := sandbox(t)
+			config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
+			ok(t, runInstaller(t, base, settings...), "install")
+			writeMode(t, config, c.edit(readFile(t, config)), 0o644)
+			if c.reinstall {
+				ok(t, runInstaller(t, base, settings...), "reinstall")
+				installed := externalDirectory(t, config)
+				askAt, allowAt := strings.Index(installed, `"*":"ask"`), strings.Index(installed, `"~/.agents/skills/*":"allow"`)
+				if askAt < 0 || (allowAt >= 0 && allowAt < askAt) {
+					t.Errorf("the reinstall left %s, want the ask ahead of any allow it covers", installed)
+				}
+			}
+			ok(t, runUninstaller(t, base, append(settings, "--yes")...), "uninstall")
+			if left := externalDirectory(t, config); left != c.uninstall {
+				t.Errorf("the uninstall left external_directory as %q, want %q", left, c.uninstall)
+			}
+		})
+	}
+}
+
+func TestCodexUninstallKeepsTheOpenCodeRecord(t *testing.T) {
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	ok(t, runInstaller(t, base, "settings"), "install")
+	if err := os.Remove(filepath.Join(home, ".codex", "hooks.json")); err != nil {
+		t.Fatal(err)
+	}
+	ok(t, runUninstaller(t, base, "settings", "--client", "codex", "--yes"), "codex uninstall")
+	ok(t, runUninstaller(t, base, "settings", "--client", "opencode", "--yes"), "opencode uninstall")
+	if left := externalDirectory(t, filepath.Join(home, ".config", "opencode", "opencode.json")); left != "" {
+		t.Errorf("uninstalling Codex lost the OpenCode record, so this stayed: %s", left)
 	}
 }
 
