@@ -81,6 +81,7 @@ A plain request works the way it always does. For the harness's procedures (plan
 | Think an unclear idea through, recording ADRs and glossary terms | `/grill-with-docs` |
 | Turn a settled plan into an epic with sliced tickets | `/jvillegasd-mode plan <idea>` |
 | Build one ticket, or an epic's slices | `/jvillegasd-mode build <ticket or epic>` |
+| Build a whole app or several features toward one goal | `/jvillegasd-mode build an app that does X, Y, and Z` |
 | Get a review of your changes | `/jvillegasd-mode review` |
 | Publish the work as a pull request | `/jvillegasd-mode open a PR` |
 | Clean up after you merge a PR | `/land`, or `/land merge` to have the agent merge for you; name PRs (`/land merge 19 20`, `/land merge stack 23`) to land ones not checked out here |

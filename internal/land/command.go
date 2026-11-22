@@ -2,9 +2,11 @@ package land
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/jvillegasd/harness/internal/ui"
 )
@@ -45,7 +47,7 @@ recorded head, so a push by anyone since fails instead of being overwritten,
 and removes any temporary worktree.
 `
 
-const mergeUsage = `Usage: harness land merge <pr> --head <sha> --body-file <file> [--accepted]
+const mergeUsage = `Usage: harness land merge <pr> --head <sha> --body-file <file> [--into <branch>] [--accepted]
 
 Squash-merge one open pull request, only when the human asked for the merge.
 It writes to the forge and grants no authority.
@@ -68,6 +70,8 @@ commit as JSON.
   --head       The head the check printed
   --body-file  The squash body: the resulting behavior and material
                assumptions
+  --into       The branch that stands in for the default branch, as for
+               harness land check
   --accepted   The human accepted, by name in this session, every hold that
                is not a forge gate
 `
@@ -80,7 +84,7 @@ A default branch with commits origin lacks is reported, left as it is, and
 exits 1.
 `
 
-const finishUsage = `Usage: harness land finish <pr>... [--allow-ignored] [--keep-branch]
+const finishUsage = `Usage: harness land finish <pr>... [--into <branch>] [--allow-ignored] [--keep-branch]
 
 Clean up after merged pull requests, and print each action as done or kept,
 with the reason for a kept one. A pull request that is not merged is refused
@@ -105,9 +109,11 @@ changes nothing.
   --allow-ignored  Delete this checkout's ignored files with it; pass it only
                    once each is regenerable build output
   --keep-branch    Retire this checkout but keep its branch
+  --into           The branch that stands in for the default branch, as for
+                   harness land check
 `
 
-const checkUsage = `Usage: harness land check [--merge] [--stack] [<pr>...]
+const checkUsage = `Usage: harness land check [--merge] [--stack] [--into <branch>] [<pr>...]
 
 Print, as a JSON array in landing order, the verdict for each pull request:
 the numbers given, or with none the pull request of the branch checked out
@@ -118,6 +124,8 @@ base from origin, and changes nothing else.
            stops, since only a merged one is cleaned up.
   --stack  The one number is a stack's tip: every open pull request under it
            joins the run. A base with no open pull request is an error.
+  --into   A branch that stands in for the default branch: a project run's
+           integration branch, which its pull requests land on first.
 
 Each verdict carries:
 
@@ -198,7 +206,30 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	return 2
 }
 
+// takeInto strips --into <branch> from args. The branch stands in for the
+// default branch, so a project run lands its pull requests on its
+// integration branch.
+func takeInto(args []string) (rest []string, into string, err error) {
+	for i := 0; i < len(args); i++ {
+		if args[i] != "--into" {
+			rest = append(rest, args[i])
+			continue
+		}
+		if i+1 >= len(args) || args[i+1] == "" || strings.HasPrefix(args[i+1], "-") {
+			return nil, "", errors.New("--into takes a branch name")
+		}
+		i++
+		into = args[i]
+	}
+	return rest, into, nil
+}
+
 func check(args []string, stdout, stderr io.Writer) int {
+	args, into, err := takeInto(args)
+	if err != nil {
+		fmt.Fprintf(stderr, "harness land check: %v; run harness land check --help\n", err)
+		return 2
+	}
 	var numbers []int
 	merge, stack := false, false
 	for _, a := range args {
@@ -231,6 +262,7 @@ func check(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail(err)
 	}
+	e.Trunk = into
 	checks, err := Run(e, numbers, stack, merge)
 	if err != nil {
 		return fail(err)
@@ -268,6 +300,11 @@ func syncCommand(args []string, stdout, stderr io.Writer) int {
 }
 
 func finish(args []string, stdout, stderr io.Writer) int {
+	args, into, err := takeInto(args)
+	if err != nil {
+		fmt.Fprintf(stderr, "harness land finish: %v; run harness land finish --help\n", err)
+		return 2
+	}
 	var numbers []int
 	var o FinishOptions
 	for _, a := range args {
@@ -297,6 +334,7 @@ func finish(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness land finish: %v\n", err)
 		return 1
 	}
+	e.Trunk = into
 	actions, err := Finish(e, numbers, o)
 	printActions(stdout, "land finish", actions)
 	if err != nil {
@@ -380,6 +418,10 @@ func merge(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness land merge: "+format+"; run harness land merge --help\n", a...)
 		return 2
 	}
+	args, into, err := takeInto(args)
+	if err != nil {
+		return usage("%v", err)
+	}
 	number, head, body, accepted := 0, "", "", false
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
@@ -414,6 +456,7 @@ func merge(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness land merge: %v\n", err)
 		return 1
 	}
+	e.Trunk = into
 	m, err := Merge(e, number, head, body, accepted)
 	if m.State != "" {
 		out, _ := json.MarshalIndent(m, "", "  ")

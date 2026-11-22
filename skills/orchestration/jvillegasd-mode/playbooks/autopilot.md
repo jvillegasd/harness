@@ -22,6 +22,7 @@ jvillegasd-mode's Deciding and getting stuck rules run the work, with one change
 - **Done:** each pull request is verified and green at its current head, with `open-pr`'s readiness report.
 - **Dead end:** every remaining unit is parked with its evidence and the replan finds no new approach. Push what is verified, pause the rest with `checkpoint`'s Pause (a `wip:` commit and the next action), then report.
 - **Epic written:** when the goal is a plan, the committed epic and its slices are done, and the run ends without building it.
+- **Project delivered:** for a project, done is the integration branch's pull request open, verified, and green, with every milestone landed on the integration branch.
 - **Goal ruled out:** when the evidence rules out the goal itself, as jvillegasd-mode's Start step 1 describes, stop and report that evidence, since there is nothing left to drive toward.
 
 "Keep going" and "going to bed" never trigger a pause; only done, a written epic, a dead end, a ruled-out goal, or the human's stop ends the run.

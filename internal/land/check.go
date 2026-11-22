@@ -23,6 +23,9 @@ type Env struct {
 	Dir   string
 	Forge Forge
 	State string
+	// Trunk, when set, stands in for the default branch: the branch a
+	// project run integrates into before the human merges it.
+	Trunk string
 }
 
 type Check struct {
@@ -188,6 +191,9 @@ func (e Env) resolve(numbers []int, stack bool) (landing, error) {
 		return run, err
 	}
 	def := repo.DefaultBranchRef.Name
+	if e.Trunk != "" {
+		def = e.Trunk
+	}
 	raw, err := e.Forge("api", "user", "--jq", ".login")
 	me := strings.TrimSpace(string(raw))
 	if err != nil || me == "" || def == "" {

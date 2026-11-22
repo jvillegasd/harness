@@ -92,6 +92,7 @@ The agent picks the playbook from the task:
 | A merge, or "it merged, clean up" | Nothing. The agent tells you to run `/land` |
 | "Clean up old worktrees" | Nothing. The agent tells you to run `/cleanup` |
 | Pick up earlier work | `checkpoint`'s resume steps, then the recorded playbook |
+| A project: several features toward one goal, or a whole app | Project playbook |
 | Large, multi-part, or none of the above | You-got-this playbook |
 
 When a row names a skill, jvillegasd-mode runs that skill's own steps. It adds its checklist and its reply, never a second copy of the skill.
@@ -233,9 +234,9 @@ For longer work, the agent keeps the requirements, decisions, evidence, and next
 - Workers each take one slice, in their own worktrees.
 - The main agent checks and commits each worker's result on its slice's branch, then verifies, maps, and reviews each branch on its own, from the bottom of the stack up.
 
-Use it when the work is settled enough to hand off. Resolve missing acceptance criteria, disputed test seams, or shared assumptions first.
+`/jvillegasd-mode` on a settled epic starts `build` for you. An epic without slices is first cut into them, as local drafts that [`harness tickets check`](cli.md#ticket-commands) validates. `build` picks the next slices with `harness tickets frontier`: those whose blockers are all done. Publishing still needs your request, and merging still needs `/land`, one pull request at a time; after a parent merges, `/land` repairs the pull requests stacked on it. Pull requests open on their own once the work is verified, unless you said to keep it local.
 
-`/jvillegasd-mode` on a settled epic starts `build` for you. An epic without slices is first cut into them, as local drafts that [`harness tickets check`](cli.md#ticket-commands) validates. `build` picks the next slices with `harness tickets frontier`: those whose blockers are all done. Publishing still needs your request, and merging still needs `/land`, one pull request at a time; after a parent merges, `/land` repairs the pull requests stacked on it. Under `/jvillegasd-mode` autopilot, your step-away request also counts as the request to publish.
+For a whole app or several features toward one goal, the project playbook plans milestones, each an epic, and shows you the roadmap once before it starts (autopilot skips that). Everything lands on one integration branch, `project/<slug>`: the agent merges its own pull requests into it once each passes `harness land check --into project/<slug>`, with a review verdict and green checks. At the end it opens one pull request from the integration branch to the default branch, and you merge that.
 
 ## Optional tracking
 

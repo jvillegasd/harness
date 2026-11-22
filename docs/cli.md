@@ -222,6 +222,7 @@ Run `harness worktree audit --help` and `harness worktree retire --help` for eve
 harness land check                 # the PR of the branch checked out here
 harness land check --merge 19 20   # can these merge? Printed in the order they would land
 harness land check --merge --stack 23   # PR 23 and every open PR under it
+harness land check --merge --into project/app 31   # a project run's PR, landing on its integration branch
 ```
 
 It prints one JSON verdict per PR. The fields you will read most:
