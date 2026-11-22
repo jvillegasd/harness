@@ -75,7 +75,8 @@ func (inv inventory) brewTarget(group, name, path string) (target, bool) {
 	t := target{group: group, name: name, path: path}
 	matches := 0
 	for _, f := range inv.Formulae {
-		if (f.Name != name && !strings.HasPrefix(f.Name, name+"@")) || len(f.Installed) == 0 || !within(resolved(path), filepath.Join(inv.prefix, "Cellar", f.Name)) {
+		named := f.Name == name || strings.HasPrefix(f.Name, name+"@") || (name == "opencode" && f.Name == "opencode-v2")
+		if !named || len(f.Installed) == 0 || !within(resolved(path), filepath.Join(inv.prefix, "Cellar", f.Name)) {
 			continue
 		}
 		matches++

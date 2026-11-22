@@ -109,7 +109,7 @@ var nextSteps = []string{
 // closingNotes follow the next steps after a full install.
 var closingNotes = []string{
 	"Status line: harness statusline, which Claude Code runs on every draw. Codex and OpenCode get none from the harness.",
-	"Workflow skills also answer to /name in Claude Code and OpenCode, and to $name in Codex.",
+	"Workflow skills also answer to /name in Claude Code, to @name in OpenCode v2, and to $name in Codex.",
 	"Yolo aliases (ccyolo, cxyolo, ocyolo) are sourced from ~/.harness/aliases.sh; open a new shell to load them.",
 	"Standalone third-party skills were not downloaded or updated. Their committed bodies and skills-lock.json are the reviewed source of truth.",
 }

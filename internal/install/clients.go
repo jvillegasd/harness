@@ -442,6 +442,7 @@ func (in *installer) trackedOpenCodePermission() *object {
 func (in *installer) reconcileOpenCodePermission(remove bool) {
 	path := in.openCodeConfigPath()
 	if remove && !isFile(path) {
+		in.recordOpenCodeDefaults(nil)
 		return
 	}
 	data, err := os.ReadFile(path)
@@ -455,7 +456,7 @@ func (in *installer) reconcileOpenCodePermission(remove bool) {
 		die("%s is not a JSON object, so the harness permission rules cannot be merged into it: %v", path, err)
 	}
 	current, _ := live.get("permission")
-	merged, err := mergePermission(current, in.trackedOpenCodePermission(), !remove)
+	merged, added, err := mergePermission(current, in.trackedOpenCodePermission(), !remove, in.loadState().OpenCodeDefaults)
 	if err != nil {
 		die("%s: %v; fix it and re-run.", path, err)
 	}
@@ -467,13 +468,19 @@ func (in *installer) reconcileOpenCodePermission(remove bool) {
 
 	before, _ := parseObject(data)
 	after := render(live)
-	if before != nil && bytes.Equal(render(before), after) {
-		return
+	if before == nil || !bytes.Equal(render(before), after) {
+		must(os.MkdirAll(filepath.Dir(path), 0o755))
+		in.backupCopy(path)
+		must(os.WriteFile(path, after, 0o644))
+		in.log("Reconciled the harness permission rules in %s", path)
 	}
-	must(os.MkdirAll(filepath.Dir(path), 0o755))
-	in.backupCopy(path)
-	must(os.WriteFile(path, after, 0o644))
-	in.log("Reconciled the harness permission rules in %s", path)
+	in.recordOpenCodeDefaults(added)
+}
+
+func (in *installer) recordOpenCodeDefaults(patterns []string) {
+	if !slices.Equal(in.loadState().OpenCodeDefaults, patterns) {
+		in.updateState(func(s *state) { s.OpenCodeDefaults = patterns })
+	}
 }
 
 func actionRules(raw json.RawMessage) (*object, error) {
@@ -495,17 +502,67 @@ func strictness(raw json.RawMessage) int {
 	return slices.Index([]string{"allow", "ask", "deny"}, action)
 }
 
-func mergePermission(live json.RawMessage, tracked *object, add bool) (json.RawMessage, error) {
+// A catch-all appended after the user's rules would override every one of them,
+// so this class holds defaults: they go first and any rule of the user's wins.
+// The patterns the install added are recorded, because a user's rule can equal a tracked one.
+const defaultsClass = "external_directory"
+
+func hasCatchAll(permission, rules *object) bool {
+	if _, ok := rules.get("*"); ok {
+		return true
+	}
+	all, ok := permission.get("*")
+	return ok && (same(all, encode("ask")) || same(all, encode("deny")))
+}
+
+func mergePermission(live json.RawMessage, tracked *object, add bool, added []string) (json.RawMessage, []string, error) {
 	permission, err := actionRules(live)
 	if err != nil {
-		return nil, errors.New("permission is neither an action nor a JSON object")
+		return nil, nil, errors.New("permission is neither an action nor a JSON object")
 	}
 	for _, class := range tracked.keys {
 		ours, err := parseObject(tracked.vals[class])
 		must(err)
 		rules, err := actionRules(permission.vals[class])
 		if err != nil {
-			return nil, fmt.Errorf("permission.%s is neither an action nor a JSON object", class)
+			return nil, nil, fmt.Errorf("permission.%s is neither an action nor a JSON object", class)
+		}
+		if class == defaultsClass {
+			if add {
+				if hasCatchAll(permission, rules) {
+					continue
+				}
+				merged := newObject()
+				for _, pattern := range ours.keys {
+					if _, had := rules.get(pattern); !had {
+						merged.set(pattern, ours.vals[pattern])
+						if !slices.Contains(added, pattern) {
+							added = append(added, pattern)
+						}
+					}
+				}
+				for _, pattern := range rules.keys {
+					merged.set(pattern, rules.vals[pattern])
+				}
+				permission.set(class, encode(merged))
+				continue
+			}
+			removed := false
+			for _, pattern := range added {
+				if have, ok := rules.get(pattern); ok && same(have, ours.vals[pattern]) {
+					rules.del(pattern)
+					removed = true
+				}
+			}
+			if !removed {
+				continue
+			}
+			if len(rules.keys) == 0 {
+				permission.del(class)
+			} else {
+				permission.set(class, encode(rules))
+			}
+			continue
 		}
 		stricter := map[string]json.RawMessage{}
 		for _, pattern := range ours.keys {
@@ -535,10 +592,13 @@ func mergePermission(live json.RawMessage, tracked *object, add bool) (json.RawM
 			permission.set(class, encode(rules))
 		}
 	}
-	if len(permission.keys) == 0 {
-		return nil, nil
+	if !add {
+		added = nil
 	}
-	return encode(permission), nil
+	if len(permission.keys) == 0 {
+		return nil, added, nil
+	}
+	return encode(permission), added, nil
 }
 
 func (in *installer) openCodePermissionHold(removed bool) bool {
@@ -563,6 +623,13 @@ func (in *installer) openCodePermissionHold(removed bool) bool {
 		rules, err := actionRules(permission.vals[class])
 		if err != nil {
 			return false
+		}
+		if class == defaultsClass {
+			// The uninstall has cleared the record by now, so a rule left here is the user's.
+			if !removed && !hasCatchAll(permission, rules) {
+				return false
+			}
+			continue
 		}
 		if removed {
 			if slices.ContainsFunc(ours.keys, func(p string) bool { have, ok := rules.get(p); return ok && same(have, ours.vals[p]) }) {
