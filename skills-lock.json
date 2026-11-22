@@ -253,6 +253,12 @@
       "skillPath": "skills/unslop/SKILL.md",
       "computedHash": "4bbcb6719a8f0f6f7fb46752e1c360791d7758a837708e300a06fc7d6907938c"
     },
+    "wait-what": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/wait-what/SKILL.md",
+      "computedHash": "70c9bf9f5a84b6849760f9492f569d5aa12307a0310323fde5f583144730c26c"
+    },
     "writing-for-agents": {
       "source": "mattpocock/skills",
       "sourceType": "github",
