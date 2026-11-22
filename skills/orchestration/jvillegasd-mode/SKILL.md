@@ -48,13 +48,13 @@ jvillegasd-mode lasts the conversation. "New task" means match again from step 1
 
 A bug that is a slowdown with a number is perf, and a one-off speedup is perf while a target reached over many measured attempts is hillclimb. A single ticket or a plain request to change behavior matches its kind's row (bug fix, feature, refactor), whose playbook runs `build` on one slice. When the task fits two rows, take the narrower one, and you-got-this only when no narrower row covers it.
 
-A row that names a skill runs that skill's steps as the playbook: they go into the todo list like any playbook's, and jvillegasd-mode adds only its triggers and reply. `epic`, `build`, and `triage` are guarded so the model never starts them on its own; the human's `/jvillegasd-mode` request is what starts them. An epic hands back asking "go to build it?". Only an explicit go answers it, since approving an epic authorizes local implementation alone; the go is a new task, a settled epic matched again.
+A row that names a skill runs that skill's steps as the playbook: they go into the todo list like any playbook's, and jvillegasd-mode adds only its triggers and reply. `epic`, `build`, and `triage` are guarded so the model never starts them on its own; the human's `/jvillegasd-mode` request is what starts them. An epic hands back asking "go to build it?". Only an explicit go answers it, since building an epic runs many workers unattended; the go is a new task, a settled epic matched again.
 
 ## Triggers
 
 These hold at every step of every playbook.
 
-- **A broken skill mid-task** (a step that names a missing script, a stale path, two skills that contradict each other): fix it on its own branch. Do not block on it and do not silently work around it. It becomes its own PR when delivery is authorized. When the broken skill belongs to the harness and you are working in another repository, write a ready-to-apply note instead: the skill, the defect, the evidence, and the proposed fix, in the task document and the reply.
+- **A broken skill mid-task** (a step that names a missing script, a stale path, two skills that contradict each other): fix it on its own branch. Do not block on it and do not silently work around it. It becomes its own PR. When the broken skill belongs to the harness and you are working in another repository, write a ready-to-apply note instead: the skill, the defect, the evidence, and the proposed fix, in the task document and the reply.
 - **A step that verifies** passes only on the surface it names. Inconclusive, or green or measured on another surface, is not a pass.
 - **A subagent to launch** (executor, code-search, reviewer, a review lens, or any other, which runs as the `worker` at a tier): launch it through `delegation`.
 - **Bulk that would crowd the context** (a broad search, a long log, transcript, trace, or profile, a sweep of mechanical edits, an implementation big enough to bury the plan): route it to a role through `delegation` and keep only its reduced result, so this session stays on planning, review, and verification (`principle-guard-the-context-window`).
@@ -91,7 +91,7 @@ A playbook's Finish step is these three, each its own item in the todo list:
 
 1. Run `change-map`.
 2. Run `review` at the level `harness review level` reports.
-3. When delivery is authorized, run `open-pr`. Otherwise stop with the work ready locally and offer delivery once.
+3. Run `open-pr`, unless the human said to keep the work local.
 
 ## Reply
 

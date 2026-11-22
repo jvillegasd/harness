@@ -90,7 +90,7 @@ The [workflow guide](docs/workflow.md) lists every skill and when to reach for i
 
 ## What the agent does on its own, and what waits for you
 
-- **Local work stays local.** The agent edits and commits on its own task branch, but nothing is pushed or published until you ask.
+- **Finished work becomes a pull request.** The agent edits and commits on its own task branch, then pushes it and opens a ready PR once its checks pass. Say "keep it local" to stop before the push. Tracker writes and messages to people still wait for you.
 - **You merge.** Every pull request ends with a readiness report. You read it and merge. The agent merges only when you run `/land merge`.
 - **Nothing is thrown away without your say.** The agent discards work only when you name it. If the scope is unclear, it asks.
 - **It stops and asks** when it needs a decision only you can make, or when a required check cannot run.
@@ -110,7 +110,7 @@ stateDiagram-v2
     [*] --> Local: You ask for work
     Local --> Local: A check fails, agent fixes it
     Local --> LocalReady: Work done, checks pass
-    LocalReady --> Preparing: You ask for a PR, or autopilot opens one
+    LocalReady --> Preparing: Agent opens a PR, unless you said keep it local
     Preparing --> PR: Checks pass, PR opens
     PR --> PR: Agent fixes checks or feedback
     PR --> MergeReady: Checks pass and the review posts its verdict
@@ -126,7 +126,7 @@ stateDiagram-v2
     Waiting --> PR: You unblock it
 ```
 
-**"Ready locally" is a finished result.** If you do not want a pull request, stop there. You can ask for one with the original task or at any time later. When work is waiting on you, it picks up again at the stage that was blocked. The [workflow guide](docs/workflow.md#local-work-and-delivery) describes each stage.
+**"Ready locally" is a finished result only when you asked to keep the work local.** Otherwise the agent goes on to open the pull request. When work is waiting on you, it picks up again at the stage that was blocked. The [workflow guide](docs/workflow.md#local-work-and-delivery) describes each stage.
 
 ## Review
 
@@ -157,10 +157,10 @@ jvillegasd-mode lasts for the whole conversation. Say "new task" to start anothe
 Add "autopilot" or "I'm stepping away", plus a goal:
 
 ```text
-/jvillegasd-mode autopilot, max 3h: make the export job finish under a minute
+/jvillegasd-mode autopilot: make the export job finish under a minute
 ```
 
-The agent writes down a pass or fail definition of done (or proposes one), then works without checking in until the goal is met or time runs out. The default time limit is 2 hours.
+The agent writes down a pass or fail definition of done (or proposes one), then works without checking in until the goal is met, the goal is ruled out, or every approach has hit a dead end. There is no time limit; say stop to end it.
 
 On autopilot the agent **may** commit, push, and open pull requests, including separate PRs for problems it finds along the way. It **never** merges, writes to the issue tracker, or messages anyone. When it hits a decision only you could make, it takes the simplest safe option and lists it at the top of its report, with what to tell it if you want something else. Without a goal, autopilot does not start.
 

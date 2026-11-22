@@ -100,7 +100,7 @@ The hillclimb playbook leans on its own command: it logs every attempt, kept or 
 
 How each kind of task ends:
 
-- **A code change** ends with a change summary (`change-map`) and a review at your review level. If you already asked for delivery, it goes on to `open-pr`.
+- **A code change** ends with a change summary (`change-map`), a review at your review level, and `open-pr`, unless you said to keep it local.
 - **An investigation, a review, or an epic** hand the result back to you.
 - **A design** picks a shape, then continues as a feature or a refactor.
 - **An epic** asks whether to build it. Only an explicit "go" answers. That go is a new task, so it matches again as a settled epic and runs `build`.
@@ -141,12 +141,12 @@ stateDiagram-v2
 To let work run while you are away, add "autopilot" or "I'm stepping away" and a goal to the `/jvillegasd-mode` request:
 
 ```text
-/jvillegasd-mode autopilot, max 3h: make the export job finish under a minute
+/jvillegasd-mode autopilot: make the export job finish under a minute
 ```
 
 Here is what the agent does:
 
-1. **Frames the run.** It states a pass or fail definition of done, or proposes one if you gave none. It records your words and the time limit (2 hours unless you set one) in the task document.
+1. **Frames the run.** It states a pass or fail definition of done, or proposes one if you gave none. It records your words in the task document. There is no time limit.
 2. **Works without checking in.** It keeps each change that moves toward the goal and reverts each one that does not.
 3. **Decides for you where it must.** A decision only you could make gets the simplest safe option. Each one is listed at the top of its report, with what to tell it if you want something else.
 4. **Handles getting stuck.** When two fixes that rest on one assumption both fail, it tests the assumption directly. When a piece fails, it retries based on the cause (a smaller scope, the same start, or a different model). After two retries it drops that piece and plans around it.
@@ -169,12 +169,12 @@ stateDiagram-v2
     [*] --> Framed: You give a goal and step away
     [*] --> NoGoal: You give no goal
     NoGoal --> [*]: Agent asks for one
-    Framed --> Iterating: Goal and time limit written down
+    Framed --> Iterating: Goal written down
     Iterating --> Iterating: Keep what helps, revert what does not
     Iterating --> Replanning: Stuck
     Replanning --> Iterating
     Iterating --> Done: Goal met, every PR green
-    Iterating --> Paused: Time is up
+    Replanning --> Paused: Every approach hit a dead end
     Iterating --> RuledOut: The goal turns out impossible
     Done --> [*]: You read the report and merge
     Paused --> [*]: You resume or stop it
@@ -187,8 +187,8 @@ stateDiagram-v2
 
 | You say | The agent may |
 | --- | --- |
-| Any request to build something | Edit files and commit on a task branch it creates |
-| "Open a PR" or "ship this" | Also push, open or update the PR, and fix required checks. Feedback on that PR stays on the same branch |
+| Any request to build something | Edit files and commit on a task branch it creates, then push it, open the PR, and fix required checks once the work is done. Feedback on that PR stays on the same branch |
+| "Keep it local" | Stop before the push |
 | `/land merge` | Recheck the gates and merge for you |
 | `/land merge 19 20` or `/land merge stack 23` | Land those PRs, or the stack under PR 23, bottom-up one at a time, even when their branches are not checked out, and even when one comes from a fork. It stops at the first PR that fails a gate |
 

@@ -38,7 +38,7 @@ The epic is what later work starts from instead of a reconstruction, so exact re
 5. **Write each slice** to `docs/agents/tickets/<feature-slug>/<NN>-<slug>.md`, the slug following the epic's title, with a suffix when another feature already uses it. Each opens with `# <NN> <title>` and has these five `##` sections, in order: **What to build** (behavior, free of file paths), **Acceptance criteria** (red on the base commit), **Seam** (from step 3), **Blocked by** (`none`, or numbers in this feature), and **Out of scope**. A research finding keeps its evidence and confidence, so an uncertain finding stays an open question. Done when `harness tickets check <feature-slug>` prints nothing.
 6. **Publish only when asked**: read [publishing](references/publishing.md) and follow it. Otherwise the local epic and drafts are the result.
 
-Approving the epic authorizes local implementation only, as the floor says; building it is `build`.
+Approving the epic authorizes implementing and delivering it, never merging it, as the floor says; building it is `build`.
 
 ## Output
 

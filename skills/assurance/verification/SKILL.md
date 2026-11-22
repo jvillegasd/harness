@@ -18,7 +18,7 @@ A pass is only worth what it covers. Binding each result to a revision, and nami
 1. Compare the requested behavior with the actual diff, including owned untracked files. Identify the meaningful failure behavior and the affected seams.
 2. Resolve commands from project instructions, task runners, or the toolchain. Run cheap targeted checks first, then the repository-required ones. Use existing tests, and add regression coverage where it can fail for the right reason. TDD applies only when the task or project asks for it.
 3. Bind results to the commit. Commit owned work first where the floor lets you; only work that stays uncommitted needs a content identity covering tracked and untracked inputs. Record each command with its outcome: pass, fail, skipped, unavailable, or stale. A later edit makes the affected evidence stale, and HEAD equality alone does not identify a dirty tree.
-4. Fix owned failures and rerun the affected checks. When failures repeat without progress, stop and report as the floor's Working rules describe. For authorized PR delivery, also run the forge's required checks; otherwise stop after the local ones.
+4. Fix owned failures and rerun the affected checks. When failures repeat without progress, stop and report as the floor's Working rules describe. When the work is delivered as a pull request, also run the forge's required checks; for work kept local, stop after the local ones.
 
 A fixture, a static read-back, or a self-review is not live acceptance or independent inspection, so report it as what it is.
 
@@ -49,7 +49,7 @@ Before a pull request opens or its head changes, and at `build`'s integration, g
    gaps: <unmapped items> | none
    ```
    FAIL means a driven feature missed its proving end state, or a bugfix reproduction did not fail on the base and pass on the head. PASS+NOTES means every driven feature passed and something stayed open: a gap, or a feature that could not be driven, each named. PASS means every selected feature passed with no gaps.
-5. **Use.** The verdict is bound to its head. A later commit makes it stale unless it changes only tests or documentation. Fix a FAIL and run a fresh verdict; never overrule one. Report it as one line: `Verdict: <verdict> at <sha>`, with the gaps. Once a pull request holds that head and delivery is authorized, write the runner's report to a file and post it with `harness review verdict <pr> --run --result <verdict> --sha <head> --notes <file>`, because `harness land check` holds a `critical` or `behavioral` pull request until a run verdict covers its head. Post the runner's verdict only, since your own drive of the app is a check.
+5. **Use.** The verdict is bound to its head. A later commit makes it stale unless it changes only tests or documentation. Fix a FAIL and run a fresh verdict; never overrule one. Report it as one line: `Verdict: <verdict> at <sha>`, with the gaps. Once a pull request holds that head, write the runner's report to a file and post it with `harness review verdict <pr> --run --result <verdict> --sha <head> --notes <file>`, because `harness land check` holds a `critical` or `behavioral` pull request until a run verdict covers its head. Post the runner's verdict only, since your own drive of the app is a check.
 
 ## Output
 
