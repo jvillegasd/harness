@@ -198,7 +198,7 @@ On Claude, the recommended models for `heavy` are Fable and Opus. It defaults to
 | --- | --- |
 | `ccyolo` | Claude Code with permission checks turned off |
 | `cxyolo` | Codex with approvals and the sandbox turned off |
-| `ocyolo` | OpenCode with edit, shell, and web access allowed |
+| `ocyolo` | OpenCode v1 with edit, shell, and web access allowed. v2 ignores the override |
 
 These aliases give the agent broad access to your machine. Use them with care.
 

@@ -301,7 +301,7 @@ harness skills remove <name>                    # remove a locked skill and its 
 harness skills verify                           # recheck every locked body's hash, offline
 ```
 
-`--guarded` adds the invocation guard for each client, so no agent starts the skill on its own. `move` uses `git mv` and keeps a locked skill's hash. Both `new` and `move` refuse a name that exists, an unknown group, or the group a skill is already in, and write nothing. A group is a directory under `skills/`, so to add a group, create its directory before you move a skill into it.
+`--guarded` adds the invocation guard for each client, so no agent starts the skill on its own. OpenCode honors the guard only from v2, where it hides the skill from the model but still loads it when the model names it. `move` uses `git mv` and keeps a locked skill's hash. Both `new` and `move` refuse a name that exists, an unknown group, or the group a skill is already in, and write nothing. A group is a directory under `skills/`, so to add a group, create its directory before you move a skill into it.
 
 Locked skills come from other projects and change only through `add`, `update`, and `remove`. [Updating skills safely](#updating-skills-safely) covers what `update` refuses.
 

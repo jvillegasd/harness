@@ -495,6 +495,37 @@ func strictness(raw json.RawMessage) int {
 	return slices.Index([]string{"allow", "ask", "deny"}, action)
 }
 
+// A catch-all appended after the user's rules would override every one of them,
+// so this class holds defaults: they go first and any rule of the user's wins.
+const defaultsClass = "external_directory"
+
+func keepsOwnDefault(permission, rules *object) bool {
+	if own, ok := rules.get("*"); ok {
+		return !same(own, encode("ask"))
+	}
+	all, ok := permission.get("*")
+	return ok && same(all, encode("deny"))
+}
+
+func mergeDefaults(rules, ours *object, add bool) *object {
+	merged := newObject()
+	for _, pattern := range ours.keys {
+		have, had := rules.get(pattern)
+		switch {
+		case had && (add || !same(have, ours.vals[pattern])):
+			merged.set(pattern, have)
+		case add:
+			merged.set(pattern, ours.vals[pattern])
+		}
+	}
+	for _, pattern := range rules.keys {
+		if _, tracked := ours.get(pattern); !tracked {
+			merged.set(pattern, rules.vals[pattern])
+		}
+	}
+	return merged
+}
+
 func mergePermission(live json.RawMessage, tracked *object, add bool) (json.RawMessage, error) {
 	permission, err := actionRules(live)
 	if err != nil {
@@ -506,6 +537,17 @@ func mergePermission(live json.RawMessage, tracked *object, add bool) (json.RawM
 		rules, err := actionRules(permission.vals[class])
 		if err != nil {
 			return nil, fmt.Errorf("permission.%s is neither an action nor a JSON object", class)
+		}
+		if class == defaultsClass {
+			if keepsOwnDefault(permission, rules) {
+				continue
+			}
+			if merged := mergeDefaults(rules, ours, add); len(merged.keys) > 0 {
+				permission.set(class, encode(merged))
+			} else {
+				permission.del(class)
+			}
+			continue
 		}
 		stricter := map[string]json.RawMessage{}
 		for _, pattern := range ours.keys {
@@ -564,6 +606,10 @@ func (in *installer) openCodePermissionHold(removed bool) bool {
 		if err != nil {
 			return false
 		}
+		defaults := class == defaultsClass
+		if defaults && keepsOwnDefault(permission, rules) {
+			continue
+		}
 		if removed {
 			if slices.ContainsFunc(ours.keys, func(p string) bool { have, ok := rules.get(p); return ok && same(have, ours.vals[p]) }) {
 				return false
@@ -572,6 +618,12 @@ func (in *installer) openCodePermissionHold(removed bool) bool {
 		}
 		if len(rules.keys) < len(ours.keys) {
 			return false
+		}
+		if defaults {
+			if !slices.Equal(rules.keys[:len(ours.keys)], ours.keys) {
+				return false
+			}
+			continue
 		}
 		tail := rules.keys[len(rules.keys)-len(ours.keys):]
 		for i, pattern := range ours.keys {

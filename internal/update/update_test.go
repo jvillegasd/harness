@@ -2,6 +2,7 @@ package update
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -228,6 +229,22 @@ func TestBareUpdateDiscoversBeforeUpgrades(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "updated: node: 1 -> 2") || !strings.Contains(out.String(), "skipped: skills") {
 		t.Fatal(out.String())
+	}
+}
+
+func TestOpenCodeV2UpgradesThroughItsOwnFormula(t *testing.T) {
+	prefix := resolved(t.TempDir())
+	path := filepath.Join(prefix, "Cellar/opencode-v2/2.3.2/bin/opencode")
+	shim(t, path, "exit 0")
+	var inv inventory
+	info := `{"formulae":[{"name":"opencode-v2","full_name":"anomalyco/tap/opencode-v2","installed":[{"version":"2.3.2"}]}]}`
+	if err := json.Unmarshal([]byte(info), &inv); err != nil {
+		t.Fatal(err)
+	}
+	inv.brew, inv.prefix = "brew", prefix
+	got, ok := inv.brewTarget("clients", "opencode", path)
+	if !ok || strings.Join(got.command, " ") != "brew upgrade --formula anomalyco/tap/opencode-v2" {
+		t.Fatalf("owned=%v command=%q", ok, got.command)
 	}
 }
 

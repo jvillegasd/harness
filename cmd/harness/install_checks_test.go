@@ -430,7 +430,7 @@ func missingTools(t *testing.T, base string, names ...string) {
 			t.Fatal(err)
 		}
 	}
-	restore := `for arg in "$@"; do n=$(basename "$arg"); [ -e '` + saved + `'/"$n" ] && cp '` + saved + `'/"$n" '` + shims + `'/"$n"; done`
+	restore := `for arg in "$@"; do n=$(basename "$arg"); n=${n%-v2}; [ -e '` + saved + `'/"$n" ] && cp '` + saved + `'/"$n" '` + shims + `'/"$n"; done`
 	writeShim(t, base, "brew", `if [ "$1" = install ]; then `+restore+`; fi`)
 	writeShim(t, base, "npm", `if [ "$1" = install ]; then `+restore+`; fi`)
 }
@@ -1080,6 +1080,74 @@ func TestOpenCodeKeepsAStricterUserRule(t *testing.T) {
 	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
 	if text := readFile(t, config); !strings.Contains(text, `"gh pr merge *": "deny"`) || strings.Contains(text, "git push") {
 		t.Errorf("the uninstall should leave only the user's deny:\n%s", text)
+	}
+}
+
+func TestInstallsOpenCodeV2(t *testing.T) {
+	base := sandbox(t)
+	seedFull(t, base)
+	missingTools(t, base, "opencode")
+	ok(t, runInstaller(t, base), "full install")
+	if got := recordedTools(t, base)["opencode"]; got != "brew:anomalyco/tap/opencode-v2" {
+		t.Errorf("recorded %q for OpenCode, want the v2 formula, the first that honors the skill guard", got)
+	}
+}
+
+func TestOpenCodeAsksBeforeAHarnessMerge(t *testing.T) {
+	base := sandbox(t)
+	ok(t, runInstaller(t, base), "install")
+	if text := readFile(t, filepath.Join(base, "home", ".config", "opencode", "opencode.json")); !strings.Contains(text, `"harness land merge *": "ask"`) {
+		t.Errorf("harness land merge runs without asking:\n%s", text)
+	}
+}
+
+func TestOpenCodeAsksOutsideTheProject(t *testing.T) {
+	const ask, skills = `"*": "ask"`, `"~/.agents/skills/*": "allow"`
+	for name, c := range map[string]struct {
+		user    string
+		inOrder []string
+		absent  string
+	}{
+		"no setting":              {`{}`, []string{ask, skills}, ""},
+		"the user's path wins":    {`{"permission": {"external_directory": {"~/work/*": "allow"}}}`, []string{ask, skills, `"~/work/*": "allow"`}, ""},
+		"the user's skill rule":   {`{"permission": {"external_directory": {"~/.agents/skills/*": "deny"}}}`, []string{ask, `"~/.agents/skills/*": "deny"`}, skills},
+		"the user allows all":     {`{"permission": {"external_directory": "allow"}}`, []string{`"external_directory": "allow"`}, skills},
+		"the user denies all":     {`{"permission": {"external_directory": {"*": "deny"}}}`, []string{`"*": "deny"`}, skills},
+		"the user denies any use": {`{"permission": "deny"}`, []string{`"*": "deny"`}, skills},
+	} {
+		t.Run(name, func(t *testing.T) {
+			base := sandbox(t)
+			config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
+			writeMode(t, config, c.user+"\n", 0o644)
+			ok(t, runInstaller(t, base), "install")
+			installed := readFile(t, config)
+			rest := installed
+			if i := strings.Index(rest, `"external_directory"`); i >= 0 {
+				rest = rest[i:]
+			}
+			for _, want := range c.inOrder {
+				i := strings.Index(rest, want)
+				if i < 0 {
+					t.Fatalf("want %q in that order:\n%s", c.inOrder, installed)
+				}
+				rest = rest[i+len(want):]
+			}
+			if c.absent != "" && strings.Contains(installed, c.absent) {
+				t.Errorf("the install widened the user's setting with %s:\n%s", c.absent, installed)
+			}
+			ok(t, runInstaller(t, base), "reinstall")
+			if again := readFile(t, config); again != installed {
+				t.Errorf("a reinstall changed the config:\n%s", again)
+			}
+			ok(t, runUninstaller(t, base, "--yes"), "uninstall")
+			left := readFileOr(config)
+			if strings.Contains(left, skills) {
+				t.Errorf("the uninstall left a harness rule:\n%s", left)
+			}
+			if last := c.inOrder[len(c.inOrder)-1]; last != skills && !strings.Contains(left, last) {
+				t.Errorf("the uninstall dropped the user's %s:\n%s", last, left)
+			}
+		})
 	}
 }
 

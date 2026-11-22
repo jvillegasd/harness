@@ -58,7 +58,7 @@ func (t tool) method() string {
 		}
 		return viaNPM + "@openai/codex"
 	case "opencode":
-		return viaBrew + "anomalyco/tap/opencode"
+		return viaBrew + "anomalyco/tap/opencode-v2"
 	case "engram":
 		return viaBrew + engramFormula
 	case "agent-browser":
