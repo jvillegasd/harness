@@ -306,7 +306,7 @@ The [command-line reference](docs/cli.md) explains each one. `harness <command> 
 | `cmd/harness/`, `internal/` | The `harness` command and its code |
 | `skills/` | The skills, grouped by purpose |
 | `clients/`, `roles/` | Client settings and role definitions |
-| `docs/agents/` | Tracker settings, task documents (`tasks/`), and ticket drafts (`tickets/`) |
+| `docs/agents/` | Tracker settings, epics (`epics/`), task documents (`tasks/`), and ticket drafts (`tickets/`) |
 
 Run every check before you hand off a change:
 

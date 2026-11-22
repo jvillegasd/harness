@@ -21,7 +21,7 @@ A skill the human starts: `jvillegasd-mode` and the skills no other skill runs. 
 _Avoid_: public skill, top-level skill
 
 **Epic**:
-One big ticket that records a change's settled behavior, acceptance criteria, test seams, decisions, and risks, cut into slices. It doubles as the change's task document.
+One big ticket that records a change's settled behavior, acceptance criteria, test seams, decisions, and risks, cut into slices. It lives in `docs/agents/epics/` and outlives the build, whose task document points at it.
 _Avoid_: spec, plan document
 
 **Slice**:

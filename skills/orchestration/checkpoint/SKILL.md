@@ -15,7 +15,7 @@ A fresh session has only the request and the Git history. When that would not le
 
 ## Task document
 
-Reuse an existing task or spec document; otherwise use `docs/agents/tasks/<feature>.md`. Keep:
+Reuse an existing task document; otherwise use `docs/agents/tasks/<feature>.md`. An epic or spec is the plan, not the task document: link to it rather than copying it. Keep:
 
 - A header: the branch, the status, and the request quoted verbatim, with its source.
 - Requirements and acceptance checks, preserving exact user-specified strings and examples. Record existing authority as context with its source; the document grants no new permission.

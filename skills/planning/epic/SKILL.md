@@ -21,7 +21,7 @@ The epic is what later work starts from instead of a reconstruction, so exact re
 ## Steps
 
 1. **Ground.** Read the settled discussion, the domain terms in `GLOSSARY.md`, and the ADRs, and reuse grounded evidence. Explore wide code through `code-search` launched by `delegation`: file pointers, conventions, test commands, and entry points, not pasted contents. Settle a question a run can answer with `proto`, and keep its branch as a primary source. Search the tracker that `docs/agents/harness.json` names, and the drafts under `docs/agents/tickets/`, for work already covering this. Ask the human only the consequential questions no run can settle, with the options and your recommendation, and draft the independent settled sections meanwhile. Done when no consequential product decision is open, or each one left is written as an open question saying what depends on it.
-2. **Write the epic** to the repository's spec location or `docs/agents/tasks/<feature>.md`, reusing an existing document. It doubles as the `checkpoint` task document. Its sections:
+2. **Write the epic** to the repository's spec location or `docs/agents/epics/<feature>.md`, reusing an existing document. It is the plan, not the task document: work that needs one keeps it in `docs/agents/tasks/` (`checkpoint`), pointing at the epic. Its sections:
    - **Problem**: who is affected, what is wrong or missing, and why it matters now.
    - **Behavior**: what a user or caller observes, in the domain's own words, with exact examples and the human's wording where it matters.
    - **Acceptance criteria**: checks that fail before the change and pass after it.
