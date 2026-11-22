@@ -44,7 +44,7 @@ Every skill is callable by name. The skills you start yourself come first; the r
 | Group | Helpers |
 | --- | --- |
 | Orchestration | `delegation`, `checkpoint` |
-| Investigation | `how`, `why`, `research`, `triage`, `diagnosing-bugs` |
+| Investigation | `how`, `why`, `research`, `diagnosing-bugs` |
 | Planning | `epic` (write the big ticket, agree its seams, cut its slices), `proto`, `grilling` |
 | Building | `build` (one slice inline with `tdd`, or many slices fanned out), `tdd` |
 | Delivery | `review`, `address-review`, `open-pr`, `change-map`, `caveman-commit` |
@@ -75,7 +75,7 @@ The agent picks the playbook from the task:
 | --- | --- |
 | Something is broken, throwing, or failing | Bug fix playbook |
 | New or changed behavior | Feature playbook |
-| A question: how, why, are we sure, should we | Investigate playbook (read-only) |
+| A question (how, why, are we sure, should we), or a ticket or production error to analyze | Investigate playbook (read-only) |
 | The structure changes, the behavior does not | Refactor playbook |
 | Something is slow, with a number to move | Perf playbook |
 | One metric to climb toward a target over many attempts | Hillclimb playbook |
@@ -84,7 +84,6 @@ The agent picks the playbook from the task:
 | Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | Skill playbook |
 | A prototype, spike, or mock-up | `proto`'s steps |
 | A plan before anything is built, or tickets from a brief, findings, or a request | `epic`'s steps |
-| A ticket or production error to analyze, with no fix requested | `triage`'s steps |
 | A settled epic or set of slices to build | `build`'s steps |
 | Review a diff, a branch, or a PR | `review`'s steps |
 | Feedback or red checks on an open PR | `address-review`'s steps |
@@ -96,8 +95,6 @@ The agent picks the playbook from the task:
 | Large, multi-part, or none of the above | You-got-this playbook |
 
 When a row names a skill, jvillegasd-mode runs that skill's own steps. It adds its checklist and its reply, never a second copy of the skill.
-
-The hillclimb playbook leans on its own command: it logs every attempt, kept or reverted, with [`harness attempts`](cli.md#attempt-log).
 
 How each kind of task ends:
 

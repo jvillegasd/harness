@@ -27,7 +27,7 @@ jvillegasd-mode lasts the conversation. "New task" means match again from step 1
 | --- | --- |
 | Something is broken, throwing, or failing | [bug fix](playbooks/bug-fix.md) |
 | New or changed behavior | [feature](playbooks/feature.md) |
-| A read-only question: how, why, are we sure, should we | [investigate](playbooks/investigate.md) |
+| A read-only question (how, why, are we sure, should we), or a ticket or production error to analyze with no fix requested | [investigate](playbooks/investigate.md) |
 | The structure changes and the behavior does not | [refactor](playbooks/refactor.md) |
 | Slow, with a number to move | [perf](playbooks/perf.md) |
 | One metric to climb toward a target over many attempts | [hillclimb](playbooks/hillclimb.md) |
@@ -36,7 +36,6 @@ jvillegasd-mode lasts the conversation. "New task" means match again from step 1
 | Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | [skill](playbooks/skill.md) |
 | A prototype, spike, or mock-up | `proto`'s steps |
 | A plan for a change, before anything is built, or tickets from research findings or a request | `epic`'s steps, then `build`'s, unless the human asked only for the plan |
-| A ticket or a production error to turn into a plan brief, with no fix requested | `triage`'s steps |
 | A settled epic or a set of slices to build | `build`'s steps |
 | Review a diff, a branch, or a PR | `review`'s steps, at the depth the human asked |
 | An existing PR: review comments, red checks, conflicts | `address-review`'s steps, with its mode declared |
@@ -49,7 +48,7 @@ jvillegasd-mode lasts the conversation. "New task" means match again from step 1
 
 A bug that is a slowdown with a number is perf, and a one-off speedup is perf while a target reached over many measured attempts is hillclimb. A single ticket or a plain request to change behavior matches its kind's row (bug fix, feature, refactor), whose playbook runs `build` on one slice. When the task fits two rows, take the narrower one, and you-got-this only when no narrower row covers it.
 
-A row that names a skill runs that skill's steps as the playbook: they go into the todo list like any playbook's, and jvillegasd-mode adds only its triggers and reply. `epic`, `build`, and `triage` are guarded so the model never starts them on its own; the human's `/jvillegasd-mode` request is what starts them, and it covers an epic continuing into `build`.
+A row that names a skill runs that skill's steps as the playbook: they go into the todo list like any playbook's, and jvillegasd-mode adds only its triggers and reply. `epic` and `build` are guarded so the model never starts them on its own; the human's `/jvillegasd-mode` request is what starts them, and it covers an epic continuing into `build`.
 
 ## Deciding and getting stuck
 

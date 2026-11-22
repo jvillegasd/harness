@@ -323,19 +323,6 @@ harness tickets publish my-feature
 - **`frontier`** is how `build` picks the next tickets. A ticket is done when `--done` names it or its draft says `Status: done`, and ready once every ticket blocking it is done.
 - **`publish`** creates GitHub issues, blockers first, with native dependency links. It records each issue in its draft as it goes, so a rerun after a failure creates no duplicates, and removes a draft once its issue reads back correctly. It refuses a repository whose tracker is not GitHub. It writes to GitHub, so agents run it only when you ask to publish. `--dry-run` shows every issue and link and writes nothing.
 
-## Attempt log
-
-The hillclimb playbook in `/jvillegasd-mode` records every attempt with `harness attempts`:
-
-```sh
-harness attempts add --log ~/attempts.tsv --hypothesis "cache the index" --change "add LRU" \
-  --before 812 --after 640 --gate pass --outcome kept
-harness attempts list --log ~/attempts.tsv
-harness attempts list --log ~/attempts.tsv --json
-```
-
-The log is a tab-separated file outside the repository. `add` fills in the id, the time, and the change as a number and a percent. A value that is not a number, or an unknown `--gate` or `--outcome`, is refused and nothing is written.
-
 ## Hook commands
 
 The client settings the harness installs call two commands that you rarely run yourself:

@@ -293,7 +293,6 @@ Many skill steps are `harness` commands rather than written instructions, so the
 | `harness review target`, `verdict` | What a review reads, and the one verdict comment a review posts on its PR | `review`, `open-pr` |
 | `harness worktree audit`, `retire` | List worktrees and remove one without losing work | `/land`, `/cleanup`, `build` |
 | `harness tickets check`, `frontier`, `publish` | Validate slice drafts, pick the ready ones, and publish them to GitHub | `epic`, `build` |
-| `harness attempts add`, `list` | The log of measured attempts | `/jvillegasd-mode`'s hillclimb playbook |
 
 The [command-line reference](docs/cli.md) explains each one. `harness <command> --help` lists the flags.
 

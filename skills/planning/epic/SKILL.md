@@ -1,7 +1,7 @@
 ---
 name: epic
 description: "Turn a settled plan into an epic: one big ticket with the settled behavior and agreed test seams, cut into vertical slices drafted locally and published only on request. Invoke only by name: \"/epic the export feature\"."
-argument-hint: "[the plan, a triage brief, finding ids, or the scope; add \"publish to <tracker>\" to authorize the writes]"
+argument-hint: "[the plan, research findings, or the scope; add \"publish to <tracker>\" to authorize the writes]"
 disable-model-invocation: true
 license: MIT
 metadata:
