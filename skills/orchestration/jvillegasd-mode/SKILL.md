@@ -55,7 +55,7 @@ A row that names a skill runs that skill's steps as the playbook: they go into t
 These replace every skill's asks and stops while the mode runs.
 
 - **Each iteration** makes the smallest change the evidence justifies, verifies it, commits it when it advanced, and reverts it when it did not.
-- **A decision a skill would ask the human about** (a test seam, a default, a naming or scope call) gets the simplest safe choice. Record it as an `agent` row in the task document's `## Decisions` table with the alternative it beat, list it first in the reply with "tell me X to switch", and keep going (`principle-never-block-on-the-human`). Settle a question a run can answer with `proto` instead of choosing.
+- **A decision a skill would ask the human about** (a test seam, a default, a naming or scope call) gets the simplest safe choice. Record it as an `agent` decision with the alternative it beat (a row in the task document's `## Decisions` table when there is one, otherwise in the reply), list it first in the reply with "tell me X to switch", and keep going (`principle-never-block-on-the-human`). Settle a question a run can answer with `proto` instead of choosing.
 - **A product or preference call no run can settle** is asked once, batched, with your recommendation, while the work that does not depend on it continues. Under autopilot it takes the default like any other decision.
 - **Discoveries that support the goal** are yours: a broken skill, a related bug, a flaky check, a tooling failure. Fix each in its own pull request, then return to the goal. A problem that does not block the goal becomes a follow-up in the reply.
 - **A plateau** means changing approach, not stopping.

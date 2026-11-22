@@ -105,7 +105,7 @@ How each kind of task ends:
 
 Where a skill would ask you something, the agent makes the simplest safe choice, records it, and lists it first in its reply with what to say to switch. It still asks once about a product call no experiment can settle, and keeps working on everything else meanwhile. To think a fuzzy idea through first, use `/grill-with-docs`. A merge always goes to you or `/land`.
 
-jvillegasd-mode lasts for the whole conversation. The agent records the playbook and the current step in the task document, so after a compaction it resumes at the same step.
+jvillegasd-mode lasts for the whole conversation. Long or unattended work keeps a task document, where the agent records the playbook and the current step, so after a compaction it resumes at the same step. Short work keeps no document: its decisions go in the reply and the PR.
 
 ```mermaid
 stateDiagram-v2

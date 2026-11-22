@@ -1,17 +1,17 @@
 ---
 name: checkpoint
-description: "Trigger: long work, a pause, a resume, or compaction. Keep one committed task document, pause safely, and resume from it without redoing verified work."
+description: "Trigger: long or unattended work, a pause, a resume, or compaction. Keep a committed task document only when recovery across an interruption warrants one, pause safely, and resume without redoing verified work."
 license: MIT
 metadata:
   author: jvillegasd
   version: "2.0"
 ---
 
-Keep work recoverable across sessions with one task document committed on the task branch, and pause and resume without losing or redoing work.
+Keep work recoverable across sessions, with one task document committed on the task branch when recovery across an interruption warrants one, and pause and resume without losing or redoing work.
 
 ## Why
 
-A fresh session has only the request and the Git history. When that would not let it finish the work, the task document carries the rest: requirements, decisions, evidence, and the next action. Committed on the task branch, it is durable without any other copy, and it merges with the work as the record of what was done and why. Work that the request and the diff already explain needs no document, and file count alone is no reason to make one.
+A fresh session has only the request and the Git history. When that would not let it finish the work, the task document carries the rest: requirements, decisions, evidence, and the next action. Committed on the task branch, it is durable without any other copy, and it merges with the work as the record of what was done and why. Work that the request and the diff already explain needs no document, and file count alone is no reason to make one. A document is warranted for long or unattended work (autopilot, a project, a build of several slices, a hillclimb, a you-got-this run), for a pause, and for any state a fresh session could not rebuild from the request and Git. Short work keeps its decisions in the reply and the pull request's tradeoffs instead.
 
 ## Task document
 
@@ -49,7 +49,7 @@ Retain each delegate's complete result, its revision and file state, and its che
 
 ## Decisions
 
-Keep a `## Decisions` table in the task document and append a row when a decision is made, not at the end, so the reason is captured while it is fresh.
+When there is a task document, keep a `## Decisions` table in it and append a row when a decision is made, not at the end, so the reason is captured while it is fresh. Without one, record each decision in the reply, where `change-map` takes it for the pull request's tradeoffs.
 
 | Decision | Instead of | By | Why | Evidence |
 | --- | --- | --- | --- | --- |
