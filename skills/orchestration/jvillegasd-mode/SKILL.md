@@ -15,7 +15,7 @@ Task: $ARGUMENTS
 
 1. Restate the human's goal in a line, and the smallest change you expect to meet it. When the evidence rules out the change they asked for, show it and stop.
 2. When the request grants a step-away ("autopilot", "I'm stepping away", "going to bed, keep going"), read [autopilot](playbooks/autopilot.md) now; it frames the run before anything else.
-3. Size the work, then match it to one row of the matcher and read that playbook. A **task** is one pull request (a bug, a ticket, a small change). A **feature** is several slices of one behavior, built as an epic. A **project** is several features toward one product goal, such as "build an app that does X, Y, and Z". The rigor scales with the size; the lifecycle (understand, plan, build, verify, review, deliver, address feedback) does not change.
+3. Size the work, then match it to one row of the matcher and read that playbook. A **task** is one pull request (a bug, a ticket, a small change). A **feature** is several slices of one behavior, built as an epic. A **project** is several features toward one product goal, such as "build an app that does X, Y, and Z", where each feature needs its own epic. Pick the smallest size that fits: a small app whose behaviors fit one epic is a feature. The rigor scales with the size; the lifecycle (understand, plan, build, verify, review, deliver, address feedback) does not change.
 4. Copy every step of the playbook into the todo list verbatim, before any task-specific item. A step you will not take stays in the list as `skip: <reason>`, so the human sees what was left out and why.
 5. When the work has a task document (`checkpoint`), record the playbook and step there as `checkpoint` describes, so a compaction resumes the same step.
 
@@ -103,7 +103,7 @@ Each entry is when it applies, then the rule.
 
 ## Finish
 
-A playbook's Finish step is these three, each its own item in the todo list:
+A playbook's Finish step is these three, each its own item in the todo list (the project playbook's Deliver step replaces them):
 
 1. Run `change-map`.
 2. Run `review` at the level `harness review level` reports.

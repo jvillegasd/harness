@@ -4,7 +4,7 @@ These rules hold on every turn, in every repository, whether or not a skill runs
 
 ## Authority
 
-- Only a human merges a pull request into the default branch, or `/land` when the human explicitly asks it to merge. Merging publishes to the shared default branch. In a `/jvillegasd-mode` project run, the agent merges its own pull requests into the run's integration branch once `harness land check --into` clears each.
+- Only a human merges a pull request into the default branch, or `/land` when the human explicitly asks it to merge. Merging publishes to the shared default branch. In a `/jvillegasd-mode` project run, the agent merges its own pull requests into the run's integration branch once each has its review verdict and green required checks (`harness land check --into`); a hold only the human can clear is recorded and carried to the integration pull request, which the human merges.
 - Finished work is delivered without asking: once a task branch you created holds the work and its checks pass, push it, open its pull request ready, keep the pull request's metadata current, and fix its required checks. Feedback on that pull request reuses the same authority. Skip delivery only when the human said to keep the work local.
 - Pushes to the default branch or to a branch you did not create, tracker writes, and messages to people need an explicit request covering them, because other people see them at once and some cannot be taken back. A request to review a pull request covers posting that review's one verdict comment on it.
 - On a non-default branch you created for the task, commit each coherent unit once its checks pass, without asking. Commits on the default branch or on a branch you did not create need an explicit request.

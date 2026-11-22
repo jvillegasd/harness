@@ -73,7 +73,8 @@ commit as JSON.
   --into       The branch that stands in for the default branch, as for
                harness land check
   --accepted   The human accepted, by name in this session, every hold that
-               is not a forge gate
+               is not a forge gate; with --into, a project run may accept
+               them itself, since the human reviews the integration branch
 `
 
 const syncUsage = `Usage: harness land sync
