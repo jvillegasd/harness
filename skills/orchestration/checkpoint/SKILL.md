@@ -1,21 +1,21 @@
 ---
 name: checkpoint
-description: "Trigger: long or unattended work, a pause, a resume, or compaction. Keep a committed task document only when recovery across an interruption warrants one, pause safely, and resume without redoing verified work."
+description: "Trigger: long or unattended work, a pause, a resume, or compaction. Keep a local task document only when recovery across an interruption warrants one, pause safely, and resume without redoing verified work."
 license: MIT
 metadata:
   author: jvillegasd
   version: "2.0"
 ---
 
-Keep work recoverable across sessions, with one task document committed on the task branch when recovery across an interruption warrants one, and pause and resume without losing or redoing work.
+Keep work recoverable across sessions, with one local task document when recovery across an interruption warrants one, and pause and resume without losing or redoing work.
 
 ## Why
 
-A fresh session has only the request and the Git history. When that would not let it finish the work, the task document carries the rest: requirements, decisions, evidence, and the next action. Committed on the task branch, it is durable without any other copy, and it merges with the work as the record of what was done and why. Work that the request and the diff already explain needs no document, and file count alone is no reason to make one. A document is warranted for long or unattended work (autopilot, a project, a build of several slices, a hillclimb, a you-got-this run), for a pause, and for any state a fresh session could not rebuild from the request and Git. Short work keeps its decisions in the reply and the pull request's tradeoffs instead.
+A fresh session has only the request and the Git history. When that would not let it finish the work, the task document carries the rest: requirements, decisions, evidence, and the next action. It is working state, not a record: it stays local and is never committed, so it never reaches a pull request, never conflicts across a stack, and is thrown away once the work lands. What must outlive it goes elsewhere: decisions into the pull request's tradeoffs through `change-map`, the plan into the epic, a lasting architectural decision into an ADR. Work that the request and the diff already explain needs no document, and file count alone is no reason to make one. A document is warranted for long or unattended work (autopilot, a project, a build of several slices, a hillclimb, a you-got-this run), for a pause, and for any state a fresh session could not rebuild from the request and Git. Short work keeps its decisions in the reply and the pull request's tradeoffs instead.
 
 ## Task document
 
-Reuse an existing task document; otherwise use `docs/agents/tasks/<feature>.md`. An epic or spec is the plan, not the task document: link to it rather than copying it. Keep:
+Before writing the first one in a clone, run `harness resume init`, which excludes `docs/agents/tasks/` from Git for every worktree of the clone. Reuse an existing task document; otherwise use `docs/agents/tasks/<feature>.md`. An epic or spec is the plan, not the task document: link to it rather than copying it. Keep:
 
 - A header: the branch, the status, and the request quoted verbatim, with its source.
 - Requirements and acceptance checks, preserving exact user-specified strings and examples. Record existing authority as context with its source; the document grants no new permission.
@@ -24,7 +24,7 @@ Reuse an existing task document; otherwise use `docs/agents/tasks/<feature>.md`.
 - The `## Decisions` table (see Decisions).
 - `## State and next action`: what is in progress, what comes next, the key files, and gotchas. Keep that heading: after a compaction, the client's hook restores this section. Under jvillegasd-mode (`/jvillegasd-mode`), its first line is `Playbook: <name>, step <n>`, kept current as steps finish, and under autopilot the next line is `Grant: "<the human's step-away words>"`.
 
-Name branches and commits, never an absolute path or a worktree location, since the document outlives the machine. Update it at meaningful changes and commit it with the work where the floor lets you. When the pull request is about to open, `open-pr` sets the status to shipped for review with the final evidence and open decisions, so the default branch never receives a document that still reads in progress.
+Name branches and commits rather than absolute paths. Update it at meaningful changes; never commit it. `harness resume` restores its next action after a compaction. Once the work's pull requests land, `land` deletes it with the worktree.
 
 ## Pause
 
@@ -32,7 +32,7 @@ When the session must stop, compaction is near on long work, or the human asks f
 
 1. Finish or back out of the current step.
 2. Commit the work on your own task branch as `wip: <step>`, with one line in the body if the tree is broken.
-3. Update the task document's `## State and next action`: the goal, progress with evidence tied to commits, current state, next steps, key files, and gotchas. Commit it. Pausing work that has no document creates one, since needing a pause means the diff alone will not carry it.
+3. Update the task document's `## State and next action`: the goal, progress with evidence tied to commits, current state, next steps, key files, and gotchas. Pausing work that has no document creates one, since needing a pause means the diff alone will not carry it. When the work moves to another machine or clone, also put the next action in the `wip:` commit's body, since the task document stays here.
 
 ## Resume
 
@@ -59,4 +59,4 @@ When there is a task document, keep a `## Decisions` table in it and append a ro
 
 ## Output
 
-At a pause or handoff, name the task document, its last commit, unsettled requirements and decisions, stale evidence, and the next action.
+At a pause or handoff, name the task document, the branch's last commit, unsettled requirements and decisions, stale evidence, and the next action.

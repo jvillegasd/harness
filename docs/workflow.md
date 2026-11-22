@@ -221,7 +221,7 @@ These stages describe the intended workflow. Nothing enforces them centrally, an
 
 ### Task documents
 
-For longer work, the agent keeps the requirements, decisions, evidence, and next step in `docs/agents/tasks/<feature>.md`, committed on the task branch. It merges with the work and stays in the repository as a record of what was done and why. Small tasks do not need one.
+For long or unattended work, the agent keeps the requirements, decisions, evidence, and next step in `docs/agents/tasks/<feature>.md`. It stays local: `harness resume init` excludes the folder from Git, so it is never committed, and `/land` throws it away with the worktree once the work merges. Its decisions reach you through the PR's tradeoffs, the plan lives in the epic (`docs/agents/epics/`), and lasting decisions become ADRs. Small tasks do not need one.
 
 ## Larger builds
 

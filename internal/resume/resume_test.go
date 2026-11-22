@@ -76,3 +76,27 @@ func TestContextIsEmptyOutsideACheckout(t *testing.T) {
 		t.Errorf("outside a checkout the context is %q, want nothing", got)
 	}
 }
+
+func TestExcludeKeepsTaskDocumentsLocalAndListed(t *testing.T) {
+	dir := repo(t)
+	for range 2 {
+		if err := Exclude(dir); err != nil {
+			t.Fatal(err)
+		}
+	}
+	exclude, err := os.ReadFile(filepath.Join(dir, ".git", "info", "exclude"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(string(exclude), "/docs/agents/tasks/\n"); n != 1 {
+		t.Fatalf("exclude holds the folder %d times, want once:\n%s", n, exclude)
+	}
+	write(t, filepath.Join(dir, "docs/agents/tasks/local.md"), "## State and next action\n\nKeep going.\n")
+	run(t, dir, "add", "-A")
+	if out, _ := exec.Command("git", "-C", dir, "diff", "--cached", "--name-only").Output(); strings.Contains(string(out), "local.md") {
+		t.Fatalf("an excluded task document was staged:\n%s", out)
+	}
+	if got := Context(dir); !strings.Contains(got, "docs/agents/tasks/local.md") || !strings.Contains(got, "Keep going.") {
+		t.Errorf("an excluded task document is missing from the context:\n%s", got)
+	}
+}

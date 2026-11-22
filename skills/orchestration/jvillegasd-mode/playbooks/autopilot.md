@@ -6,7 +6,7 @@
 
 1. Take the goal from the human's request. When the request has none, ask for it and do not start: an unattended run with no goal has no finish line.
 2. State the definition of done as a pass/fail check every iteration measures against (`principle-prove-it-works`). When the human gave none, propose one and start on it without waiting.
-3. Open the task document (`checkpoint`) and write the grant line into its `## State and next action`: the human's step-away words verbatim. Commit it. After a compaction the client's hook restores that section, so the grant stays in view for the rest of this conversation.
+3. Open the task document (`checkpoint`) and write the grant line into its `## State and next action`: the human's step-away words verbatim. After a compaction the client's hook restores that section, so the grant stays in view for the rest of this conversation.
 4. Match the work to its row and run it, with the rules below in place of its checkpoints. The grant stands in for the invocation of any guarded skill the row runs, `build` included.
 
 ## What the grant covers
