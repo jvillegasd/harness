@@ -2,7 +2,10 @@ package land
 
 import (
 	"encoding/json"
+	"errors"
+	"flag"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/cli"
 	"github.com/jvillegasd/harness/internal/run"
 	"io"
 	"os"
@@ -92,47 +95,33 @@ func PrCommand(args []string, stdout, stderr io.Writer) int {
 }
 
 func status(args []string, stdout, stderr io.Writer) int {
-	var numbers []int
-	stack, watch, timed := false, false, false
+	flags := flag.NewFlagSet("status", flag.ContinueOnError)
+	stack := flags.Bool("stack", false, "")
+	watch := flags.Bool("watch", false, "")
 	interval, timeout := 60, 1800
-	for i := 0; i < len(args); i++ {
-		switch a := args[i]; a {
-		case "-h", "--help":
-			fmt.Fprint(stdout, statusUsage)
-			return 0
-		case "--stack":
-			stack = true
-		case "--watch":
-			watch = true
-		case "--interval", "--timeout":
-			n := 0
-			if i+1 < len(args) {
-				n, _ = strconv.Atoi(args[i+1])
-			}
-			if n <= 0 {
-				fmt.Fprintf(stderr, "harness pr status: %s takes a positive number of seconds\n", a)
-				return 2
-			}
-			timed = true
-			if i++; a == "--interval" {
-				interval = n
-			} else {
-				timeout = n
-			}
-		default:
-			n, err := strconv.Atoi(a)
+	positive := func(target *int) func(string) error {
+		return func(v string) error {
+			n, err := strconv.Atoi(v)
 			if err != nil || n <= 0 {
-				fmt.Fprintf(stderr, "harness pr status: %q is not a pull request number or a flag; run harness pr status --help\n", a)
-				return 2
+				return errors.New("takes a positive number of seconds")
 			}
-			numbers = append(numbers, n)
+			*target = n
+			return nil
 		}
 	}
-	if timed && !watch {
+	flags.Func("interval", "", positive(&interval))
+	flags.Func("timeout", "", positive(&timeout))
+	numbers, code := parseNumbers("harness pr", flags, args, statusUsage, stdout, stderr)
+	if code >= 0 {
+		return code
+	}
+	timed := false
+	flags.Visit(func(f *flag.Flag) { timed = timed || f.Name == "interval" || f.Name == "timeout" })
+	if timed && !*watch {
 		fmt.Fprintln(stderr, "harness pr status: --interval and --timeout take --watch")
 		return 2
 	}
-	if stack && len(numbers) != 1 {
+	if *stack && len(numbers) != 1 {
 		fmt.Fprintln(stderr, "harness pr status: --stack takes exactly one pull request number, the stack's tip")
 		return 2
 	}
@@ -142,11 +131,10 @@ func status(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	var statuses []Status
-	code := 0
-	if watch {
+	if *watch {
 		clock := Clock{Now: time.Now, Sleep: time.Sleep}
-		statuses, code, err = Watch(e, numbers, stack, time.Duration(interval)*time.Second, time.Duration(timeout)*time.Second, clock)
-	} else if statuses, err = Statuses(e, numbers, stack); err == nil {
+		statuses, code, err = Watch(e, numbers, *stack, time.Duration(interval)*time.Second, time.Duration(timeout)*time.Second, clock)
+	} else if statuses, err = Statuses(e, numbers, *stack); err == nil {
 		code = Code(statuses)
 	}
 	if statuses != nil {
@@ -180,22 +168,11 @@ func threads(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness pr threads: "+format+"; run harness pr threads --help\n", a...)
 		return 2
 	}
-	var body string
-	var rest []string
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "-h", "--help":
-			fmt.Fprint(stdout, threadsUsage)
-			return 0
-		case "--body-file":
-			if i+1 >= len(args) {
-				return usage("--body-file takes a file")
-			}
-			i++
-			body = args[i]
-		default:
-			rest = append(rest, args[i])
-		}
+	flags := flag.NewFlagSet("threads", flag.ContinueOnError)
+	body := flags.String("body-file", "", "")
+	rest, code := cli.Parse("harness pr", flags, args, threadsUsage, stdout, stderr)
+	if code >= 0 {
+		return code
 	}
 	if len(rest) < 3 || rest[0] != "reply" && rest[0] != "resolve" {
 		return usage("give reply or resolve, a pull request number, and thread ids")
@@ -206,9 +183,9 @@ func threads(args []string, stdout, stderr io.Writer) int {
 	}
 	ids := rest[2:]
 	switch {
-	case rest[0] == "reply" && (len(ids) != 1 || body == ""):
+	case rest[0] == "reply" && (len(ids) != 1 || *body == ""):
 		return usage("reply takes one thread id and --body-file")
-	case rest[0] == "resolve" && body != "":
+	case rest[0] == "resolve" && *body != "":
 		return usage("resolve takes no --body-file")
 	}
 	e, err := cwdEnv()
@@ -216,7 +193,7 @@ func threads(args []string, stdout, stderr io.Writer) int {
 	if err == nil {
 		if rest[0] == "reply" {
 			var state ThreadState
-			if state, err = Reply(e, number, ids[0], body); err == nil {
+			if state, err = Reply(e, number, ids[0], *body); err == nil {
 				out = state
 			}
 		} else {

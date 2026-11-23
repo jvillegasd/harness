@@ -3,7 +3,6 @@ package tickets
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -11,6 +10,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/jvillegasd/harness/internal/cli"
 )
 
 const usage = `Usage: harness tickets <command> [arguments]
@@ -88,19 +89,6 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	return 2
 }
 
-func parse(flags *flag.FlagSet, args []string, text string, stdout, stderr io.Writer) int {
-	flags.SetOutput(io.Discard)
-	if err := flags.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			fmt.Fprint(stdout, text)
-			return 0
-		}
-		fmt.Fprintf(stderr, "harness tickets %s: %v\n%s", flags.Name(), err, text)
-		return 2
-	}
-	return -1
-}
-
 func root(name string, stderr io.Writer) (string, bool) {
 	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
@@ -119,15 +107,16 @@ func slug(name string) error {
 
 func check(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("check", flag.ContinueOnError)
-	if code := parse(flags, args, checkUsage, stdout, stderr); code >= 0 {
+	positional, code := cli.Parse("harness tickets", flags, args, checkUsage, stdout, stderr)
+	if code >= 0 {
 		return code
 	}
-	if flags.NArg() > 1 {
-		fmt.Fprintf(stderr, "harness tickets check: unexpected argument %q; run harness tickets check --help\n", flags.Arg(1))
+	if len(positional) > 1 {
+		fmt.Fprintf(stderr, "harness tickets check: unexpected argument %q; run harness tickets check --help\n", positional[1])
 		return 2
 	}
-	if flags.NArg() == 1 {
-		if err := slug(flags.Arg(0)); err != nil {
+	if len(positional) == 1 {
+		if err := slug(positional[0]); err != nil {
 			fmt.Fprintf(stderr, "harness tickets check: %v\n", err)
 			return 2
 		}
@@ -136,8 +125,8 @@ func check(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return 2
 	}
-	features := []string{flags.Arg(0)}
-	if flags.NArg() == 0 {
+	features := positional
+	if len(positional) == 0 {
 		var err error
 		if features, err = Features(top); err != nil {
 			fmt.Fprintf(stderr, "harness tickets check: %v\n", err)
@@ -196,14 +185,15 @@ func numbers(text string) ([]int, error) {
 func frontier(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("frontier", flag.ContinueOnError)
 	doneText := flags.String("done", "", "")
-	if code := parse(flags, interspersed(args), frontierUsage, stdout, stderr); code >= 0 {
+	positional, code := cli.Parse("harness tickets", flags, args, frontierUsage, stdout, stderr)
+	if code >= 0 {
 		return code
 	}
-	if flags.NArg() != 1 {
+	if len(positional) != 1 {
 		fmt.Fprintln(stderr, "harness tickets frontier: name one feature slug; run harness tickets frontier --help")
 		return 2
 	}
-	name := flags.Arg(0)
+	name := positional[0]
 	if err := slug(name); err != nil {
 		fmt.Fprintf(stderr, "harness tickets frontier: %v\n", err)
 		return 2
@@ -237,13 +227,6 @@ func frontier(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func interspersed(args []string) []string {
-	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
-		return append(append([]string{}, args[1:]...), args[0])
-	}
-	return args
-}
-
 func gh(dir string) Forge {
 	return func(args ...string) ([]byte, error) {
 		cmd := exec.Command("gh", args...)
@@ -260,14 +243,15 @@ func gh(dir string) Forge {
 func publish(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("publish", flag.ContinueOnError)
 	dryRun := flags.Bool("dry-run", false, "")
-	if code := parse(flags, interspersed(args), publishUsage, stdout, stderr); code >= 0 {
+	positional, code := cli.Parse("harness tickets", flags, args, publishUsage, stdout, stderr)
+	if code >= 0 {
 		return code
 	}
-	if flags.NArg() != 1 {
+	if len(positional) != 1 {
 		fmt.Fprintln(stderr, "harness tickets publish: name one feature slug; run harness tickets publish --help")
 		return 2
 	}
-	name := flags.Arg(0)
+	name := positional[0]
 	if err := slug(name); err != nil {
 		fmt.Fprintf(stderr, "harness tickets publish: %v\n", err)
 		return 2

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/cli"
 	"github.com/jvillegasd/harness/internal/run"
 	"io"
 	"os"
@@ -183,7 +184,11 @@ func snapshot(args []string, stdout, stderr io.Writer) int {
 	var base, branch string
 	flags.StringVar(&base, "base", "", "")
 	flags.StringVar(&branch, "branch", "", "")
-	if code := parse(flags, args[:separator], snapshotUsage, stdout, stderr); code >= 0 {
+	positional, code := cli.Parse("harness review", flags, args[:separator], snapshotUsage, stdout, stderr)
+	if code >= 0 {
+		return code
+	}
+	if code := unexpected("snapshot", positional, stderr); code >= 0 {
 		return code
 	}
 	if base == "" {
@@ -206,21 +211,12 @@ func snapshot(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func parse(flags *flag.FlagSet, args []string, text string, stdout, stderr io.Writer) int {
-	flags.SetOutput(io.Discard)
-	if err := flags.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			fmt.Fprint(stdout, text)
-			return 0
-		}
-		fmt.Fprintf(stderr, "harness review %s: %v\n%s", flags.Name(), err, text)
-		return 2
+func unexpected(name string, positional []string, stderr io.Writer) int {
+	if len(positional) == 0 {
+		return -1
 	}
-	if flags.NArg() != 0 {
-		fmt.Fprintf(stderr, "harness review %s: unexpected argument %q; run harness review %s --help\n", flags.Name(), flags.Arg(0), flags.Name())
-		return 2
-	}
-	return -1
+	fmt.Fprintf(stderr, "harness review %s: unexpected argument %q; run harness review %s --help\n", name, positional[0], name)
+	return 2
 }
 
 func repoRoot(name string, stderr io.Writer) (string, int) {
@@ -260,7 +256,11 @@ func remove(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("remove", flag.ContinueOnError)
 	var branch string
 	flags.StringVar(&branch, "branch", "", "")
-	if code := parse(flags, args, removeUsage, stdout, stderr); code >= 0 {
+	positional, code := cli.Parse("harness review", flags, args, removeUsage, stdout, stderr)
+	if code >= 0 {
+		return code
+	}
+	if code := unexpected("remove", positional, stderr); code >= 0 {
 		return code
 	}
 	_, _, dir, code := reviewDir("remove", branch, stderr)
@@ -285,7 +285,11 @@ func remove(args []string, stdout, stderr io.Writer) int {
 func prune(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("prune", flag.ContinueOnError)
 	dryRun := flags.Bool("dry-run", false, "")
-	if code := parse(flags, args, pruneUsage, stdout, stderr); code >= 0 {
+	positional, code := cli.Parse("harness review", flags, args, pruneUsage, stdout, stderr)
+	if code >= 0 {
+		return code
+	}
+	if code := unexpected("prune", positional, stderr); code >= 0 {
 		return code
 	}
 	root, code := repoRoot("prune", stderr)
@@ -393,22 +397,9 @@ func worktreeCommand(args []string, stdout, stderr io.Writer) int {
 		flags.BoolVar(&allowIgnored, "allow-ignored", false, "")
 	}
 
-	var positional []string
-	rest := args[1:]
-	for {
-		if err := flags.Parse(rest); err != nil {
-			if errors.Is(err, flag.ErrHelp) {
-				fmt.Fprint(stdout, worktreeUsage)
-				return 0
-			}
-			fmt.Fprintf(stderr, "harness review %s: %v\n%s", name, err, worktreeUsage)
-			return 2
-		}
-		if flags.NArg() == 0 {
-			break
-		}
-		positional = append(positional, flags.Arg(0))
-		rest = flags.Args()[1:]
+	positional, code := cli.Parse("harness review", flags, args[1:], worktreeUsage, stdout, stderr)
+	if code >= 0 {
+		return code
 	}
 	want := 0
 	if args[0] == "add" {
@@ -457,19 +448,8 @@ func verdict(args []string, stdout, stderr io.Writer) int {
 	flags.BoolVar(&v.Run, "run", false, "")
 	dryRun := flags.Bool("dry-run", false, "")
 
-	var rest, positional []string
-	for i := 0; i < len(args); i++ {
-		switch a := args[i]; {
-		case strings.HasPrefix(a, "-") && !strings.Contains(a, "=") && a != "--dry-run" && a != "--run" && a != "-h" && a != "--help" && i+1 < len(args):
-			rest = append(rest, a, args[i+1])
-			i++
-		case strings.HasPrefix(a, "-"):
-			rest = append(rest, a)
-		default:
-			positional = append(positional, a)
-		}
-	}
-	if code := parse(flags, rest, verdictUsage, stdout, stderr); code >= 0 {
+	positional, code := cli.Parse("harness review", flags, args, verdictUsage, stdout, stderr)
+	if code >= 0 {
 		return code
 	}
 	number, err := 0, error(nil)
