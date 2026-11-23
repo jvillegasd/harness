@@ -46,7 +46,7 @@ Severity:
 - `pre-existing`: a defect in code this diff did not introduce, checked against the base. It is not the author's fault.
 - `nit`: naming, style, or a judgement call that the implementer may ignore.
 
-Prove each `bug` and `risk` on the certainty ladder (see `verification`). You cannot run commands, so a `bug` or `risk` needs at least step 3, walked. Cite the lines, then trace how the failure reaches observable behavior, from the input or state that triggers it to the wrong output, crash, or data change. Put that trace in the problem text. A finding you can only assert, or only support with a cited line, is a `q` instead. Give the line and what you could not trace, so the parent can have it run. The parent keeps only findings a run proves, so name the input or state that would make each one fail.
+Prove each `bug` and `risk` on the certainty ladder (see `verify-work`). You cannot run commands, so a `bug` or `risk` needs at least step 3, walked. Cite the lines, then trace how the failure reaches observable behavior, from the input or state that triggers it to the wrong output, crash, or data change. Put that trace in the problem text. A finding you can only assert, or only support with a cited line, is a `q` instead. Give the line and what you could not trace, so the parent can have it run. The parent keeps only findings a run proves, so name the input or state that would make each one fail.
 
 Name each symbol in backticks and give a concrete fix, not "consider refactoring". No hedging, and no restating what the line does. Spell out the reasoning for a security finding or an architectural disagreement.
 
