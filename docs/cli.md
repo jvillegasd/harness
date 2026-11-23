@@ -137,6 +137,31 @@ Each line is labeled with where it comes from:
 
 A line with no label comes from the preset. `--json` carries each tier's `presets`, the model each preset serves it with and `tier` on a fallback, and `others`, the model a role set to each other client would get. The settings live on each machine, so two machines can show different results until you set them the same way on both.
 
+## Change map
+
+`harness change-map` sorts the files a branch changed into review tiers. The `change-map` skill and `build` run it, and the review level reads its tiers to decide whether a review starts.
+
+```sh
+harness change-map                  # changes since the merge base with origin/HEAD, or main
+harness change-map --base HEAD~3    # changes since another ref
+harness change-map --json           # one JSON object with the files and a total per tier
+```
+
+It covers committed, staged, unstaged, deleted, and untracked files. Each line prints the tier, the path, and the reason. A file gets the tier of the first rule it matches, in this order:
+
+| Rule | Tier |
+| --- | --- |
+| A glob in `criticalPaths` in `docs/agents/harness.json` | `critical` |
+| A built-in critical path: `docs/agents/harness.json`, `skills-lock.json`, `.github/workflows/**`, `**/migrations/**`, `**/*.sql`, `**/Dockerfile`, or `**/*.tf` | `critical` |
+| A file of a locked skill whose body does not match its lock hash | `structural` |
+| A file of a locked skill whose body matches its lock hash | `mechanical` |
+| A lockfile such as `go.sum`, or a generated file such as `*.pb.go` | `mechanical` |
+| An agent instruction: `SKILL.md`, `AGENTS.md`, `CLAUDE.md`, or Markdown under `skills/` or `roles/` | `structural` |
+| A file in a test directory, a test file such as `*_test.go`, anything under `docs/`, or another Markdown or text file | `tests-docs` |
+| Any other file | `structural` |
+
+The command never assigns `behavioral`. The agent that reads the map raises a file's tier where the code warrants it, such as a `structural` file that changes observable behavior to `behavioral`, and never lowers one.
+
 ## Review commands
 
 `harness review` sets how much review happens on its own, and posts a review's verdict on its PR. [How review works](review.md) explains the review itself.

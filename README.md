@@ -148,7 +148,7 @@ Asking for a review always runs one at your level. [How review works](docs/revie
 
 ## jvillegasd-mode
 
-`/jvillegasd-mode <task>` makes the agent follow a fixed playbook instead of choosing skills on its own. The agent picks the playbook that fits (bug fix, feature, investigation, refactor, performance, hillclimb, forensics, design, skill authoring, you-got-this for large or unmatched work, or one of the existing skills), then copies every step into its todo list. A step it skips stays in the list as `skip: <reason>`, so you can see what was left out and why.
+`/jvillegasd-mode <task>` makes the agent follow a fixed playbook instead of choosing skills on its own. The agent picks the playbook that fits (bug fix, feature, investigation, refactor, performance, hillclimb, forensics, design, you-got-this for large or unmatched work, or the steps of an existing skill such as `epic`, `build`, or `writing-for-agents`), then copies every step into its todo list. A step it skips stays in the list as `skip: <reason>`, so you can see what was left out and why.
 
 For a code change, jvillegasd-mode always ends with a change summary (`change-map`) and a review at your level. A plan request writes an epic with sliced tickets and builds it, unless you asked only for the plan. Where a skill would ask you something, the agent picks the simplest safe option and lists it first in its reply. Merging still goes through you or `/land`.
 
@@ -289,7 +289,8 @@ Many skill steps are `harness` commands rather than written instructions, so the
 
 | Command | What it does | Run by |
 | --- | --- | --- |
-| `harness pr status` | Whether a PR is ready to merge, and its first blocker | `open-pr`, `address-review` |
+| `harness change-map` | Sort a branch's changed files into review tiers | `change-map`, `build` |
+| `harness pr status`, `threads` | Whether a PR is ready to merge and its first blocker, then replies to and resolves its review threads | `open-pr`, `address-review` |
 | `harness land check`, `merge`, `sync`, `finish`, `repair` | Whether a PR can land, the merge itself, then the cleanup after it | `/land` |
 | `harness review target`, `verdict` | What a review reads, and the one verdict comment a review posts on its PR | `review`, `open-pr` |
 | `harness worktree audit`, `retire` | List worktrees and remove one without losing work | `/land`, `/cleanup`, `build` |
@@ -337,6 +338,6 @@ These pages are written for people. Agents keep them accurate but never take ins
 
 This harness takes inspiration from these projects:
 
-- [Matt Pocock's skills](https://github.com/mattpocock/skills), the source of several locked skills, among them `tdd`, `diagnosing-bugs`, `grill-with-docs`, and `domain-modeling`, and of the local `teach` (MIT, Copyright (c) 2026 Matt Pocock).
+- [Matt Pocock's skills](https://github.com/mattpocock/skills), the source of several locked skills, among them `tdd`, `diagnosing-bugs`, `grill-with-docs`, `domain-modeling`, and `wait-what`, and of the local `teach` (MIT, Copyright (c) 2026 Matt Pocock).
 - [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai), which configures several coding agents from one setup, as this installer does.
-- [pstack](https://github.com/backnotprop/pstack), the source of the principle skills and the verification skills, and the model for jvillegasd-mode's playbooks and autopilot.
+- [pstack](https://github.com/backnotprop/pstack), the source of the principle skills, the verification skills, and the locked `why`, `correct`, `statechart`, `unslop`, and `technical-writing`, and the model for jvillegasd-mode's playbooks and autopilot.
