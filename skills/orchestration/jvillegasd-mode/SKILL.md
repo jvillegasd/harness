@@ -60,6 +60,7 @@ These replace every skill's asks and stops while the mode runs.
 - **A plateau** means changing approach, not stopping.
 - **Two fixes that share one premise** have failed the same check: test the premise directly before another fix assumes it (`principle-attack-the-premise`).
 - **A failed unit** is retried by its cause: a smaller scope after a context or memory limit, the same start after a dropped connection, and a different model after a tool error. After two retries, drop the unit and replan around it.
+- **A usage limit** (the account's quota, with a reset time) is not a failure of the unit and does not count as a retry. Record the paused units and their next action in the task document, then, in a T3 Code session, `schedule_task` a message to this thread a few minutes after the reset that says to resume them, and end the turn. When the error gives no reset time, schedule it an hour out. Outside T3 Code nothing can wake the session, so say in the reply that the run waits for the human to resume it.
 - **A dead end** that survives the replan is parked with its evidence for the reply. Stop only when every remaining unit is parked, or when the evidence rules out the goal itself.
 - **The definition of done** never loosens to declare victory.
 
