@@ -90,6 +90,7 @@ func (c matrixCase) assertClean(t *testing.T) {
 }
 
 func TestCommandHelpMatrix(t *testing.T) {
+	t.Parallel()
 	commands := [][]string{
 		{},
 		{"install"},
@@ -144,6 +145,7 @@ func TestCommandHelpMatrix(t *testing.T) {
 		for _, flag := range []string{"--help", "-h"} {
 			want := append(append([]string{}, command...), flag)
 			t.Run(strings.Join(want, " "), func(t *testing.T) {
+				t.Parallel()
 				c := runMatrixCase(t, want)
 				if c.result.timedOut {
 					t.Fatalf("help read stdin and hung")
@@ -164,6 +166,7 @@ func TestCommandHelpMatrix(t *testing.T) {
 }
 
 func TestCommandInvocationMatrix(t *testing.T) {
+	t.Parallel()
 	args := [][]string{
 		{"bogus"},
 		{"update", "bogus"},
@@ -276,6 +279,7 @@ func TestCommandInvocationMatrix(t *testing.T) {
 	}
 	for _, want := range args {
 		t.Run(strings.Join(want, " "), func(t *testing.T) {
+			t.Parallel()
 			c := runMatrixCase(t, want)
 			if c.result.timedOut {
 				t.Fatalf("an invalid invocation read stdin and hung")
@@ -295,6 +299,7 @@ func TestCommandInvocationMatrix(t *testing.T) {
 }
 
 func TestOperationalFailuresExitOne(t *testing.T) {
+	t.Parallel()
 	outside := t.TempDir()
 	for _, args := range [][]string{
 		{"skills", "verify"},

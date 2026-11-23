@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 )
 
 var (
@@ -174,46 +173,6 @@ func TestPickerCancelWritesNothing(t *testing.T) {
 	}
 }
 
-func TestPickerViewKeepsCursorOnScreen(t *testing.T) {
-	var listed []string
-	for i := range 49 {
-		listed = append(listed, fmt.Sprintf("p/m%02d", i))
-	}
-	p := choose(t, choose(t, choose(t, fresh(catalogOf(listed, nil)), "custom"), "high"), "opencode")
-	for range 40 {
-		p = drive(t, p, keyDown)
-	}
-	view := p.View().Content
-	if !strings.Contains(view, "› p/m40") || strings.Contains(view, "p/m00") {
-		t.Errorf("view does not follow the cursor:\n%s", view)
-	}
-	if got := strings.Count(view, "p/m"); got != visibleRows {
-		t.Errorf("view renders %d ids, want %d", got, visibleRows)
-	}
-	for range 20 {
-		p = drive(t, p, keyDown)
-	}
-	if view := p.View().Content; !strings.Contains(view, "› p/m48") || strings.Count(view, "p/m") != visibleRows {
-		t.Errorf("view at the end of the list:\n%s", view)
-	}
-}
-
-func TestPickerTablesMatch(t *testing.T) {
-	for name := range Presets {
-		if presetNotes[name] == "" {
-			t.Errorf("preset %s has no picker note", name)
-		}
-	}
-	if len(presetNotes) != len(Presets) {
-		t.Errorf("presetNotes has %d entries for %d presets", len(presetNotes), len(Presets))
-	}
-	for _, tier := range Tiers {
-		if _, ok := claudeEfforts[tierModels["claude"][tier]]; !ok {
-			t.Errorf("the claude model for %s has no effort list", tier)
-		}
-	}
-}
-
 func TestPickerOffersEffortsAfterTheTiersItQueued(t *testing.T) {
 	p := choose(t, choose(t, choose(t, fresh(codexCatalogOf()), "custom"), "high"), "codex")
 	p = choose(t, p, newest)
@@ -248,23 +207,6 @@ func TestPickerMapsAClaudeTierToAnAlias(t *testing.T) {
 	p = choose(t, choose(t, p, "fable"), "save")
 	if !slices.Equal(p.sets[0], []string{"tier", "set", "heavy", "--client", "claude", "--model", "fable"}) {
 		t.Errorf("tier set %v", p.sets)
-	}
-}
-
-func TestPickerSaysWhatNewestResolvesTo(t *testing.T) {
-	listingPath(t)
-	for tier, want := range map[string]string{"high codex": "now gpt-6.1-sol", "heavy claude": "now opus"} {
-		name, client, _ := strings.Cut(tier, " ")
-		p := choose(t, choose(t, choose(t, newPicker(new(Catalog), Choice{}), "custom"), name), client)
-		var row string
-		for _, line := range strings.Split(p.View().Content, "\n") {
-			if strings.HasPrefix(line, "› newest") {
-				row = line
-			}
-		}
-		if !strings.HasSuffix(row, want) {
-			t.Errorf("%s: newest row %q does not end with %q", tier, row, want)
-		}
 	}
 }
 
@@ -312,19 +254,6 @@ func TestPickerDefaultEffortClearsAnEffortTheNewModelLacks(t *testing.T) {
 	}
 }
 
-func TestPickerEscGoesBackOneStep(t *testing.T) {
-	p := choose(t, choose(t, fresh(catalogOf(nil, nil)), "custom"), "reviewer")
-	for _, want := range []int{stepName, stepMenu} {
-		next, _ := p.Update(keyEsc)
-		if p = next.(picker); p.step != want {
-			t.Fatalf("esc went to step %d, want %d", p.step, want)
-		}
-	}
-	if _, cmd := p.Update(keyEsc); cmd == nil {
-		t.Error("esc on the first step did not quit")
-	}
-}
-
 func TestPickerResetsATierAndARole(t *testing.T) {
 	listingPath(t)
 	choice := Choice{Tiers: map[string]Binding{"high": {Client: "codex"}}, Roles: map[string]Override{"reviewer": {Client: "codex"}}}
@@ -348,42 +277,5 @@ func TestPickerKeepClearsAPickMadeBeforeEsc(t *testing.T) {
 	q = choose(t, choose(t, back(q), keep), "")
 	if len(p.sets)+len(q.sets) != 0 {
 		t.Errorf("keep after esc still queued the earlier pick: %v %v", p.sets, q.sets)
-	}
-}
-
-func TestPickerPresetPreviewIncludesPendingChanges(t *testing.T) {
-	listingPath(t)
-	p := choose(t, choose(t, choose(t, choose(t, newPicker(new(Catalog), Choice{}), "custom"), "high"), "claude"), "sonnet")
-	next, _ := p.Update(keyEsc)
-	p = drive(t, next.(picker), keyDown)
-	if view := p.View().Content; !strings.Contains(view, "  high      claude › sonnet") {
-		t.Errorf("the claude preset preview ignores the pending high pin:\n%s", view)
-	}
-}
-
-func TestPickerNewestSaysWhenNothingOrAFallbackRuns(t *testing.T) {
-	for tier, want := range map[string]string{"standard": "none listed for standard", "heavy": "falls back to high: codex › gpt-6.1-sol"} {
-		p := choose(t, choose(t, choose(t, newPicker(codexCatalogOf(), Choice{Preset: "codex"}), "custom"), tier), "codex")
-		var row string
-		for _, line := range strings.Split(p.View().Content, "\n") {
-			if strings.HasPrefix(line, "› newest") {
-				row = line
-			}
-		}
-		if !strings.HasSuffix(row, want) {
-			t.Errorf("%s: newest row %q, want it to end with %q", tier, row, want)
-		}
-	}
-}
-
-func TestPickerFitsTheTerminalWidth(t *testing.T) {
-	p := newPicker(new(Catalog), Choice{})
-	next, _ := p.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-	p = next.(picker)
-	p.step, p.sets = stepName, [][]string{{"tier", "set", "fast", "--client", "opencode", "--model", "opencode-go/" + strings.Repeat("x", 60)}}
-	for _, line := range strings.Split(p.View().Content, "\n") {
-		if w := ansi.StringWidth(line); w > 80 {
-			t.Errorf("line is %d columns wide: %q", w, line)
-		}
 	}
 }

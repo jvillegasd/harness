@@ -124,6 +124,7 @@ func (lr lockRun) locked(t *testing.T) map[string]json.RawMessage {
 }
 
 func TestSkillsAddDrivesNpxAndLinks(t *testing.T) {
+	t.Parallel()
 	lr := newLockRun(t)
 	lr.setNpx(t, true)
 	r := ok(t, lr.harness(t, "skills", "add", "owner/repo", "myskill", "g"), "skills add")
@@ -153,6 +154,7 @@ func TestSkillsAddDrivesNpxAndLinks(t *testing.T) {
 }
 
 func TestSkillsAddRefusesBeforeNpx(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		args []string
@@ -180,6 +182,7 @@ func TestSkillsAddRefusesBeforeNpx(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			lr := newLockRun(t)
 			if c.seed != nil {
 				c.seed(t, lr)
@@ -196,6 +199,7 @@ func TestSkillsAddRefusesBeforeNpx(t *testing.T) {
 }
 
 func TestSkillsAddFailsWhenSkillsShDoesNotInstall(t *testing.T) {
+	t.Parallel()
 	lr := newLockRun(t)
 	lr.setNpx(t, false)
 	r := lr.harness(t, "skills", "add", "owner/repo", "myskill", "g")
@@ -205,6 +209,7 @@ func TestSkillsAddFailsWhenSkillsShDoesNotInstall(t *testing.T) {
 }
 
 func TestSkillsUpdateDrivesNpx(t *testing.T) {
+	t.Parallel()
 	lr := newLockRun(t)
 	lr.setNpx(t, false)
 	if r := lr.harness(t, "skills", "update", "extra"); r.code == 0 {
@@ -219,6 +224,7 @@ func TestSkillsUpdateDrivesNpx(t *testing.T) {
 }
 
 func TestSkillsUpdateReplacesTheBodyInItsGroup(t *testing.T) {
+	t.Parallel()
 	lr := newLockRun(t)
 	seedLockedSkill(t, lr, "myskill")
 	writeMode(t, filepath.Join(lr.root, "skills/g/myskill/stale.md"), "old\n", 0o644)
@@ -254,6 +260,7 @@ func (lr lockRun) ranOutsideCheckout(t *testing.T) {
 }
 
 func TestSkillsRemoveDeletesEntryBodyAndLink(t *testing.T) {
+	t.Parallel()
 	lr := newLockRun(t)
 	seedLockedSkill(t, lr, "myskill")
 	ok(t, lr.harness(t, "skills", "remove", "myskill"), "skills remove")
@@ -268,6 +275,7 @@ func TestSkillsRemoveDeletesEntryBodyAndLink(t *testing.T) {
 }
 
 func TestSkillsRemovePreservesUnknownTopLevelKeys(t *testing.T) {
+	t.Parallel()
 	lr := newLockRun(t)
 	writeMode(t, filepath.Join(lr.root, "skills/g/myskill/SKILL.md"), "# x\n", 0o644)
 	writeMode(t, filepath.Join(lr.root, "skills-lock.json"), `{
@@ -295,6 +303,7 @@ func TestSkillsRemovePreservesUnknownTopLevelKeys(t *testing.T) {
 }
 
 func TestSkillsRemoveKeepsEntryOrder(t *testing.T) {
+	t.Parallel()
 	lr := newLockRun(t)
 	writeMode(t, filepath.Join(lr.root, "skills/g/aaa/SKILL.md"), "# x\n", 0o644)
 	writeMode(t, filepath.Join(lr.root, "skills-lock.json"), `{
@@ -321,6 +330,7 @@ func TestSkillsRemoveKeepsEntryOrder(t *testing.T) {
 }
 
 func TestSkillsRemoveRefusesUnsafeRemovals(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		args []string
@@ -359,6 +369,7 @@ func TestSkillsRemoveRefusesUnsafeRemovals(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			lr := newLockRun(t)
 			if c.seed != nil {
 				c.seed(t, lr)
@@ -397,6 +408,7 @@ func seedLockedSkill(t *testing.T, lr lockRun, name string) {
 }
 
 func TestSkillsVerifyMatchesThePinnedLock(t *testing.T) {
+	t.Parallel()
 	lr := locksVerifySandbox(t)
 	r := ok(t, lr.harness(t, "skills", "verify"), "skills verify")
 	data, err := os.ReadFile(filepath.Join(lr.root, "skills-lock.json"))
@@ -415,6 +427,7 @@ func TestSkillsVerifyMatchesThePinnedLock(t *testing.T) {
 }
 
 func TestSkillsVerifyReportsDriftForTheEditedBodyOnly(t *testing.T) {
+	t.Parallel()
 	lr := locksVerifySandbox(t)
 	body := filepath.Join(lr.root, "skills/building/tdd/SKILL.md")
 	data, err := os.ReadFile(body)
@@ -437,6 +450,7 @@ func TestSkillsVerifyReportsDriftForTheEditedBodyOnly(t *testing.T) {
 }
 
 func TestSkillsVerifyReportsUnverifiableNotDrift(t *testing.T) {
+	t.Parallel()
 	lr := locksVerifySandbox(t)
 	var lf map[string]any
 	data, err := os.ReadFile(filepath.Join(lr.root, "skills-lock.json"))
@@ -471,6 +485,7 @@ func TestSkillsVerifyReportsUnverifiableNotDrift(t *testing.T) {
 }
 
 func TestSkillsVerifyRefusesAnUnguardedLocalSkill(t *testing.T) {
+	t.Parallel()
 	lr := locksVerifySandbox(t)
 	ok(t, lr.harness(t, "skills", "verify"), "skills verify with guarded local skills")
 	writeMode(t, filepath.Join(lr.root, "skills", "workflow", "zz-bare", "SKILL.md"), "---\nname: zz-bare\ndisable-model-invocation: true\n---\nbody\n", 0o644)
@@ -484,6 +499,7 @@ func TestSkillsVerifyRefusesAnUnguardedLocalSkill(t *testing.T) {
 }
 
 func TestAliasesShellSyntax(t *testing.T) {
+	t.Parallel()
 	if out, err := exec.Command("bash", "-n", filepath.Join("..", "..", "aliases.sh")).CombinedOutput(); err != nil {
 		t.Fatalf("bash -n aliases.sh: %v\n%s", err, out)
 	}
@@ -535,6 +551,7 @@ func copyTree(t *testing.T, src, dst string) error {
 }
 
 func TestSkillsUpdateChangesNothingWhenABodyHasNoGroup(t *testing.T) {
+	t.Parallel()
 	lr := newLockRun(t)
 	seedLockedSkill(t, lr, "aaa")
 	lock := readFile(t, filepath.Join(lr.root, "skills-lock.json"))
@@ -568,8 +585,10 @@ func commitLockFixture(t *testing.T, lr lockRun) {
 }
 
 func TestSkillsUpdatePreservesDirtyLockedPaths(t *testing.T) {
+	t.Parallel()
 	for _, change := range []string{"body", "staged", "untracked", "ignored", "lock"} {
 		t.Run(change, func(t *testing.T) {
+			t.Parallel()
 			lr := newLockRun(t)
 			lr.setNpx(t, false)
 			seedLockedSkill(t, lr, "myskill")
@@ -621,6 +640,7 @@ func TestSkillsUpdatePreservesDirtyLockedPaths(t *testing.T) {
 }
 
 func TestSkillsUpdatePreservesUnrelatedChangesAndIndex(t *testing.T) {
+	t.Parallel()
 	lr := newLockRun(t)
 	lr.setNpx(t, false)
 	seedLockedSkill(t, lr, "myskill")
@@ -647,6 +667,7 @@ func TestSkillsUpdatePreservesUnrelatedChangesAndIndex(t *testing.T) {
 }
 
 func TestUpdateSkipsFailedNodeAndClientDependents(t *testing.T) {
+	t.Parallel()
 	lr := newLockRun(t)
 	seedLockedSkill(t, lr, "myskill")
 	commitLockFixture(t, lr)
@@ -693,6 +714,7 @@ esac
 }
 
 func TestSkillsNewAndMoveCommand(t *testing.T) {
+	t.Parallel()
 	lr := newLockRun(t)
 	for _, g := range []string{"support", "ops"} {
 		if err := os.MkdirAll(filepath.Join(lr.root, "skills", g), 0o755); err != nil {

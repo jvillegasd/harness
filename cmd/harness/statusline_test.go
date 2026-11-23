@@ -32,6 +32,7 @@ func statuslineEnv(t *testing.T) (base, home, work string) {
 }
 
 func TestStatuslineFixtures(t *testing.T) {
+	t.Parallel()
 	base, home, work := statuslineEnv(t)
 	fixtures, err := filepath.Glob(filepath.Join("testdata", "statusline", "fixtures", "*.json"))
 	if err != nil {
@@ -81,6 +82,7 @@ func TestStatuslineFixtures(t *testing.T) {
 }
 
 func TestStatuslineEmptyPayloadTouchesNeitherKeychainNorCache(t *testing.T) {
+	t.Parallel()
 	base, home, work := statuslineEnv(t)
 	log := filepath.Join(base, "security.log")
 	writeMode(t, filepath.Join(base, "shims", "security"), "#!/bin/sh\nprintf invoked >> '"+log+"'\nexit 1\n", 0o755)

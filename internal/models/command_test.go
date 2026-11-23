@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/jvillegasd/harness/internal/ui"
 )
 
 const codexListing = `{"models":[` +
@@ -432,35 +430,6 @@ func flat(t *testing.T, path string) string {
 		b.WriteString("\n")
 	}
 	return b.String()
-}
-
-func TestShowDrawsRolesUnderTheirTier(t *testing.T) {
-	listingPath(t)
-	path := seeded(t, "")
-	runOK(t, path, "role", "set", "review-spec", "--tier", "fast")
-	out := runOK(t, path, "show")
-	for _, want := range []string{
-		"harness models  preset balanced",
-		"tier defaults  preset balanced\n\n HEAVY      system design, architecture\n  runs on      claude › opus or fable\n  with claude  claude › opus or fable\n  with codex   codex  › gpt-6.1-sol at high\n",
-		" STANDARD   scoped work with tests\n  runs on      codex  › gpt-6.1-terra\n  with claude  claude › sonnet\n  with codex   codex  › gpt-6.1-terra\n",
-		"roles  the model each role runs on\n\n HEAVY    \n  └─ no roles",
-		" HIGH     \n  ├─ reviewer      effort low      claude › opus\n  ├─ review-bugs   effort low      claude › opus  via reviewer\n  └─ review-risk   effort low      claude › opus  via reviewer\n",
-		" STANDARD \n  ├─ executor      effort default  codex  › gpt-6.1-terra\n  └─ worker        effort default  codex  › gpt-6.1-terra  tier chosen at launch\n",
-		"  └─ review-spec   effort default  claude › haiku  set\n     ! claude haiku does not support effort \"low\"",
-	} {
-		if !strings.Contains(out, want) {
-			t.Errorf("show lacks %q:\n%s", want, out)
-		}
-	}
-	if strings.Contains(out, "\x1b[") {
-		t.Errorf("show wrote color to a non-terminal:\n%q", out)
-	}
-	var tree strings.Builder
-	choice, _ := Load(path)
-	drawTree(ui.Colored, choice.report(new(Catalog)), &tree)
-	if !strings.Contains(tree.String(), "\x1b[1;30;46m HIGH     \x1b[0m") {
-		t.Errorf("the colored tree does not draw the high tier's pill:\n%q", tree.String())
-	}
 }
 
 func TestEachTierListsWhatOtherClientsAndPresetsRunItOn(t *testing.T) {

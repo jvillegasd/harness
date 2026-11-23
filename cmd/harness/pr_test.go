@@ -63,6 +63,7 @@ func prForge(head, checks string) string {
 }
 
 func TestPrStatusCommand(t *testing.T) {
+	t.Parallel()
 	_, head, run := prRepo(t)
 
 	r := run(prForge(head, `[{"name":"ci","bucket":"pass"}]`), "pr", "status")
@@ -91,6 +92,7 @@ func TestPrStatusCommand(t *testing.T) {
 }
 
 func TestPrThreadsCommand(t *testing.T) {
+	t.Parallel()
 	_, _, run := prRepo(t)
 	log := filepath.Join(t.TempDir(), "gh.log")
 	body := filepath.Join(t.TempDir(), "reply.md")

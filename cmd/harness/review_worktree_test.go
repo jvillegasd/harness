@@ -7,6 +7,7 @@ import (
 )
 
 func TestReviewWorktreeCommand(t *testing.T) {
+	t.Parallel()
 	dir, data := repo(t), t.TempDir()
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
 	head := git(t, dir, "rev-parse", "HEAD")

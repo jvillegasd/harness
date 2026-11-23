@@ -7,6 +7,7 @@ import (
 )
 
 func TestReviewTargetCommand(t *testing.T) {
+	t.Parallel()
 	_, head, run := prRepo(t)
 	forge := `"pr view") echo '{"headRefName":"` + branch + `","headRefOid":"` + head + `","baseRefName":"main","isCrossRepository":false}';;
 `

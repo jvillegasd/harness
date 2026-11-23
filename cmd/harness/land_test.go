@@ -11,6 +11,7 @@ import (
 )
 
 func TestLandCheckCommand(t *testing.T) {
+	t.Parallel()
 	dir := repo(t)
 	origin := filepath.Join(t.TempDir(), "origin.git")
 	git(t, dir, "init", "-q", "--bare", "-b", "main", origin)
@@ -75,6 +76,7 @@ func TestLandCheckCommand(t *testing.T) {
 }
 
 func TestLandFinishCommand(t *testing.T) {
+	t.Parallel()
 	dir, head, run := prRepo(t)
 	const forge = `"repo view") echo '{"defaultBranchRef":{"name":"main"}}';;
 "api user") echo me;;
@@ -94,6 +96,7 @@ func TestLandFinishCommand(t *testing.T) {
 }
 
 func TestLandRepairCommand(t *testing.T) {
+	t.Parallel()
 	_, head, run := prRepo(t)
 	if r := run("", "land", "repair", "7", "--push"); r.code != 1 || !strings.Contains(r.stderr, "no repair of #7 is waiting") {
 		t.Errorf("a push with nothing waiting exited %d: %s", r.code, r.stderr)
@@ -109,6 +112,7 @@ func TestLandRepairCommand(t *testing.T) {
 }
 
 func TestLandMergeCommand(t *testing.T) {
+	t.Parallel()
 	_, head, run := prRepo(t)
 	marker := filepath.Join(t.TempDir(), "merged")
 	body := filepath.Join(t.TempDir(), "body.md")

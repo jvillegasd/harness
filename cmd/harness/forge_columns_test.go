@@ -8,6 +8,7 @@ import (
 )
 
 func TestWorktreeAuditForgeCommand(t *testing.T) {
+	t.Parallel()
 	dir, _, run := prRepo(t)
 	path := filepath.Join(filepath.Dir(dir), "open")
 	git(t, dir, "worktree", "add", "-q", "-b", "feat/open", path)

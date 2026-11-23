@@ -40,6 +40,7 @@ func scratchDir(t *testing.T, dir, key string) string {
 }
 
 func TestReviewRemoveCommand(t *testing.T) {
+	t.Parallel()
 	dir, data := repo(t), t.TempDir()
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
 	merged, kept := scratchDir(t, dir, "feat/x"), scratchDir(t, dir, "feat/y")
@@ -78,6 +79,7 @@ func TestReviewRemoveCommand(t *testing.T) {
 }
 
 func TestReviewPruneCommand(t *testing.T) {
+	t.Parallel()
 	dir, data := repo(t), t.TempDir()
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
 	git(t, dir, "update-ref", "refs/remotes/origin/feat/remote", "HEAD")
@@ -103,6 +105,7 @@ func TestReviewPruneCommand(t *testing.T) {
 }
 
 func TestReviewLevelCommand(t *testing.T) {
+	t.Parallel()
 	base := modelsBase(t)
 	level := func(args ...string) result {
 		return runHarness(t, base, nil, append([]string{"review", "level"}, args...)...)
@@ -130,6 +133,7 @@ func TestReviewLevelCommand(t *testing.T) {
 }
 
 func TestReviewVerdictCommand(t *testing.T) {
+	t.Parallel()
 	dir, head, run := prRepo(t)
 	base := git(t, dir, "rev-parse", "HEAD~1")
 	log := filepath.Join(t.TempDir(), "gh.log")
