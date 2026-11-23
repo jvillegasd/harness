@@ -42,6 +42,7 @@ func changeMapRepo(t *testing.T) string {
 }
 
 func TestChangeMapText(t *testing.T) {
+	t.Parallel()
 	dir := changeMapRepo(t)
 	r := runBinary(t, dir, "change-map", "--base", "main")
 	if r.code != 0 {
@@ -76,6 +77,7 @@ func TestChangeMapText(t *testing.T) {
 }
 
 func TestChangeMapJSON(t *testing.T) {
+	t.Parallel()
 	dir := changeMapRepo(t)
 	r := runBinary(t, dir, "change-map", "--base", "main", "--json")
 	if r.code != 0 {
@@ -123,6 +125,7 @@ func TestChangeMapJSON(t *testing.T) {
 }
 
 func TestChangeMapDefaultBaseFallsBackToMain(t *testing.T) {
+	t.Parallel()
 	dir := changeMapRepo(t)
 	r := runBinary(t, dir, "change-map", "--json")
 	if r.code != 0 {
@@ -134,6 +137,7 @@ func TestChangeMapDefaultBaseFallsBackToMain(t *testing.T) {
 }
 
 func TestChangeMapOperationalErrorsExitTwo(t *testing.T) {
+	t.Parallel()
 	dir := changeMapRepo(t)
 	if r := runBinary(t, dir, "change-map", "--base", "no-such-ref"); r.code != 2 || !strings.Contains(r.stderr, "no-such-ref") {
 		t.Errorf("unknown base exited %d with stderr %q", r.code, r.stderr)
@@ -150,6 +154,7 @@ func TestChangeMapOperationalErrorsExitTwo(t *testing.T) {
 }
 
 func TestChangeMapListedInHelp(t *testing.T) {
+	t.Parallel()
 	if r := runBinary(t, t.TempDir(), "--help"); !strings.Contains(r.stdout, "  change-map ") {
 		t.Errorf("help does not list change-map: %q", r.stdout)
 	}

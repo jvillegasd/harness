@@ -8,6 +8,7 @@ import (
 )
 
 func TestReviewSnapshotCommand(t *testing.T) {
+	t.Parallel()
 	dir, data := repo(t), t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "owned.txt"), []byte("base\n"), 0o644); err != nil {
 		t.Fatal(err)

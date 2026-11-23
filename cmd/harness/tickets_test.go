@@ -20,6 +20,7 @@ func writeDraft(t *testing.T, dir, feature, name, title, blocked string) {
 }
 
 func TestTicketsCheckCommand(t *testing.T) {
+	t.Parallel()
 	dir := repo(t)
 	ok(t, harness(t, dir, "tickets", "check"), "check with no drafts")
 	writeDraft(t, dir, "good", "01-a.md", "01 A", "none")
@@ -38,6 +39,7 @@ func TestTicketsCheckCommand(t *testing.T) {
 }
 
 func TestTicketsFrontierCommand(t *testing.T) {
+	t.Parallel()
 	dir := repo(t)
 	writeDraft(t, dir, "demo", "01-a.md", "01 A", "none")
 	writeDraft(t, dir, "demo", "02-b.md", "02 B", "none")
@@ -64,6 +66,7 @@ func TestTicketsFrontierCommand(t *testing.T) {
 }
 
 func TestTicketsPublishCommand(t *testing.T) {
+	t.Parallel()
 	dir, _, run := prRepo(t)
 	writeDraft(t, dir, "demo", "01-a.md", "01 Alpha", "none")
 	config := filepath.Join(dir, "docs", "agents", "harness.json")

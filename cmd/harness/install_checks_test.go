@@ -56,6 +56,7 @@ func readDir(dir string) []string {
 }
 
 func TestGuardedSkillsAreInstalled(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "skip-packages install")
 	bodies, err := filepath.Glob(filepath.Join(base, "checkout", "skills", "*", "*", "SKILL.md"))
@@ -79,6 +80,7 @@ func TestGuardedSkillsAreInstalled(t *testing.T) {
 }
 
 func TestInstallRefusesAnUnguardedLocalSkill(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	writeMode(t, filepath.Join(base, "checkout", "skills", "workflow", "zz-bare", "SKILL.md"), "---\nname: zz-bare\ndisable-model-invocation: true\n---\nbody\n", 0o644)
 	var before strings.Builder
@@ -95,6 +97,7 @@ func TestInstallRefusesAnUnguardedLocalSkill(t *testing.T) {
 }
 
 func TestInstallExplainsAMissingLock(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	if err := os.Remove(filepath.Join(base, "checkout", "skills-lock.json")); err != nil {
 		t.Fatal(err)
@@ -105,6 +108,7 @@ func TestInstallExplainsAMissingLock(t *testing.T) {
 }
 
 func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	roots := map[string]string{"claude": filepath.Join(home, ".claude", "agents"), "codex": filepath.Join(home, ".codex", "agents"), "opencode": filepath.Join(home, ".config", "opencode", "agents")}
@@ -161,8 +165,10 @@ func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
 }
 
 func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []string{"file", "foreign-link", "root-link"} {
 		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
 			base := sandbox(t)
 			home := filepath.Join(base, "home")
 			root := filepath.Join(home, ".config", "opencode", "agents")
@@ -192,6 +198,7 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 }
 
 func TestUninstallKeepsAnEditedCopy(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
 	edited := filepath.Join(base, "home", ".claude", "skills", "open-pr", "SKILL.md")
@@ -210,6 +217,7 @@ func TestUninstallKeepsAnEditedCopy(t *testing.T) {
 }
 
 func TestUninstallDeclinePreservesInstallation(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
 	copy := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
@@ -222,6 +230,7 @@ func TestUninstallDeclinePreservesInstallation(t *testing.T) {
 }
 
 func TestUninstallOpenCodeLeavesClaudeCopies(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
 	claude := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
@@ -235,6 +244,7 @@ func TestUninstallOpenCodeLeavesClaudeCopies(t *testing.T) {
 }
 
 func TestCodexInstallsIntoHomeCodexAndUninstallsAlone(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	elsewhere := filepath.Join(base, "launcher-codex-home")
 	extra := []string{"TMPDIR=" + filepath.Join(base, "tmp"), "HARNESS_ASSETS=" + filepath.Join(base, "checkout"), "CODEX_HOME=" + elsewhere}
@@ -282,6 +292,7 @@ func TestCodexInstallsIntoHomeCodexAndUninstallsAlone(t *testing.T) {
 }
 
 func TestNoBackupReplacesCollisionWithoutArchiving(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	path := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
 	writeMode(t, path, "private agent\n", 0o644)
@@ -295,6 +306,7 @@ func TestNoBackupReplacesCollisionWithoutArchiving(t *testing.T) {
 }
 
 func TestInstallInstallsTheEmbeddedHarnessFromAnywhere(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	seedFull(t, base)
 	home := filepath.Join(base, "home")
@@ -313,6 +325,7 @@ func TestInstallInstallsTheEmbeddedHarnessFromAnywhere(t *testing.T) {
 }
 
 func TestClearBackupsRunsOutsideTheCheckout(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	seedBackups(t, base)
 	home := filepath.Join(base, "home")
@@ -327,6 +340,7 @@ func TestClearBackupsRunsOutsideTheCheckout(t *testing.T) {
 }
 
 func TestInstallReplacesAnUnusableStatuslineBinary(t *testing.T) {
+	t.Parallel()
 	installed := func(base string) string { return filepath.Join(base, "home", ".local", "bin", "harness") }
 	cases := []struct {
 		name string
@@ -348,6 +362,7 @@ func TestInstallReplacesAnUnusableStatuslineBinary(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			base := sandbox(t)
 			c.seed(t, base)
 			ok(t, runInstaller(t, base), "install")
@@ -359,6 +374,7 @@ func TestInstallReplacesAnUnusableStatuslineBinary(t *testing.T) {
 }
 
 func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
 	const text = `{"mcp": ["x"]}` + "\n"
@@ -379,6 +395,7 @@ func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
 }
 
 func TestCodexUninstallWithoutCodex(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
 	codexHome := filepath.Join(base, "home", ".codex")
@@ -398,6 +415,7 @@ func TestCodexUninstallWithoutCodex(t *testing.T) {
 }
 
 func TestInstallRefusesANonUserScopeEngramMCP(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	seedLived(t, base)
 	writeShim(t, base, "claude", `case "$*" in
@@ -412,6 +430,7 @@ esac`)
 }
 
 func TestUninstallRefusesASurvivingEngramMCP(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	seedLived(t, base)
 	ok(t, runInstaller(t, base), "install")
@@ -449,6 +468,7 @@ func recordedTools(t *testing.T, base string) map[string]string {
 }
 
 func TestFullInstallProvisionsMissingOnly(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	seedFull(t, base)
 	missingTools(t, base, "uv", "agent-browser", "engram")
@@ -476,6 +496,7 @@ func TestFullInstallProvisionsMissingOnly(t *testing.T) {
 }
 
 func TestInstallWithEveryToolPresentCallsNoPackageManager(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	seedLived(t, base)
 	ok(t, runInstaller(t, base), "install")
@@ -499,6 +520,7 @@ func TestInstallWithEveryToolPresentCallsNoPackageManager(t *testing.T) {
 }
 
 func TestNamedComponentInstallsOnlyItself(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	r := ok(t, runInstaller(t, base, "skills"), "skills install")
@@ -533,6 +555,7 @@ func TestNamedComponentInstallsOnlyItself(t *testing.T) {
 }
 
 func TestClientFlagLimitsTheInstall(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	ok(t, runInstaller(t, base, "--client", "claude"), "Claude Code install")
@@ -553,6 +576,7 @@ func TestClientFlagLimitsTheInstall(t *testing.T) {
 }
 
 func TestMissingClientIsRefusedOnlyWhenNamed(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	if err := os.Remove(filepath.Join(base, "shims", "opencode")); err != nil {
@@ -576,6 +600,7 @@ func TestMissingClientIsRefusedOnlyWhenNamed(t *testing.T) {
 }
 
 func TestMCPInstallReconcilesSettings(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	writeShim(t, base, "engram", `if [ "$*" = "setup claude-code" ]; then
 mkdir -p "$HOME/.claude"
@@ -594,6 +619,7 @@ fi`)
 }
 
 func TestMCPInstallReadsOpenCode2Config(t *testing.T) {
+	t.Parallel()
 	for name, c := range map[string]struct {
 		disabled, plugin, fails bool
 	}{
@@ -602,6 +628,7 @@ func TestMCPInstallReadsOpenCode2Config(t *testing.T) {
 		"no engram plugin":  {false, false, true},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			base := sandbox(t)
 			if c.plugin {
 				writeMode(t, filepath.Join(base, "home", ".config", "opencode", "plugins", "engram.ts"), "", 0o644)
@@ -622,6 +649,7 @@ fi`)
 }
 
 func TestBareUninstallKeepsToolsAndTheirRecord(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	seedFull(t, base)
 	missingTools(t, base, "uv", "engram")
@@ -642,6 +670,7 @@ func TestBareUninstallKeepsToolsAndTheirRecord(t *testing.T) {
 }
 
 func TestUninstallAllRemovesOnlyRecordedTools(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	seedFull(t, base)
@@ -674,6 +703,7 @@ func TestUninstallAllRemovesOnlyRecordedTools(t *testing.T) {
 }
 
 func TestNamedToolUninstallKeepsSharedTools(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	seedFull(t, base)
 	missingTools(t, base, "codex", "engram")
@@ -692,6 +722,7 @@ func TestNamedToolUninstallKeepsSharedTools(t *testing.T) {
 }
 
 func TestUninstallFindsANativeClaudeInLocalBin(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	if err := os.Remove(filepath.Join(base, "shims", "claude")); err != nil {
@@ -712,6 +743,7 @@ func TestUninstallFindsANativeClaudeInLocalBin(t *testing.T) {
 }
 
 func TestPackageStaysWhileAToolInstalledThroughItIsRecorded(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	shims := filepath.Join(base, "shims")
 	writeMode(t, stateFile(base), `{"version":1,"installed":{},"files":[],"tools":{"node":"brew:node","codex":"npm:@openai/codex"}}`+"\n", 0o644)
@@ -747,6 +779,7 @@ func TestPackageStaysWhileAToolInstalledThroughItIsRecorded(t *testing.T) {
 }
 
 func TestOldComponentNamesAreMigrated(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
 	old := strings.NewReplacer(`"floor"`, `"policy"`, `"mcps"`, `"mcp"`).Replace(readFile(t, stateFile(base)))
@@ -761,6 +794,7 @@ func TestOldComponentNamesAreMigrated(t *testing.T) {
 }
 
 func TestInstallAddsClaudeOnlyWhenAbsent(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	seedFull(t, base)
 	shims, log := filepath.Join(base, "shims"), filepath.Join(base, "shims.log")
@@ -785,6 +819,7 @@ func TestInstallAddsClaudeOnlyWhenAbsent(t *testing.T) {
 }
 
 func TestInstallRefusesMissingOrRelativeLocations(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		name string
 		env  []string
@@ -794,6 +829,7 @@ func TestInstallRefusesMissingOrRelativeLocations(t *testing.T) {
 		{"relative-config", []string{"XDG_CONFIG_HOME=relative"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			base := sandbox(t)
 			home := filepath.Join(base, "home")
 			before := homeTree(t, home)
@@ -819,6 +855,7 @@ func homeTree(t *testing.T, home string) string {
 }
 
 func TestReinstallRewritesNothingUnchanged(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
 	home := filepath.Join(base, "home")
@@ -836,6 +873,7 @@ func TestReinstallRewritesNothingUnchanged(t *testing.T) {
 }
 
 func TestInstallWithSymlinkedTmpdir(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	link := filepath.Join(base, "tmp-link")
 	symlink(t, filepath.Join(base, "tmp"), link)
@@ -844,6 +882,7 @@ func TestInstallWithSymlinkedTmpdir(t *testing.T) {
 }
 
 func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	source := filepath.Join(base, "checkout", "skills", "ops", "retired")
@@ -897,6 +936,7 @@ func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
 }
 
 func TestCompactionHooksKeepTheUsersOwn(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	settings := filepath.Join(home, ".claude", "settings.json")
@@ -948,6 +988,7 @@ func TestCompactionHooksKeepTheUsersOwn(t *testing.T) {
 }
 
 func TestCodexHooksKeepTheUsersOwn(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	path := filepath.Join(base, "home", ".codex", "hooks.json")
 	writeMode(t, path, `{"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "echo mine"}]}]}}`+"\n", 0o644)
@@ -964,6 +1005,7 @@ func TestCodexHooksKeepTheUsersOwn(t *testing.T) {
 }
 
 func TestClaudeAllowKeepsTheUsersRules(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	settings := filepath.Join(base, "home", ".claude", "settings.json")
 	writeMode(t, settings, `{"permissions": {"allow": ["Bash(make test)"], "defaultMode": "plan"}}`+"\n", 0o644)
@@ -993,6 +1035,7 @@ func TestClaudeAllowKeepsTheUsersRules(t *testing.T) {
 }
 
 func TestFloorRulesReachCodexAndOpenCode(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	rules := filepath.Join(home, ".codex", "rules", "harness.rules")
@@ -1071,6 +1114,7 @@ func TestFloorRulesReachCodexAndOpenCode(t *testing.T) {
 }
 
 func TestOpenCodeKeepsAStricterUserRule(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
 	writeMode(t, config, `{"permission": {"bash": {"gh pr merge *": "deny"}}}`+"\n", 0o644)
@@ -1085,6 +1129,7 @@ func TestOpenCodeKeepsAStricterUserRule(t *testing.T) {
 }
 
 func TestInstallsOpenCodeV2(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	seedFull(t, base)
 	missingTools(t, base, "opencode")
@@ -1095,6 +1140,7 @@ func TestInstallsOpenCodeV2(t *testing.T) {
 }
 
 func TestOpenCodeAsksBeforeAHarnessMerge(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	ok(t, runInstaller(t, base), "install")
 	if text := readFile(t, filepath.Join(base, "home", ".config", "opencode", "opencode.json")); !strings.Contains(text, `"harness land merge *": "ask"`) {
@@ -1103,6 +1149,7 @@ func TestOpenCodeAsksBeforeAHarnessMerge(t *testing.T) {
 }
 
 func TestOpenCodeAsksOutsideTheProject(t *testing.T) {
+	t.Parallel()
 	const ask, skills = `"*": "ask"`, `"~/.agents/skills/*": "allow"`
 	for name, c := range map[string]struct {
 		user    string
@@ -1117,6 +1164,7 @@ func TestOpenCodeAsksOutsideTheProject(t *testing.T) {
 		"the user denies any use": {`{"permission": "deny"}`, []string{`"*": "deny"`}, skills},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			base := sandbox(t)
 			config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
 			writeMode(t, config, c.user+"\n", 0o644)
@@ -1172,6 +1220,7 @@ func externalDirectory(t *testing.T, config string) string {
 }
 
 func TestOpenCodeKeepsTheUsersExternalRules(t *testing.T) {
+	t.Parallel()
 	const skills = `"~/.agents/skills/*":"allow"`
 	for name, c := range map[string]struct {
 		user               string
@@ -1209,6 +1258,7 @@ func TestOpenCodeKeepsTheUsersExternalRules(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			base := sandbox(t)
 			config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
 			writeMode(t, config, c.user+"\n", 0o644)
@@ -1244,6 +1294,7 @@ func TestOpenCodeKeepsTheUsersExternalRules(t *testing.T) {
 }
 
 func TestOpenCodeDefaultsOutliveLaterEdits(t *testing.T) {
+	t.Parallel()
 	settings := []string{"settings", "--client", "opencode"}
 	const ask, skill = `"*": "ask",`, `"~/.agents/skills/*": "allow",`
 	for name, c := range map[string]struct {
@@ -1259,6 +1310,7 @@ func TestOpenCodeDefaultsOutliveLaterEdits(t *testing.T) {
 		}, false, ""},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			base := sandbox(t)
 			config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
 			ok(t, runInstaller(t, base, settings...), "install")
@@ -1280,6 +1332,7 @@ func TestOpenCodeDefaultsOutliveLaterEdits(t *testing.T) {
 }
 
 func TestCodexUninstallKeepsTheOpenCodeRecord(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	ok(t, runInstaller(t, base, "settings"), "install")
@@ -1299,12 +1352,14 @@ func runWithShell(t *testing.T, base, shell string, args ...string) result {
 }
 
 func TestAliasesGoToTheLoginShellsStartupFile(t *testing.T) {
+	t.Parallel()
 	bash := ".bashrc"
 	if runtime.GOOS == "darwin" {
 		bash = ".bash_profile"
 	}
 	for shell, rc := range map[string]string{"/bin/bash": bash, "/bin/zsh": ".zshrc"} {
 		t.Run(filepath.Base(shell), func(t *testing.T) {
+			t.Parallel()
 			base := sandbox(t)
 			home := filepath.Join(base, "home")
 			ok(t, runWithShell(t, base, shell, "install", "aliases"), "aliases install")
@@ -1326,6 +1381,7 @@ func TestAliasesGoToTheLoginShellsStartupFile(t *testing.T) {
 }
 
 func TestAliasesWarnForAnotherShell(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	r := ok(t, runWithShell(t, base, "/usr/bin/fish", "install", "aliases"), "aliases install under fish")
@@ -1340,6 +1396,7 @@ func TestAliasesWarnForAnotherShell(t *testing.T) {
 }
 
 func TestUninstallKeepsAliasesItNeverWrote(t *testing.T) {
+	t.Parallel()
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	mine := "alias ccyolo='claude --my-flags'\n"
@@ -1352,6 +1409,7 @@ func TestUninstallKeepsAliasesItNeverWrote(t *testing.T) {
 }
 
 func TestMacBashUsesTheExistingProfile(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS != "darwin" {
 		t.Skip("bash login shells read ~/.bashrc on Linux")
 	}

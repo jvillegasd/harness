@@ -35,6 +35,7 @@ func agentFile(t *testing.T, base, client, role string) string {
 }
 
 func TestModelsShowDefaultsToBalanced(t *testing.T) {
+	t.Parallel()
 	base := modelsBase(t)
 	got := shown(t, base)
 	for _, want := range []string{
@@ -53,6 +54,7 @@ func TestModelsShowDefaultsToBalanced(t *testing.T) {
 }
 
 func TestModelsWithoutTTYPrintsUsage(t *testing.T) {
+	t.Parallel()
 	r := runModels(t, modelsBase(t))
 	if r.code == 0 {
 		t.Fatalf("bare models without a TTY exited 0")
@@ -65,6 +67,7 @@ func TestModelsWithoutTTYPrintsUsage(t *testing.T) {
 }
 
 func TestModelsSetKeepsOtherStateKeysAndRejectsWithoutWriting(t *testing.T) {
+	t.Parallel()
 	base := modelsBase(t)
 	seed := `{"version": 1, "installed": {"claude": ["policy"]}, "files": []}` + "\n"
 	writeMode(t, stateFile(base), seed, 0o644)
@@ -96,6 +99,7 @@ func TestModelsSetKeepsOtherStateKeysAndRejectsWithoutWriting(t *testing.T) {
 }
 
 func TestModelsResolveReportsTheAssignment(t *testing.T) {
+	t.Parallel()
 	base := modelsBase(t)
 	r := ok(t, runModels(t, base, "role", "resolve", "worker", "--tier", "heavy", "--json"), "resolve")
 	var got map[string]string
@@ -111,6 +115,7 @@ func TestModelsResolveReportsTheAssignment(t *testing.T) {
 }
 
 func TestInstallRendersTheResolvedTiers(t *testing.T) {
+	t.Parallel()
 	base := modelsBase(t)
 	r := ok(t, runInstaller(t, base, "agents"), "install with the default preset")
 	if !strings.Contains(r.stdout, "codex     executor, worker on gpt-6.1-terra") || strings.Contains(r.stdout, "assignment:") {
@@ -139,6 +144,7 @@ func TestInstallRendersTheResolvedTiers(t *testing.T) {
 }
 
 func TestInstallFallsBackWhenATierCannotBeServed(t *testing.T) {
+	t.Parallel()
 	base := modelsBase(t)
 	writeShim(t, base, "codex", `case "$*" in "debug models") echo '{"models":[{"slug":"gpt-6.1-sol","visibility":"list"}]}' ;; esac`)
 	r := ok(t, runInstaller(t, base, "agents"), "install without a terra model")
@@ -154,6 +160,7 @@ func TestInstallFallsBackWhenATierCannotBeServed(t *testing.T) {
 }
 
 func TestModelsRejectsAStaleChoice(t *testing.T) {
+	t.Parallel()
 	base := modelsBase(t)
 	writeMode(t, stateFile(base), `{"version": 1, "installed": {}, "files": [], "models": {"preset": "lavish"}}`+"\n", 0o644)
 	if r := runInstaller(t, base, "agents"); r.code == 0 || !strings.Contains(r.stderr, "harness models tier reset") {
@@ -164,6 +171,7 @@ func TestModelsRejectsAStaleChoice(t *testing.T) {
 }
 
 func TestModelsSetAppliesToTheInstalledAgentsOnly(t *testing.T) {
+	t.Parallel()
 	base := modelsBase(t)
 	ok(t, runInstaller(t, base, "agents", "--client", "claude"), "install Claude's agents alone")
 	r := ok(t, runModels(t, base, "role", "set", "reviewer", "--tier", "fast"), "set without a reinstall")
@@ -186,6 +194,7 @@ func TestModelsSetAppliesToTheInstalledAgentsOnly(t *testing.T) {
 }
 
 func TestModelsSetBeforeAnyInstallRendersNothing(t *testing.T) {
+	t.Parallel()
 	base := modelsBase(t)
 	r := ok(t, runModels(t, base, "role", "set", "reviewer", "--tier", "fast"), "set before install")
 	if !strings.Contains(r.stdout, "`harness install agents` renders them") {
@@ -197,6 +206,7 @@ func TestModelsSetBeforeAnyInstallRendersNothing(t *testing.T) {
 }
 
 func TestModelsSetKeepsAnAgentEditedByHand(t *testing.T) {
+	t.Parallel()
 	base := modelsBase(t)
 	ok(t, runInstaller(t, base, "agents", "--client", "claude"), "install Claude's agents")
 	path := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
@@ -246,6 +256,7 @@ func shown(t *testing.T, base string) string {
 }
 
 func TestInstallGroupsItsLogBySection(t *testing.T) {
+	t.Parallel()
 	base := modelsBase(t)
 	r := ok(t, runInstaller(t, base, "agents"), "install agents")
 	for _, want := range []string{"harness install  ", "\n TOOLS ", "\n AGENTS ", "  └─ ok "} {
@@ -264,6 +275,7 @@ func TestInstallGroupsItsLogBySection(t *testing.T) {
 }
 
 func TestUninstallWarnsUnderItsSection(t *testing.T) {
+	t.Parallel()
 	base := modelsBase(t)
 	ok(t, runInstaller(t, base, "agents", "--client", "claude"), "install agents")
 	writeMode(t, filepath.Join(base, "home", ".claude", "agents", "worker.md"), "edited\n", 0o644)

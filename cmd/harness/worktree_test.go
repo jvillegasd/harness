@@ -8,6 +8,7 @@ import (
 )
 
 func TestWorktreeCommand(t *testing.T) {
+	t.Parallel()
 	dir := repo(t)
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "base")
 	parent := filepath.Dir(dir)
