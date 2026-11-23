@@ -24,7 +24,7 @@ The harness installs the same rules, skills, and helper roles into all three cli
 ## Highlights
 
 - **One install, three clients.** `harness install` provisions the floor rules, skills, roles, MCP servers, and client settings for Claude Code, Codex, and OpenCode, and never overwrites a file you edited.
-- **You stay in control.** Agents work on their own task branches. Nothing is pushed, published, merged, or discarded until you ask.
+- **You stay in control.** Agents work on their own task branches. Finished work on an agent's own task branch is pushed and opened as a ready pull request unless you say to keep it local. Merges, discards, tracker writes, and messages to people wait for you.
 - **Proven review.** Independent reviewers hunt for defects without the author's reasoning, only problems a run proves are reported, and each review posts one `PASS`, `PASS+NOTES`, or `FAIL` verdict on its pull request.
 - **Guarded landing.** `/land` merges only on your request and only when the checks, the review verdict, the run-as-user verdict, and the forge gates allow it, then cleans up branches and worktrees without losing work.
 - **Deterministic steps.** Repeatable workflow steps are `harness` commands with tests, not prose an agent has to interpret.
@@ -78,9 +78,11 @@ A plain request works the way it always does. For the harness's procedures (plan
 | --- | --- |
 | Run a task step by step, with every step visible | `/jvillegasd-mode <task>` |
 | Leave a task running while you step away | `/jvillegasd-mode autopilot, I'm stepping away: <goal>` |
+| Let the agent land its own verified PRs too | add `full`: `/jvillegasd-mode autopilot full: <goal>` |
 | Think an unclear idea through, recording ADRs and glossary terms | `/grill-with-docs` |
 | Turn a settled plan into an epic with sliced tickets | `/jvillegasd-mode plan <idea>` |
 | Build one ticket, or an epic's slices | `/jvillegasd-mode build <ticket or epic>` |
+| Build a whole app or several features toward one goal | `/jvillegasd-mode build an app that does X, Y, and Z` |
 | Get a review of your changes | `/jvillegasd-mode review` |
 | Publish the work as a pull request | `/jvillegasd-mode open a PR` |
 | Clean up after you merge a PR | `/land`, or `/land merge` to have the agent merge for you; name PRs (`/land merge 19 20`, `/land merge stack 23`) to land ones not checked out here |
@@ -90,8 +92,8 @@ The [workflow guide](docs/workflow.md) lists every skill and when to reach for i
 
 ## What the agent does on its own, and what waits for you
 
-- **Local work stays local.** The agent edits and commits on its own task branch, but nothing is pushed or published until you ask.
-- **You merge.** Every pull request ends with a readiness report. You read it and merge. The agent merges only when you run `/land merge`.
+- **Finished work becomes a pull request.** The agent edits and commits on its own task branch, then pushes it and opens a ready PR once its checks pass. Say "keep it local" to stop before the push. Tracker writes and messages to people still wait for you.
+- **You merge.** Every pull request ends with a readiness report. You read it and merge. The agent merges only when you run `/land merge` or explicitly mark a `/jvillegasd-mode` run full, which lands only its own verified pull requests through `land`'s steps.
 - **Nothing is thrown away without your say.** The agent discards work only when you name it. If the scope is unclear, it asks.
 - **It stops and asks** when it needs a decision only you can make, or when a required check cannot run.
 
@@ -110,7 +112,7 @@ stateDiagram-v2
     [*] --> Local: You ask for work
     Local --> Local: A check fails, agent fixes it
     Local --> LocalReady: Work done, checks pass
-    LocalReady --> Preparing: You ask for a PR, or autopilot opens one
+    LocalReady --> Preparing: Agent opens a PR, unless you said keep it local
     Preparing --> PR: Checks pass, PR opens
     PR --> PR: Agent fixes checks or feedback
     PR --> MergeReady: Checks pass and the review posts its verdict
@@ -126,7 +128,7 @@ stateDiagram-v2
     Waiting --> PR: You unblock it
 ```
 
-**"Ready locally" is a finished result.** If you do not want a pull request, stop there. You can ask for one with the original task or at any time later. When work is waiting on you, it picks up again at the stage that was blocked. The [workflow guide](docs/workflow.md#local-work-and-delivery) describes each stage.
+**"Ready locally" is a finished result only when you asked to keep the work local.** Otherwise the agent goes on to open the pull request. When work is waiting on you, it picks up again at the stage that was blocked. The [workflow guide](docs/workflow.md#local-work-and-delivery) describes each stage.
 
 ## Review
 
@@ -148,7 +150,7 @@ Asking for a review always runs one at your level. [How review works](docs/revie
 
 `/jvillegasd-mode <task>` makes the agent follow a fixed playbook instead of choosing skills on its own. The agent picks the playbook that fits (bug fix, feature, investigation, refactor, performance, hillclimb, forensics, design, skill authoring, you-got-this for large or unmatched work, or one of the existing skills), then copies every step into its todo list. A step it skips stays in the list as `skip: <reason>`, so you can see what was left out and why.
 
-For a code change, jvillegasd-mode always ends with a change summary (`change-map`) and a review at your level. A plan request writes an epic with sliced tickets and asks whether to build it. Merging still goes through you or `/land`.
+For a code change, jvillegasd-mode always ends with a change summary (`change-map`) and a review at your level. A plan request writes an epic with sliced tickets and builds it, unless you asked only for the plan. Where a skill would ask you something, the agent picks the simplest safe option and lists it first in its reply. Merging still goes through you or `/land`.
 
 jvillegasd-mode lasts for the whole conversation. Say "new task" to start another playbook, or "stop jvillegasd-mode" to end it. Only you can start it.
 
@@ -157,12 +159,12 @@ jvillegasd-mode lasts for the whole conversation. Say "new task" to start anothe
 Add "autopilot" or "I'm stepping away", plus a goal:
 
 ```text
-/jvillegasd-mode autopilot, max 3h: make the export job finish under a minute
+/jvillegasd-mode autopilot: make the export job finish under a minute
 ```
 
-The agent writes down a pass or fail definition of done (or proposes one), then works without checking in until the goal is met or time runs out. The default time limit is 2 hours.
+The agent writes down a pass or fail definition of done (or proposes one), then works without checking in until the goal is met, the goal is ruled out, or every approach has hit a dead end. There is no time limit; say stop to end it.
 
-On autopilot the agent **may** commit, push, and open pull requests, including separate PRs for problems it finds along the way. It **never** merges, writes to the issue tracker, or messages anyone. When it hits a decision only you could make, it takes the simplest safe option and lists it at the top of its report, with what to tell it if you want something else. Without a goal, autopilot does not start.
+On autopilot the agent **may** commit, push, and open pull requests, including separate PRs for problems it finds along the way. It leaves the PRs stacked for you to land, and merges them itself only when you say **full** (`/jvillegasd-mode autopilot full: <goal>`). It **never** writes to the issue tracker or messages anyone. When it hits a decision only you could make, it takes the simplest safe option and lists it at the top of its report, with what to tell it if you want something else. Without a goal, autopilot does not start.
 
 ## Models
 
@@ -292,7 +294,6 @@ Many skill steps are `harness` commands rather than written instructions, so the
 | `harness review target`, `verdict` | What a review reads, and the one verdict comment a review posts on its PR | `review`, `open-pr` |
 | `harness worktree audit`, `retire` | List worktrees and remove one without losing work | `/land`, `/cleanup`, `build` |
 | `harness tickets check`, `frontier`, `publish` | Validate slice drafts, pick the ready ones, and publish them to GitHub | `epic`, `build` |
-| `harness attempts add`, `list` | The log of measured attempts | `/jvillegasd-mode`'s hillclimb playbook |
 
 The [command-line reference](docs/cli.md) explains each one. `harness <command> --help` lists the flags.
 
@@ -305,7 +306,7 @@ The [command-line reference](docs/cli.md) explains each one. `harness <command> 
 | `cmd/harness/`, `internal/` | The `harness` command and its code |
 | `skills/` | The skills, grouped by purpose |
 | `clients/`, `roles/` | Client settings and role definitions |
-| `docs/agents/` | Tracker settings, task documents (`tasks/`), and ticket drafts (`tickets/`) |
+| `docs/agents/` | Tracker settings, epics (`epics/`), task documents (`tasks/`), and ticket drafts (`tickets/`) |
 
 Run every check before you hand off a change:
 

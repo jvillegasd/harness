@@ -322,22 +322,9 @@ harness tickets publish my-feature
 - **`frontier`** is how `build` picks the next tickets. A ticket is done when `--done` names it or its draft says `Status: done`, and ready once every ticket blocking it is done.
 - **`publish`** creates GitHub issues, blockers first, with native dependency links. It records each issue in its draft as it goes, so a rerun after a failure creates no duplicates, and removes a draft once its issue reads back correctly. It refuses a repository whose tracker is not GitHub. It writes to GitHub, so agents run it only when you ask to publish. `--dry-run` shows every issue and link and writes nothing.
 
-## Attempt log
-
-The hillclimb playbook in `/jvillegasd-mode` records every attempt with `harness attempts`:
-
-```sh
-harness attempts add --log ~/attempts.tsv --hypothesis "cache the index" --change "add LRU" \
-  --before 812 --after 640 --gate pass --outcome kept
-harness attempts list --log ~/attempts.tsv
-harness attempts list --log ~/attempts.tsv --json
-```
-
-The log is a tab-separated file outside the repository. `add` fills in the id, the time, and the change as a number and a percent. A value that is not a number, or an unknown `--gate` or `--outcome`, is refused and nothing is written.
-
 ## Hook commands
 
 The client settings the harness installs call two commands that you rarely run yourself:
 
 - **`harness statusline`** reads Claude Code's status payload as JSON on stdin and prints the status line. An empty payload prints `Claude` alone.
-- **`harness resume`** prints what a client restores after it compacts a session: the branch, its head commit, and, for each task document under `docs/agents/tasks/` that the branch changed, its path and its next-action section when present. The compaction hooks in Claude Code, Codex, and OpenCode run it from the session's working directory. It prints nothing outside a Git checkout and without arguments, as the hooks call it, always exits 0, so it never blocks compaction.
+- **`harness resume`** prints what a client restores after it compacts a session: the branch, its head commit, and, for each task document under `docs/agents/tasks/` (every local one, and each committed one the branch changed), its path and its next-action section when present. `harness resume init` adds `docs/agents/tasks/` to the clone's `.git/info/exclude`, so task documents stay local. The compaction hooks in Claude Code, Codex, and OpenCode run it from the session's working directory. It prints nothing outside a Git checkout and without arguments, as the hooks call it, always exits 0, so it never blocks compaction.

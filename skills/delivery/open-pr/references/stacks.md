@@ -1,6 +1,6 @@
 # Splitting into a stack
 
-Prefer several narrow pull requests to one large one: a reviewer reads a narrow one in full, and each lands or reverts on its own. The delivery request covers every pull request in the stack, so the split needs no second approval.
+Prefer several narrow pull requests to one large one: a reviewer reads a narrow one in full, and each lands or reverts on its own. Delivery covers every pull request in the stack, so the split needs no second approval.
 
 ## Decide
 

@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/jvillegasd/harness/internal/attempts"
 	"github.com/jvillegasd/harness/internal/changemap"
 	"github.com/jvillegasd/harness/internal/install"
 	"github.com/jvillegasd/harness/internal/land"
@@ -39,7 +38,6 @@ Commands:
   land       Report whether pull requests can land, and how
   pr         Report a pull request's readiness and what blocks it
   tickets    Check, order, and publish ticket drafts
-  attempts   Keep the attempt log for measured loops
 `
 
 func run(args []string, stdout, stderr io.Writer) int {
@@ -54,8 +52,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return update.Command(args[1:], stdout, stderr)
 	case "uninstall":
 		return install.UninstallCommand(args[1:], stdout, stderr)
-	case "attempts":
-		return attempts.Command(args[1:], stdout, stderr)
 	case "skills":
 		return skills.Command(args[1:], stdout, stderr)
 	case "statusline":

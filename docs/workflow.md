@@ -44,7 +44,7 @@ Every skill is callable by name. The skills you start yourself come first; the r
 | Group | Helpers |
 | --- | --- |
 | Orchestration | `delegation`, `checkpoint` |
-| Investigation | `how`, `why`, `research`, `triage`, `diagnosing-bugs` |
+| Investigation | `how`, `why`, `research`, `diagnosing-bugs` |
 | Planning | `epic` (write the big ticket, agree its seams, cut its slices), `proto`, `grilling` |
 | Building | `build` (one slice inline with `tdd`, or many slices fanned out), `tdd` |
 | Delivery | `review`, `address-review`, `open-pr`, `change-map`, `caveman-commit` |
@@ -75,7 +75,7 @@ The agent picks the playbook from the task:
 | --- | --- |
 | Something is broken, throwing, or failing | Bug fix playbook |
 | New or changed behavior | Feature playbook |
-| A question: how, why, are we sure, should we | Investigate playbook (read-only) |
+| A question (how, why, are we sure, should we), or a ticket or production error to analyze | Investigate playbook (read-only) |
 | The structure changes, the behavior does not | Refactor playbook |
 | Something is slow, with a number to move | Perf playbook |
 | One metric to climb toward a target over many attempts | Hillclimb playbook |
@@ -84,7 +84,6 @@ The agent picks the playbook from the task:
 | Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | Skill playbook |
 | A prototype, spike, or mock-up | `proto`'s steps |
 | A plan before anything is built, or tickets from a brief, findings, or a request | `epic`'s steps |
-| A ticket or production error to analyze, with no fix requested | `triage`'s steps |
 | A settled epic or set of slices to build | `build`'s steps |
 | Review a diff, a branch, or a PR | `review`'s steps |
 | Feedback or red checks on an open PR | `address-review`'s steps |
@@ -96,18 +95,16 @@ The agent picks the playbook from the task:
 
 When a row names a skill, jvillegasd-mode runs that skill's own steps. It adds its checklist and its reply, never a second copy of the skill.
 
-The hillclimb playbook leans on its own command: it logs every attempt, kept or reverted, with [`harness attempts`](cli.md#attempt-log).
-
 How each kind of task ends:
 
-- **A code change** ends with a change summary (`change-map`) and a review at your review level. If you already asked for delivery, it goes on to `open-pr`.
+- **A code change** ends with a change summary (`change-map`), a review at your review level, and `open-pr`, unless you said to keep it local.
 - **An investigation, a review, or an epic** hand the result back to you.
 - **A design** picks a shape, then continues as a feature or a refactor.
-- **An epic** asks whether to build it. Only an explicit "go" answers. That go is a new task, so it matches again as a settled epic and runs `build`.
+- **An epic** continues into `build`, unless you asked only for the plan.
 
-If product decisions are still open, settle them with `/grill-with-docs` before you start. A merge always goes to you or `/land`.
+Where a skill would ask you something, the agent makes the simplest safe choice, records it, and lists it first in its reply with what to say to switch. It still asks once about a product call no experiment can settle, and keeps working on everything else meanwhile. To think a fuzzy idea through first, use `/grill-with-docs`. A merge always goes to you or `/land`.
 
-jvillegasd-mode lasts for the whole conversation. The agent records the playbook and the current step in the task document, so after a compaction it resumes at the same step.
+jvillegasd-mode lasts for the whole conversation. Long or unattended work keeps a task document, where the agent records the playbook and the current step, so after a compaction it resumes at the same step. Short work keeps no document: its decisions go in the reply and the PR.
 
 ```mermaid
 stateDiagram-v2
@@ -141,12 +138,12 @@ stateDiagram-v2
 To let work run while you are away, add "autopilot" or "I'm stepping away" and a goal to the `/jvillegasd-mode` request:
 
 ```text
-/jvillegasd-mode autopilot, max 3h: make the export job finish under a minute
+/jvillegasd-mode autopilot: make the export job finish under a minute
 ```
 
 Here is what the agent does:
 
-1. **Frames the run.** It states a pass or fail definition of done, or proposes one if you gave none. It records your words and the time limit (2 hours unless you set one) in the task document.
+1. **Frames the run.** It states a pass or fail definition of done, or proposes one if you gave none. It records your words in the task document. There is no time limit.
 2. **Works without checking in.** It keeps each change that moves toward the goal and reverts each one that does not.
 3. **Decides for you where it must.** A decision only you could make gets the simplest safe option. Each one is listed at the top of its report, with what to tell it if you want something else.
 4. **Handles getting stuck.** When two fixes that rest on one assumption both fail, it tests the assumption directly. When a piece fails, it retries based on the cause (a smaller scope, the same start, or a different model). After two retries it drops that piece and plans around it.
@@ -154,7 +151,8 @@ Here is what the agent does:
 What it may and may not do:
 
 - **May:** commit, push, and open ready pull requests, including separate PRs for problems it finds along the way.
-- **Never:** merge, write to the issue tracker, or message anyone.
+- **Merge only with full:** it leaves the PRs stacked for you to land. With `full` in the request, it lands its own verified PRs bottom-up through `/land`'s steps, and stops at any hold only you can accept.
+- **Never:** write to the issue tracker or message anyone.
 
 ```mermaid
 stateDiagram-v2
@@ -169,12 +167,12 @@ stateDiagram-v2
     [*] --> Framed: You give a goal and step away
     [*] --> NoGoal: You give no goal
     NoGoal --> [*]: Agent asks for one
-    Framed --> Iterating: Goal and time limit written down
+    Framed --> Iterating: Goal written down
     Iterating --> Iterating: Keep what helps, revert what does not
     Iterating --> Replanning: Stuck
     Replanning --> Iterating
     Iterating --> Done: Goal met, every PR green
-    Iterating --> Paused: Time is up
+    Replanning --> Paused: Every approach hit a dead end
     Iterating --> RuledOut: The goal turns out impossible
     Done --> [*]: You read the report and merge
     Paused --> [*]: You resume or stop it
@@ -187,8 +185,8 @@ stateDiagram-v2
 
 | You say | The agent may |
 | --- | --- |
-| Any request to build something | Edit files and commit on a task branch it creates |
-| "Open a PR" or "ship this" | Also push, open or update the PR, and fix required checks. Feedback on that PR stays on the same branch |
+| Any request to build something | Edit files and commit on a task branch it creates, then push it, open the PR, and fix required checks once the work is done. Feedback on that PR stays on the same branch |
+| "Keep it local" | Stop before the push |
 | `/land merge` | Recheck the gates and merge for you |
 | `/land merge 19 20` or `/land merge stack 23` | Land those PRs, or the stack under PR 23, bottom-up one at a time, even when their branches are not checked out, and even when one comes from a fork. It stops at the first PR that fails a gate |
 
@@ -222,7 +220,7 @@ These stages describe the intended workflow. Nothing enforces them centrally, an
 
 ### Task documents
 
-For longer work, the agent keeps the requirements, decisions, evidence, and next step in `docs/agents/tasks/<feature>.md`, committed on the task branch. It merges with the work and stays in the repository as a record of what was done and why. Small tasks do not need one.
+For long or unattended work, the agent keeps the requirements, decisions, evidence, and next step in `docs/agents/tasks/<feature>.md`. It stays local: `harness resume init` excludes the folder from Git, so it is never committed, and `/land` throws it away with the worktree once the work merges. Its decisions reach you through the PR's tradeoffs, the plan lives in the epic (`docs/agents/epics/`), and lasting decisions become ADRs. Small tasks do not need one.
 
 ## Larger builds
 
@@ -233,9 +231,9 @@ For longer work, the agent keeps the requirements, decisions, evidence, and next
 - Workers each take one slice, in their own worktrees.
 - The main agent checks and commits each worker's result on its slice's branch, then verifies, maps, and reviews each branch on its own, from the bottom of the stack up.
 
-Use it when the work is settled enough to hand off. Resolve missing acceptance criteria, disputed test seams, or shared assumptions first.
+`/jvillegasd-mode` on a settled epic starts `build` for you. An epic without slices is first cut into them, as local drafts that [`harness tickets check`](cli.md#ticket-commands) validates. `build` picks the next slices with `harness tickets frontier`: those whose blockers are all done. Publishing still needs your request, and merging still needs `/land`, one pull request at a time; after a parent merges, `/land` repairs the pull requests stacked on it. Pull requests open on their own once the work is verified, unless you said to keep it local.
 
-`/jvillegasd-mode` on a settled epic starts `build` for you. An epic without slices is first cut into them, as local drafts that [`harness tickets check`](cli.md#ticket-commands) validates. `build` picks the next slices with `harness tickets frontier`: those whose blockers are all done. Publishing still needs your request, and merging still needs `/land`, one pull request at a time; after a parent merges, `/land` repairs the pull requests stacked on it. Under `/jvillegasd-mode` autopilot, your step-away request also counts as the request to publish.
+Larger work, such as a whole app, matches the you-got-this playbook. It frames the work, and when the work splits into slices that can be settled now, it runs `epic` and then `build`.
 
 ## Optional tracking
 

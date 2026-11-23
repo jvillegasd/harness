@@ -13,7 +13,7 @@ import (
 
 var mustGuard = map[string]bool{
 	"land": true, "setup-harness": true, "build": true, "jvillegasd-mode": true,
-	"epic": true, "triage": true,
+	"epic": true,
 	"cleanup": true,
 }
 

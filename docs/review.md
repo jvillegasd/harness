@@ -118,10 +118,10 @@ At `medium` and `high`:
 
 A review reads the change. Running it as a user is a separate check with its own verdict comment, which `/land merge` also requires for a change you can observe; [the workflow guide](workflow.md) covers it.
 
-Review never pushes or merges on its own.
+Review pushes the reviewed head when delivery applies, but never merges.
 
 ## Limits
 
-- **Agent counts are caps, not cost guarantees.** Retries, delegated fixes, and splitting a large change all count against the same cap. Whatever does not fit is reported as unreviewed.
+- **Coverage gaps are reported, not hidden.** Whatever a review could not cover is reported as unreviewed.
 - **A verdict covers only the change it read.** New commits that change a file's patch need the affected parts rechecked.
 - **This page explains, it does not prove.** The [review skill](../skills/delivery/review/SKILL.md) is the exact procedure agents follow. The diagrams here describe it, but they do not prove how agents behave in practice.

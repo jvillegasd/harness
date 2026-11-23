@@ -30,13 +30,13 @@ With no target above, use the latest unambiguous active question, claim, or unre
 
 ## Code-search citations
 
-`/triage` handles `code-search` results the same way. `roles/code-search.md` defines the worker's report format, one `path:line | symbol | mechanism` line per finding.
+`roles/code-search.md` defines the worker's report format, one `path:line | symbol | mechanism` line per finding.
 
-The worker ends on a text message holding only its findings. A trailing tool result is not the report: re-run that track once, and if it again ends without one, record it as no data (a `no data` row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`), since a missing report is not a refutation and not a track that found nothing.
+The worker ends on a text message holding only its findings. A trailing tool result is not the report: re-run that track once, and if it again ends without one, record it as no data under `Contradictions and unknowns`, since a missing report is not a refutation and not a track that found nothing.
 
 Before reusing a citation, read only the cited line and confirm the path resolves inside the repository and that the line carries the named symbol as a whole identifier. That check grounds the location only, not the claimed runtime mechanism: a load-bearing mechanism claim still goes through `references/evidence.md`.
 
-Drop a citation whose path is missing or outside the repository, whose line does not carry its symbol, or that lacks a field. Record it as refuted (a verdict row in `/triage`'s evidence ledger or an entry under `/research`'s `Contradictions and unknowns`) and keep it out of the grounded evidence.
+Drop a citation whose path is missing or outside the repository, whose line does not carry its symbol, or that lacks a field. Record it as refuted under `Contradictions and unknowns` and keep it out of the grounded evidence.
 
 ## Output
 

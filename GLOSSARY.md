@@ -9,7 +9,7 @@ The opt-in rigor a human turns on by invoking `/jvillegasd-mode`: the task is ma
 _Avoid_: work mode, poteto mode, workflow
 
 **Autopilot**:
-jvillegasd-mode under the human's step-away grant and stated goal: the work runs without checkpoints to verified, open pull requests within a time ceiling, and never merges. Without a goal from the human it does not start.
+jvillegasd-mode under the human's step-away grant and stated goal: the work runs without checkpoints or a time limit to verified, open pull requests, stacked for the human to land, and merges them itself only when the request says full. Without a goal from the human it does not start.
 _Avoid_: yolo, unattended mode, full autonomy
 
 **Playbook**:
@@ -21,7 +21,7 @@ A skill the human starts: `jvillegasd-mode` and the skills no other skill runs. 
 _Avoid_: public skill, top-level skill
 
 **Epic**:
-One big ticket that records a change's settled behavior, acceptance criteria, test seams, decisions, and risks, cut into slices. It doubles as the change's task document.
+One big ticket that records a change's settled behavior, acceptance criteria, test seams, decisions, and risks, cut into slices. It lives in `docs/agents/epics/` and outlives the build, whose task document points at it.
 _Avoid_: spec, plan document
 
 **Slice**:

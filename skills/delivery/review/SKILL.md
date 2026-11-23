@@ -17,11 +17,11 @@ A reviewer that has not heard the implementer's reasoning judges the code, not t
 
 Read `harness review level --json`; if it is unavailable, use `medium` and report the fallback. Only the human changes the setting. An explicit review uses the configured level, or Medium when the level is `off`.
 
-| Level | Automatic trigger | Hunters | Conditional calls | Cap |
-| --- | --- | --- | --- | --- |
-| `off` | Never | Explicit requests use Medium | | 0 automatically |
-| `medium` | PR or `build` pull-request branch above `tests-docs`; local handoff that is `critical` or names security, data-loss, compatibility, or concurrency risk | One general reviewer | Fix executor | 2 |
-| `high` | PR or local handoff at `structural` or above | General reviewer plus one or two specialists | Proof executor, fix executor, recheck | 6 |
+| Level | Automatic trigger | Hunters | Conditional calls |
+| --- | --- | --- | --- |
+| `off` | Never | Explicit requests use Medium | |
+| `medium` | PR or `build` pull-request branch above `tests-docs`; local handoff that is `critical` or names security, data-loss, compatibility, or concurrency risk | One general reviewer | Fix executor |
+| `high` | PR or local handoff at `structural` or above | General reviewer plus one or two specialists | Proof executor, fix executor, recheck |
 
 The general reviewer is the `review-bugs` lens: correctness, requirements, failure paths, compatibility, relevant security risks, project conventions, and test gaps. Higher levels add independent investigation; they never remove questions from Medium.
 
@@ -34,7 +34,7 @@ Choose by consequences, not file count. If no specialist has a distinct useful q
 
 Each lens is its own role, and each runs on the model `harness models` resolves for it: the `reviewer` assignment unless the human set that lens on its own. The fix recheck runs as `reviewer`. Never change models or install agents for a review.
 
-The cap counts every role call in the review, retries and delegated fixes included. Splitting a large diff does not reset it. If coverage cannot fit, report the uncovered scope rather than exceeding the cap. When no review is triggered, say so with the level, and post nothing.
+Launch what coverage needs and no more. When coverage cannot be reached, report the uncovered scope. When no review is triggered, say so with the level, and post nothing.
 
 A verdict covering the current patch is required for every pull request this table triggers at `medium` or `high`, and for any the human asked to have reviewed: `open-pr`'s readiness report shows whether one does, `/land merge` refuses to merge without it, and `/land` after the human's merge reports when it was missing. At `off` the gap is reported without holding anything.
 
@@ -49,16 +49,16 @@ When a foreign `<sha>` is not what this checkout has checked out, hunters read i
 ## Snapshot
 
 1. For the current task branch, commit owned work where the floor lets you, then record `<base>..<sha>`; a foreign target is already committed, and its `<base>..<sha>` comes from Target. Confirm both resolve with `git rev-parse` and that the diff is non-empty before launching anything. Hunters read the repository at `<sha>`; make no edits until every hunter has reported. Work you may not commit is reviewed from `harness review snapshot --branch <key> --base <base> -- <owned paths>`, which saves it as one binary patch in the review directory and prints the patch's path and its digest, the content identity of the reviewed work. Such a review stops after Verify and posts nothing, because no pull request head holds the work: hand its confirmed findings to the human.
-2. When the target has an open pull request, check whether its patch already carries a verdict, unless the human asked for this review by name: `harness pr status <n> --json`. When its `review` has `source` `verdict`, `status` `current`, `result` `PASS` or `PASS+NOTES`, and a `depth` at the level or deeper (`high` covers `medium`), report that verdict and its `url` as the result and stop: launch no one and post nothing, because a second hunt over the same content spends the cap again and finds what the first one did. A rebase that changes no file's patch keeps a verdict current.
+2. When the target has an open pull request, check whether its patch already carries a verdict, unless the human asked for this review by name: `harness pr status <n> --json`. When its `review` has `source` `verdict`, `status` `current`, `result` `PASS` or `PASS+NOTES`, and a `depth` at the level or deeper (`high` covers `medium`), report that verdict and its `url` as the result and stop: launch no one and post nothing, because a second hunt over the same content finds what the first one did. A rebase that changes no file's patch keeps a verdict current.
 3. Copy the requirements verbatim from their source: the ticket body and comment thread (latest wins), the epic, the task document's requirements, or the human's exact words. A paraphrase carries your framing into a blind brief. With no source, omit `review-spec` and report requirements coverage unavailable.
 
-When a diff is too large for one hunter, split it into coherent slices (by module or call path); each hunter covers its lens across the slices within the cap. An unreviewed slice stays unverified.
+When a diff is too large for one hunter, split it into coherent slices (by module or call path); each hunter covers its lens across the slices. An unreviewed slice stays unverified.
 
 ## Hunt
 
 Launch one fresh lens role per hunter, all in parallel: its lens is in its definition, so give it only the requirements, the diff, and the revision identity, plus `review-risk`'s categories. Withhold conversation history, implementation rationale, plans that carry rationale, task documents, the pull request body (its tradeoffs are rationale), worker results, and prior findings.
 
-Each report must open with `principles:` as the reviewer role defines and `revision:` matching the snapshot. Retry once with the input repaired if the cap permits, then report that hunter unverified.
+Each report must open with `principles:` as the reviewer role defines and `revision:` matching the snapshot. Retry once with the input repaired, then report that hunter unverified.
 
 ## Verify
 
@@ -74,13 +74,13 @@ Each report must open with `principles:` as the reviewer role defines and `revis
 
 A foreign target skips this section.
 
-Delegate every confirmed finding to one fresh `executor` in one brief, with the fix brief from `references/verify.md`. It edits the checkout and never commits. Read its diff, run each red check yourself, and commit the result. A code finding is fixed when its red check turns green; a prose finding is fixed when the cited lines no longer contradict each other, and needs no recheck. Fix inline only when the executor cannot launch or the cap has no call left for it beside any recheck the fix needs, and report which.
+Delegate every confirmed finding to one fresh `executor` in one brief, with the fix brief from `references/verify.md`. It edits the checkout and never commits. Read its diff, run each red check yourself, and commit the result. A code finding is fixed when its red check turns green; a prose finding is fixed when the cited lines no longer contradict each other, and needs no recheck. Fix inline when the fix is small or the executor cannot launch, and say which.
 
 At Medium, the green check or the reconciled lines are the proof. At High, launch one fresh `reviewer` with the recheck brief from `references/verify.md`, giving it the confirmed findings, their checks, the repair delta `git diff <sha> <repaired sha>` over owned paths, the requirements, and the repaired revision; it reads the repaired commit in the checkout. A nit or a fix with no behavior change needs no recheck.
 
 - `holds`: the finding stays `fixed`.
 - `fails`, or a new defect in the repaired code: reproduce it on the repaired revision. A red run marks the finding `confirmed` again (a regression as a new finding) and takes it to the human; otherwise drop it and count it. Never start a second repair loop on your own.
-- `unknown`, or a report that does not echo the repaired revision: retry once if the cap permits; the green check stands, and the recheck is reported as unknown.
+- `unknown`, or a report that does not echo the repaired revision: retry once; the green check stands, and the recheck is reported as unknown.
 - `follow_ups`: list them in the verdict's notes and repair none.
 
 ## Verdict
@@ -91,14 +91,14 @@ The review's result is one verdict, posted as one comment on the pull request, a
 - `PASS+NOTES`: nothing is left `confirmed` and everything was covered, but the human should read something: a fixed finding, a recheck reported unknown, `follow_ups`, a `nit` or `pre-existing` finding.
 - `PASS`: nothing to report beyond coverage.
 
-Write the notes to a file outside the checkout, in Markdown: each confirmed and each fixed finding with its path, lines, severity, summary, the run that proved it, and the fixing commit; then the level, the hunters and specialists with the reason for each, the calls used against the cap, each hunter's raised, confirmed, and dropped counts with the reasons findings were dropped, and what stayed unverified. Never a dropped finding one by one, and never a hunter's reasoning.
+Write the notes to a file outside the checkout, in Markdown: each confirmed and each fixed finding with its path, lines, severity, summary, the run that proved it, and the fixing commit; then the level, the hunters and specialists with the reason for each, each hunter's raised, confirmed, and dropped counts with the reasons findings were dropped, and what stayed unverified. Never a dropped finding one by one, and never a hunter's reasoning.
 
-The verdict names the head that holds the reviewed content: the repaired head when fixes landed, otherwise `<sha>`. Post it with `harness review verdict <pr> --result <result> --base <base> --sha <head> --level <level> --notes <file>`, which refuses a head that is not the pull request's current head. A request to review a pull request covers posting its one verdict, the pull request of someone else or of a fork included (see the floor). When the head is this branch's and the pull request does not yet hold it, push it first only when delivery is already authorized; otherwise report the result and the head, and post nothing. With no pull request, report the verdict and post nothing: `open-pr` opens the pull request before it calls for review. The verdict is the only forge write a review makes: approving or requesting changes stays with the human, and `address-review` handles pull request threads.
+The verdict names the head that holds the reviewed content: the repaired head when fixes landed, otherwise `<sha>`. Post it with `harness review verdict <pr> --result <result> --base <base> --sha <head> --level <level> --notes <file>`, which refuses a head that is not the pull request's current head. A request to review a pull request covers posting its one verdict, the pull request of someone else or of a fork included (see the floor). When the head is this branch's and the pull request does not yet hold it, push it first, as the floor delivers finished work, then post the verdict. If the human said to keep the work local, report the result and the head, and post nothing. With no pull request, report the verdict and post nothing: `open-pr` opens the pull request before it calls for review. Review may push the head and post the verdict: approving or requesting changes stays with the human, and `address-review` handles pull request threads.
 
 ## Output
 
 - The target, its key, and whether it was foreign (no fixes) or a fork (no runs).
-- Level, coverage, selected specialists with their reasons, and calls used against the cap.
+- Level, coverage, and selected specialists with their reasons.
 - The reviewed revision and content identity, and each hunter's `principles:` report.
 - Each axis's confirmed findings side by side, sorted by severity within the axis and never reranked across axes, each with its disposition and the run that proved it.
 - Each hunter's raised, confirmed, and dropped counts, with the reasons findings were dropped.
