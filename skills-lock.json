@@ -1,12 +1,6 @@
 {
   "version": 2,
   "skills": {
-    "benchmark-checklist": {
-      "source": "backnotprop/pstack",
-      "sourceType": "github",
-      "skillPath": "skills/benchmark-checklist/SKILL.md",
-      "computedHash": "adc8a48e433402b97a9b6f9393496ee0c02ae437cfc1aba709411c56fd6fb778"
-    },
     "caveman-commit": {
       "source": "JuliusBrussee/caveman",
       "sourceType": "github",
@@ -210,18 +204,6 @@
       "sourceType": "github",
       "skillPath": "skills/principle-subtract-before-you-add/SKILL.md",
       "computedHash": "97e61b7e5e8fa4aa1673b1d1d3a5508f5f36cc2f888866caf68992469569171e"
-    },
-    "principle-test-behavior-not-implementation": {
-      "source": "backnotprop/pstack",
-      "sourceType": "github",
-      "skillPath": "skills/principle-test-behavior-not-implementation/SKILL.md",
-      "computedHash": "b93367ed8c011dcdff2af67197a669d6b2270972f5a2c606d4fd7c6188752417"
-    },
-    "principle-type-system-discipline": {
-      "source": "backnotprop/pstack",
-      "sourceType": "github",
-      "skillPath": "skills/principle-type-system-discipline/SKILL.md",
-      "computedHash": "ea9703ceec880ec704b84afcc218c112850f96ceec6908fd71b436402f317f98"
     },
     "security-audit": {
       "source": "cloudflare/security-audit-skill",
