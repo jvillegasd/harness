@@ -241,6 +241,12 @@
       "skillPath": "skills/productivity/wait-what/SKILL.md",
       "computedHash": "70c9bf9f5a84b6849760f9492f569d5aa12307a0310323fde5f583144730c26c"
     },
+    "why": {
+      "source": "backnotprop/pstack",
+      "sourceType": "github",
+      "skillPath": "skills/why/SKILL.md",
+      "computedHash": "2050d10fff1d0fa6e19c0a96552a641af6a24f012614955a6dcf3763bf54ac3c"
+    },
     "writing-for-agents": {
       "source": "mattpocock/skills",
       "sourceType": "github",
