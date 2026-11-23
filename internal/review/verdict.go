@@ -2,6 +2,7 @@ package review
 
 import (
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -67,7 +68,7 @@ func Parse(body string) (Verdict, bool) {
 	return Verdict{}, false
 }
 
-func PostVerdict(forge Forge, number int, body string) error {
+func PostVerdict(forge run.Forge, number int, body string) error {
 	tmp, err := os.MkdirTemp("", "harness-review-verdict-")
 	if err != nil {
 		return err

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"io"
 	"os"
 	"strconv"
@@ -103,7 +104,7 @@ func parse(flags *flag.FlagSet, args []string, text string, stdout, stderr io.Wr
 func repository(name string, stderr io.Writer) (string, bool) {
 	cwd, err := os.Getwd()
 	if err == nil {
-		_, err = git(cwd, "rev-parse", "--git-dir")
+		_, err = run.Git(cwd, "rev-parse", "--git-dir")
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness worktree %s: not inside a git repository\n", name)
@@ -162,7 +163,7 @@ func audit(args []string, stdout, stderr io.Writer) int {
 		}
 		row := []string{state(style, s.State), strconv.Itoa(len(s.Changes)), strconv.Itoa(len(s.Ignored)), cmp.Or(s.Branch, "(detached)"), style.Dim(head)}
 		if *withForge {
-			p := ReadPull(dir, s, gh(dir))
+			p := ReadPull(dir, s, run.Gh(dir))
 			row = append(row, fmt.Sprint(p), cmp.Or(p.Into, "-"))
 		}
 		rows = append(rows, append(row, s.Path))
@@ -216,7 +217,7 @@ func retire(args []string, stdout, stderr io.Writer) int {
 		o.Into, _ = DefaultInto(dir)
 	}
 	if o.At != "" {
-		sha, err := git(dir, "rev-parse", "--verify", "--quiet", "--end-of-options", o.At+"^{commit}")
+		sha, err := run.Git(dir, "rev-parse", "--verify", "--quiet", "--end-of-options", o.At+"^{commit}")
 		if err != nil {
 			fmt.Fprintf(stderr, "harness worktree retire: --at %q does not name a commit\n", o.At)
 			return 2

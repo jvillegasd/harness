@@ -3,11 +3,12 @@ package worktree
 import (
 	"errors"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"path/filepath"
 	"testing"
 )
 
-func fakeForge(pulls map[string]string) Forge {
+func fakeForge(pulls map[string]string) run.Forge {
 	return func(args ...string) ([]byte, error) {
 		if len(args) < 4 || args[0] != "pr" || args[1] != "list" || args[2] != "--head" {
 			return nil, fmt.Errorf("unexpected gh %v", args)
@@ -26,15 +27,15 @@ func fakeForge(pulls map[string]string) Forge {
 func TestReadPullNamesTheMergedHeadThatRetiresAnUnlandedBranch(t *testing.T) {
 	dir := repo(t)
 	origin := filepath.Join(filepath.Dir(dir), "origin.git")
-	run(t, dir, "init", "-q", "--bare", origin)
-	run(t, dir, "remote", "add", "origin", origin)
+	runGit(t, dir, "init", "-q", "--bare", origin)
+	runGit(t, dir, "remote", "add", "origin", origin)
 	path := branchTree(t, dir, "feat/merged")
-	head := run(t, path, "rev-parse", "HEAD")
-	run(t, dir, "push", "-q", "origin", head+":refs/pull/7/head")
+	head := runGit(t, path, "rev-parse", "HEAD")
+	runGit(t, dir, "push", "-q", "origin", head+":refs/pull/7/head")
 
 	squash(t, dir, "feat/merged")
 	write(t, filepath.Join(dir, "a.txt"), "rewritten\n")
-	run(t, dir, "commit", "-q", "-am", "rewrite")
+	runGit(t, dir, "commit", "-q", "-am", "rewrite")
 	s, err := Inspect(tree(t, dir, path), "main")
 	if err != nil || s.State != "unlanded" {
 		t.Fatalf("setup: state %q, %v", s.State, err)

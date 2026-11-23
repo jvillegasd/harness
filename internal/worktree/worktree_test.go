@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func run(t *testing.T, dir string, args ...string) string {
+func runGit(t *testing.T, dir string, args ...string) string {
 	t.Helper()
 	cmd := exec.Command("git", append([]string{"-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"}, args...)...)
 	cmd.Dir = dir
@@ -34,27 +34,27 @@ func repo(t *testing.T) string {
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(home, "gitconfig"))
 	dir := filepath.Join(t.TempDir(), "main")
-	run(t, filepath.Dir(dir), "init", "-q", "-b", "main", dir)
+	runGit(t, filepath.Dir(dir), "init", "-q", "-b", "main", dir)
 	write(t, filepath.Join(dir, ".gitignore"), "*.log\n")
 	write(t, filepath.Join(dir, "a.txt"), "one\n")
-	run(t, dir, "add", ".")
-	run(t, dir, "commit", "-q", "-m", "base")
+	runGit(t, dir, "add", ".")
+	runGit(t, dir, "commit", "-q", "-m", "base")
 	return dir
 }
 
 func branchTree(t *testing.T, dir, branch string) string {
 	t.Helper()
 	path := filepath.Join(filepath.Dir(dir), strings.ReplaceAll(branch, "/", "-"))
-	run(t, dir, "worktree", "add", "-q", "-b", branch, path)
+	runGit(t, dir, "worktree", "add", "-q", "-b", branch, path)
 	write(t, filepath.Join(path, "a.txt"), "one\n"+branch+"\n")
-	run(t, path, "commit", "-q", "-am", branch)
+	runGit(t, path, "commit", "-q", "-am", branch)
 	return path
 }
 
 func squash(t *testing.T, dir, branch string) {
 	t.Helper()
-	run(t, dir, "merge", "-q", "--squash", branch)
-	run(t, dir, "commit", "-q", "-m", "squash "+branch)
+	runGit(t, dir, "merge", "-q", "--squash", branch)
+	runGit(t, dir, "commit", "-q", "-m", "squash "+branch)
 }
 
 func exists(path string) bool {
@@ -64,7 +64,7 @@ func exists(path string) bool {
 
 func hasBranch(t *testing.T, dir, branch string) bool {
 	t.Helper()
-	return run(t, dir, "branch", "--list", branch) != ""
+	return runGit(t, dir, "branch", "--list", branch) != ""
 }
 
 func refused(t *testing.T, path string, err error, want string) {
@@ -126,10 +126,10 @@ func TestRetireRefusesToLoseBranchWork(t *testing.T) {
 		t.Errorf("state %q, want dirty", s.State)
 	}
 
-	run(t, dir, "worktree", "lock", path)
+	runGit(t, dir, "worktree", "lock", path)
 	_, err = Retire(dir, path, Options{Into: "main", AllowIgnored: true, SavePatch: filepath.Join(t.TempDir(), "p")})
 	refused(t, path, err, "locked")
-	run(t, dir, "worktree", "unlock", path)
+	runGit(t, dir, "worktree", "unlock", path)
 
 	patch := filepath.Join(t.TempDir(), "work.patch")
 	if _, err := Retire(dir, path, Options{Into: "main", AllowIgnored: true, SavePatch: patch}); err != nil {
@@ -165,7 +165,7 @@ func TestRetireDetachedWorktree(t *testing.T) {
 	parent := filepath.Dir(dir)
 	add := func(name string) string {
 		path := filepath.Join(parent, name)
-		run(t, dir, "worktree", "add", "-q", "--detach", path, "main")
+		runGit(t, dir, "worktree", "add", "-q", "--detach", path, "main")
 		return path
 	}
 
@@ -175,11 +175,11 @@ func TestRetireDetachedWorktree(t *testing.T) {
 	}
 
 	loose := add("loose")
-	base := run(t, loose, "rev-parse", "HEAD")
+	base := runGit(t, loose, "rev-parse", "HEAD")
 	write(t, filepath.Join(loose, "b.txt"), "committed\n")
-	run(t, loose, "add", ".")
-	run(t, loose, "commit", "-q", "-m", "loose")
-	head := run(t, loose, "rev-parse", "HEAD")
+	runGit(t, loose, "add", ".")
+	runGit(t, loose, "commit", "-q", "-m", "loose")
+	head := runGit(t, loose, "rev-parse", "HEAD")
 	if s, _ := Inspect(tree(t, dir, loose), "main"); s.State != "loose" {
 		t.Errorf("state %q, want loose", s.State)
 	}
@@ -196,7 +196,7 @@ func TestRetireDetachedWorktree(t *testing.T) {
 	}
 
 	created := filepath.Join(parent, "created")
-	run(t, dir, "worktree", "add", "-q", "--detach", created, head)
+	runGit(t, dir, "worktree", "add", "-q", "--detach", created, head)
 	if _, err := Retire(dir, created, Options{At: head}); err != nil || exists(created) {
 		t.Fatalf("a loose head at its creation commit was not retired: %v", err)
 	}
@@ -212,12 +212,12 @@ func TestLanded(t *testing.T) {
 	if !Landed(dir, "refs/heads/merged", "main") {
 		t.Error("a squash-merged branch read as unlanded")
 	}
-	run(t, dir, "branch", "-q", "behind", "main~1")
+	runGit(t, dir, "branch", "-q", "behind", "main~1")
 	if !Landed(dir, "refs/heads/behind", "main") {
 		t.Error("an ancestor read as unlanded")
 	}
 	write(t, filepath.Join(dir, "a.txt"), "one\nrewritten\n")
-	run(t, dir, "commit", "-q", "-am", "edit the same line")
+	runGit(t, dir, "commit", "-q", "-am", "edit the same line")
 	if Landed(dir, "refs/heads/merged", "main") {
 		t.Error("a branch whose lines main rewrote read as landed")
 	}
@@ -246,9 +246,9 @@ func TestRetireBranch(t *testing.T) {
 
 func TestRetireNeverDeletesTheIntoBranch(t *testing.T) {
 	dir := repo(t)
-	run(t, dir, "switch", "-q", "-c", "elsewhere")
+	runGit(t, dir, "switch", "-q", "-c", "elsewhere")
 	path := filepath.Join(filepath.Dir(dir), "holds-main")
-	run(t, dir, "worktree", "add", "-q", path, "main")
+	runGit(t, dir, "worktree", "add", "-q", path, "main")
 	if _, err := Retire(dir, path, Options{Into: "main"}); err != nil || exists(path) {
 		t.Fatalf("the worktree holding main was not removed: %v", err)
 	}

@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"io"
-	"os/exec"
 	"regexp"
 	"slices"
 	"strconv"
@@ -18,11 +18,9 @@ import (
 	"github.com/jvillegasd/harness/internal/worktree"
 )
 
-type Forge func(args ...string) ([]byte, error)
-
 type Env struct {
 	Dir   string
-	Forge Forge
+	Forge run.Forge
 	State string
 }
 
@@ -135,19 +133,6 @@ const viewFields = "number,url,title,state,isDraft,headRefName,headRefOid,baseRe
 
 const threadsQuery = `query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){pageInfo{hasNextPage}nodes{id isResolved path line originalLine comments(first:1){nodes{author{login}body url}}}}}}}`
 
-func Gh(dir string) Forge {
-	return func(args ...string) ([]byte, error) {
-		cmd := exec.Command("gh", args...)
-		cmd.Dir = dir
-		var stdout, stderr bytes.Buffer
-		cmd.Stdout, cmd.Stderr = &stdout, &stderr
-		if err := cmd.Run(); err != nil {
-			return stdout.Bytes(), fmt.Errorf("gh %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
-		}
-		return stdout.Bytes(), nil
-	}
-}
-
 func Run(e Env, numbers []int, stack, merge bool) ([]Check, error) {
 	run, err := e.resolve(numbers, stack)
 	if err != nil {
@@ -179,20 +164,20 @@ func (landing) below(p pull, among []pull) int {
 }
 
 func (e Env) resolve(numbers []int, stack bool) (landing, error) {
-	var run landing
-	root, err := git(e.Dir, "rev-parse", "--show-toplevel")
+	var l landing
+	root, err := run.Git(e.Dir, "rev-parse", "--show-toplevel")
 	if err != nil {
-		return run, errors.New("not inside a git repository")
+		return l, errors.New("not inside a git repository")
 	}
 	var repo struct{ DefaultBranchRef struct{ Name string } }
 	if err := e.read(&repo, "repo", "view", "--json", "defaultBranchRef"); err != nil {
-		return run, err
+		return l, err
 	}
 	def := repo.DefaultBranchRef.Name
 	raw, err := e.Forge("api", "user", "--jq", ".login")
 	me := strings.TrimSpace(string(raw))
 	if err != nil || me == "" || def == "" {
-		return run, fmt.Errorf("cannot read the forge user and default branch: %v", err)
+		return l, fmt.Errorf("cannot read the forge user and default branch: %v", err)
 	}
 
 	var pulls []pull
@@ -202,7 +187,7 @@ func (e Env) resolve(numbers []int, stack bool) (landing, error) {
 	for _, n := range numbers {
 		p, err := e.view(n)
 		if err != nil {
-			return run, err
+			return l, err
 		}
 		if !slices.ContainsFunc(pulls, func(q pull) bool { return q.Number == p.Number }) {
 			pulls = append(pulls, p)
@@ -215,7 +200,7 @@ func (e Env) resolve(numbers []int, stack bool) (landing, error) {
 			IsCrossRepository bool
 		}
 		if err := e.read(&heads, "pr", "list", "--state", "open", "--head", p.BaseRefName, "--json", "number,isCrossRepository"); err != nil {
-			return run, err
+			return l, err
 		}
 		under := 0
 		for _, h := range heads {
@@ -224,10 +209,10 @@ func (e Env) resolve(numbers []int, stack bool) (landing, error) {
 			}
 		}
 		if under == 0 {
-			return run, fmt.Errorf("#%d is based on %s, which is not the default branch and has no open pull request", p.Number, p.BaseRefName)
+			return l, fmt.Errorf("#%d is based on %s, which is not the default branch and has no open pull request", p.Number, p.BaseRefName)
 		}
 		if p, err = e.view(under); err != nil {
-			return run, err
+			return l, err
 		}
 		pulls = append(pulls, p)
 	}
@@ -236,14 +221,14 @@ func (e Env) resolve(numbers []int, stack bool) (landing, error) {
 	for rest := pulls; len(rest) > 0; {
 		var blocked []pull
 		for _, p := range rest {
-			if run.below(p, rest) != 0 {
+			if l.below(p, rest) != 0 {
 				blocked = append(blocked, p)
 			} else {
 				ordered = append(ordered, p)
 			}
 		}
 		if len(blocked) == len(rest) {
-			return run, errors.New("the pull requests are based on each other in a cycle")
+			return l, errors.New("the pull requests are based on each other in a cycle")
 		}
 		rest = blocked
 	}
@@ -283,16 +268,16 @@ func (e Env) check(root string, p pull, def, me string, merge bool, after int) (
 	}
 	open := c.Lane == "open"
 
-	if _, err := git(root, "fetch", "--quiet", "origin", fmt.Sprintf("refs/pull/%d/head", p.Number)); err != nil {
+	if _, err := run.Git(root, "fetch", "--quiet", "origin", fmt.Sprintf("refs/pull/%d/head", p.Number)); err != nil {
 		return c, err
 	}
-	if _, err := git(root, "cat-file", "-e", p.HeadRefOid+"^{commit}"); err != nil {
+	if _, err := run.Git(root, "cat-file", "-e", p.HeadRefOid+"^{commit}"); err != nil {
 		return c, fmt.Errorf("the fetched pull request does not hold its head %s; run again", p.HeadRefOid)
 	}
 	baseRef := "origin/" + p.BaseRefName
-	if _, err := git(root, "fetch", "--quiet", "origin", p.BaseRefName); err != nil {
+	if _, err := run.Git(root, "fetch", "--quiet", "origin", p.BaseRefName); err != nil {
 		baseRef = ""
-	} else if _, err := git(root, "merge-base", "--is-ancestor", p.HeadRefOid, baseRef); err == nil && p.MergeCommit.Oid != "" {
+	} else if _, err := run.Git(root, "merge-base", "--is-ancestor", p.HeadRefOid, baseRef); err == nil && p.MergeCommit.Oid != "" {
 
 		baseRef = p.MergeCommit.Oid + "^1"
 	}
@@ -317,7 +302,7 @@ func (e Env) check(root string, p pull, def, me string, merge bool, after int) (
 			hold("this checkout's %s is at %s but the pull request's head is %s: push or reset it, or land from another checkout", t.Branch, short(t.Head), short(p.HeadRefOid))
 		default:
 
-			if _, err := git(root, "merge-base", "--is-ancestor", t.Head, p.HeadRefOid); err == nil {
+			if _, err := run.Git(root, "merge-base", "--is-ancestor", t.Head, p.HeadRefOid); err == nil {
 				c.Mode = "local"
 			} else {
 				note("this checkout's %s is not this pull request's head (a reused name or unpushed commits), so it is left alone", t.Branch)
@@ -453,8 +438,8 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 		return err
 	}
 	r := &Review{Level: level, Source: "none", Status: "missing"}
-	run := &RunVerdict{Source: "none", Status: "missing"}
-	c.Review, c.RunVerdict = r, run
+	rv := &RunVerdict{Source: "none", Status: "missing"}
+	c.Review, c.RunVerdict = r, rv
 	head := p.HeadRefOid
 
 	reviewed, drove, ignored, err := e.verdicts(p.Number)
@@ -466,10 +451,10 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 		r.Source, r.Result, r.Depth, r.URL, r.Base, r.SHA = "verdict", v.Result, v.Level, v.url, v.Base, v.SHA
 	}
 	if v := drove; v != nil {
-		run.Source, run.Result, run.URL, run.SHA = "verdict", v.Result, v.url, v.SHA
+		rv.Source, rv.Result, rv.URL, rv.SHA = "verdict", v.Result, v.url, v.SHA
 	}
 
-	for _, v := range []struct{ kind, result, sha, url string }{{"review", r.Result, r.SHA, r.URL}, {"run-as-user", run.Result, run.SHA, run.URL}} {
+	for _, v := range []struct{ kind, result, sha, url string }{{"review", r.Result, r.SHA, r.URL}, {"run-as-user", rv.Result, rv.SHA, rv.URL}} {
 		switch v.result {
 		case "FAIL":
 			hold("the latest %s verdict, of %s, is FAIL: %s", v.kind, short(v.sha), v.url)
@@ -480,13 +465,13 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 
 	if baseRef == "" {
 		r.Required, r.Status = level != "off", "stale"
-		if run.Source != "none" {
-			run.Status = "stale"
+		if rv.Source != "none" {
+			rv.Status = "stale"
 		}
 		hold("its base branch %s is gone from origin, so no review can be compared with what merged", p.BaseRefName)
 		return nil
 	}
-	mergeBase, err := git(root, "merge-base", baseRef, head)
+	mergeBase, err := run.Git(root, "merge-base", baseRef, head)
 	if err != nil {
 		return err
 	}
@@ -520,7 +505,7 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 	r.Required = level != "off" && tier.Rank() > changemap.TestsDocs.Rank()
 
 	covers := func(sha string) (status string, changed []string, err error) {
-		if _, err := git(root, "rev-parse", "--verify", "--quiet", sha+"^{commit}"); err != nil {
+		if _, err := run.Git(root, "rev-parse", "--verify", "--quiet", sha+"^{commit}"); err != nil {
 			return "stale", nil, nil
 		}
 		if changed, err = changedSince(root, baseRef, sha, head, touched); err != nil {
@@ -541,7 +526,7 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 			return err
 		}
 
-		if _, err := git(root, "merge-base", "--is-ancestor", r.Base, mergeBase); err != nil && r.Status != "stale" {
+		if _, err := run.Git(root, "merge-base", "--is-ancestor", r.Base, mergeBase); err != nil && r.Status != "stale" {
 			r.Status, partial = "stale", true
 		}
 	}
@@ -564,24 +549,24 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 		say("only test or documentation files changed after the review verdict of %s: %s. Read their hunks; the review stands when they change no shipped behavior", short(r.SHA), describe(r.Changed, "reviewed"))
 	}
 
-	run.Required = tier.Rank() >= changemap.Behavioral.Rank()
-	if run.Source != "none" {
-		if run.Status, run.Changed, err = covers(run.SHA); err != nil {
+	rv.Required = tier.Rank() >= changemap.Behavioral.Rank()
+	if rv.Source != "none" {
+		if rv.Status, rv.Changed, err = covers(rv.SHA); err != nil {
 			return err
 		}
 	}
 	say = note
-	if run.Required {
+	if rv.Required {
 		say = hold
 	}
-	switch run.Status {
+	switch rv.Status {
 	case "missing":
-		if run.Required {
+		if rv.Required {
 			hold("a required run-as-user verdict was never posted (tier %s): `verify-work` gets one from an agent that did not write the change", tier)
 		}
 	case "stale":
 
-		say("the run-as-user verdict of %s is stale: %s", short(run.SHA), describe(run.Changed, "driven"))
+		say("the run-as-user verdict of %s is stale: %s", short(rv.SHA), describe(rv.Changed, "driven"))
 	}
 	return nil
 }
@@ -672,15 +657,4 @@ func short(sha string) string {
 		return sha[:12]
 	}
 	return sha
-}
-
-func git(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
-	}
-	return strings.TrimSpace(stdout.String()), nil
 }

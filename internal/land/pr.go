@@ -3,6 +3,7 @@ package land
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"io"
 	"os"
 	"strconv"
@@ -171,7 +172,7 @@ func cwdEnv() (Env, error) {
 	if err != nil {
 		return Env{}, err
 	}
-	return Env{Dir: cwd, Forge: Gh(cwd), State: statefile.Path(home)}, nil
+	return Env{Dir: cwd, Forge: run.Gh(cwd), State: statefile.Path(home)}, nil
 }
 
 func threads(args []string, stdout, stderr io.Writer) int {

@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func run(t *testing.T, dir string, args ...string) {
+func runGit(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", append([]string{"-C", dir, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"}, args...)...)
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -29,19 +29,19 @@ func write(t *testing.T, path, text string) {
 func repo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	run(t, dir, "init", "-q", "-b", "main")
+	runGit(t, dir, "init", "-q", "-b", "main")
 	write(t, filepath.Join(dir, "docs/agents/tasks/old.md"), "# Old\n\n## State and next action\n\nShipped.\n")
-	run(t, dir, "add", ".")
-	run(t, dir, "commit", "-q", "-m", "base")
-	run(t, dir, "switch", "-q", "-c", "feat/x")
+	runGit(t, dir, "add", ".")
+	runGit(t, dir, "commit", "-q", "-m", "base")
+	runGit(t, dir, "switch", "-q", "-c", "feat/x")
 	return dir
 }
 
 func TestContextNamesTheBranchAndItsTaskDocument(t *testing.T) {
 	dir := repo(t)
 	write(t, filepath.Join(dir, "docs/agents/tasks/x.md"), "# X\n\n## Requirements\n\nkeep out\n\n## State and next action\n\nNext: wire the hook.\n\n## Decisions\n\nkeep out too\n")
-	run(t, dir, "add", ".")
-	run(t, dir, "commit", "-q", "-m", "wip: hook")
+	runGit(t, dir, "add", ".")
+	runGit(t, dir, "commit", "-q", "-m", "wip: hook")
 	got := Context(filepath.Join(dir, "docs"))
 	for _, want := range []string{"- branch: feat/x", "wip: hook", "- task document: docs/agents/tasks/x.md", "## State and next action", "Next: wire the hook."} {
 		if !strings.Contains(got, want) {
@@ -92,7 +92,7 @@ func TestExcludeKeepsTaskDocumentsLocalAndListed(t *testing.T) {
 		t.Fatalf("exclude holds the folder %d times, want once:\n%s", n, exclude)
 	}
 	write(t, filepath.Join(dir, "docs/agents/tasks/local.md"), "## State and next action\n\nKeep going.\n")
-	run(t, dir, "add", "-A")
+	runGit(t, dir, "add", "-A")
 	if out, _ := exec.Command("git", "-C", dir, "diff", "--cached", "--name-only").Output(); strings.Contains(string(out), "local.md") {
 		t.Fatalf("an excluded task document was staged:\n%s", out)
 	}

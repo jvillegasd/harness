@@ -1,15 +1,11 @@
 package worktree
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
+	"github.com/jvillegasd/harness/internal/run"
 	"strconv"
-	"strings"
 )
-
-type Forge func(args ...string) ([]byte, error)
 
 type Pull struct {
 	Number int
@@ -32,7 +28,7 @@ func (p Pull) String() string {
 	return fmt.Sprintf("#%d %s", p.Number, p.State)
 }
 
-func ReadPull(dir string, s Status, forge Forge) Pull {
+func ReadPull(dir string, s Status, forge run.Forge) Pull {
 	if s.Branch == "" {
 		return Pull{}
 	}
@@ -62,28 +58,15 @@ func ReadPull(dir string, s Status, forge Forge) Pull {
 	p := Pull{Number: pulls[pick].Number, State: pulls[pick].State}
 	if p.State == "MERGED" && s.State == "unlanded" {
 		head := pulls[pick].HeadRefOid
-		if _, err := git(dir, "fetch", "--quiet", "origin", "refs/pull/"+strconv.Itoa(p.Number)+"/head"); err != nil {
+		if _, err := run.Git(dir, "fetch", "--quiet", "origin", "refs/pull/"+strconv.Itoa(p.Number)+"/head"); err != nil {
 			p.Err = err
 			return p
 		}
-		if _, err := git(dir, "cat-file", "-e", head+"^{commit}"); err != nil {
+		if _, err := run.Git(dir, "cat-file", "-e", head+"^{commit}"); err != nil {
 			p.Err = fmt.Errorf("the fetched head of #%d does not hold %s", p.Number, head)
 			return p
 		}
 		p.Into = head
 	}
 	return p
-}
-
-func gh(dir string) Forge {
-	return func(args ...string) ([]byte, error) {
-		cmd := exec.Command("gh", args...)
-		cmd.Dir = dir
-		var out, errOut bytes.Buffer
-		cmd.Stdout, cmd.Stderr = &out, &errOut
-		if err := cmd.Run(); err != nil {
-			return out.Bytes(), fmt.Errorf("gh %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(errOut.String()))
-		}
-		return out.Bytes(), nil
-	}
 }

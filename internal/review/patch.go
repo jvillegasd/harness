@@ -3,6 +3,7 @@ package review
 import (
 	"bytes"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"os/exec"
 	"slices"
 	"strings"
@@ -38,7 +39,7 @@ func ChangedSince(root, baseRef, reviewed, head string, touched []string) ([]str
 }
 
 func Names(root string, revs ...string) ([]string, error) {
-	out, err := git(root, append([]string{"diff", "--name-only", "--no-renames", "-z"}, revs...)...)
+	out, err := run.Git(root, append([]string{"diff", "--name-only", "--no-renames", "-z"}, revs...)...)
 	if err != nil {
 		return nil, err
 	}

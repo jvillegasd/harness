@@ -1,10 +1,9 @@
 package changemap
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"os/exec"
+	"github.com/jvillegasd/harness/internal/run"
 	"slices"
 	"strings"
 )
@@ -20,19 +19,8 @@ type Changes struct {
 	Files     []string
 }
 
-func git(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
-	}
-	return stdout.String(), nil
-}
-
 func Root(dir string) (string, error) {
-	out, err := git(dir, "rev-parse", "--show-toplevel")
+	out, err := run.Git(dir, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", ErrNotRepo
 	}
@@ -50,7 +38,7 @@ func resolves(root, ref string) bool {
 	if strings.HasPrefix(ref, "-") {
 		return false
 	}
-	_, err := git(root, "rev-parse", "--verify", "--quiet", ref+"^{commit}")
+	_, err := run.Git(root, "rev-parse", "--verify", "--quiet", ref+"^{commit}")
 	return err == nil
 }
 
@@ -58,22 +46,22 @@ func Changed(root, base string) (Changes, error) {
 	if !resolves(root, base) {
 		return Changes{}, fmt.Errorf("%w %q", ErrUnknownBase, base)
 	}
-	mergeBase, err := git(root, "merge-base", "HEAD", base)
+	mergeBase, err := run.Git(root, "merge-base", "HEAD", base)
 	if err != nil {
 		return Changes{}, err
 	}
 	mergeBase = strings.TrimSpace(mergeBase)
-	tracked, err := git(root, "diff", "--name-only", "--no-renames", "-z", mergeBase)
+	tracked, err := run.GitRaw(root, "diff", "--name-only", "--no-renames", "-z", mergeBase)
 	if err != nil {
 		return Changes{}, err
 	}
-	untracked, err := git(root, "ls-files", "--others", "--exclude-standard", "-z")
+	untracked, err := run.GitRaw(root, "ls-files", "--others", "--exclude-standard", "-z")
 	if err != nil {
 		return Changes{}, err
 	}
 	var files []string
-	for _, listing := range []string{tracked, untracked} {
-		for _, name := range strings.Split(listing, "\x00") {
+	for _, listing := range [][]byte{tracked, untracked} {
+		for _, name := range strings.Split(string(listing), "\x00") {
 			if name != "" {
 				files = append(files, name)
 			}

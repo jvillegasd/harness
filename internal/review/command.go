@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"io"
 	"os"
 	"slices"
@@ -226,7 +227,7 @@ func repoRoot(name string, stderr io.Writer) (string, int) {
 	cwd, err := os.Getwd()
 	root := ""
 	if err == nil {
-		root, err = git(cwd, "rev-parse", "--show-toplevel")
+		root, err = run.Git(cwd, "rev-parse", "--show-toplevel")
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness review %s: not inside a git repository\n", name)
@@ -241,7 +242,7 @@ func reviewDir(name, key string, stderr io.Writer) (root, resolved, dir string, 
 		return "", "", "", code
 	}
 	if key == "" {
-		key, _ = git(root, "branch", "--show-current")
+		key, _ = run.Git(root, "branch", "--show-current")
 	}
 	dir, err := Dir(root, key)
 	if errors.Is(err, ErrInvalid) {
@@ -294,7 +295,7 @@ func prune(args []string, stdout, stderr io.Writer) int {
 	live := map[string]bool{}
 
 	for strip, refs := range map[string]string{"2": "refs/heads", "3": "refs/remotes"} {
-		out, err := git(root, "for-each-ref", "--format=%(refname:lstrip="+strip+")", refs)
+		out, err := run.Git(root, "for-each-ref", "--format=%(refname:lstrip="+strip+")", refs)
 		if err != nil {
 			fmt.Fprintf(stderr, "harness review prune: %v\n", err)
 			return 1
@@ -352,7 +353,7 @@ func target(args []string, stdout, stderr io.Writer) int {
 	if code != 0 {
 		return code
 	}
-	t, err := ResolveTarget(root, Gh(root), arg)
+	t, err := ResolveTarget(root, run.Gh(root), arg)
 	if errors.Is(err, ErrInvalid) {
 		fmt.Fprintf(stderr, "harness review target: %v\n", err)
 		return 2
@@ -497,7 +498,7 @@ func verdict(args []string, stdout, stderr io.Writer) int {
 
 			continue
 		}
-		full, err := git(root, "rev-parse", "--verify", "--quiet", "--end-of-options", *rev+"^{commit}")
+		full, err := run.Git(root, "rev-parse", "--verify", "--quiet", "--end-of-options", *rev+"^{commit}")
 		if err != nil {
 			fmt.Fprintf(stderr, "harness review verdict: %q does not name a commit here; fetch it first\n", *rev)
 			return 2
@@ -508,7 +509,7 @@ func verdict(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness review verdict: %v\n", err)
 		return 2
 	}
-	forge := Gh(root)
+	forge := run.Gh(root)
 	raw, err := forge("pr", "view", strconv.Itoa(number), "--json", "state,headRefOid")
 	var pull struct{ State, HeadRefOid string }
 	if err == nil {
