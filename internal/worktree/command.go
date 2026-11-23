@@ -1,6 +1,7 @@
 package worktree
 
 import (
+	"cmp"
 	"errors"
 	"flag"
 	"fmt"
@@ -155,23 +156,16 @@ func audit(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "harness worktree audit: %s: %v\n", t.Path, err)
 			continue
 		}
-		branch, head := s.Branch, s.Head
-		if branch == "" {
-			branch = "(detached)"
-		}
+		head := s.Head
 		if len(head) > 12 {
 			head = head[:12]
 		}
+		row := []string{state(style, s.State), strconv.Itoa(len(s.Changes)), strconv.Itoa(len(s.Ignored)), cmp.Or(s.Branch, "(detached)"), style.Dim(head)}
 		if *withForge {
 			p := ReadPull(dir, s, gh(dir))
-			into := p.Into
-			if into == "" {
-				into = "-"
-			}
-			rows = append(rows, []string{state(style, s.State), strconv.Itoa(len(s.Changes)), strconv.Itoa(len(s.Ignored)), branch, style.Dim(head), fmt.Sprint(p), into, s.Path})
-			continue
+			row = append(row, fmt.Sprint(p), cmp.Or(p.Into, "-"))
 		}
-		rows = append(rows, []string{state(style, s.State), strconv.Itoa(len(s.Changes)), strconv.Itoa(len(s.Ignored)), branch, style.Dim(head), s.Path})
+		rows = append(rows, append(row, s.Path))
 	}
 	fmt.Fprintln(stdout, style.Title("harness worktree audit", "into "+*into))
 	for _, line := range style.Table(header, rows) {

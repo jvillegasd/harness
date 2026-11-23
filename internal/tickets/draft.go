@@ -1,12 +1,15 @@
 package tickets
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -100,11 +103,8 @@ func Check(root, rel string) ([]Ticket, []Problem, error) {
 	}
 	sort.SliceStable(ts, func(i, j int) bool { return ts[i].Number < ts[j].Number })
 	problems = append(problems, graph(ts)...)
-	sort.SliceStable(problems, func(i, j int) bool {
-		if problems[i].Path != problems[j].Path {
-			return problems[i].Path < problems[j].Path
-		}
-		return problems[i].Line < problems[j].Line
+	slices.SortStableFunc(problems, func(a, b Problem) int {
+		return cmp.Or(strings.Compare(a.Path, b.Path), cmp.Compare(a.Line, b.Line))
 	})
 	return ts, problems, nil
 }
@@ -260,11 +260,7 @@ func cycles(ts []Ticket) [][]int {
 			found = append(found, group)
 		}
 	}
-	var order []int
-	for n := range edges {
-		order = append(order, n)
-	}
-	sort.Ints(order)
+	order := slices.Sorted(maps.Keys(edges))
 	for _, n := range order {
 		if _, seen := index[n]; !seen {
 			visit(n)
@@ -275,10 +271,5 @@ func cycles(ts []Ticket) [][]int {
 }
 
 func blocksItself(n int, blockers []int) bool {
-	for _, b := range blockers {
-		if b == n {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(blockers, n)
 }

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -100,7 +101,7 @@ func (c Choice) report(cat *Catalog) report {
 	for _, tier := range Tiers {
 		b, source := c.binding(tier)
 		model, err := c.Model(tier, b.Client, cat)
-		v := tierView{Tier: tier, Client: b.Client, Model: orUnavailable(model), Source: source, Problem: problem(err)}
+		v := tierView{Tier: tier, Client: b.Client, Model: cmp.Or(model, "unavailable"), Source: source, Problem: problem(err)}
 		if next, ok := fallback[tier]; ok && errors.Is(err, ErrNotListed) {
 			v.Fallback = next
 		}
@@ -133,7 +134,7 @@ func (c Choice) underPreset(tier, preset string, cat *Catalog) (clientModel, []s
 		b, _ = under.binding(at)
 		model, err = under.Model(at, b.Client, cat)
 	}
-	m := clientModel{Client: b.Client, Model: orUnavailable(model), Problem: problem(err)}
+	m := clientModel{Client: b.Client, Model: cmp.Or(model, "unavailable"), Problem: problem(err)}
 	if at != tier {
 		m.Tier = at
 		return m, nil
@@ -153,21 +154,7 @@ func sameClient(others []clientModel, client string) []string {
 }
 
 func view(r Resolved) roleView {
-	return roleView{Role: r.Role, Tier: r.Tier, Client: r.Client, Model: orUnavailable(r.Model), Effort: effortOrInherit(r.Effort), Source: r.Source, Note: r.Note, Problem: problem(r.Err), generic: role(r.Role).Generic}
-}
-
-func orUnavailable(model string) string {
-	if model == "" {
-		return "unavailable"
-	}
-	return model
-}
-
-func effortOrInherit(e string) string {
-	if e == "" {
-		return "inherit"
-	}
-	return e
+	return roleView{Role: r.Role, Tier: r.Tier, Client: r.Client, Model: cmp.Or(r.Model, "unavailable"), Effort: cmp.Or(r.Effort, "inherit"), Source: r.Source, Note: r.Note, Problem: problem(r.Err), generic: role(r.Role).Generic}
 }
 
 // problem says why a model is missing: not listed, or a catalog that could not be read.

@@ -80,7 +80,15 @@ func Reply(e Env, number int, thread, bodyFile string) (ThreadState, error) {
 	if _, err := e.Forge("api", "graphql", "-f", "query="+replyMutation, "-f", "thread="+thread, "-f", "body="+string(raw)); err != nil {
 		return ThreadState{}, err
 	}
-	return e.readBack(number, thread)
+	states, err = e.threadStates(number)
+	if err != nil {
+		return ThreadState{}, err
+	}
+	s, ok := states[thread]
+	if !ok {
+		return ThreadState{}, errors.New("the thread is gone after the write")
+	}
+	return s, nil
 }
 
 func Resolve(e Env, number int, threads []string) ([]ThreadState, error) {
@@ -123,16 +131,4 @@ func Resolve(e Env, number int, threads []string) ([]ThreadState, error) {
 		return out, fmt.Errorf("still unresolved after resolving: %s", strings.Join(open, ", "))
 	}
 	return out, nil
-}
-
-func (e Env) readBack(number int, thread string) (ThreadState, error) {
-	states, err := e.threadStates(number)
-	if err != nil {
-		return ThreadState{}, err
-	}
-	s, ok := states[thread]
-	if !ok {
-		return ThreadState{}, errors.New("the thread is gone after the write")
-	}
-	return s, nil
 }

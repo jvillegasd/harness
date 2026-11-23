@@ -2,6 +2,7 @@ package worktree
 
 import (
 	"bytes"
+	"cmp"
 	"errors"
 	"fmt"
 	"os"
@@ -191,10 +192,7 @@ func Retire(dir, path string, o Options) ([]string, error) {
 	var done []string
 	remove := []string{"worktree", "remove", s.Path}
 	if save {
-		from := o.At
-		if from == "" {
-			from = "HEAD"
-		}
+		from := cmp.Or(o.At, "HEAD")
 		if _, err := git(s.Path, "add", "-A", "."); err != nil {
 			return nil, err
 		}

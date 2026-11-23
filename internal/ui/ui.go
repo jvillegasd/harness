@@ -116,9 +116,6 @@ func (s Style) OK(text string) string { return s.sgr("32", "ok") + " " + s.Dim(t
 // Fail is a failed-check line.
 func (s Style) Fail(text string) string { return s.sgr("31", "x") + " " + text }
 
-// Bad draws text in the failure color, for a value that is a failure.
-func (s Style) Bad(text string) string { return s.sgr("31", text) }
-
 // Good draws text in the success color, for a value that is a success.
 func (s Style) Good(text string) string { return s.sgr("32", text) }
 

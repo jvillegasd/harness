@@ -1,6 +1,7 @@
 package models
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -78,10 +79,10 @@ func (c Choice) Resolve(name string, launch Launch, cat *Catalog) Resolved {
 	if r.Lens {
 		reviewer := c.Roles["reviewer"]
 		defaults = role("reviewer")
-		defaults.Tier, defaults.Effort = first(reviewer.Tier, defaults.Tier), first(reviewer.Effort, defaults.Effort)
+		defaults.Tier, defaults.Effort = cmp.Or(reviewer.Tier, defaults.Tier), cmp.Or(reviewer.Effort, defaults.Effort)
 		defaultClient = reviewer.Client
 	}
-	out := Resolved{Role: name, Tier: first(launch.Tier, ov.Tier, defaults.Tier), Effort: first(launch.Effort, ov.Effort, defaults.Effort)}
+	out := Resolved{Role: name, Tier: cmp.Or(launch.Tier, ov.Tier, defaults.Tier), Effort: cmp.Or(launch.Effort, ov.Effort, defaults.Effort)}
 	source := ""
 	switch {
 	case launch != Launch{}:
@@ -91,8 +92,8 @@ func (c Choice) Resolve(name string, launch Launch, cat *Catalog) Resolved {
 	}
 	for {
 		b, tierSource := c.binding(out.Tier)
-		out.Client = first(launch.Client, ov.Client, defaultClient, b.Client)
-		out.Source = first(source, tierSource)
+		out.Client = cmp.Or(launch.Client, ov.Client, defaultClient, b.Client)
+		out.Source = cmp.Or(source, tierSource)
 		out.Model, out.Err = c.Model(out.Tier, out.Client, cat)
 		next, ok := fallback[out.Tier]
 		if !errors.Is(out.Err, ErrNotListed) || !ok {
@@ -141,7 +142,7 @@ func (c *Choice) migrate(name string, ov *Override) bool {
 	model := ov.Model
 	ov.Model = ""
 	if ov.Client != "opencode" {
-		ov.Tier = first(ov.Tier, TierOf(ov.Client, model))
+		ov.Tier = cmp.Or(ov.Tier, TierOf(ov.Client, model))
 		if ov.Tier == "" {
 			return false
 		}
@@ -243,7 +244,7 @@ func setRole(choice Choice, args []string, cat *Catalog) (Choice, error) {
 		return choice, err
 	}
 	ov := choice.Roles[name]
-	ov.Tier, ov.Client, ov.Effort = first(given.Tier, ov.Tier), first(given.Client, ov.Client), first(given.Effort, ov.Effort)
+	ov.Tier, ov.Client, ov.Effort = cmp.Or(given.Tier, ov.Tier), cmp.Or(given.Client, ov.Client), cmp.Or(given.Effort, ov.Effort)
 	if err := checkOverride(ov); err != nil {
 		return choice, err
 	}

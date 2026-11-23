@@ -193,13 +193,7 @@ func (in *installer) selectArg(args []string, i int, stderr io.Writer) (int, boo
 }
 
 func inOrder(list, order []string) []string {
-	var out []string
-	for _, item := range order {
-		if slices.Contains(list, item) {
-			out = append(out, item)
-		}
-	}
-	return out
+	return slices.DeleteFunc(slices.Clone(order), func(item string) bool { return !slices.Contains(list, item) })
 }
 
 func Command(args []string, stdout, stderr io.Writer) (code int) {
@@ -355,12 +349,7 @@ func (in *installer) install() {
 		in.flush("agents")
 		in.end(in.counted("agents"))
 	}
-	var config []string
-	for _, c := range []string{"floor", "settings", "aliases", "mcps"} {
-		if in.has(c) {
-			config = append(config, c)
-		}
-	}
+	config := slices.DeleteFunc([]string{"floor", "settings", "aliases", "mcps"}, func(c string) bool { return !in.has(c) })
 	if len(config) > 0 || slices.ContainsFunc(in.book.deferred, func(line heldLine) bool {
 		return slices.Contains([]string{"floor", "settings", "aliases", ""}, line.component)
 	}) {
@@ -400,9 +389,7 @@ func (in *installer) install() {
 					s.Installed[client] = append(s.Installed[client], c)
 				}
 			}
-			if len(s.Installed[client]) > 0 {
-				s.Installed[client] = sorted(s.Installed[client])
-			}
+			slices.Sort(s.Installed[client])
 		}
 	})
 	in.end("reconciled")

@@ -3,8 +3,10 @@ package agents
 import (
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -33,15 +35,7 @@ func RestrictionsMatch(relative, text, level string) bool {
 			kept = append(kept, line)
 		}
 		want := claudeControls[level]
-		if len(kept) != len(want) {
-			return false
-		}
-		for i := range kept {
-			if kept[i] != want[i] {
-				return false
-			}
-		}
-		return true
+		return slices.Equal(kept, want)
 	}
 	if strings.HasPrefix(relative, "codex/") {
 
@@ -110,11 +104,7 @@ func existing(output string) map[string]string {
 }
 
 func checkSymlinks(outputs map[string]string, output string, stderr io.Writer) int {
-	names := make([]string, 0, len(outputs))
-	for relative := range outputs {
-		names = append(names, relative)
-	}
-	sort.Strings(names)
+	names := slices.Sorted(maps.Keys(outputs))
 	for _, relative := range names {
 		path := filepath.Join(output, filepath.FromSlash(relative))
 		entries := append([]string{path}, parents(path)...)
@@ -148,11 +138,7 @@ func checkOutputs(outputs, accesses map[string]string, output string, stdout io.
 		}
 	}
 	sort.Strings(findings)
-	names := make([]string, 0, len(outputs))
-	for relative := range outputs {
-		names = append(names, relative)
-	}
-	sort.Strings(names)
+	names := slices.Sorted(maps.Keys(outputs))
 	for _, relative := range names {
 		expected := outputs[relative]
 		path, ok := present[relative]

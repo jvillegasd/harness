@@ -142,18 +142,11 @@ func configAt(root, rev string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	cfg, err := parseConfig([]byte(raw), ConfigPath+" at "+shortRev(rev))
+	cfg, err := parseConfig([]byte(raw), ConfigPath+" at "+rev[:min(12, len(rev))])
 	if err != nil {
 		return Config{}, fmt.Errorf("%v; fix it on the default branch, because the committed base config still sets the floor", err)
 	}
 	return cfg, nil
-}
-
-func shortRev(rev string) string {
-	if len(rev) > 12 {
-		return rev[:12]
-	}
-	return rev
 }
 
 func parseConfig(raw []byte, source string) (Config, error) {

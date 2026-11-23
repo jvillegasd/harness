@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 )
 
 type orderedObject struct {
@@ -58,13 +59,7 @@ func (o *orderedObject) del(key string) {
 		return
 	}
 	delete(o.values, key)
-	keys := o.keys[:0]
-	for _, k := range o.keys {
-		if k != key {
-			keys = append(keys, k)
-		}
-	}
-	o.keys = keys
+	o.keys = slices.DeleteFunc(o.keys, func(k string) bool { return k == key })
 }
 
 func (o *orderedObject) MarshalJSON() ([]byte, error) {
