@@ -2,6 +2,7 @@ package land
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -425,10 +426,7 @@ func (e Env) gates(p pull, c *Check, def string) {
 		}
 		unresolved++
 
-		th := Thread{ID: t.ID, Path: t.Path, Line: t.Line}
-		if th.Line == 0 {
-			th.Line = t.OriginalLine
-		}
+		th := Thread{ID: t.ID, Path: t.Path, Line: cmp.Or(t.Line, t.OriginalLine)}
 		if first := t.Comments.Nodes; len(first) > 0 {
 			th.Author, th.Body, th.URL = first[0].Author.Login, first[0].Body, first[0].URL
 		}

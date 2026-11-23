@@ -30,7 +30,7 @@ func Read(path string) (map[string]json.RawMessage, error) {
 	return doc, nil
 }
 
-func Write(path string, doc map[string]json.RawMessage) error {
+func Write(path string, doc any) error {
 	data, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		return err
@@ -38,10 +38,7 @@ func Write(path string, doc map[string]json.RawMessage) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return Replace(path, append(data, '\n'))
-}
-
-func Replace(path string, data []byte) error {
+	data = append(data, '\n')
 	f, err := os.CreateTemp(filepath.Dir(path), "state-*.json")
 	if err != nil {
 		return err

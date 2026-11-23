@@ -202,12 +202,7 @@ func colorForPct(pct int) string {
 }
 
 func buildBar(pct, width int) string {
-	if pct < 0 {
-		pct = 0
-	}
-	if pct > 100 {
-		pct = 100
-	}
+	pct = min(max(pct, 0), 100)
 	filled := pct * width / 100
 	return colorForPct(pct) + strings.Repeat("●", filled) + dim + strings.Repeat("○", width-filled) + reset
 }

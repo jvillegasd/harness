@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -164,21 +165,14 @@ func Command(args []string, stdout, stderr io.Writer) int {
 }
 
 func snapshot(args []string, stdout, stderr io.Writer) int {
-	for _, a := range args {
-		if a == "--" {
-			break
-		}
-		if a == "-h" || a == "--help" {
-			fmt.Fprint(stdout, snapshotUsage)
-			return 0
-		}
+	separator := slices.Index(args, "--")
+	head := args
+	if separator >= 0 {
+		head = args[:separator]
 	}
-	separator := -1
-	for i, arg := range args {
-		if arg == "--" {
-			separator = i
-			break
-		}
+	if slices.ContainsFunc(head, func(a string) bool { return a == "-h" || a == "--help" }) {
+		fmt.Fprint(stdout, snapshotUsage)
+		return 0
 	}
 	if separator < 0 || separator == len(args)-1 {
 		fmt.Fprintf(stderr, "harness review snapshot: provide -- followed by at least one owned path\n%s", snapshotUsage)
@@ -228,19 +222,28 @@ func parse(flags *flag.FlagSet, args []string, text string, stdout, stderr io.Wr
 	return -1
 }
 
-func reviewDir(name, key string, stderr io.Writer) (root, resolved, dir string, code int) {
+func repoRoot(name string, stderr io.Writer) (string, int) {
 	cwd, err := os.Getwd()
+	root := ""
 	if err == nil {
 		root, err = git(cwd, "rev-parse", "--show-toplevel")
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness review %s: not inside a git repository\n", name)
-		return "", "", "", 2
+		return "", 2
+	}
+	return root, 0
+}
+
+func reviewDir(name, key string, stderr io.Writer) (root, resolved, dir string, code int) {
+	root, code = repoRoot(name, stderr)
+	if code != 0 {
+		return "", "", "", code
 	}
 	if key == "" {
 		key, _ = git(root, "branch", "--show-current")
 	}
-	dir, err = Dir(root, key)
+	dir, err := Dir(root, key)
 	if errors.Is(err, ErrInvalid) {
 		fmt.Fprintf(stderr, "harness review %s: %v\n", name, err)
 		return "", "", "", 2
@@ -284,14 +287,9 @@ func prune(args []string, stdout, stderr io.Writer) int {
 	if code := parse(flags, args, pruneUsage, stdout, stderr); code >= 0 {
 		return code
 	}
-	cwd, err := os.Getwd()
-	root := ""
-	if err == nil {
-		root, err = git(cwd, "rev-parse", "--show-toplevel")
-	}
-	if err != nil {
-		fmt.Fprintln(stderr, "harness review prune: not inside a git repository")
-		return 2
+	root, code := repoRoot("prune", stderr)
+	if code != 0 {
+		return code
 	}
 	live := map[string]bool{}
 
@@ -350,14 +348,9 @@ func target(args []string, stdout, stderr io.Writer) int {
 			arg = a
 		}
 	}
-	cwd, err := os.Getwd()
-	root := ""
-	if err == nil {
-		root, err = git(cwd, "rev-parse", "--show-toplevel")
-	}
-	if err != nil {
-		fmt.Fprintln(stderr, "harness review target: not inside a git repository")
-		return 2
+	root, code := repoRoot("target", stderr)
+	if code != 0 {
+		return code
 	}
 	t, err := ResolveTarget(root, Gh(root), arg)
 	if errors.Is(err, ErrInvalid) {
@@ -495,14 +488,9 @@ func verdict(args []string, stdout, stderr io.Writer) int {
 		}
 		notes = string(raw)
 	}
-	cwd, err := os.Getwd()
-	root := ""
-	if err == nil {
-		root, err = git(cwd, "rev-parse", "--show-toplevel")
-	}
-	if err != nil {
-		fmt.Fprintln(stderr, "harness review verdict: not inside a git repository")
-		return 2
+	root, code := repoRoot("verdict", stderr)
+	if code != 0 {
+		return code
 	}
 	for _, rev := range []*string{&v.Base, &v.SHA} {
 		if *rev == "" {

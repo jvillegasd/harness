@@ -2,9 +2,11 @@ package agents
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -90,11 +92,7 @@ func Render(root string, assigned map[string]Assigned) (map[string]string, map[s
 }
 
 func resolve(assigned map[string]Assigned) (map[string]map[string][2]string, error) {
-	clients := make([]string, 0, len(supported))
-	for name := range supported {
-		clients = append(clients, name)
-	}
-	sort.Strings(clients)
+	clients := slices.Sorted(maps.Keys(supported))
 	resolved := map[string]map[string][2]string{}
 	for _, role := range Roles {
 		for _, client := range clients {
@@ -183,14 +181,7 @@ func load(path string, role Role) (string, string, string, error) {
 		body = baseBody + "\n\n" + body
 	}
 	if level == "read-search" {
-		found := false
-		for _, line := range splitLines(body) {
-			if line == access {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !slices.Contains(splitLines(body), access) {
 			if base != "" {
 				return "", "", "", fail(fmt.Sprintf("%s: missing the canonical Access line, which its base %s carries", path, base))
 			}

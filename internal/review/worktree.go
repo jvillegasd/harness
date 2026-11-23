@@ -21,11 +21,9 @@ func readRecord(dir string) (path, sha string, ok bool, err error) {
 	if err != nil {
 		return "", "", false, err
 	}
-	lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
-	path = strings.TrimSpace(lines[0])
-	if len(lines) > 1 {
-		sha = strings.TrimSpace(lines[1])
-	}
+	first, rest, _ := strings.Cut(strings.TrimSpace(string(raw)), "\n")
+	second, _, _ := strings.Cut(rest, "\n")
+	path, sha = strings.TrimSpace(first), strings.TrimSpace(second)
 	return path, sha, true, nil
 }
 

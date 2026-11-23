@@ -77,22 +77,13 @@ func (in *installer) usePATH() {
 }
 
 func (in *installer) selectedTools() []tool {
-	var out []tool
-	for _, t := range tools {
-		if slices.Contains(in.components, t.component) && (t.client == "" || slices.Contains(in.clients, t.client)) {
-			out = append(out, t)
-		}
-	}
-	return out
+	return slices.DeleteFunc(slices.Clone(tools), func(t tool) bool {
+		return !slices.Contains(in.components, t.component) || t.client != "" && !slices.Contains(in.clients, t.client)
+	})
 }
 
 func (in *installer) installTools() {
-	var missing []tool
-	for _, t := range in.selectedTools() {
-		if !present(t.name) {
-			missing = append(missing, t)
-		}
-	}
+	missing := slices.DeleteFunc(in.selectedTools(), func(t tool) bool { return present(t.name) })
 	if len(missing) == 0 {
 		return
 	}

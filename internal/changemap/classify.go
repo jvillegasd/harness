@@ -2,6 +2,7 @@ package changemap
 
 import (
 	"path"
+	"slices"
 	"strings"
 )
 
@@ -18,12 +19,7 @@ const (
 var Tiers = []Tier{Mechanical, TestsDocs, Structural, Behavioral, Critical}
 
 func (t Tier) Rank() int {
-	for i, tier := range Tiers {
-		if tier == t {
-			return i
-		}
-	}
-	return -1
+	return slices.Index(Tiers, t)
 }
 
 type Result struct {
@@ -82,10 +78,8 @@ func Classify(file string, cfg Config) Result {
 	}
 
 	base := path.Base(file)
-	for _, name := range lockfiles {
-		if base == name {
-			return Result{Tier: Mechanical, Reason: "lockfile"}
-		}
+	if slices.Contains(lockfiles, base) {
+		return Result{Tier: Mechanical, Reason: "lockfile"}
 	}
 	if matchesAny(generatedPatterns, base) {
 		return Result{Tier: Mechanical, Reason: "generated file"}
@@ -98,10 +92,8 @@ func Classify(file string, cfg Config) Result {
 
 	segments := strings.Split(file, "/")
 	for _, segment := range segments[:len(segments)-1] {
-		for _, dir := range testDirs {
-			if segment == dir {
-				return Result{Tier: TestsDocs, Reason: "test directory " + dir}
-			}
+		if slices.Contains(testDirs, segment) {
+			return Result{Tier: TestsDocs, Reason: "test directory " + segment}
 		}
 	}
 	if matchesAny(testFilePatterns, base) {

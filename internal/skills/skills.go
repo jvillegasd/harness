@@ -221,12 +221,9 @@ func remove(c checkout.Checkout, args []string, stdout, stderr io.Writer) error 
 }
 
 func checkLink(path, want string) error {
-	if !exists(path) {
-		return nil
-	}
 	fi, err := os.Lstat(path)
 	if err != nil {
-		return err
+		return nil
 	}
 	if fi.Mode()&os.ModeSymlink == 0 {
 		return fmt.Errorf("refusing to remove non-symlink Claude path: %s", path)

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"slices"
@@ -253,7 +254,7 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 // sets again what it keeps.
 func (p picker) roleSets(effort string) [][]string {
 	ov := p.applied().Roles[p.name]
-	tier, client := first(p.tier, ov.Tier), first(p.client, ov.Client)
+	tier, client := cmp.Or(p.tier, ov.Tier), cmp.Or(p.client, ov.Client)
 	set := []string{"role", "set", p.name}
 	if effort == "" && ov.Effort != "" {
 		var out [][]string
@@ -426,11 +427,11 @@ func (p picker) detail(opt string) string {
 				delete(c.Tiers, p.name)
 				b, _ := c.binding(p.name)
 				model, _ := c.Model(p.name, b.Client, p.catalog)
-				return s.Dim("back to preset " + c.preset() + ": " + b.Client + " › " + orUnavailable(model))
+				return s.Dim("back to preset " + c.preset() + ": " + b.Client + " › " + cmp.Or(model, "unavailable"))
 			}
 			delete(c.Roles, p.name)
 			r := c.Resolve(p.name, Launch{}, p.catalog)
-			return s.Dim("back to its default: " + r.Tier + ", " + r.Client + " › " + orUnavailable(r.Model))
+			return s.Dim("back to its default: " + r.Tier + ", " + r.Client + " › " + cmp.Or(r.Model, "unavailable"))
 		}
 	case stepName:
 		c := p.applied()
@@ -444,7 +445,7 @@ func (p picker) detail(opt string) string {
 		case slices.Contains(Tiers, opt):
 			b, _ := c.binding(opt)
 			model, _ := c.Model(opt, b.Client, p.catalog)
-			return s.Dim(ui.Pad("", 10)+ui.Pad(b.Client, 6)+" › "+orUnavailable(model)) + mark
+			return s.Dim(ui.Pad("", 10)+ui.Pad(b.Client, 6)+" › "+cmp.Or(model, "unavailable")) + mark
 		case opt == "save":
 			if len(p.sets) == 1 {
 				return s.Dim("write 1 pending change")
@@ -452,7 +453,7 @@ func (p picker) detail(opt string) string {
 			return s.Dim(fmt.Sprintf("write %d pending changes", len(p.sets)))
 		}
 		r := c.Resolve(opt, Launch{}, p.catalog)
-		return s.Dim(ui.Pad(r.Tier, 10)+ui.Pad(r.Client, 6)+" › "+orUnavailable(r.Model)) + mark
+		return s.Dim(ui.Pad(r.Tier, 10)+ui.Pad(r.Client, 6)+" › "+cmp.Or(r.Model, "unavailable")) + mark
 	case stepTierModel:
 		if opt == newest {
 			return p.newestDetail()

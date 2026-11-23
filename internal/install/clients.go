@@ -380,16 +380,7 @@ func (in *installer) reconcileCodexHooks(remove bool) {
 	if remove && !isFile(path) {
 		return
 	}
-	data, err := os.ReadFile(path)
-	if errors.Is(err, fs.ErrNotExist) {
-		data = []byte("{}\n")
-	} else if err != nil {
-		die("Reading %s failed: %v", path, err)
-	}
-	live, err := parseObject(data)
-	if err != nil {
-		die("%s is not a JSON object, so the harness compaction hook cannot be merged into it: %v", path, err)
-	}
+	live, data := readObject(path, "the harness compaction hook cannot be merged into it")
 	tracked, err := os.ReadFile(filepath.Join(in.dir.Clients(), "codex", "hooks.json"))
 	must(err)
 	want, err := parseObject(tracked)
@@ -445,16 +436,7 @@ func (in *installer) reconcileOpenCodePermission(remove bool) {
 		in.recordOpenCodeDefaults(nil)
 		return
 	}
-	data, err := os.ReadFile(path)
-	if errors.Is(err, fs.ErrNotExist) {
-		data = []byte("{}\n")
-	} else if err != nil {
-		die("Reading %s failed: %v", path, err)
-	}
-	live, err := parseObject(data)
-	if err != nil {
-		die("%s is not a JSON object, so the harness permission rules cannot be merged into it: %v", path, err)
-	}
+	live, data := readObject(path, "the harness permission rules cannot be merged into it")
 	current, _ := live.get("permission")
 	merged, added, err := mergePermission(current, in.trackedOpenCodePermission(), !remove, in.loadState().OpenCodeDefaults)
 	if err != nil {
@@ -835,4 +817,18 @@ func (in *installer) installAgentBrowser() {
 		}
 		must(in.registerMCP(client, "agent-browser", binary))
 	}
+}
+
+func readObject(path, message string) (*object, []byte) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		data = []byte("{}\n")
+	} else if err != nil {
+		die("Reading %s failed: %v", path, err)
+	}
+	live, err := parseObject(data)
+	if err != nil {
+		die("%s is not a JSON object, so "+message+": %v", path, err)
+	}
+	return live, data
 }

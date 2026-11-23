@@ -134,7 +134,7 @@ func Watch(e Env, numbers []int, stack bool, interval, timeout time.Duration, cl
 			}
 		default:
 			failures, last = 0, statuses
-			if terminal(statuses) {
+			if Code(statuses) != ExitPending {
 				return statuses, Code(statuses), nil
 			}
 		}
@@ -146,8 +146,4 @@ func Watch(e Env, numbers []int, stack bool, interval, timeout time.Duration, cl
 		}
 		clock.Sleep(interval)
 	}
-}
-
-func terminal(statuses []Status) bool {
-	return Code(statuses) != ExitPending
 }

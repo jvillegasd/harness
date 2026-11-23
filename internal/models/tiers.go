@@ -1,6 +1,7 @@
 package models
 
 import (
+	"cmp"
 	"errors"
 	"flag"
 	"fmt"
@@ -8,7 +9,6 @@ import (
 	"maps"
 	"regexp"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -69,10 +69,7 @@ func (c Choice) binding(tier string) (Binding, string) {
 }
 
 func (c Choice) preset() string {
-	if c.Preset == "" {
-		return defaultPreset
-	}
-	return c.Preset
+	return cmp.Or(c.Preset, defaultPreset)
 }
 
 // Model resolves the model a client runs for a tier: the one named for the
@@ -178,12 +175,7 @@ func checkBinding(tier string, b Binding) error {
 }
 
 func presetNames() []string {
-	names := make([]string, 0, len(Presets))
-	for name := range Presets {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
+	return slices.Sorted(maps.Keys(Presets))
 }
 
 // tierCommand runs `harness models tier <sub>` and reports whether it saved.

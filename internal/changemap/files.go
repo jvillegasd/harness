@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -71,16 +71,15 @@ func Changed(root, base string) (Changes, error) {
 	if err != nil {
 		return Changes{}, err
 	}
-	seen := map[string]bool{}
 	var files []string
 	for _, listing := range []string{tracked, untracked} {
 		for _, name := range strings.Split(listing, "\x00") {
-			if name != "" && !seen[name] {
-				seen[name] = true
+			if name != "" {
 				files = append(files, name)
 			}
 		}
 	}
-	sort.Strings(files)
+	slices.Sort(files)
+	files = slices.Compact(files)
 	return Changes{Base: base, MergeBase: mergeBase, Files: files}, nil
 }

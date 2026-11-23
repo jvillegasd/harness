@@ -3,9 +3,10 @@ package agents
 import (
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -17,11 +18,7 @@ func generate(outputs map[string]string, output string, report []string, stdout,
 			changed = true
 		}
 	}
-	names := make([]string, 0, len(outputs))
-	for relative := range outputs {
-		names = append(names, relative)
-	}
-	sort.Strings(names)
+	names := slices.Sorted(maps.Keys(outputs))
 	for _, relative := range names {
 		text := outputs[relative]
 		path := filepath.Join(output, filepath.FromSlash(relative))

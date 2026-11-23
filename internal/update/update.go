@@ -133,7 +133,7 @@ func Command(args []string, stdout, stderr io.Writer) int {
 
 type target struct {
 	group, name, path, notice, status string
-	command, versionCommand           []string
+	command                           []string
 }
 type runner struct {
 	out, err io.Writer
@@ -166,14 +166,14 @@ func (r *runner) update(t target) bool {
 		r.report(t.status, t.name, t.notice)
 		return false
 	}
-	before := t.version()
+	before := version(t.path)
 	cmd := exec.Command(t.command[0], t.command[1:]...)
 	cmd.Stdout, cmd.Stderr = r.out, r.err
 	if err := cmd.Run(); err != nil {
 		r.report("failed", t.name, err.Error())
 		return false
 	}
-	after := t.version()
+	after := version(t.path)
 	switch {
 	case before != "" && after != "" && before != after:
 		r.report("updated", t.name, before+" -> "+after)
@@ -183,17 +183,6 @@ func (r *runner) update(t target) bool {
 		r.report("checked", t.name, "command succeeded; version change unavailable")
 	}
 	return true
-}
-
-func (t target) version() string {
-	if len(t.versionCommand) == 0 {
-		return version(t.path)
-	}
-	out, err := exec.Command(t.versionCommand[0], t.versionCommand[1:]...).Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
 }
 
 func (r *runner) reconcile(t target, ready bool, outcomes map[string]bool) {

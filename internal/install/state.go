@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -117,10 +116,7 @@ func sorted(list []string) []string {
 }
 
 func (in *installer) saveState(s state) {
-	must(os.MkdirAll(in.stateDir(), 0o755))
-	data, err := json.MarshalIndent(s, "", "  ")
-	must(err)
-	must(statefile.Replace(in.statePath(), append(data, '\n')))
+	must(statefile.Write(in.statePath(), s))
 }
 
 func (in *installer) extractAssets() func() {
@@ -189,13 +185,9 @@ func copyManaged(source, dest string) {
 	if info.IsDir() {
 		must(os.CopyFS(next, os.DirFS(source)))
 	} else {
-		src, err := os.Open(source)
+		data, err := os.ReadFile(source)
 		must(err)
-		defer src.Close()
-		dst, err := os.OpenFile(next, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode().Perm())
-		must(err)
-		_, err = io.Copy(dst, src)
-		must(errors.Join(err, dst.Close()))
+		must(os.WriteFile(next, data, info.Mode().Perm()))
 	}
 	must(os.RemoveAll(dest))
 	must(os.Rename(next, dest))
