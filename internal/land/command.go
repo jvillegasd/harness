@@ -201,30 +201,20 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	return 2
 }
 
-// prNumbers converts positional arguments to pull request numbers, reporting
-// the first that is not one.
-func prNumbers(positional []string) ([]int, string) {
-	var numbers []int
-	for _, a := range positional {
-		n, err := strconv.Atoi(a)
-		if err != nil || n <= 0 {
-			return nil, a
-		}
-		numbers = append(numbers, n)
-	}
-	return numbers, ""
-}
-
 // parseNumbers parses a command whose positionals are all pull request numbers.
 func parseNumbers(prefix string, flags *flag.FlagSet, args []string, usage string, stdout, stderr io.Writer) ([]int, int) {
 	positional, code := cli.Parse(prefix, flags, args, usage, stdout, stderr)
 	if code >= 0 {
 		return nil, code
 	}
-	numbers, bad := prNumbers(positional)
-	if bad != "" {
-		fmt.Fprintf(stderr, "%s %s: %q is not a pull request number; run %s %s --help\n", prefix, flags.Name(), bad, prefix, flags.Name())
-		return nil, 2
+	var numbers []int
+	for _, a := range positional {
+		n, err := strconv.Atoi(a)
+		if err != nil || n <= 0 {
+			fmt.Fprintf(stderr, "%s %s: %q is not a pull request number; run %s %s --help\n", prefix, flags.Name(), a, prefix, flags.Name())
+			return nil, 2
+		}
+		numbers = append(numbers, n)
 	}
 	return numbers, -1
 }
