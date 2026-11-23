@@ -28,7 +28,7 @@ jvillegasd-mode's Deciding and getting stuck rules run the work, with one change
 
 ## Audit the trail
 
-Nobody watched this run, so the `## Decisions` table is what the human trusts in its place. Before the report, whatever ended the run:
+The human reads this run after the fact, so the `## Decisions` table is what they trust in place of watching it. you-got-this runs this audit too. Before the report, whatever ended the run:
 
 1. Walk the table against `git log <base>..HEAD` and the task document's evidence. Done when every row's evidence resolves and shows what the row claims, and every fork, pivot, revert, and default the run took has a row. Correct by appending a row that supersedes the wrong one, so the table stays a record of what was believed and when.
 2. Launch one fresh `worker` at the `high` tier through `delegation`, on a model family other than this session's. Give it the task document, the base and head, and the location of this session's record, and none of your reasoning. It reads the record itself and returns, cited by row or by location in the record, what the human should read first: an `agent` decision with weak or missing evidence, a check claimed without a run, a choice that widened the scope or covered a symptom, a decision the record shows and the table lacks. It flags and redoes nothing. When no other family can launch, use this one and say so.
