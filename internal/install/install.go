@@ -2,6 +2,7 @@ package install
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"maps"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/jvillegasd/harness/internal/agents"
 	"github.com/jvillegasd/harness/internal/checkout"
+	"github.com/jvillegasd/harness/internal/cli"
 	"github.com/jvillegasd/harness/internal/models"
 	"github.com/jvillegasd/harness/internal/skills"
 	"github.com/jvillegasd/harness/internal/ui"
@@ -167,29 +169,32 @@ func (in *installer) resolveLocations() {
 	}
 }
 
-func (in *installer) selectArg(args []string, i int, stderr io.Writer) (int, bool) {
-	arg := args[i]
-	switch {
-	case arg == "--client":
-		if i+1 == len(args) || !slices.Contains(allClients, args[i+1]) {
-			fmt.Fprintf(stderr, "harness %s: --client takes one of %s; run harness %s --help\n", in.verb, strings.Join(allClients, ", "), in.verb)
-			return i, false
+// parse reads the flags and component names every verb shares.
+func (in *installer) parse(flags *flag.FlagSet, args []string, usage string) int {
+	flags.Func("client", "", func(v string) error {
+		if !slices.Contains(allClients, v) {
+			return fmt.Errorf("takes one of %s", strings.Join(allClients, ", "))
 		}
-		if !slices.Contains(in.clients, args[i+1]) {
-			in.clients = append(in.clients, args[i+1])
+		if !slices.Contains(in.clients, v) {
+			in.clients = append(in.clients, v)
 		}
-		return i + 1, true
-	case slices.Contains(allComponents, arg):
-		if !slices.Contains(in.components, arg) {
-			in.components = append(in.components, arg)
-		}
-		return i, true
-	case strings.HasPrefix(arg, "-"):
-		fmt.Fprintf(stderr, "harness %s: unknown argument %q; run harness %s --help\n", in.verb, arg, in.verb)
-	default:
-		fmt.Fprintf(stderr, "harness %s: unknown component %q; it takes %s\n", in.verb, arg, strings.Join(allComponents, ", "))
+		return nil
+	})
+	flags.BoolVar(&in.verbose, "verbose", false, "")
+	positional, code := cli.Parse("harness", flags, args, usage, in.stdout, in.stderr)
+	if code >= 0 {
+		return code
 	}
-	return i, false
+	for _, c := range positional {
+		if !slices.Contains(allComponents, c) {
+			fmt.Fprintf(in.stderr, "harness %s: unknown component %q; it takes %s\n", in.verb, c, strings.Join(allComponents, ", "))
+			return 2
+		}
+		if !slices.Contains(in.components, c) {
+			in.components = append(in.components, c)
+		}
+	}
+	return -1
 }
 
 func inOrder(list, order []string) []string {
@@ -199,22 +204,10 @@ func inOrder(list, order []string) []string {
 func Command(args []string, stdout, stderr io.Writer) (code int) {
 	defer recoverFatal("install", stderr, &code)
 	in := &installer{verb: "install", stdout: stdout, stderr: stderr}
-	for i := 0; i < len(args); i++ {
-		switch arg := args[i]; arg {
-		case "--no-backup":
-			in.noBackup = true
-		case "--verbose":
-			in.verbose = true
-		case "-h", "--help":
-			fmt.Fprint(stdout, usage)
-			return 0
-		default:
-			next, ok := in.selectArg(args, i, stderr)
-			if !ok {
-				return 2
-			}
-			i = next
-		}
+	flags := flag.NewFlagSet("install", flag.ContinueOnError)
+	flags.BoolVar(&in.noBackup, "no-backup", false, "")
+	if code := in.parse(flags, args, usage); code >= 0 {
+		return code
 	}
 	in.resolveLocations()
 	defer in.extractAssets()()
@@ -225,29 +218,14 @@ func Command(args []string, stdout, stderr io.Writer) (code int) {
 func UninstallCommand(args []string, stdout, stderr io.Writer) (code int) {
 	defer recoverFatal("uninstall", stderr, &code)
 	in := &installer{verb: "uninstall", stdout: stdout, stderr: stderr}
-	clearBackups := false
-	for i := 0; i < len(args); i++ {
-		switch arg := args[i]; arg {
-		case "--yes":
-			in.yes = true
-		case "--all":
-			in.all = true
-		case "--clear-backups":
-			clearBackups = true
-		case "--verbose":
-			in.verbose = true
-		case "-h", "--help":
-			fmt.Fprint(stdout, uninstallUsage)
-			return 0
-		default:
-			next, ok := in.selectArg(args, i, stderr)
-			if !ok {
-				return 2
-			}
-			i = next
-		}
+	flags := flag.NewFlagSet("uninstall", flag.ContinueOnError)
+	flags.BoolVar(&in.yes, "yes", false, "")
+	flags.BoolVar(&in.all, "all", false, "")
+	clearBackups := flags.Bool("clear-backups", false, "")
+	if code := in.parse(flags, args, uninstallUsage); code >= 0 {
+		return code
 	}
-	if clearBackups && len(args) > 1 {
+	if *clearBackups && len(args) > 1 {
 		fmt.Fprintln(stderr, "harness uninstall: --clear-backups runs on its own; it removes no component.")
 		return 2
 	}
@@ -259,7 +237,7 @@ func UninstallCommand(args []string, stdout, stderr io.Writer) (code int) {
 	in.noBackup = true
 	in.resolveLocations()
 	fmt.Fprintln(stdout, ui.For(stdout).Title("harness uninstall"))
-	if clearBackups {
+	if *clearBackups {
 
 		in.clearBackups()
 		return 0

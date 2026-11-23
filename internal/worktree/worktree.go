@@ -1,12 +1,11 @@
 package worktree
 
 import (
-	"bytes"
 	"cmp"
 	"errors"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -23,7 +22,7 @@ type Tree struct {
 }
 
 func List(dir string) ([]Tree, error) {
-	out, err := git(dir, "worktree", "list", "--porcelain")
+	out, err := run.Git(dir, "worktree", "list", "--porcelain")
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +67,7 @@ func Inspect(t Tree, into string) (Status, error) {
 		s.State = "missing"
 		return s, nil
 	}
-	out, err := gitRaw(t.Path, "status", "--porcelain", "--ignored")
+	out, err := run.GitRaw(t.Path, "status", "--porcelain", "--ignored")
 	if err != nil {
 		return s, err
 	}
@@ -82,7 +81,7 @@ func Inspect(t Tree, into string) (Status, error) {
 	if t.Branch != "" {
 		s.Landed = Landed(t.Path, "refs/heads/"+t.Branch, into)
 	} else {
-		held, err := git(t.Path, "for-each-ref", "--count=1", "--contains", t.Head)
+		held, err := run.Git(t.Path, "for-each-ref", "--count=1", "--contains", t.Head)
 		if err != nil {
 			return s, err
 		}
@@ -106,25 +105,25 @@ func Inspect(t Tree, into string) (Status, error) {
 }
 
 func Landed(dir, rev, into string) bool {
-	if _, err := git(dir, "merge-base", "--is-ancestor", rev, into); err == nil {
+	if _, err := run.Git(dir, "merge-base", "--is-ancestor", rev, into); err == nil {
 		return true
 	}
-	merged, err := git(dir, "merge-tree", "--write-tree", into, rev)
+	merged, err := run.Git(dir, "merge-tree", "--write-tree", into, rev)
 	if err != nil {
 		return false
 	}
-	tree, err := git(dir, "rev-parse", "--verify", into+"^{tree}")
+	tree, err := run.Git(dir, "rev-parse", "--verify", into+"^{tree}")
 	first, _, _ := strings.Cut(merged, "\n")
 	return err == nil && first == tree
 }
 
 func DefaultInto(dir string) (string, error) {
-	head, _ := git(dir, "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
+	head, _ := run.Git(dir, "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
 	for _, ref := range []string{head, "origin/main", "origin/master"} {
 		if ref == "" {
 			continue
 		}
-		if _, err := git(dir, "rev-parse", "--verify", "--quiet", ref+"^{commit}"); err == nil {
+		if _, err := run.Git(dir, "rev-parse", "--verify", "--quiet", ref+"^{commit}"); err == nil {
 			return ref, nil
 		}
 	}
@@ -193,10 +192,10 @@ func Retire(dir, path string, o Options) ([]string, error) {
 	remove := []string{"worktree", "remove", s.Path}
 	if save {
 		from := cmp.Or(o.At, "HEAD")
-		if _, err := git(s.Path, "add", "-A", "."); err != nil {
+		if _, err := run.Git(s.Path, "add", "-A", "."); err != nil {
 			return nil, err
 		}
-		patch, err := gitRaw(s.Path, "diff", "--cached", "--binary", from)
+		patch, err := run.GitRaw(s.Path, "diff", "--cached", "--binary", from)
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +209,7 @@ func Retire(dir, path string, o Options) ([]string, error) {
 		remove = []string{"worktree", "remove", "--force", s.Path}
 	}
 
-	if _, err := git(trees[0].Path, remove...); err != nil {
+	if _, err := run.Git(trees[0].Path, remove...); err != nil {
 		return done, err
 	}
 	done = append(done, "removed worktree "+s.Path)
@@ -220,7 +219,7 @@ func Retire(dir, path string, o Options) ([]string, error) {
 	if o.KeepBranch {
 		return append(done, "kept branch "+s.Branch), nil
 	}
-	if _, err := git(trees[0].Path, "branch", "-D", s.Branch); err != nil {
+	if _, err := run.Git(trees[0].Path, "branch", "-D", s.Branch); err != nil {
 		return done, err
 	}
 	return append(done, "deleted branch "+s.Branch), nil
@@ -236,7 +235,7 @@ func RetireBranch(dir, branch, into string) ([]string, error) {
 			return nil, fmt.Errorf("%w: worktree %s holds branch %s; retire that worktree instead", ErrRefused, t.Path, branch)
 		}
 	}
-	if _, err := git(dir, "rev-parse", "--verify", "--quiet", "refs/heads/"+branch); err != nil {
+	if _, err := run.Git(dir, "rev-parse", "--verify", "--quiet", "refs/heads/"+branch); err != nil {
 		return nil, nil
 	}
 	if isInto(branch, into) {
@@ -245,7 +244,7 @@ func RetireBranch(dir, branch, into string) ([]string, error) {
 	if !Landed(dir, "refs/heads/"+branch, into) {
 		return nil, fmt.Errorf("%w: branch %s is not proven landed on %s", ErrRefused, branch, into)
 	}
-	if _, err := git(trees[0].Path, "branch", "-D", branch); err != nil {
+	if _, err := run.Git(trees[0].Path, "branch", "-D", branch); err != nil {
 		return nil, err
 	}
 	return []string{"deleted branch " + branch}, nil
@@ -266,20 +265,4 @@ func samePath(a, b string) bool {
 		return filepath.Clean(p)
 	}
 	return resolve(a) == resolve(b)
-}
-
-func git(dir string, args ...string) (string, error) {
-	out, err := gitRaw(dir, args...)
-	return strings.TrimSpace(string(out)), err
-}
-
-func gitRaw(dir string, args ...string) ([]byte, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
-	}
-	return stdout.Bytes(), nil
 }

@@ -3,6 +3,7 @@ package land
 import (
 	"errors"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"strings"
 
 	"github.com/jvillegasd/harness/internal/review"
@@ -24,7 +25,7 @@ func (a Action) String() string {
 var ErrDiverged = errors.New("cannot fast-forward")
 
 func (e Env) defaultBranch() (root, def string, err error) {
-	root, err = git(e.Dir, "rev-parse", "--show-toplevel")
+	root, err = run.Git(e.Dir, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", "", errors.New("not inside a git repository")
 	}
@@ -47,21 +48,21 @@ func Sync(e Env) (Action, error) {
 }
 
 func sync(root, def string) (Action, error) {
-	if _, err := git(root, "fetch", "--quiet", "--prune", "origin"); err != nil {
+	if _, err := run.Git(root, "fetch", "--quiet", "--prune", "origin"); err != nil {
 		return Action{}, err
 	}
-	remote, err := git(root, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+def)
+	remote, err := run.Git(root, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+def)
 	if err != nil {
 		return Action{}, fmt.Errorf("origin has no %s", def)
 	}
-	local, err := git(root, "rev-parse", "--verify", "--quiet", "refs/heads/"+def)
+	local, err := run.Git(root, "rev-parse", "--verify", "--quiet", "refs/heads/"+def)
 	if err != nil {
 		return Action{false, fmt.Sprintf("%s: no local branch to fast-forward", def)}, nil
 	}
 	if local == remote {
 		return Action{false, fmt.Sprintf("%s: already at origin/%s %s", def, def, short(remote))}, nil
 	}
-	if _, err := git(root, "merge-base", "--is-ancestor", local, remote); err != nil {
+	if _, err := run.Git(root, "merge-base", "--is-ancestor", local, remote); err != nil {
 		return Action{false, fmt.Sprintf("%s: local %s is not behind origin/%s %s", def, short(local), def, short(remote))}, fmt.Errorf("%w: %s has commits origin/%s lacks; it was left as it is", ErrDiverged, def, def)
 	}
 	trees, err := worktree.List(root)
@@ -70,14 +71,14 @@ func sync(root, def string) (Action, error) {
 	}
 	for _, t := range trees {
 		if t.Branch == def {
-			if _, err := git(t.Path, "merge", "--ff-only", "--quiet", "origin/"+def); err != nil {
+			if _, err := run.Git(t.Path, "merge", "--ff-only", "--quiet", "origin/"+def); err != nil {
 				return Action{false, fmt.Sprintf("%s: the fast-forward in %s failed", def, t.Path)}, err
 			}
 			return Action{true, fmt.Sprintf("fast-forwarded %s to %s in %s", def, short(remote), t.Path)}, nil
 		}
 	}
 
-	if _, err := git(root, "update-ref", "refs/heads/"+def, remote, local); err != nil {
+	if _, err := run.Git(root, "update-ref", "refs/heads/"+def, remote, local); err != nil {
 		return Action{}, err
 	}
 	return Action{true, fmt.Sprintf("fast-forwarded %s to %s", def, short(remote))}, nil
@@ -187,10 +188,10 @@ func Finish(e Env, numbers []int, o FinishOptions) ([]Action, error) {
 }
 
 func (e Env) deleteRemote(root string, p pull, me string) (Action, error) {
-	if _, err := git(root, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+p.HeadRefName); err != nil {
+	if _, err := run.Git(root, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+p.HeadRefName); err != nil {
 		return Action{}, nil
 	}
-	if tip, _ := git(root, "rev-parse", "refs/remotes/origin/"+p.HeadRefName); tip != p.HeadRefOid {
+	if tip, _ := run.Git(root, "rev-parse", "refs/remotes/origin/"+p.HeadRefName); tip != p.HeadRefOid {
 		return Action{false, fmt.Sprintf("#%d remote branch %s: it moved to %s after the merged head %s", p.Number, p.HeadRefName, short(tip), short(p.HeadRefOid))}, nil
 	}
 	if p.Author.Login != me {
@@ -213,7 +214,7 @@ func (e Env) deleteRemote(root string, p pull, me string) (Action, error) {
 		}
 		return Action{false, fmt.Sprintf("#%d remote branch %s: %s still based on it", p.Number, p.HeadRefName, strings.Join(ns, ", "))}, nil
 	}
-	if _, err := git(root, "push", "--quiet", "origin", "--delete", p.HeadRefName); err != nil {
+	if _, err := run.Git(root, "push", "--quiet", "origin", "--delete", p.HeadRefName); err != nil {
 		return Action{}, err
 	}
 	return Action{true, fmt.Sprintf("#%d deleted remote branch %s", p.Number, p.HeadRefName)}, nil
@@ -226,7 +227,7 @@ func (e Env) retireHere(root string, here worktree.Tree, def, into string, o Fin
 	if o.KeepBranch {
 		return []string{"kept branch " + here.Branch + " in the main worktree"}, nil
 	}
-	if _, err := git(root, "switch", "--quiet", def); err != nil {
+	if _, err := run.Git(root, "switch", "--quiet", def); err != nil {
 		return nil, err
 	}
 	done, err := worktree.RetireBranch(root, here.Branch, into)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"io/fs"
 	"os"
 	"path"
@@ -106,7 +107,7 @@ func EffectiveConfig(root, mergeBase string) (Config, error) {
 		return Config{}, err
 	}
 	revs := []string{mergeBase}
-	if def, err := git(root, "merge-base", "HEAD", DefaultBase(root)); err == nil {
+	if def, err := run.Git(root, "merge-base", "HEAD", DefaultBase(root)); err == nil {
 		revs = append(revs, strings.TrimSpace(def))
 	}
 	cfg := Config{}
@@ -135,14 +136,14 @@ func EffectiveConfig(root, mergeBase string) (Config, error) {
 }
 
 func configAt(root, rev string) (Config, error) {
-	if _, err := git(root, "cat-file", "-e", rev+":"+ConfigPath); err != nil {
+	if _, err := run.Git(root, "cat-file", "-e", rev+":"+ConfigPath); err != nil {
 		return Config{}, nil
 	}
-	raw, err := git(root, "show", rev+":"+ConfigPath)
+	raw, err := run.GitRaw(root, "show", rev+":"+ConfigPath)
 	if err != nil {
 		return Config{}, err
 	}
-	cfg, err := parseConfig([]byte(raw), ConfigPath+" at "+rev[:min(12, len(rev))])
+	cfg, err := parseConfig(raw, ConfigPath+" at "+rev[:min(12, len(rev))])
 	if err != nil {
 		return Config{}, fmt.Errorf("%v; fix it on the default branch, because the committed base config still sets the floor", err)
 	}

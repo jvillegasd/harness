@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -62,16 +62,16 @@ func Command(args []string, stdout, stderr io.Writer) int {
 }
 
 func Context(dir string) string {
-	root, err := git(dir, "rev-parse", "--show-toplevel")
+	root, err := run.Git(dir, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return ""
 	}
 	dir = root
-	branch, err := git(dir, "rev-parse", "--abbrev-ref", "HEAD")
+	branch, err := run.Git(dir, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
 		return ""
 	}
-	head, _ := git(dir, "log", "-1", "--format=%h %s")
+	head, _ := run.Git(dir, "log", "-1", "--format=%h %s")
 	var b strings.Builder
 	fmt.Fprintln(&b, "Task context restored after compaction:")
 	fmt.Fprintf(&b, "- branch: %s\n- HEAD: %s\n", branch, head)
@@ -101,10 +101,10 @@ func changedTaskDocs(dir string) []string {
 		}
 	}
 	if base := mergeBase(dir); base != "" {
-		out, _ := git(dir, "diff", "--name-only", "--diff-filter=d", base, "--", tasksDir)
+		out, _ := run.Git(dir, "diff", "--name-only", "--diff-filter=d", base, "--", tasksDir)
 		add(out)
 	}
-	out, _ := git(dir, "ls-files", "--others", "--", tasksDir)
+	out, _ := run.Git(dir, "ls-files", "--others", "--", tasksDir)
 	add(out)
 	return docs
 }
@@ -112,7 +112,7 @@ func changedTaskDocs(dir string) []string {
 // Exclude adds the task documents folder to the clone's info/exclude, which
 // the clone's worktrees share, so task documents stay local.
 func Exclude(dir string) error {
-	path, err := git(dir, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	path, err := run.Git(dir, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
 		return fmt.Errorf("not inside a git repository")
 	}
@@ -139,7 +139,7 @@ func Exclude(dir string) error {
 
 func mergeBase(dir string) string {
 	for _, ref := range []string{"origin/HEAD", "main", "master"} {
-		if base, err := git(dir, "merge-base", "HEAD", ref); err == nil {
+		if base, err := run.Git(dir, "merge-base", "HEAD", ref); err == nil {
 			return base
 		}
 	}
@@ -171,14 +171,4 @@ func nextAction(root, doc string) string {
 		}
 	}
 	return strings.TrimSpace(strings.Join(lines, "\n"))
-}
-
-func git(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
-	if err := cmd.Run(); err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(stdout.String()), nil
 }

@@ -2,6 +2,7 @@ package land
 
 import (
 	"errors"
+	"github.com/jvillegasd/harness/internal/run"
 	"os"
 	"path/filepath"
 	"strings"
@@ -90,7 +91,7 @@ func exists(path string) bool {
 }
 
 func (f *fixture) has(ref string) bool {
-	_, err := git(f.dir, "rev-parse", "--verify", "--quiet", ref)
+	_, err := run.Git(f.dir, "rev-parse", "--verify", "--quiet", ref)
 	return err == nil
 }
 

@@ -13,7 +13,7 @@ func TestTargetKeyMatchesLandCheck(t *testing.T) {
 	fork := f.open(2, "patch", "main", map[string]string{"b.go": "b\n"})
 	fork.IsCrossRepository = true
 	for _, n := range []int{1, 2} {
-		target, err := review.ResolveTarget(f.dir, review.Forge(f.forge), strconv.Itoa(n))
+		target, err := review.ResolveTarget(f.dir, f.forge, strconv.Itoa(n))
 		if err != nil {
 			t.Fatal(err)
 		}

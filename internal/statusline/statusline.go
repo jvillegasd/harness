@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -113,11 +113,11 @@ func render(input []byte, env environment) string {
 	dirname := filepath.Base(cwd)
 
 	var branch, dirty string
-	if inside, err := git(cwd, "rev-parse", "--is-inside-work-tree"); err == nil && strings.TrimSpace(inside) == "true" {
-		if out, err := git(cwd, "symbolic-ref", "--short", "HEAD"); err == nil {
+	if inside, err := run.Git(cwd, "rev-parse", "--is-inside-work-tree"); err == nil && strings.TrimSpace(inside) == "true" {
+		if out, err := run.Git(cwd, "symbolic-ref", "--short", "HEAD"); err == nil {
 			branch = strings.TrimSpace(out)
 		}
-		if out, err := git(cwd, "status", "--porcelain"); err == nil && strings.TrimSpace(out) != "" {
+		if out, err := run.Git(cwd, "status", "--porcelain"); err == nil && strings.TrimSpace(out) != "" {
 			dirty = "*"
 		}
 	}
@@ -205,11 +205,6 @@ func buildBar(pct, width int) string {
 	pct = min(max(pct, 0), 100)
 	filled := pct * width / 100
 	return colorForPct(pct) + strings.Repeat("●", filled) + dim + strings.Repeat("○", width-filled) + reset
-}
-
-func git(dir string, args ...string) (string, error) {
-	out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).Output()
-	return string(out), err
 }
 
 func lookup(doc map[string]any, keys ...string) any {

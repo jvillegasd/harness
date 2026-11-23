@@ -1,14 +1,12 @@
 package review
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 var (
@@ -33,7 +31,7 @@ func Dir(root, key string) (string, error) {
 }
 
 func BranchesDir(root string) (string, error) {
-	common, err := git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	common, err := run.Git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
 		return "", err
 	}
@@ -86,15 +84,4 @@ func RemoveBranch(dir string) (bool, error) {
 		return false, fmt.Errorf("%w in %s; retire it with harness review worktree retire, then remove again", ErrHeld, filepath.Join(dir, "worktree.txt"))
 	}
 	return true, os.RemoveAll(dir)
-}
-
-func git(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
-	}
-	return strings.TrimSpace(stdout.String()), nil
 }

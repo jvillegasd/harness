@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"os"
 	"path/filepath"
 	"slices"
@@ -27,7 +28,7 @@ type Repair struct {
 }
 
 func repairFile(root string, number int) (string, error) {
-	common, err := git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	common, err := run.Git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
 		return "", err
 	}
@@ -66,19 +67,19 @@ func RepairDependent(e Env, dependent, landed int) (Repair, error) {
 		return refuse("it is %s's, whose branch is theirs to rebase", d.Author.Login)
 	}
 	for _, ref := range []string{def, fmt.Sprintf("refs/pull/%d/head", landed), fmt.Sprintf("refs/pull/%d/head", dependent)} {
-		if _, err := git(root, "fetch", "--quiet", "origin", ref); err != nil {
+		if _, err := run.Git(root, "fetch", "--quiet", "origin", ref); err != nil {
 			return Repair{}, err
 		}
 	}
 	onto := "refs/remotes/origin/" + def
 	lease, landedHead := d.HeadRefOid, l.HeadRefOid
 	for _, sha := range []string{lease, landedHead} {
-		if _, err := git(root, "cat-file", "-e", sha+"^{commit}"); err != nil {
+		if _, err := run.Git(root, "cat-file", "-e", sha+"^{commit}"); err != nil {
 			return Repair{}, fmt.Errorf("the fetched pull requests do not hold %s; run again", sha)
 		}
 	}
 
-	if merges, err := git(root, "rev-list", "--merges", onto+".."+lease); err != nil {
+	if merges, err := run.Git(root, "rev-list", "--merges", onto+".."+lease); err != nil {
 		return Repair{}, err
 	} else if merges != "" {
 		return refuse("it holds a merge commit, so its own commits cannot be told apart: %s", short(strings.Fields(merges)[0]))
@@ -92,8 +93,8 @@ func RepairDependent(e Env, dependent, landed int) (Repair, error) {
 		return refuse("none of its commits are already in #%d's head, so the commit it was built on is unknown", landed)
 	}
 
-	merged, err := git(root, "merge-tree", "--write-tree", onto, boundary)
-	tree, _ := git(root, "rev-parse", onto+"^{tree}")
+	merged, err := run.Git(root, "merge-tree", "--write-tree", onto, boundary)
+	tree, _ := run.Git(root, "rev-parse", onto+"^{tree}")
 	if first, _, _ := strings.Cut(merged, "\n"); err != nil || first != tree {
 		return refuse("its commits up to %s are not all on %s, so rebasing from there would drop its own work", short(boundary), def)
 	}
@@ -117,7 +118,7 @@ func RepairDependent(e Env, dependent, landed int) (Repair, error) {
 		if t.Head != lease {
 			return refuse("its checkout %s is at %s, not the pull request's head %s; push or reset it first", t.Path, short(t.Head), short(lease))
 		}
-		if status, err := git(t.Path, "status", "--porcelain"); err != nil || status != "" {
+		if status, err := run.Git(t.Path, "status", "--porcelain"); err != nil || status != "" {
 			return refuse("its checkout %s has uncommitted changes", t.Path)
 		}
 		r.Worktree = t.Path
@@ -132,7 +133,7 @@ func RepairDependent(e Env, dependent, landed int) (Repair, error) {
 			return Repair{}, err
 		}
 		r.Worktree, r.Temporary = filepath.Join(parent, "dependent"), true
-		if _, err := git(root, "-c", "core.hooksPath=/dev/null", "worktree", "add", "--quiet", "--detach", r.Worktree, lease); err != nil {
+		if _, err := run.Git(root, "-c", "core.hooksPath=/dev/null", "worktree", "add", "--quiet", "--detach", r.Worktree, lease); err != nil {
 			os.RemoveAll(parent)
 			return Repair{}, err
 		}
@@ -141,18 +142,18 @@ func RepairDependent(e Env, dependent, landed int) (Repair, error) {
 	undo := func() {
 		e.Forge("pr", "edit", strconv.Itoa(dependent), "--base", d.BaseRefName)
 		if r.Temporary {
-			git(root, "worktree", "remove", "--force", r.Worktree)
+			run.Git(root, "worktree", "remove", "--force", r.Worktree)
 			os.RemoveAll(filepath.Dir(r.Worktree))
 		} else {
-			git(r.Worktree, "reset", "--quiet", "--hard", lease)
+			run.Git(r.Worktree, "reset", "--quiet", "--hard", lease)
 		}
 	}
-	if _, err := git(r.Worktree, "-c", "core.hooksPath=/dev/null", "rebase", "--quiet", "--onto", onto, boundary); err != nil {
-		git(r.Worktree, "rebase", "--abort")
+	if _, err := run.Git(r.Worktree, "-c", "core.hooksPath=/dev/null", "rebase", "--quiet", "--onto", onto, boundary); err != nil {
+		run.Git(r.Worktree, "rebase", "--abort")
 		undo()
 		return Repair{}, fmt.Errorf("the rebase onto %s conflicted, so the branch was left as it was: %w", def, err)
 	}
-	if r.Rebased, err = git(r.Worktree, "rev-parse", "HEAD"); err != nil {
+	if r.Rebased, err = run.Git(r.Worktree, "rev-parse", "HEAD"); err != nil {
 		undo()
 		return Repair{}, err
 	}
@@ -182,10 +183,10 @@ func RepairDependent(e Env, dependent, landed int) (Repair, error) {
 }
 
 func findBoundary(root, landedHead, lease string) (string, error) {
-	if _, err := git(root, "merge-base", "--is-ancestor", landedHead, lease); err == nil {
+	if _, err := run.Git(root, "merge-base", "--is-ancestor", landedHead, lease); err == nil {
 		return landedHead, nil
 	}
-	out, err := git(root, "cherry", landedHead, lease)
+	out, err := run.Git(root, "cherry", landedHead, lease)
 	if err != nil {
 		return "", err
 	}
@@ -229,7 +230,7 @@ func differing(a, b map[string]string) []string {
 }
 
 func PushRepair(e Env, dependent int) (Repair, error) {
-	root, err := git(e.Dir, "rev-parse", "--show-toplevel")
+	root, err := run.Git(e.Dir, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return Repair{}, errors.New("not inside a git repository")
 	}
@@ -248,12 +249,12 @@ func PushRepair(e Env, dependent int) (Repair, error) {
 	if err := json.Unmarshal(raw, &r); err != nil {
 		return Repair{}, fmt.Errorf("%s: %w", file, err)
 	}
-	if head, err := git(r.Worktree, "rev-parse", "HEAD"); err != nil || head != r.Rebased {
+	if head, err := run.Git(r.Worktree, "rev-parse", "HEAD"); err != nil || head != r.Rebased {
 		return r, fmt.Errorf("%s is no longer at the rebased head %s; repair again", r.Worktree, short(r.Rebased))
 	}
-	_, pushErr := git(root, "push", "--quiet", "--force-with-lease=refs/heads/"+r.Branch+":"+r.Lease, "origin", r.Rebased+":refs/heads/"+r.Branch)
+	_, pushErr := run.Git(root, "push", "--quiet", "--force-with-lease=refs/heads/"+r.Branch+":"+r.Lease, "origin", r.Rebased+":refs/heads/"+r.Branch)
 	if r.Temporary {
-		if _, err := git(root, "worktree", "remove", "--force", r.Worktree); err != nil {
+		if _, err := run.Git(root, "worktree", "remove", "--force", r.Worktree); err != nil {
 			return r, err
 		}
 		os.RemoveAll(filepath.Dir(r.Worktree))

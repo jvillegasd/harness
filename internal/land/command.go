@@ -2,10 +2,13 @@ package land
 
 import (
 	"encoding/json"
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"strconv"
 
+	"github.com/jvillegasd/harness/internal/cli"
 	"github.com/jvillegasd/harness/internal/ui"
 )
 
@@ -198,28 +201,33 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	return 2
 }
 
-func check(args []string, stdout, stderr io.Writer) int {
-	var numbers []int
-	merge, stack := false, false
-	for _, a := range args {
-		switch a {
-		case "-h", "--help":
-			fmt.Fprint(stdout, checkUsage)
-			return 0
-		case "--merge":
-			merge = true
-		case "--stack":
-			stack = true
-		default:
-			n, err := strconv.Atoi(a)
-			if err != nil || n <= 0 {
-				fmt.Fprintf(stderr, "harness land check: %q is not a pull request number or a flag; run harness land check --help\n", a)
-				return 2
-			}
-			numbers = append(numbers, n)
-		}
+// parseNumbers parses a command whose positionals are all pull request numbers.
+func parseNumbers(prefix string, flags *flag.FlagSet, args []string, usage string, stdout, stderr io.Writer) ([]int, int) {
+	positional, code := cli.Parse(prefix, flags, args, usage, stdout, stderr)
+	if code >= 0 {
+		return nil, code
 	}
-	if stack && len(numbers) != 1 {
+	var numbers []int
+	for _, a := range positional {
+		n, err := strconv.Atoi(a)
+		if err != nil || n <= 0 {
+			fmt.Fprintf(stderr, "%s %s: %q is not a pull request number; run %s %s --help\n", prefix, flags.Name(), a, prefix, flags.Name())
+			return nil, 2
+		}
+		numbers = append(numbers, n)
+	}
+	return numbers, -1
+}
+
+func check(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("check", flag.ContinueOnError)
+	merge := flags.Bool("merge", false, "")
+	stack := flags.Bool("stack", false, "")
+	numbers, code := parseNumbers("harness land", flags, args, checkUsage, stdout, stderr)
+	if code >= 0 {
+		return code
+	}
+	if *stack && len(numbers) != 1 {
 		fmt.Fprintln(stderr, "harness land check: --stack takes exactly one pull request number, the stack's tip")
 		return 2
 	}
@@ -231,7 +239,7 @@ func check(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail(err)
 	}
-	checks, err := Run(e, numbers, stack, merge)
+	checks, err := Run(e, numbers, *stack, *merge)
 	if err != nil {
 		return fail(err)
 	}
@@ -241,14 +249,12 @@ func check(args []string, stdout, stderr io.Writer) int {
 }
 
 func syncCommand(args []string, stdout, stderr io.Writer) int {
-	for _, a := range args {
-		if a == "-h" || a == "--help" {
-			fmt.Fprint(stdout, syncUsage)
-			return 0
-		}
+	positional, code := cli.Parse("harness land", flag.NewFlagSet("sync", flag.ContinueOnError), args, syncUsage, stdout, stderr)
+	if code >= 0 {
+		return code
 	}
-	if len(args) > 0 {
-		fmt.Fprintf(stderr, "harness land sync: unexpected argument %q; run harness land sync --help\n", args[0])
+	if len(positional) > 0 {
+		fmt.Fprintf(stderr, "harness land sync: unexpected argument %q; run harness land sync --help\n", positional[0])
 		return 2
 	}
 	e, err := cwdEnv()
@@ -268,25 +274,13 @@ func syncCommand(args []string, stdout, stderr io.Writer) int {
 }
 
 func finish(args []string, stdout, stderr io.Writer) int {
-	var numbers []int
+	flags := flag.NewFlagSet("finish", flag.ContinueOnError)
 	var o FinishOptions
-	for _, a := range args {
-		switch a {
-		case "-h", "--help":
-			fmt.Fprint(stdout, finishUsage)
-			return 0
-		case "--allow-ignored":
-			o.AllowIgnored = true
-		case "--keep-branch":
-			o.KeepBranch = true
-		default:
-			n, err := strconv.Atoi(a)
-			if err != nil || n <= 0 {
-				fmt.Fprintf(stderr, "harness land finish: %q is not a pull request number or a flag; run harness land finish --help\n", a)
-				return 2
-			}
-			numbers = append(numbers, n)
-		}
+	flags.BoolVar(&o.AllowIgnored, "allow-ignored", false, "")
+	flags.BoolVar(&o.KeepBranch, "keep-branch", false, "")
+	numbers, code := parseNumbers("harness land", flags, args, finishUsage, stdout, stderr)
+	if code >= 0 {
+		return code
 	}
 	if len(numbers) == 0 {
 		fmt.Fprintln(stderr, "harness land finish: name the merged pull requests; run harness land finish --help")
@@ -328,40 +322,30 @@ func repair(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness land repair: "+format+"; run harness land repair --help\n", a...)
 		return 2
 	}
-	dependent, landed, push := 0, 0, false
-	for i := 0; i < len(args); i++ {
-		switch a := args[i]; a {
-		case "-h", "--help":
-			fmt.Fprint(stdout, repairUsage)
-			return 0
-		case "--push":
-			push = true
-		case "--landed":
-			if i+1 < len(args) {
-				i++
-				landed, _ = strconv.Atoi(args[i])
-			}
-			if landed <= 0 {
-				return usage("--landed takes a pull request number")
-			}
-		default:
-			n, err := strconv.Atoi(a)
-			if err != nil || n <= 0 || dependent != 0 {
-				return usage("%q is not the one dependent pull request number or a flag", a)
-			}
-			dependent = n
+	flags := flag.NewFlagSet("repair", flag.ContinueOnError)
+	landed := 0
+	push := flags.Bool("push", false, "")
+	flags.Func("landed", "", func(v string) (err error) {
+		if landed, err = strconv.Atoi(v); err != nil || landed <= 0 {
+			return errors.New("takes a pull request number")
 		}
+		return nil
+	})
+	numbers, code := parseNumbers("harness land", flags, args, repairUsage, stdout, stderr)
+	if code >= 0 {
+		return code
 	}
-	if dependent == 0 || push == (landed != 0) {
-		return usage("give the dependent pull request and either --landed <pr> or --push")
+	if len(numbers) != 1 || *push == (landed != 0) {
+		return usage("give the one dependent pull request and either --landed <pr> or --push")
 	}
+	dependent := numbers[0]
 	e, err := cwdEnv()
 	if err != nil {
 		fmt.Fprintf(stderr, "harness land repair: %v\n", err)
 		return 1
 	}
 	var r Repair
-	if push {
+	if *push {
 		r, err = PushRepair(e, dependent)
 	} else {
 		r, err = RepairDependent(e, dependent, landed)
@@ -380,41 +364,25 @@ func merge(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "harness land merge: "+format+"; run harness land merge --help\n", a...)
 		return 2
 	}
-	number, head, body, accepted := 0, "", "", false
-	for i := 0; i < len(args); i++ {
-		switch a := args[i]; a {
-		case "-h", "--help":
-			fmt.Fprint(stdout, mergeUsage)
-			return 0
-		case "--accepted":
-			accepted = true
-		case "--head", "--body-file":
-			if i+1 >= len(args) || args[i+1] == "" {
-				return usage("%s takes a value", a)
-			}
-			i++
-			if a == "--head" {
-				head = args[i]
-			} else {
-				body = args[i]
-			}
-		default:
-			n, err := strconv.Atoi(a)
-			if err != nil || n <= 0 || number != 0 {
-				return usage("%q is not the one pull request number or a flag", a)
-			}
-			number = n
-		}
+	flags := flag.NewFlagSet("merge", flag.ContinueOnError)
+	var head, body string
+	accepted := flags.Bool("accepted", false, "")
+	flags.StringVar(&head, "head", "", "")
+	flags.StringVar(&body, "body-file", "", "")
+	numbers, code := parseNumbers("harness land", flags, args, mergeUsage, stdout, stderr)
+	if code >= 0 {
+		return code
 	}
-	if number == 0 || head == "" || body == "" {
-		return usage("give the pull request, --head, and --body-file")
+	if len(numbers) != 1 || head == "" || body == "" {
+		return usage("give the one pull request, --head, and --body-file")
 	}
+	number := numbers[0]
 	e, err := cwdEnv()
 	if err != nil {
 		fmt.Fprintf(stderr, "harness land merge: %v\n", err)
 		return 1
 	}
-	m, err := Merge(e, number, head, body, accepted)
+	m, err := Merge(e, number, head, body, *accepted)
 	if m.State != "" {
 		out, _ := json.MarshalIndent(m, "", "  ")
 		fmt.Fprintln(stdout, string(out))

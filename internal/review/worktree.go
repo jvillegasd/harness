@@ -3,6 +3,7 @@ package review
 import (
 	"errors"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -97,7 +98,7 @@ func AddWorktree(root, key, sha, patch string) (string, error) {
 			return "", err
 		}
 	}
-	if _, err := git(root, "-c", "core.hooksPath=/dev/null", "worktree", "add", "--quiet", "--detach", path, full); err != nil {
+	if _, err := run.Git(root, "-c", "core.hooksPath=/dev/null", "worktree", "add", "--quiet", "--detach", path, full); err != nil {
 		return "", err
 	}
 	if patch != "" {
@@ -105,7 +106,7 @@ func AddWorktree(root, key, sha, patch string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if _, err := git(path, "apply", "--binary", abs); err != nil {
+		if _, err := run.Git(path, "apply", "--binary", abs); err != nil {
 			return "", fmt.Errorf("the worktree %s was created, but the patch did not apply: %w", path, err)
 		}
 	}
@@ -138,7 +139,7 @@ func RetireWorktree(root, key string, allowIgnored bool) ([]string, error) {
 	case tree == nil:
 		done = append(done, "no worktree at "+path+": it was never created or is already gone")
 	case tree.Prunable:
-		if _, err := git(root, "worktree", "prune"); err != nil {
+		if _, err := run.Git(root, "worktree", "prune"); err != nil {
 			return nil, err
 		}
 		done = append(done, "pruned "+path+", whose directory was already gone")

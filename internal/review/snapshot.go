@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/run"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,7 +16,7 @@ func Snapshot(root, base, branchKey string, owned []string) (path, digest string
 	if len(owned) == 0 {
 		return "", "", fmt.Errorf("%w: at least one owned path is required", ErrInvalid)
 	}
-	resolvedBase, err := git(root, "rev-parse", "--verify", "--end-of-options", base+"^{commit}")
+	resolvedBase, err := run.Git(root, "rev-parse", "--verify", "--end-of-options", base+"^{commit}")
 	if err != nil {
 		return "", "", fmt.Errorf("%w: base %q does not name a commit", ErrInvalid, base)
 	}

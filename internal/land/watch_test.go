@@ -2,6 +2,7 @@ package land
 
 import (
 	"errors"
+	"github.com/jvillegasd/harness/internal/run"
 	"testing"
 	"time"
 )
@@ -105,7 +106,7 @@ func TestWatchRetries(t *testing.T) {
 	f.open(1, "docs", "main", map[string]string{"README.md": "more\n"})
 	c := &fakeClock{now: time.Unix(0, 0)}
 	pass := 0
-	flaky := func(fail int) Forge {
+	flaky := func(fail int) run.Forge {
 		pass = 0
 		return func(args ...string) ([]byte, error) {
 			if args[0] == "repo" {

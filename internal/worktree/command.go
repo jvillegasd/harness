@@ -2,9 +2,10 @@ package worktree
 
 import (
 	"cmp"
-	"errors"
 	"flag"
 	"fmt"
+	"github.com/jvillegasd/harness/internal/cli"
+	"github.com/jvillegasd/harness/internal/run"
 	"io"
 	"os"
 	"strconv"
@@ -87,23 +88,10 @@ func Command(args []string, stdout, stderr io.Writer) int {
 	return 2
 }
 
-func parse(flags *flag.FlagSet, args []string, text string, stdout, stderr io.Writer) int {
-	flags.SetOutput(io.Discard)
-	if err := flags.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			fmt.Fprint(stdout, text)
-			return 0
-		}
-		fmt.Fprintf(stderr, "harness worktree %s: %v\n%s", flags.Name(), err, text)
-		return 2
-	}
-	return -1
-}
-
 func repository(name string, stderr io.Writer) (string, bool) {
 	cwd, err := os.Getwd()
 	if err == nil {
-		_, err = git(cwd, "rev-parse", "--git-dir")
+		_, err = run.Git(cwd, "rev-parse", "--git-dir")
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "harness worktree %s: not inside a git repository\n", name)
@@ -116,11 +104,12 @@ func audit(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("audit", flag.ContinueOnError)
 	into := flags.String("into", "", "")
 	withForge := flags.Bool("forge", false, "")
-	if code := parse(flags, args, auditUsage, stdout, stderr); code >= 0 {
+	positional, code := cli.Parse("harness worktree", flags, args, auditUsage, stdout, stderr)
+	if code >= 0 {
 		return code
 	}
-	if flags.NArg() != 0 {
-		fmt.Fprintf(stderr, "harness worktree audit: unexpected argument %q; run harness worktree audit --help\n", flags.Arg(0))
+	if len(positional) != 0 {
+		fmt.Fprintf(stderr, "harness worktree audit: unexpected argument %q; run harness worktree audit --help\n", positional[0])
 		return 2
 	}
 	dir, ok := repository("audit", stderr)
@@ -162,7 +151,7 @@ func audit(args []string, stdout, stderr io.Writer) int {
 		}
 		row := []string{state(style, s.State), strconv.Itoa(len(s.Changes)), strconv.Itoa(len(s.Ignored)), cmp.Or(s.Branch, "(detached)"), style.Dim(head)}
 		if *withForge {
-			p := ReadPull(dir, s, gh(dir))
+			p := ReadPull(dir, s, run.Gh(dir))
 			row = append(row, fmt.Sprint(p), cmp.Or(p.Into, "-"))
 		}
 		rows = append(rows, append(row, s.Path))
@@ -185,15 +174,12 @@ func retire(args []string, stdout, stderr io.Writer) int {
 	flags.BoolVar(&o.AllowIgnored, "allow-ignored", false, "")
 	flags.BoolVar(&o.KeepBranch, "keep-branch", false, "")
 
-	path := ""
-	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
-		path, args = args[0], args[1:]
-	}
-	if code := parse(flags, args, retireUsage, stdout, stderr); code >= 0 {
+	rest, code := cli.Parse("harness worktree", flags, args, retireUsage, stdout, stderr)
+	if code >= 0 {
 		return code
 	}
-	rest := flags.Args()
-	if path == "" && len(rest) > 0 {
+	path := ""
+	if len(rest) > 0 {
 		path, rest = rest[0], rest[1:]
 	}
 	switch {
@@ -216,7 +202,7 @@ func retire(args []string, stdout, stderr io.Writer) int {
 		o.Into, _ = DefaultInto(dir)
 	}
 	if o.At != "" {
-		sha, err := git(dir, "rev-parse", "--verify", "--quiet", "--end-of-options", o.At+"^{commit}")
+		sha, err := run.Git(dir, "rev-parse", "--verify", "--quiet", "--end-of-options", o.At+"^{commit}")
 		if err != nil {
 			fmt.Fprintf(stderr, "harness worktree retire: --at %q does not name a commit\n", o.At)
 			return 2

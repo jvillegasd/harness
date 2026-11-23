@@ -235,6 +235,7 @@ func TestCommandInvocationMatrix(t *testing.T) {
 		{"land", "check", "feat/x"},
 		{"land", "check", "--stack"},
 		{"land", "check", "--stack", "1", "2"},
+		{"land", "check", "42", ""},
 		{"land", "merge"},
 		{"land", "merge", "12"},
 		{"land", "merge", "12", "--head", "abc"},
