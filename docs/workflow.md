@@ -26,7 +26,6 @@ Every skill is callable by name. The skills you start yourself come first; the r
 | Old worktrees, branches, and review scratch pile up | `/cleanup` |
 | A repository needs its tracker and critical paths configured | `/setup-harness` |
 | Agents keep repeating the same mistakes in a repository | `/correct` |
-| A test suite may carry tests that protect nothing | `/test-audit` |
 | The project needs a scripted way to drive the real app | `/create-verification-skill` |
 | A project's verify skill or its feature map may have drifted | `/maintain-verification-skill` |
 | Code needs a lasting formal check of a model or proof | `/create-formal-verification-skill` |
