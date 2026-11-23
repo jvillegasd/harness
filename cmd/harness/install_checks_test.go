@@ -58,7 +58,7 @@ func readDir(dir string) []string {
 func TestGuardedSkillsAreInstalled(t *testing.T) {
 	t.Parallel()
 	base := sandbox(t)
-	ok(t, runInstaller(t, base), "skip-packages install")
+	ok(t, runInstaller(t, base, "skills"), "skip-packages install")
 	bodies, err := filepath.Glob(filepath.Join(base, "checkout", "skills", "*", "*", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -143,7 +143,7 @@ func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
 		}
 	}
 
-	ok(t, runInstaller(t, base), "install")
+	ok(t, runInstaller(t, base, "agents", "settings"), "install")
 	for _, rel := range agentOutputs {
 		client, name, _ := strings.Cut(rel, "/")
 		path := filepath.Join(roots[client], name)
@@ -153,7 +153,7 @@ func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
 	}
 	untouched("the install")
 
-	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
+	ok(t, runUninstaller(t, base, "agents", "settings", "--yes"), "uninstall")
 	for _, root := range roots {
 		for _, entry := range readDir(root) {
 			if entry != "mine.md" && entry != "foreign.md" {
@@ -182,7 +182,7 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 			case "root-link":
 				symlink(t, filepath.Dir(private), root)
 			}
-			ok(t, runInstaller(t, base), "install")
+			ok(t, runInstaller(t, base, "agents"), "install")
 			if got := readFile(t, private); got != "private agent\n" {
 				t.Errorf("the install wrote through to %s: %q", private, got)
 			}
@@ -200,7 +200,7 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 func TestUninstallKeepsAnEditedCopy(t *testing.T) {
 	t.Parallel()
 	base := sandbox(t)
-	ok(t, runInstaller(t, base), "install")
+	ok(t, runInstaller(t, base, "skills"), "install")
 	edited := filepath.Join(base, "home", ".claude", "skills", "open-pr", "SKILL.md")
 	writeMode(t, edited, "my open-pr\n", 0o644)
 	r := runUninstaller(t, base, "--yes")
@@ -219,7 +219,7 @@ func TestUninstallKeepsAnEditedCopy(t *testing.T) {
 func TestUninstallDeclinePreservesInstallation(t *testing.T) {
 	t.Parallel()
 	base := sandbox(t)
-	ok(t, runInstaller(t, base), "install")
+	ok(t, runInstaller(t, base, "agents"), "install")
 	copy := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
 	before := readFile(t, copy)
 	r := runUninstallerInput(t, base, "n\n")
@@ -232,9 +232,9 @@ func TestUninstallDeclinePreservesInstallation(t *testing.T) {
 func TestUninstallOpenCodeLeavesClaudeCopies(t *testing.T) {
 	t.Parallel()
 	base := sandbox(t)
-	ok(t, runInstaller(t, base), "install")
+	ok(t, runInstaller(t, base, "agents"), "install")
 	claude := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
-	ok(t, runUninstaller(t, base, "--client", "opencode", "--yes"), "OpenCode uninstall")
+	ok(t, runUninstaller(t, base, "agents", "--client", "opencode", "--yes"), "OpenCode uninstall")
 	if readFileOr(claude) == "" {
 		t.Error("OpenCode uninstall removed the Claude role copy")
 	}
@@ -296,7 +296,7 @@ func TestNoBackupReplacesCollisionWithoutArchiving(t *testing.T) {
 	base := sandbox(t)
 	path := filepath.Join(base, "home", ".claude", "agents", "reviewer.md")
 	writeMode(t, path, "private agent\n", 0o644)
-	ok(t, runInstaller(t, base, "--no-backup"), "no-backup install")
+	ok(t, runInstaller(t, base, "agents", "--no-backup"), "no-backup install")
 	if got := readFile(t, path); got == "private agent\n" {
 		t.Error("no-backup left the colliding file in place")
 	}
@@ -365,7 +365,7 @@ func TestInstallReplacesAnUnusableStatuslineBinary(t *testing.T) {
 			t.Parallel()
 			base := sandbox(t)
 			c.seed(t, base)
-			ok(t, runInstaller(t, base), "install")
+			ok(t, runInstaller(t, base, "floor"), "install")
 			if err := exec.Command(installed(base), "statusline", "--help").Run(); err != nil {
 				t.Fatalf("the installed harness has no working statusline: %v", err)
 			}
@@ -379,7 +379,7 @@ func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
 	config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
 	const text = `{"mcp": ["x"]}` + "\n"
 	writeMode(t, config, text, 0o644)
-	r := runInstaller(t, base)
+	r := runInstaller(t, base, "mcps")
 	if r.code == 0 || !strings.Contains(r.stderr, "mcp is not a JSON object") {
 		t.Fatalf("exit %d, stderr %q; want the mcp refusal", r.code, r.stderr)
 	}
@@ -397,7 +397,7 @@ func TestAgentBrowserRefusesANonObjectOpenCodeMCP(t *testing.T) {
 func TestCodexUninstallWithoutCodex(t *testing.T) {
 	t.Parallel()
 	base := sandbox(t)
-	ok(t, runInstaller(t, base), "install")
+	ok(t, runInstaller(t, base, "mcps"), "install")
 	codexHome := filepath.Join(base, "home", ".codex")
 	for _, name := range []string{"engram-instructions.md", "engram-compact-prompt.md"} {
 		writeMode(t, filepath.Join(codexHome, name), "engram\n", 0o644)
@@ -423,7 +423,7 @@ func TestInstallRefusesANonUserScopeEngramMCP(t *testing.T) {
 "mcp get agent-browser") echo 'Scope: User config' ;;
 "mcp get engram") echo 'Scope: Project config' ;;
 esac`)
-	r := runInstaller(t, base)
+	r := runInstaller(t, base, "mcps")
 	if r.code == 0 || !strings.Contains(r.stderr, "engram is not registered in the Claude Code user scope") {
 		t.Fatalf("exit %d, stderr %q; want the engram scope refusal", r.code, r.stderr)
 	}
@@ -433,9 +433,9 @@ func TestUninstallRefusesASurvivingEngramMCP(t *testing.T) {
 	t.Parallel()
 	base := sandbox(t)
 	seedLived(t, base)
-	ok(t, runInstaller(t, base), "install")
+	ok(t, runInstaller(t, base, "mcps"), "install")
 	writeMode(t, filepath.Join(base, "home", ".claude.json"), `{"mcpServers": {"engram": {}}}`+"\n", 0o644)
-	r := runUninstaller(t, base, "--yes")
+	r := runUninstaller(t, base, "mcps", "--yes")
 	if r.code == 0 || !strings.Contains(r.stderr, "The engram MCP survived the uninstall") {
 		t.Fatalf("exit %d, stderr %q; want the engram survivor refusal", r.code, r.stderr)
 	}
@@ -889,7 +889,7 @@ func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
 	writeMode(t, filepath.Join(source, "SKILL.md"), "---\ndescription: retired\n---\n", 0o644)
 	linkedSource := filepath.Join(base, "checkout", "skills", "ops", "retired-linked")
 	writeMode(t, filepath.Join(linkedSource, "SKILL.md"), "---\ndescription: retired too\n---\n", 0o644)
-	ok(t, runInstaller(t, base), "install asset")
+	ok(t, runInstaller(t, base, "skills", "aliases"), "install asset")
 	edited := filepath.Join(home, ".claude", "skills", "retired", "SKILL.md")
 	writeMode(t, edited, "my edited skill\n", 0o644)
 	main := filepath.Join(home, "repositories", "main")
@@ -914,7 +914,7 @@ func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
 	if err := os.RemoveAll(linkedSource); err != nil {
 		t.Fatal(err)
 	}
-	ok(t, runInstaller(t, base), "retire asset")
+	ok(t, runInstaller(t, base, "skills", "aliases"), "retire asset")
 	if _, err := os.Lstat(filepath.Join(home, ".agents", "skills", "retired")); !os.IsNotExist(err) {
 		t.Fatalf("unchanged retired copy remains: %v", err)
 	}
@@ -942,7 +942,7 @@ func TestCompactionHooksKeepTheUsersOwn(t *testing.T) {
 	settings := filepath.Join(home, ".claude", "settings.json")
 	user := `{"matcher": "startup", "hooks": [{"type": "command", "command": "echo mine"}]}`
 	writeMode(t, settings, `{"hooks": {"SessionStart": [`+user+`, {"matcher": "compact", "hooks": [{"type": "command", "command": "\"$HOME/.local/bin/harness\" retired"}]}], "Stop": [`+user+`]}}`+"\n", 0o644)
-	ok(t, runInstaller(t, base), "install")
+	ok(t, runInstaller(t, base, "settings"), "install")
 
 	var got struct {
 		Hooks map[string][]struct {
@@ -975,7 +975,7 @@ func TestCompactionHooksKeepTheUsersOwn(t *testing.T) {
 		}
 	}
 
-	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
+	ok(t, runUninstaller(t, base, "settings", "--yes"), "uninstall")
 	decode()
 	if groups := got.Hooks["SessionStart"]; len(groups) != 1 || groups[0].Matcher != "startup" || len(got.Hooks["Stop"]) != 1 {
 		t.Errorf("the uninstall did not leave exactly the user's hooks: %+v", got.Hooks)
@@ -992,12 +992,12 @@ func TestCodexHooksKeepTheUsersOwn(t *testing.T) {
 	base := sandbox(t)
 	path := filepath.Join(base, "home", ".codex", "hooks.json")
 	writeMode(t, path, `{"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "echo mine"}]}]}}`+"\n", 0o644)
-	ok(t, runInstaller(t, base), "install")
+	ok(t, runInstaller(t, base, "settings"), "install")
 	text := readFileOr(path)
 	if !strings.Contains(text, "echo mine") || !strings.Contains(text, `harness\" resume`) {
 		t.Fatalf("after install, hooks.json lacks the user's hook or the harness hook:\n%s", text)
 	}
-	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
+	ok(t, runUninstaller(t, base, "settings", "--yes"), "uninstall")
 	text = readFileOr(path)
 	if !strings.Contains(text, "echo mine") || strings.Contains(text, "resume") {
 		t.Errorf("after uninstall, hooks.json should hold only the user's hook:\n%s", text)
@@ -1020,15 +1020,15 @@ func TestClaudeAllowKeepsTheUsersRules(t *testing.T) {
 		}
 		return got.Permissions.Allow
 	}
-	ok(t, runInstaller(t, base), "install")
+	ok(t, runInstaller(t, base, "settings"), "install")
 	if got, want := allow(), []string{"Bash(make test)", "Read(~/.claude/skills/**)"}; !slices.Equal(got, want) {
 		t.Errorf("allow after install = %q, want %q", got, want)
 	}
-	ok(t, runInstaller(t, base), "reinstall")
+	ok(t, runInstaller(t, base, "settings"), "reinstall")
 	if got := allow(); len(got) != 2 {
 		t.Errorf("a reinstall duplicated the tracked rule: %q", got)
 	}
-	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
+	ok(t, runUninstaller(t, base, "settings", "--yes"), "uninstall")
 	if got, want := allow(), []string{"Bash(make test)"}; !slices.Equal(got, want) {
 		t.Errorf("allow after uninstall = %q, want %q", got, want)
 	}
@@ -1078,7 +1078,7 @@ func TestFloorRulesReachCodexAndOpenCode(t *testing.T) {
 		return doc.Permission, order
 	}
 
-	ok(t, runInstaller(t, base), "install")
+	ok(t, runInstaller(t, base, "settings"), "install")
 	if text := readFileOr(rules); !strings.Contains(text, `"git", "push", ["--force", "-f"]`) {
 		t.Errorf("the Codex rules file is missing or lacks the force-push rule:\n%s", text)
 	}
@@ -1097,13 +1097,13 @@ func TestFloorRulesReachCodexAndOpenCode(t *testing.T) {
 		t.Fatalf("opencode.json lacks the last harness rule %s:\n%s", last, text)
 	}
 	writeMode(t, config, strings.Replace(text, last, last+`, "git *": "allow"`, 1), 0o644)
-	ok(t, runInstaller(t, base), "reinstall")
+	ok(t, runInstaller(t, base, "settings"), "reinstall")
 	_, order = read()
 	if len(order["bash"]) != tracked+1 || order["bash"][1] != "git *" || order["bash"][len(order["bash"])-1] != "git worktree remove -f *" {
 		t.Errorf("bash after reinstall = %q, want the user's rules first and each harness rule once, last", order["bash"])
 	}
 
-	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
+	ok(t, runUninstaller(t, base, "settings", "--yes"), "uninstall")
 	got, _ = read()
 	if len(got.Bash) != 2 || got.Bash["git *"] != "allow" || len(got.Read) != 1 || got.Edit != nil || got.Webfetch != "deny" {
 		t.Errorf("permission after uninstall = %+v, want only the user's rules", got)
@@ -1118,11 +1118,11 @@ func TestOpenCodeKeepsAStricterUserRule(t *testing.T) {
 	base := sandbox(t)
 	config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
 	writeMode(t, config, `{"permission": {"bash": {"gh pr merge *": "deny"}}}`+"\n", 0o644)
-	ok(t, runInstaller(t, base), "install")
+	ok(t, runInstaller(t, base, "settings"), "install")
 	if text := readFile(t, config); !strings.Contains(text, `"gh pr merge *": "deny"`) {
 		t.Errorf("the install weakened the user's deny:\n%s", text)
 	}
-	ok(t, runUninstaller(t, base, "--yes"), "uninstall")
+	ok(t, runUninstaller(t, base, "settings", "--yes"), "uninstall")
 	if text := readFile(t, config); !strings.Contains(text, `"gh pr merge *": "deny"`) || strings.Contains(text, "git push") {
 		t.Errorf("the uninstall should leave only the user's deny:\n%s", text)
 	}
@@ -1142,7 +1142,7 @@ func TestInstallsOpenCodeV2(t *testing.T) {
 func TestOpenCodeAsksBeforeAHarnessMerge(t *testing.T) {
 	t.Parallel()
 	base := sandbox(t)
-	ok(t, runInstaller(t, base), "install")
+	ok(t, runInstaller(t, base, "settings"), "install")
 	if text := readFile(t, filepath.Join(base, "home", ".config", "opencode", "opencode.json")); !strings.Contains(text, `"harness land merge *": "ask"`) {
 		t.Errorf("harness land merge runs without asking:\n%s", text)
 	}
@@ -1168,7 +1168,7 @@ func TestOpenCodeAsksOutsideTheProject(t *testing.T) {
 			base := sandbox(t)
 			config := filepath.Join(base, "home", ".config", "opencode", "opencode.json")
 			writeMode(t, config, c.user+"\n", 0o644)
-			ok(t, runInstaller(t, base), "install")
+			ok(t, runInstaller(t, base, "settings"), "install")
 			installed := readFile(t, config)
 			rest := installed
 			if i := strings.Index(rest, `"external_directory"`); i >= 0 {
@@ -1184,11 +1184,11 @@ func TestOpenCodeAsksOutsideTheProject(t *testing.T) {
 			if c.absent != "" && strings.Contains(installed, c.absent) {
 				t.Errorf("the install widened the user's setting with %s:\n%s", c.absent, installed)
 			}
-			ok(t, runInstaller(t, base), "reinstall")
+			ok(t, runInstaller(t, base, "settings"), "reinstall")
 			if again := readFile(t, config); again != installed {
 				t.Errorf("a reinstall changed the config:\n%s", again)
 			}
-			ok(t, runUninstaller(t, base, "--yes"), "uninstall")
+			ok(t, runUninstaller(t, base, "settings", "--yes"), "uninstall")
 			left := readFileOr(config)
 			if strings.Contains(left, skills) {
 				t.Errorf("the uninstall left a harness rule:\n%s", left)

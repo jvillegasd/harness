@@ -44,7 +44,6 @@ func TestStatuslineFixtures(t *testing.T) {
 	for _, fixture := range fixtures {
 		name := strings.TrimSuffix(filepath.Base(fixture), ".json")
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 			payload, err := os.ReadFile(fixture)
 			if err != nil {
 				t.Fatal(err)
