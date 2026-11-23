@@ -50,7 +50,7 @@ Every skill is callable by name. The skills you start yourself come first; the r
 | Assurance | `verify-work`, `security-audit` |
 | Design | `codebase-design`, `domain-modeling` |
 | Writing | `writing-for-agents`, `unslop` |
-| Principles | the `principle-*` skills and `benchmark-checklist`, which the mode's trigger list names |
+| Principles | the `principle-*` skills, which the mode's trigger list names |
 
 ### Choose a verification skill
 
