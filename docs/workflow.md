@@ -91,7 +91,6 @@ The agent picks the playbook from the task:
 | A merge, or "it merged, clean up" | Nothing. The agent tells you to run `/land` |
 | "Clean up old worktrees" | Nothing. The agent tells you to run `/cleanup` |
 | Pick up earlier work | `checkpoint`'s resume steps, then the recorded playbook |
-| A project: several features toward one goal, or a whole app | Project playbook |
 | Large, multi-part, or none of the above | You-got-this playbook |
 
 When a row names a skill, jvillegasd-mode runs that skill's own steps. It adds its checklist and its reply, never a second copy of the skill.
@@ -234,7 +233,7 @@ For long or unattended work, the agent keeps the requirements, decisions, eviden
 
 `/jvillegasd-mode` on a settled epic starts `build` for you. An epic without slices is first cut into them, as local drafts that [`harness tickets check`](cli.md#ticket-commands) validates. `build` picks the next slices with `harness tickets frontier`: those whose blockers are all done. Publishing still needs your request, and merging still needs `/land`, one pull request at a time; after a parent merges, `/land` repairs the pull requests stacked on it. Pull requests open on their own once the work is verified, unless you said to keep it local.
 
-For a whole app or several features toward one goal, the project playbook plans milestones, each an epic, and shows you the roadmap once before it starts (autopilot skips that). Each milestone's pull requests stack on the milestone they build on, and the run hands you the stack to land bottom-up with `/land merge stack <tip>`. Say `full` in the request to have the agent land each milestone's verified pull requests itself before starting the next.
+Larger work, such as a whole app, matches the you-got-this playbook. It frames the work, and when the work splits into slices that can be settled now, it runs `epic` and then `build`.
 
 ## Optional tracking
 
