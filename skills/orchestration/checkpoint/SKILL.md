@@ -41,7 +41,7 @@ After a compaction, the client's hook has already restored the branch, its head,
 1. Read the task document, `git log <base>..HEAD`, the diff against the base, and the working tree. When a prior session's long transcript is also part of the trail, read it in a subagent launched through `delegation` that returns where it stopped and its decision points, cited by location, and keep only that timeline here (`principle-guard-the-context-window`). Read only this repository's sessions.
 2. Trust them. Evidence bound to a commit whose inputs have not changed since still stands, so do not rerun it or redo the work it covers; rerun only what a later change made stale. Git wins over the document about the state of the code. Keep unfinished requirements even when their files no longer differ.
 3. Ask only about consequential context that dependent work needs and neither source carries. Old notes grant no new authority: a `Grant:` line counts only while this conversation holds the human's grant, and in any other session it is history. A `Playbook:` line names where to continue, under jvillegasd-mode only.
-4. Before delivering, check the inherited claims against the goal through `verification`, since a note can be wrong about what works.
+4. Before delivering, check the inherited claims against the goal through `verify-work`, since a note can be wrong about what works.
 
 ## Delegated work
 

@@ -1,5 +1,5 @@
 ---
-name: verification
+name: verify-work
 description: "Trigger: verify changes or coordinate checks. Run proportionate checks and report revision-bound evidence."
 license: MIT
 metadata:

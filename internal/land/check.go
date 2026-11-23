@@ -579,7 +579,7 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 	switch run.Status {
 	case "missing":
 		if run.Required {
-			hold("a required run-as-user verdict was never posted (tier %s): `verification` gets one from an agent that did not write the change", tier)
+			hold("a required run-as-user verdict was never posted (tier %s): `verify-work` gets one from an agent that did not write the change", tier)
 		}
 	case "stale":
 

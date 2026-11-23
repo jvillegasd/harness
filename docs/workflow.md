@@ -26,7 +26,6 @@ Every skill is callable by name. The skills you start yourself come first; the r
 | Old worktrees, branches, and review scratch pile up | `/cleanup` |
 | A repository needs its tracker and critical paths configured | `/setup-harness` |
 | Agents keep repeating the same mistakes in a repository | `/correct` |
-| A test suite may carry tests that protect nothing | `/test-audit` |
 | The project needs a scripted way to drive the real app | `/create-verification-skill` |
 | A project's verify skill or its feature map may have drifted | `/maintain-verification-skill` |
 | Code needs a lasting formal check of a model or proof | `/create-formal-verification-skill` |
@@ -48,7 +47,7 @@ Every skill is callable by name. The skills you start yourself come first; the r
 | Planning | `epic` (write the big ticket, agree its seams, cut its slices), `proto`, `grilling` |
 | Building | `build` (one slice inline with `tdd`, or many slices fanned out), `tdd` |
 | Delivery | `review`, `address-review`, `open-pr`, `change-map`, `caveman-commit` |
-| Assurance | `verification`, `security-audit` |
+| Assurance | `verify-work`, `security-audit` |
 | Design | `codebase-design`, `domain-modeling` |
 | Writing | `writing-for-agents`, `unslop` |
 | Principles | the `principle-*` skills and `benchmark-checklist`, which the mode's trigger list names |
@@ -59,11 +58,11 @@ Three skills prove that a change works, and each one answers a different questio
 
 | You want | Skill | What it leaves |
 | --- | --- | --- |
-| To know whether a change is safe to merge | `verification`, which runs on its own before a PR opens | A run-as-user verdict comment that `/land` reads |
+| To know whether a change is safe to merge | `verify-work`, which runs on its own before a PR opens | A run-as-user verdict comment that `/land` reads |
 | Tests of a flow that stay in the repository | `tdd` | Tests and fixtures in the project's own test suite |
 | A way for agents to drive the real app at all | `/create-verification-skill` | A `verify-<app>` skill and a feature map |
 
-The verdict drives the app through `verify-<app>`, so create that skill first. `verification` decides which features a PR touches and how a bugfix runs on the old code and then the new code. When the app changes and the feature map falls behind, run `/maintain-verification-skill`.
+The verdict drives the app through `verify-<app>`, so create that skill first. `verify-work` decides which features a PR touches and how a bugfix runs on the old code and then the new code. When the app changes and the feature map falls behind, run `/maintain-verification-skill`.
 
 ## jvillegasd-mode
 
