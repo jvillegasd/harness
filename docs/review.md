@@ -118,7 +118,7 @@ At `medium` and `high`:
 
 A review reads the change. Running it as a user is a separate check with its own verdict comment, which `/land merge` also requires for a change you can observe; [the workflow guide](workflow.md) covers it.
 
-Review never pushes or merges on its own.
+Review pushes the reviewed head when delivery applies, but never merges.
 
 ## Limits
 
