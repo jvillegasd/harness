@@ -33,7 +33,7 @@ jvillegasd-mode lasts the conversation. "New task" means match again from step 1
 | One metric to climb toward a target over many attempts | [hillclimb](playbooks/hillclimb.md) |
 | A runtime symptom or a captured profile to diagnose, with no fix requested | [forensics](playbooks/forensics.md) |
 | A shape or interface to choose, with no precedent | [design](playbooks/design.md) |
-| Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | [skill](playbooks/skill.md) |
+| Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | Make the change with `writing-for-agents`, run the repository's checks, then Finish |
 | A prototype, spike, or mock-up | `proto`'s steps |
 | A plan for a change, before anything is built, or tickets from research findings or a request | `epic`'s steps, then `build`'s, unless the human asked only for the plan |
 | A settled epic or a set of slices to build | `build`'s steps |

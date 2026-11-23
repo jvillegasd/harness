@@ -81,7 +81,7 @@ The agent picks the playbook from the task:
 | One metric to climb toward a target over many attempts | Hillclimb playbook |
 | A runtime symptom or a captured profile to diagnose, with no fix | Forensics playbook (read-only) |
 | A shape or interface to choose, with no precedent | Design playbook |
-| Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | Skill playbook |
+| Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | `writing-for-agents`, then the repository's checks |
 | A prototype, spike, or mock-up | `proto`'s steps |
 | A plan before anything is built, or tickets from a brief, findings, or a request | `epic`'s steps |
 | A settled epic or set of slices to build | `build`'s steps |
