@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"slices"
@@ -123,6 +124,45 @@ func denySecret(output io.Writer) int {
 		"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": secretGuardReason,
 	}})
 	if err != nil {
+		return 2
+	}
+	return 0
+}
+
+// LaunchGuard refuses a native Claude Code launch of a role this machine
+// assigns to another client, since the installed agent there inherits the
+// session's model. A generic role, a name that is no role, and a choice that
+// cannot be read pass through, so the guard never blocks unrelated agents.
+func LaunchGuard(input io.Reader, output io.Writer, path string) int {
+	var request struct {
+		Tool  string `json:"tool_name"`
+		Input struct {
+			Agent string `json:"subagent_type"`
+		} `json:"tool_input"`
+	}
+	if err := json.NewDecoder(io.LimitReader(input, 1<<20)).Decode(&request); err != nil || (request.Tool != "Agent" && request.Tool != "Task") {
+		return 0
+	}
+	name := request.Input.Agent
+	if knownRole(name) != nil || role(name).Generic {
+		return 0
+	}
+	choice, err := Load(path)
+	if err != nil {
+		return 0
+	}
+	r := choice.Resolve(name, Launch{}, new(Catalog))
+	if r.Err != nil || r.Client == "claude" {
+		return 0
+	}
+	assigned := r.Client + " " + r.Model
+	if r.Effort != "" {
+		assigned += " at effort " + r.Effort
+	}
+	reason := fmt.Sprintf("%s runs on %s here, and a native launch would run it on this session's model instead. Launch it through T3 Code's delegate_task as the delegation skill's Launch step 3 says; outside T3 Code it cannot launch from this session, so say so.", name, assigned)
+	if err := json.NewEncoder(output).Encode(map[string]any{"hookSpecificOutput": map[string]string{
+		"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason,
+	}}); err != nil {
 		return 2
 	}
 	return 0

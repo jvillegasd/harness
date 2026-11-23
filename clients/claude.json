@@ -56,6 +56,15 @@
             "command": "\"$HOME/.local/bin/harness\" models secret-guard || exit 2"
           }
         ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.local/bin/harness\" models launch-guard || exit 2"
+          }
+        ]
       }
     ],
     "SessionStart": [

@@ -60,6 +60,13 @@ func Command(args []string, stdout, stderr io.Writer, apply Apply) int {
 	if len(args) == 1 && args[0] == "secret-guard" {
 		return SecretGuard(os.Stdin, stdout)
 	}
+	if len(args) == 1 && args[0] == "launch-guard" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return 0
+		}
+		return LaunchGuard(os.Stdin, stdout, StatePath(home))
+	}
 	if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
 		fmt.Fprint(stdout, usage)
 		return 0

@@ -187,3 +187,44 @@ func TestSecretGuardDeniesMalformedInput(t *testing.T) {
 		}
 	}
 }
+
+func TestLaunchGuardRefusesANativeLaunchOfARoleOnAnotherClient(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, `{"roles": {"reviewer": {"client": "codex"}, "code-search": {"client": "claude"}, "executor": {"client": "codex", "tier": "standard"}}}`)
+	for _, tc := range []struct {
+		tool, agent string
+		deny        bool
+	}{
+		{"Agent", "reviewer", true},
+		{"Agent", "review-bugs", true},
+		{"Task", "review-risk", true},
+		{"Agent", "code-search", false},
+		{"Agent", "executor", true},
+		{"Agent", "worker", false},
+		{"Agent", "Explore", false},
+		{"Bash", "reviewer", false},
+	} {
+		input, _ := json.Marshal(map[string]any{"tool_name": tc.tool, "tool_input": map[string]any{"subagent_type": tc.agent}})
+		var output bytes.Buffer
+		if code := LaunchGuard(bytes.NewReader(input), &output, path); code != 0 {
+			t.Fatal(code)
+		}
+		denied := strings.Contains(output.String(), `"permissionDecision":"deny"`)
+		if denied != tc.deny || (!tc.deny && output.Len() != 0) {
+			t.Errorf("%s %s => %q, want deny %v", tc.tool, tc.agent, output.String(), tc.deny)
+		}
+		if denied && tc.agent != "executor" && !strings.Contains(output.String(), "codex gpt-6.1-sol") {
+			t.Errorf("%s reason does not name the assigned model: %s", tc.agent, output.String())
+		}
+	}
+}
+
+func TestLaunchGuardPassesWhenTheChoiceCannotBeRead(t *testing.T) {
+	input := `{"tool_name":"Agent","tool_input":{"subagent_type":"reviewer"}}`
+	for _, path := range []string{filepath.Join(t.TempDir(), "missing.json"), seeded(t, `{"preset": "nonsense"}`)} {
+		var output bytes.Buffer
+		if code := LaunchGuard(strings.NewReader(input), &output, path); code != 0 || output.Len() != 0 {
+			t.Errorf("%s => %d %q", path, code, output.String())
+		}
+	}
+}

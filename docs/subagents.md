@@ -33,7 +33,7 @@ Agents launch roles through the `delegation` skill. Each role runs at a tier: `h
 Where the role runs depends on its client:
 
 - **Same client as your session:** the role runs as a native subagent.
-- **A different client:** the role runs only inside a T3 Code session, as a delegated task with that client's model and effort. A T3 Code child does not load the installed role agent, so the role's definition is sent along in its brief.
+- **A different client:** the role runs only inside a T3 Code session, as a delegated task with that client's model and effort. A T3 Code child does not load the installed role agent, so the role's definition is sent along in its brief. In Claude Code, a hook refuses a native launch of such a role, because the installed agent would otherwise run on your session's model.
 
 If a role is missing or out of date on this machine, `harness install` sets it up. Agents never quietly swap in a different role. When a review needs an independent reviewer that cannot run, the review is reported as unverified. The author does not review its own work instead.
 
