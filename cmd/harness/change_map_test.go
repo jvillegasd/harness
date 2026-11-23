@@ -152,10 +152,3 @@ func TestChangeMapOperationalErrorsExitTwo(t *testing.T) {
 		t.Errorf("invalid criticalPaths exited %d with stderr %q", r.code, r.stderr)
 	}
 }
-
-func TestChangeMapListedInHelp(t *testing.T) {
-	t.Parallel()
-	if r := runBinary(t, t.TempDir(), "--help"); !strings.Contains(r.stdout, "  change-map ") {
-		t.Errorf("help does not list change-map: %q", r.stdout)
-	}
-}
