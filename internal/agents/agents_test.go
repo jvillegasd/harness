@@ -2,6 +2,7 @@ package agents
 
 import (
 	"bytes"
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -32,9 +33,15 @@ func repoRoot() string {
 	return abs
 }
 
+// runCommand renders every role on every client, at the session's model, so
+// a test can read each output's restrictions.
 func runCommand(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
-	return runWith(t, nil, args...)
+	everywhere := map[string]Assigned{}
+	for _, role := range Roles {
+		everywhere[role.Name] = Assigned{Client: Session}
+	}
+	return runWith(t, everywhere, args...)
 }
 
 func runWith(t *testing.T, assigned map[string]Assigned, args ...string) (int, string, string) {
@@ -487,9 +494,22 @@ func TestAssignments(t *testing.T) {
 		if got := codexSettings(t, filepath.Join(out, "codex", "reviewer.toml")); strings.Join(got, "|") != `model = "gpt-6.1-sol"|model_reasoning_effort = "high"` {
 			t.Errorf("codex reviewer settings = %v", got)
 		}
-		assertHead(t, filepath.Join(out, "claude", "reviewer.md"), []string{"model: inherit"})
 		assertHead(t, filepath.Join(out, "opencode", "executor.md"), []string{"model: openai/gpt-5.5", "reasoningEffort: high"})
-		assertHead(t, filepath.Join(out, "claude", "executor.md"), []string{"model: inherit"})
+		// A client a role is not assigned to gets no file, so a launch there fails
+		// instead of running on the launching session's model.
+		for _, absent := range []string{"claude/reviewer.md", "opencode/reviewer.md", "claude/executor.md", "codex/executor.toml", "codex/code-search.toml", "codex/review-bugs.toml"} {
+			if _, err := os.Stat(filepath.Join(out, filepath.FromSlash(absent))); !errors.Is(err, fs.ErrNotExist) {
+				t.Errorf("%s was rendered for a client its role is not assigned to", absent)
+			}
+		}
+		// A role with no runnable model gets no file anywhere; the worker, whose
+		// tier is chosen at launch, keeps one on every client.
+		for _, absent := range []string{"claude/review-spec.md", "codex/review-spec.toml", "opencode/review-spec.md"} {
+			if _, err := os.Stat(filepath.Join(out, filepath.FromSlash(absent))); !errors.Is(err, fs.ErrNotExist) {
+				t.Errorf("%s was rendered for a role with no assigned model", absent)
+			}
+		}
+		assertHead(t, filepath.Join(out, "claude", "worker.md"), []string{"model: inherit"})
 		assertHead(t, filepath.Join(out, "claude", "code-search.md"), []string{"model: haiku"})
 		assertHead(t, filepath.Join(out, "claude", "review-bugs.md"), []string{"model: sonnet", "effort: max"})
 		for _, want := range []string{
@@ -576,6 +596,19 @@ func TestAssignments(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestASessionAssignmentRendersEveryClientOnTheSessionsModel(t *testing.T) {
+	out := temp(t)
+	assigned := map[string]Assigned{"reviewer": {Client: Session, Source: "override"}}
+	if code, _, stderr := runWith(t, assigned, repoRoot(), out); code != 0 {
+		t.Fatalf("generate exited %d: %s", code, stderr)
+	}
+	assertHead(t, filepath.Join(out, "claude", "reviewer.md"), []string{"model: inherit"})
+	assertHead(t, filepath.Join(out, "opencode", "reviewer.md"), nil)
+	if got := codexSettings(t, filepath.Join(out, "codex", "reviewer.toml")); len(got) != 0 {
+		t.Errorf("codex reviewer at the session tier names %v", got)
+	}
 }
 
 func TestCheckDetectsWideningBesideAssignments(t *testing.T) {

@@ -12,6 +12,10 @@ import (
 	"unicode/utf8"
 )
 
+// Session is the client of an assignment to the launching session's own
+// model: every client renders the role, naming no model or effort.
+const Session = "session"
+
 type Assigned struct {
 	Client, Model, Effort, Source string
 }
