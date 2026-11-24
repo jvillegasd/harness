@@ -93,6 +93,9 @@ func (p picker) options() []string {
 	case stepRoleClient:
 		// Only clients with a model at the role's tier, since role set refuses the others.
 		out := []string{keep}
+		if p.pending().Resolve(p.name, Launch{}, p.catalog).Tier == Session {
+			return out
+		}
 		for _, client := range p.clients() {
 			c := p.pending()
 			ov := c.Roles[p.name]

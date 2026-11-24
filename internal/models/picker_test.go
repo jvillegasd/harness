@@ -293,3 +293,11 @@ func TestPickerKeepClearsAPickMadeBeforeEsc(t *testing.T) {
 		t.Errorf("keep after esc still queued the earlier pick: %v %v", p.sets, q.sets)
 	}
 }
+
+func TestPickerOffersNoClientToARoleKeptAtTheSessionTier(t *testing.T) {
+	p := newPicker(catalogOf(nil, nil), Choice{Roles: map[string]Override{"reviewer": {Tier: Session}}})
+	p = choose(t, choose(t, choose(t, p, "custom"), "reviewer"), keep)
+	if got := p.options(); !slices.Equal(got, []string{keep}) {
+		t.Errorf("clients offered to a role at the session tier, which role set refuses: %v", got)
+	}
+}
