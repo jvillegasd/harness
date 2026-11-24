@@ -94,7 +94,7 @@ Each entry is when it applies, then the rule.
 - `principle-fix-root-causes`: debugging. Trace each symptom to the first place the system went wrong and fix it there; a guard is a fix only when the state it handles is legitimate.
 - `principle-sequence-verifiable-units`: multi-step work, and how commits and pull requests stack. Small units that each end in a check, each verified before the next.
 - `principle-explain-the-number`: before measuring, and before trusting or acting on a number. Find what limits it, and rule out that it measured something other than the work.
-- `principle-launch-on-the-assigned-model`: before launching any role or subagent. Resolve its client, model, and effort with `harness models role resolve`, launch there, and name where it ran; a launch with no model inherits the session's.
+- `principle-launch-on-the-assigned-model`: before launching a role, which every subagent runs as except a skill's own named agents. Resolve its client, model, and effort with `harness models role resolve`, launch there, and name where it ran; a launch with no model inherits the session's.
 - `principle-guard-the-context-window`: large outputs, long files, repeated reads, or fan-out planning. Route bulk to roles and keep only their reduced results.
 - `principle-never-block-on-the-human`: tempted to ask whether to do reversible work. Do it, show the result, and let the human correct it.
 - `principle-encode-lessons-in-structure`: writing the same instruction a second time, or a recurring correction. Encode it as a check, lint, type, or script instead of more text.
