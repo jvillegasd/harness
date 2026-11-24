@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -1426,5 +1427,25 @@ func TestMacBashUsesTheExistingProfile(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(home, ".bash_profile")); err == nil {
 		t.Error("the install created ~/.bash_profile, which hides ~/.profile")
+	}
+}
+
+func TestAgentInstallArchivesAnEditedAgentItNoLongerRenders(t *testing.T) {
+	t.Parallel()
+	base := sandbox(t)
+	home := filepath.Join(base, "home")
+	ok(t, runHarness(t, base, nil, "models", "role", "set", "reviewer", "--tier", "session"), "reviewer on the session tier")
+	ok(t, runInstaller(t, base, "agents"), "install on every client")
+	edited := filepath.Join(home, ".config", "opencode", "agents", "reviewer.md")
+	writeMode(t, edited, readFile(t, edited)+"\nmy note\n", 0o644)
+	// Saving the choice renders the agents again but keeps edited copies.
+	ok(t, runHarness(t, base, nil, "models", "role", "reset", "reviewer"), "reviewer back on claude")
+	ok(t, runInstaller(t, base, "agents"), "install again")
+	if _, err := os.Stat(edited); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("an edited reviewer agent on a client it is not assigned to survived, so it runs on the session's model")
+	}
+	archived, _ := filepath.Glob(filepath.Join(home, ".dotfiles-backups", "harness", "*", ".config", "opencode", "agents", "reviewer.md"))
+	if len(archived) == 0 || !strings.Contains(readFile(t, archived[0]), "my note") {
+		t.Error("the edited agent was not archived with its edit")
 	}
 }

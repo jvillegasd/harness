@@ -198,6 +198,17 @@ func (in *installer) installFiles() {
 		in.book.component = e.Component
 		switch {
 		case wanted[e.Path]:
+		case in.inScope(e) && e.Component == "agents" && digest(e.Path) != "" && digest(e.Path) != e.Digest:
+			// An edited agent no longer rendered would still launch its role, on
+			// the session's model, so it is archived rather than kept in place.
+			if in.keepEdited {
+				in.warnFor(e.Component, "%s changed since the harness wrote it and is no longer rendered, so it stays until `harness install agents` archives it.", e.Path)
+				in.file(e.Component, "kept", e.Path)
+				kept = append(kept, e)
+				continue
+			}
+			in.backupExisting(e.Path, "")
+			in.file(e.Component, "archived", e.Path)
 		case in.inScope(e):
 			in.removeManaged(e)
 		default:
