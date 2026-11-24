@@ -38,6 +38,8 @@ A tier names the kind of work a model is meant for. `harness models` maps each t
 | `standard` | Scoped work with tests | sonnet | newest `-terra` |
 | `fast` | Classification, gathering data in volume, boilerplate | haiku | newest `-luna` |
 
+A role the human set to the `session` tier resolves to client `session` and model `inherit`: its agent files name no model, so it runs on this session's own model and effort.
+
 Choose the `worker`'s tier by this table, from the work the brief asks for, not from the skill that asked. When a skill names a model family, such as a judge on a family no candidate used, pass the matching client.
 
 A skill that ships its own named agents, such as `impeccable`'s reviewers, launches those agents as it describes; they are not roles.
@@ -45,7 +47,7 @@ A skill that ships its own named agents, such as `impeccable`'s reviewers, launc
 ## Launch
 
 1. Run `harness models role resolve <role> --json`, and for the `worker` add `--tier <tier>`, plus `--client <client>` when the brief needs a model family. Use the tier, client, model, and effort it returns, and say the `note` when it has one (a tier that fell back, an effort the model does not take). A non-zero exit means the role has no runnable model here: say so.
-2. When the role's client is this session's client, launch the installed agent natively: Claude Code's Agent tool, a Codex subagent spawned by the agent's name, or OpenCode's `task`. Pass a model at launch only for the `worker` in Claude Code, as the resolved alias (`fable`, `opus`, `sonnet`, `haiku`), since it overrides the agent's own; the other roles run on the model installed with them. The Agent tool takes no effort and no full model id, so a `worker` whose resolved effort or `claude-` model differs from its installed agent goes through step 3. A Codex or OpenCode `worker` launched natively runs at its installed tier and effort, so a different one goes through step 3 too. Without T3 Code, launch at what is installed and report what was not applied.
+2. When the role's client is this session's client, or `session`, launch the installed agent natively: Claude Code's Agent tool, a Codex subagent spawned by the agent's name, or OpenCode's `task`. Pass a model at launch only for the `worker` in Claude Code, as the resolved alias (`fable`, `opus`, `sonnet`, `haiku`), since it overrides the agent's own; the other roles run on the model installed with them, and a role at the `session` tier takes no model parameter. The Agent tool takes no effort and no full model id, so a `worker` whose resolved effort or `claude-` model differs from its installed agent goes through step 3. A Codex or OpenCode `worker` launched natively runs at its installed tier and effort, so a different one goes through step 3 too. Without T3 Code, launch at what is installed and report what was not applied.
 3. Otherwise, in a T3 Code session, start it with T3 Code's `delegate_task`:
    - `target.providerInstanceId` is `claudeAgent`, `codex`, or `opencode` for the role's client.
    - `target.model` is the resolved model, taking the matching id `orchestrator_capabilities` lists for an alias such as `opus`.

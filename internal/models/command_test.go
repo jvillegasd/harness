@@ -134,6 +134,43 @@ func TestRolesRunAtTheirTierAndLensesFollowTheReviewer(t *testing.T) {
 	}
 }
 
+func TestASessionTierRoleRunsOnTheSessionsModel(t *testing.T) {
+	listingPath(t)
+	path := seeded(t, "")
+	runOK(t, path, "role", "set", "reviewer", "--client", "codex", "--effort", "high")
+	runOK(t, path, "role", "set", "reviewer", "--tier", "session")
+	for _, name := range []string{"reviewer", "review-bugs"} {
+		if got := resolved(t, path, name); got["tier"] != "session" || got["client"] != "session" || got["model"] != "inherit" || got["effort"] != "inherit" {
+			t.Errorf("%s at the session tier = %v", name, got)
+		}
+	}
+	assigned, _ := mustLoad(t, path).ForRender(new(Catalog))
+	for _, name := range []string{"reviewer", "review-bugs", "review-spec", "review-risk"} {
+		if a, ok := assigned[name]; ok {
+			t.Errorf("%s at the session tier renders a model: %v", name, a)
+		}
+	}
+	if _, ok := assigned["executor"]; !ok {
+		t.Errorf("a role at a served tier lost its model")
+	}
+	if out := flat(t, path); !strings.Contains(out, "review-risk tier=session client=session model=inherit effort=inherit (reviewer)") {
+		t.Errorf("show lacks the session tier:\n%s", out)
+	}
+	runOK(t, path, "role", "set", "reviewer", "--tier", "high")
+	if got := resolved(t, path, "reviewer"); got["client"] != "claude" || got["model"] != "opus" {
+		t.Errorf("leaving the session tier did not return to the tier's model: %v", got)
+	}
+}
+
+func mustLoad(t *testing.T, path string) Choice {
+	t.Helper()
+	c, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
 func TestARoleOnAnotherClientTakesThatClientsModelForItsTier(t *testing.T) {
 	listingPath(t)
 	path := seeded(t, "")
@@ -163,6 +200,9 @@ func TestSetRejectsInvalidValuesWithoutWriting(t *testing.T) {
 		"a role set as a tier":        {"tier", "set", "reviewer", "--client", "claude"},
 		"a role given a model":        {"role", "set", "reviewer", "--model", "opus"},
 		"a role given nothing":        {"role", "set", "reviewer"},
+		"session tier with a client":  {"role", "set", "reviewer", "--tier", "session", "--client", "codex"},
+		"session tier with an effort": {"role", "set", "reviewer", "--tier", "session", "--effort", "high"},
+		"session tier set as a tier":  {"tier", "set", "session", "--client", "claude"},
 		"effort the model lacks":      {"role", "set", "code-search", "--effort", "high"},
 		"effort the codex model lack": {"role", "set", "executor", "--client", "codex", "--effort", "ultra"},
 		"tier without a client":       {"tier", "set", "high", "--model", "opus"},

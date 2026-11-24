@@ -152,6 +152,27 @@ func (c *Choice) pin(tier, client, model string) {
 	c.Tiers[tier] = b
 }
 
+// Session is the tier a role takes to run on the launching session's own
+// client, model, and effort: its agent files name no model, so each client
+// gives it the session's. Only a role takes it; no client serves it.
+const Session = "session"
+
+// knownRoleTier accepts a tier a role can run at: a served tier, or Session.
+func knownRoleTier(tier string) error {
+	if tier == Session || slices.Contains(Tiers, tier) {
+		return nil
+	}
+	return fmt.Errorf("unknown tier %q; choose %s, or %s", tier, strings.Join(Tiers, ", "), Session)
+}
+
+// tierHue is a tier's color, with Session after the served tiers.
+func tierHue(tier string) ui.Hue {
+	if i := slices.Index(Tiers, tier); i >= 0 {
+		return ui.Hue(i)
+	}
+	return ui.Hue(len(Tiers))
+}
+
 func knownTier(tier string) error {
 	if !slices.Contains(Tiers, tier) {
 		return fmt.Errorf("unknown tier %q; choose %s", tier, strings.Join(Tiers, ", "))

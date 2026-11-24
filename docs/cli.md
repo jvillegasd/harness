@@ -116,6 +116,7 @@ harness models show                                    # every tier with its rol
 harness models tier preset codex                       # codex serves every tier you have not set
 harness models tier set high --client codex            # one tier from another client
 harness models role set reviewer --client codex        # one role on another client, at its own tier
+harness models role set reviewer --tier session        # the reviewer and its lenses on the session's own model
 harness models role resolve reviewer                   # the model the role launches on
 harness models role reset                              # drop every role override
 harness models reset                                   # drop every tier and role setting
@@ -123,9 +124,11 @@ harness models reset                                   # drop every tier and rol
 
 A preset and a role override are separate settings. `tier preset` changes only the tiers, so the fields you set on a role earlier survive until you run `role reset`, while a field you did not set, such as the client of a role saved with only `--effort`, follows the tier and moves with the preset. A role on another client runs at that client's model for the same tier: a reviewer set to `--client codex` at `high` runs on Codex's newest `-sol` model even while Claude serves `high`, unless a Codex model is pinned for `high` with `tier set high --client codex --model <model>`, which wins over the newest model.
 
+`session` is a tier only a role takes. A role set to `--tier session` renders its agent files with no model and no effort, so each client runs it on the model and effort of the session that launches it: an Opus session reviews with Opus and a Sonnet session with Sonnet. It takes no `--client` or `--effort`, and setting it drops the ones the role had. `role resolve` reports it as client `session` and model `inherit`. `show` lists its roles under their own `session` group.
+
 `show` prints two sections. `tier defaults` has one card per tier: what the tier is for, `runs on` with the model that serves it now, and one `with <preset>` line per other preset with the model that preset would serve it with. A Claude alias made for the tier follows its model as `or fable`, whether or not your plan includes it. When a client lists no model for the tier, the card shows what a role falls back to: the next tier, served by that tier's own client, such as `codex › gpt-6.1-sol at high`. A model that cannot run, such as a pinned one the client no longer lists, is marked `not runnable`. A tier you set with `tier set` keeps its client under every preset. `roles` lists each role under its tier with the model it runs on, as `<client> › <model>`. `tier show` prints the cards alone.
 
-`harness models` with no arguments, in a terminal, opens a picker. Its first screen offers each preset, with a preview of the models it runs each tier on, or `custom`. The custom screen lists every tier and role with what it runs on now, marks the ones you set with `set`, and queues each change as the `harness models` command it runs. A tier takes a client and then a model. A role takes a tier, then a client, then an effort, and never a model of its own. A tier or role marked `set` also offers `reset`. Each change is checked when you pick it, so `save` writes everything queued. `esc` goes back one screen, and `q` quits without writing.
+`harness models` with no arguments, in a terminal, opens a picker. Its first screen offers each preset, with a preview of the models it runs each tier on, or `custom`. The custom screen lists every tier and role with what it runs on now, marks the ones you set with `set`, and queues each change as the `harness models` command it runs. A tier takes a client and then a model. A role takes a tier, then a client, then an effort, and never a model of its own; picking the `session` tier sets it in one step. A tier or role marked `set` also offers `reset`. Each change is checked when you pick it, so `save` writes everything queued. `esc` goes back one screen, and `q` quits without writing.
 
 Each line is labeled with where it comes from:
 
