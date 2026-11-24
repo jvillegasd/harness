@@ -44,8 +44,6 @@ Codex runs its newest listed -astra, -sol, -terra, -luna model.
 OpenCode runs only a model named with tier set <tier>.
 heavy falls back to high when no heavy model is listed.
 A review lens (review-bugs, review-spec, review-risk) follows the reviewer until it is set on its own.
-A role set to --tier session runs on the launching session's own client, model, and effort, and takes
-no --client or --effort; no client serves the session tier, so tier set does not take it.
 
 The choice is stored in ~/.harness/state.json. Saving it with set, preset, reset, or the picker renders
 the role agents again for each client that already has them; ` + "`harness install agents`" + ` renders them for the rest.

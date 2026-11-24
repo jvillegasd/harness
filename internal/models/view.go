@@ -182,10 +182,12 @@ func drawTree(s ui.Style, rep report, w io.Writer) {
 	drawCards(s, rep, w)
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, s.Title("roles", "the model each role runs on"))
-	drawGroup := func(tier, problem string) {
+	for i, t := range rep.Tiers {
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, s.Pill(ui.Hue(i), t.Tier, 8))
 		var members []roleView
 		for _, r := range rep.Roles {
-			if r.Tier == tier {
+			if r.Tier == t.Tier {
 				members = append(members, r)
 			}
 		}
@@ -196,21 +198,11 @@ func drawTree(s ui.Style, rep report, w io.Writer) {
 			last := j == len(members)-1
 			fmt.Fprintln(w, strings.TrimRight(s.Branch(last)+drawMember(s, r), " "))
 			for _, p := range memberProblems(r) {
-				if p != problem {
+				if p != t.Problem {
 					fmt.Fprintln(w, s.Stem(last)+s.Warn(p))
 				}
 			}
 		}
-	}
-	for _, t := range rep.Tiers {
-		fmt.Fprintln(w)
-		fmt.Fprintln(w, s.Pill(tierHue(t.Tier), t.Tier, 8))
-		drawGroup(t.Tier, t.Problem)
-	}
-	if slices.ContainsFunc(rep.Roles, func(r roleView) bool { return r.Tier == Session }) {
-		fmt.Fprintln(w)
-		fmt.Fprintln(w, s.Pill(tierHue(Session), Session, 8)+"  "+s.Dim("the session's own model"))
-		drawGroup(Session, "")
 	}
 }
 
@@ -326,7 +318,8 @@ func drawTiers(s ui.Style, rep report, w io.Writer) {
 // drawRoles draws one row per role, for `role show` and `role resolve`.
 func drawRoles(s ui.Style, roles []roleView, w io.Writer) {
 	for _, r := range roles {
-		line := ui.Pad(r.Role, 13) + " " + s.Color(tierHue(r.Tier), ui.Pad(r.Tier, 9)) + " " + s.Resolved(r.Client, ui.Pad(r.Model, 14)) + "  " + s.Dim("effort") + " " + drawEffort(s, r.Effort)
+		i := slices.Index(Tiers, r.Tier)
+		line := ui.Pad(r.Role, 13) + " " + s.Color(ui.Hue(i), ui.Pad(r.Tier, 9)) + " " + s.Resolved(r.Client, ui.Pad(r.Model, 14)) + "  " + s.Dim("effort") + " " + drawEffort(s, r.Effort)
 		if a := annotation(s, r); a != "" {
 			line += "  " + a
 		}

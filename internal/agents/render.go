@@ -12,16 +12,17 @@ import (
 	"unicode/utf8"
 )
 
-// Session is the client of an assignment to the launching session's own
-// model: every client renders the role, naming no model or effort.
-const Session = "session"
-
 type Assigned struct {
 	Client, Model, Effort, Source string
 }
 
 func Render(root string, assigned map[string]Assigned) (map[string]string, map[string]string, []string, error) {
-	resolved, err := resolve(assigned)
+	return render(root, assigned, Roles)
+}
+
+// render renders roles, so a test can render every role as generic, on every client.
+func render(root string, assigned map[string]Assigned, roles []Role) (map[string]string, map[string]string, []string, error) {
+	resolved, err := resolve(assigned, roles)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -49,7 +50,7 @@ func Render(root string, assigned map[string]Assigned) (map[string]string, map[s
 			report = append(report, fmt.Sprintf("unverified: %s %s effort %s is supported by its model", pair[0], pair[1], effort))
 		}
 	}
-	for _, role := range Roles {
+	for _, role := range roles {
 		name := role.Name
 		description, accessLevel, body, err := load(filepath.Join(root, filepath.FromSlash(role.Definition)), role)
 		if err != nil {
@@ -95,15 +96,15 @@ func Render(root string, assigned map[string]Assigned) (map[string]string, map[s
 	return outputs, accesses, report, nil
 }
 
-func resolve(assigned map[string]Assigned) (map[string]map[string][2]string, error) {
+func resolve(assigned map[string]Assigned, roles []Role) (map[string]map[string][2]string, error) {
 	clients := slices.Sorted(maps.Keys(supported))
 	resolved := map[string]map[string][2]string{}
-	for _, role := range Roles {
+	for _, role := range roles {
 		for _, client := range clients {
 			// A role renders only where `harness models` puts it: on its assigned
-			// client, on every client when assigned to the session, and on every
-			// client for a generic role, whose model is chosen at launch. Anywhere
-			// else a file would name no model and run on the launching session's.
+			// client, and on every client for a generic role, whose model is chosen
+			// at launch. Anywhere else a file would name no model and run on the
+			// launching session's.
 			a, ok := assigned[role.Name]
 			var settings map[string][2]string
 			switch {
@@ -113,8 +114,6 @@ func resolve(assigned map[string]Assigned) (map[string]map[string][2]string, err
 					effort = "inherit"
 				}
 				settings = map[string][2]string{"model": {a.Model, a.Source}, "effort": {effort, a.Source}}
-			case ok && a.Client == Session:
-				settings = map[string][2]string{"model": {"inherit", "session"}, "effort": {"inherit", "session"}}
 			case role.Generic:
 				settings = map[string][2]string{"model": {"inherit", "chosen at launch"}, "effort": {"inherit", "chosen at launch"}}
 			default:

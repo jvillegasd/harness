@@ -90,13 +90,6 @@ func (c Choice) Resolve(name string, launch Launch, cat *Catalog) Resolved {
 	case overridden:
 		source = "override"
 	}
-	if out.Tier == Session {
-		out.Client, out.Model, out.Effort, out.Source = Session, "inherit", "", source
-		if ov.Client != "" || ov.Effort != "" {
-			out.Note = "the reviewer runs at the session tier, so this lens's client and effort settings are unused"
-		}
-		return out
-	}
 	for {
 		b, tierSource := c.binding(out.Tier)
 		out.Client = cmp.Or(launch.Client, ov.Client, defaultClient, b.Client)
@@ -135,11 +128,7 @@ func (c Choice) ForRender(cat *Catalog) (map[string]agents.Assigned, map[string]
 	all := c.ResolveAll(cat)
 	out := map[string]agents.Assigned{}
 	for name, r := range all {
-		switch {
-		case r.Err != nil:
-		case r.Tier == Session:
-			out[name] = agents.Assigned{Client: agents.Session, Source: r.Tier + ", " + r.Source}
-		default:
+		if r.Err == nil {
 			out[name] = agents.Assigned{Client: r.Client, Model: r.Model, Effort: r.Effort, Source: r.Tier + ", " + r.Source}
 		}
 	}
@@ -183,12 +172,9 @@ func knownRole(name string) error {
 
 func checkOverride(ov Override) error {
 	if ov.Tier != "" {
-		if err := knownRoleTier(ov.Tier); err != nil {
+		if err := knownTier(ov.Tier); err != nil {
 			return err
 		}
-	}
-	if ov.Tier == Session && (ov.Client != "" || ov.Effort != "") {
-		return errors.New("a role at the session tier runs on the session's client and effort, so it takes no --client or --effort")
 	}
 	if ov.Client != "" && !slices.Contains(Clients, ov.Client) {
 		return fmt.Errorf("unknown client %q; choose %s", ov.Client, strings.Join(Clients, ", "))
@@ -259,10 +245,6 @@ func setRole(choice Choice, args []string, cat *Catalog) (Choice, error) {
 		return choice, err
 	}
 	ov := choice.Roles[name]
-	if given.Tier == Session {
-		// The session tier replaces the role's client and effort, so it drops them.
-		ov = Override{}
-	}
 	ov.Tier, ov.Client, ov.Effort = cmp.Or(given.Tier, ov.Tier), cmp.Or(given.Client, ov.Client), cmp.Or(given.Effort, ov.Effort)
 	if err := checkOverride(ov); err != nil {
 		return choice, err

@@ -6,7 +6,11 @@ import (
 )
 
 func Generate(root, output string, assigned map[string]Assigned, stdout, stderr io.Writer) int {
-	outputs, _, report, err := Render(root, assigned)
+	return generateRoles(root, output, assigned, Roles, stdout, stderr)
+}
+
+func generateRoles(root, output string, assigned map[string]Assigned, roles []Role, stdout, stderr io.Writer) int {
+	outputs, _, report, err := render(root, assigned, roles)
 	if err != nil {
 		return report1(err, stderr)
 	}
@@ -17,7 +21,11 @@ func Generate(root, output string, assigned map[string]Assigned, stdout, stderr 
 }
 
 func Check(root, output string, assigned map[string]Assigned, stdout, stderr io.Writer) int {
-	outputs, accesses, _, err := Render(root, assigned)
+	return checkRoles(root, output, assigned, Roles, stdout, stderr)
+}
+
+func checkRoles(root, output string, assigned map[string]Assigned, roles []Role, stdout, stderr io.Writer) int {
+	outputs, accesses, _, err := render(root, assigned, roles)
 	if err != nil {
 		return report1(err, stderr)
 	}

@@ -108,20 +108,6 @@ func TestPickerSetsARoleTierClientAndEffort(t *testing.T) {
 	}
 }
 
-func TestPickerSetsARoleToTheSessionTierInOneStep(t *testing.T) {
-	p := choose(t, fresh(catalogOf(nil, nil)), "custom")
-	p = choose(t, p, "reviewer")
-	p = choose(t, p, "session")
-	p = choose(t, p, "save")
-	path := statePath(t)
-	if wrote, err := p.save(path); err != nil || !wrote {
-		t.Fatalf("save wrote=%v err=%v", wrote, err)
-	}
-	if out := show(t, path); !strings.Contains(out, "reviewer tier=session client=session model=inherit effort=inherit (override)") {
-		t.Errorf("session tier not stored:\n%s", out)
-	}
-}
-
 func TestPickerOffersEffortsOfTheResolvedModel(t *testing.T) {
 	haiku := choose(t, choose(t, choose(t, choose(t, fresh(catalogOf(nil, nil)), "custom"), "executor"), "fast"), "claude")
 	if got := haiku.options(); !slices.Equal(got, []string{""}) {
@@ -291,13 +277,5 @@ func TestPickerKeepClearsAPickMadeBeforeEsc(t *testing.T) {
 	q = choose(t, choose(t, back(q), keep), "")
 	if len(p.sets)+len(q.sets) != 0 {
 		t.Errorf("keep after esc still queued the earlier pick: %v %v", p.sets, q.sets)
-	}
-}
-
-func TestPickerOffersNoClientToARoleKeptAtTheSessionTier(t *testing.T) {
-	p := newPicker(catalogOf(nil, nil), Choice{Roles: map[string]Override{"reviewer": {Tier: Session}}})
-	p = choose(t, choose(t, choose(t, p, "custom"), "reviewer"), keep)
-	if got := p.options(); !slices.Equal(got, []string{keep}) {
-		t.Errorf("clients offered to a role at the session tier, which role set refuses: %v", got)
 	}
 }

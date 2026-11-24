@@ -87,15 +87,12 @@ func (p picker) options() []string {
 		return listed
 	case stepRoleTier:
 		if _, set := p.applied().Roles[p.name]; set {
-			return slices.Concat([]string{reset, keep}, Tiers, []string{Session})
+			return slices.Concat([]string{reset, keep}, Tiers)
 		}
-		return slices.Concat([]string{keep}, Tiers, []string{Session})
+		return slices.Concat([]string{keep}, Tiers)
 	case stepRoleClient:
 		// Only clients with a model at the role's tier, since role set refuses the others.
 		out := []string{keep}
-		if p.pending().Resolve(p.name, Launch{}, p.catalog).Tier == Session {
-			return out
-		}
 		for _, client := range p.clients() {
 			c := p.pending()
 			ov := c.Roles[p.name]
@@ -233,10 +230,6 @@ func (p picker) pick(opt string) (tea.Model, tea.Cmd) {
 	case stepRoleTier:
 		if opt == reset {
 			return p.queue(stepRoleTier, at, []string{"role", "reset", p.name})
-		}
-		// The session tier takes no client or effort, so it is set here.
-		if opt == Session {
-			return p.queue(stepRoleTier, at, []string{"role", "set", p.name, "--tier", Session})
 		}
 		// keep clears an earlier pick of this step, such as one made before esc.
 		p.tier = ""
@@ -407,9 +400,8 @@ func (p picker) label(opt string) string {
 		return s.Accent(opt)
 	case opt == reset:
 		return s.Caution(opt)
-	case (p.step == stepName || p.step == stepRoleTier) && slices.Contains(Tiers, opt),
-		p.step == stepRoleTier && opt == Session:
-		return s.Color(tierHue(opt), opt)
+	case (p.step == stepName || p.step == stepRoleTier) && slices.Contains(Tiers, opt):
+		return s.Color(ui.Hue(slices.Index(Tiers, opt)), opt)
 	}
 	return opt
 }
@@ -429,9 +421,6 @@ func (p picker) detail(opt string) string {
 		}
 		return s.Dim(note)
 	case stepTierClient, stepRoleTier:
-		if p.step == stepRoleTier && opt == Session {
-			return s.Dim("run on the session's own client, model, and effort")
-		}
 		if opt == reset {
 			c := p.applied()
 			if p.step == stepTierClient {

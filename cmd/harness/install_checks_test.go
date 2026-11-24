@@ -16,8 +16,6 @@ import (
 	"testing"
 )
 
-var agentOutputs = []string{"claude/code-search.md", "claude/executor.md", "claude/reviewer.md", "claude/review-bugs.md", "claude/review-risk.md", "claude/review-spec.md", "codex/code-search.toml", "codex/executor.toml", "codex/reviewer.toml", "codex/review-bugs.toml", "codex/review-risk.toml", "codex/review-spec.toml", "opencode/code-search.md", "opencode/executor.md", "opencode/reviewer.md", "opencode/review-bugs.md", "opencode/review-risk.md", "opencode/review-spec.md"}
-
 func readFile(t *testing.T, path string) string {
 	t.Helper()
 	data, err := os.ReadFile(path)
@@ -144,16 +142,22 @@ func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
 		}
 	}
 
-	// Every role at the session tier renders on every client, so each output is checked.
-	for _, role := range []string{"reviewer", "executor", "code-search"} {
-		ok(t, runHarness(t, base, nil, "models", "role", "set", role, "--tier", "session"), "set "+role+" to the session tier")
-	}
 	ok(t, runInstaller(t, base, "agents", "settings"), "install")
-	for _, rel := range agentOutputs {
-		client, name, _ := strings.Cut(rel, "/")
-		path := filepath.Join(roots[client], name)
-		if isSymlink(path) || strings.Contains(readFileOr(path), "private-secret") || readFileOr(path) == "" {
-			t.Errorf("%s is not a clean copy", path)
+	// Each client holds only the roles assigned to it, plus the worker.
+	for client, root := range roots {
+		installed := 0
+		for _, entry := range readDir(root) {
+			if entry == "mine.md" || entry == "foreign.md" {
+				continue
+			}
+			installed++
+			path := filepath.Join(root, entry)
+			if isSymlink(path) || strings.Contains(readFileOr(path), "private-secret") || readFileOr(path) == "" {
+				t.Errorf("%s is not a clean copy", path)
+			}
+		}
+		if installed == 0 {
+			t.Errorf("the install put no role agent on %s", client)
 		}
 	}
 	untouched("the install")
@@ -1432,14 +1436,14 @@ func TestMacBashUsesTheExistingProfile(t *testing.T) {
 
 func TestAgentInstallArchivesAnEditedAgentItNoLongerRenders(t *testing.T) {
 	t.Parallel()
-	base := sandbox(t)
+	base := modelsBase(t)
 	home := filepath.Join(base, "home")
-	ok(t, runHarness(t, base, nil, "models", "role", "set", "reviewer", "--tier", "session"), "reviewer on the session tier")
-	ok(t, runInstaller(t, base, "agents"), "install on every client")
+	ok(t, runModels(t, base, "tier", "set", "high", "--client", "opencode", "--model", "openai/gpt-5.6-sol"), "reviewer on opencode")
+	ok(t, runInstaller(t, base, "agents"), "install with the reviewer on opencode")
 	edited := filepath.Join(home, ".config", "opencode", "agents", "reviewer.md")
 	writeMode(t, edited, readFile(t, edited)+"\nmy note\n", 0o644)
 	// Saving the choice renders the agents again but keeps edited copies.
-	ok(t, runHarness(t, base, nil, "models", "role", "reset", "reviewer"), "reviewer back on claude")
+	ok(t, runModels(t, base, "tier", "reset", "high"), "reviewer back on claude")
 	ok(t, runInstaller(t, base, "agents"), "install again")
 	if _, err := os.Stat(edited); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("an edited reviewer agent on a client it is not assigned to survived, so it runs on the session's model")

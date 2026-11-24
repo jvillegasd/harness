@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/jvillegasd/harness/internal/agents"
 	"github.com/jvillegasd/harness/internal/models"
 	"github.com/jvillegasd/harness/internal/ui"
 )
@@ -180,8 +179,7 @@ func (in *installer) counted(components ...string) string {
 }
 
 // drawAssignments is one line per client: the roles assigned to it, grouped
-// by model and effort, and the roles that run on the session's model. A role
-// assigned elsewhere has no agent on this client.
+// by model and effort. A role assigned elsewhere has no agent on this client.
 func (in *installer) drawAssignments() {
 	s := in.style()
 	assigned := in.assigned()
@@ -190,17 +188,12 @@ func (in *installer) drawAssignments() {
 		groups := map[string][]string{}
 		for _, role := range models.AllRoles {
 			a, ok := assigned[role]
-			var setting string
-			switch {
-			case ok && a.Client == agents.Session:
-				setting = "the session's model"
-			case ok && a.Client == client && a.Model != "":
-				setting = a.Model
-				if a.Effort != "" {
-					setting += " " + s.Dim("@") + " " + a.Effort
-				}
-			default:
+			if !ok || a.Client != client || a.Model == "" {
 				continue
+			}
+			setting := a.Model
+			if a.Effort != "" {
+				setting += " " + s.Dim("@") + " " + a.Effort
 			}
 			if groups[setting] == nil {
 				order = append(order, setting)

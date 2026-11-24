@@ -56,12 +56,6 @@ Each kind of reviewer is its own role: `review-bugs`, `review-spec`, `review-ris
 harness models role set review-risk --tier heavy --effort high
 ```
 
-To have every reviewer run on the model of the session that launches it, whichever that is, set the reviewer to the `session` tier; the lenses follow it:
-
-```sh
-harness models role set reviewer --tier session
-```
-
 ## What happens during a review
 
 1. **Freeze the change.** The agent commits its work, and reviewers read exactly that commit. Nothing is edited until every reviewer has reported.

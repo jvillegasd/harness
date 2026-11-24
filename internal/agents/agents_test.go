@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -33,25 +34,29 @@ func repoRoot() string {
 	return abs
 }
 
-// runCommand renders every role on every client, at the session's model, so
-// a test can read each output's restrictions.
+// runCommand renders every role as generic, so each renders on every client
+// and a test can read each output's restrictions.
 func runCommand(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
-	everywhere := map[string]Assigned{}
-	for _, role := range Roles {
-		everywhere[role.Name] = Assigned{Client: Session}
+	generic := slices.Clone(Roles)
+	for i := range generic {
+		generic[i].Generic = true
 	}
-	return runWith(t, everywhere, args...)
+	return runRoles(t, nil, generic, args...)
 }
 
 func runWith(t *testing.T, assigned map[string]Assigned, args ...string) (int, string, string) {
 	t.Helper()
+	return runRoles(t, assigned, Roles, args...)
+}
+
+func runRoles(t *testing.T, assigned map[string]Assigned, roles []Role, args ...string) (int, string, string) {
+	t.Helper()
 	var stdout, stderr bytes.Buffer
-	run := Generate
 	if args[0] == "--check" {
-		run, args = Check, args[1:]
+		return checkRoles(args[1], args[2], assigned, roles, &stdout, &stderr), stdout.String(), stderr.String()
 	}
-	code := run(args[0], args[1], assigned, &stdout, &stderr)
+	code := generateRoles(args[0], args[1], assigned, roles, &stdout, &stderr)
 	return code, stdout.String(), stderr.String()
 }
 
@@ -452,7 +457,7 @@ func TestIncompleteOrWidenedRoleRefused(t *testing.T) {
 }
 
 func TestAssignments(t *testing.T) {
-	t.Run("a session role inherits on every client", func(t *testing.T) {
+	t.Run("a generic role inherits on every client", func(t *testing.T) {
 		out := temp(t)
 		_, stdout, _ := runCommand(t, repoRoot(), out)
 		if !containsLine(head(t, filepath.Join(out, "claude", "reviewer.md")), "model: inherit") {
@@ -471,7 +476,7 @@ func TestAssignments(t *testing.T) {
 		if got := codexSettings(t, filepath.Join(out, "codex", "reviewer.toml")); len(got) != 0 {
 			t.Errorf("codex reviewer writes settings it inherits: %v", got)
 		}
-		if !strings.Contains(stdout, "assignment: claude reviewer model=inherit (session) effort=inherit (session)") {
+		if !strings.Contains(stdout, "assignment: claude reviewer model=inherit (chosen at launch) effort=inherit (chosen at launch)") {
 			t.Errorf("report = %s", stdout)
 		}
 		if strings.Contains(stdout, "to this account") {
