@@ -69,8 +69,8 @@ These hold at every step of every playbook.
 
 - **A broken skill mid-task** (a step that names a missing script, a stale path, two skills that contradict each other): fix it on its own branch. Do not block on it and do not silently work around it. It becomes its own PR. When the broken skill belongs to the harness and you are working in another repository, write a ready-to-apply note instead: the skill, the defect, the evidence, and the proposed fix, in the task document and the reply.
 - **A step that verifies** passes only on the surface it names. Inconclusive, or green or measured on another surface, is not a pass.
-- **A subagent to launch** (executor, code-search, reviewer, a review lens, or any other, which runs as the `worker` at a tier): launch it through `delegation`.
-- **Bulk that would crowd the context** (a broad search, a long log, transcript, trace, or profile, a sweep of mechanical edits, an implementation big enough to bury the plan): route it to a role through `delegation` and keep only its reduced result, so this session stays on planning, review, and verification (`principle-guard-the-context-window`).
+- **A subagent to launch** (executor, code-search, reviewer, a review lens, or any other, which runs as the `worker` at a tier): launch it through `delegation`, on the client, model, and effort `harness models role resolve <role> --json` returns, and name them in the reply (`principle-launch-on-the-assigned-model`).
+- **Bulk that would crowd the context** (a broad search, a long log, transcript, trace, or profile, a sweep of mechanical edits, an implementation big enough to bury the plan): route it to a role through `delegation`, resolved the same way, and keep only its reduced result, so this session stays on planning, review, and verification (`principle-guard-the-context-window`).
 - **A principle applies** (the index below): apply its rule. Read the principle's `SKILL.md` from the installed skills (`~/.claude/skills` in Claude Code, `~/.agents/skills` in Codex and OpenCode) only when you need more than the rule, and name in the reply each principle that changed a decision.
 
 ### Principles
@@ -94,6 +94,7 @@ Each entry is when it applies, then the rule.
 - `principle-fix-root-causes`: debugging. Trace each symptom to the first place the system went wrong and fix it there; a guard is a fix only when the state it handles is legitimate.
 - `principle-sequence-verifiable-units`: multi-step work, and how commits and pull requests stack. Small units that each end in a check, each verified before the next.
 - `principle-explain-the-number`: before measuring, and before trusting or acting on a number. Find what limits it, and rule out that it measured something other than the work.
+- `principle-launch-on-the-assigned-model`: before launching a role, which every subagent runs as except a skill's own named agents. Resolve its client, model, and effort with `harness models role resolve`, launch there, and name where it ran; a launch with no model inherits the session's.
 - `principle-guard-the-context-window`: large outputs, long files, repeated reads, or fan-out planning. Route bulk to roles and keep only their reduced results.
 - `principle-never-block-on-the-human`: tempted to ask whether to do reversible work. Do it, show the result, and let the human correct it.
 - `principle-encode-lessons-in-structure`: writing the same instruction a second time, or a recurring correction. Encode it as a check, lint, type, or script instead of more text.

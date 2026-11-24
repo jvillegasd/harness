@@ -26,7 +26,7 @@ With no target above, use the latest unambiguous active question, claim, or unre
 
 4. Compare independent evidence, test counterexamples, and resolve contradictions. Separate fact, inference, and unknown. Runtime claims not checked against available telemetry belong in `Contradictions and unknowns`, not `Conclusion`.
 
-5. Delegate parallel repository search only for genuinely independent tracks or a large search space. Launch each track as the `code-search` role through `delegation`; when the role is unavailable, search inline and say so. Give each a distinct question and reconcile their evidence rather than concatenating their reports. A track searching the repository reports in the shape described under Code-search citations below, and every citation is verified there before reuse; external and telemetry queries stay in this context and keep the Findings ledger's `Evidence:` form.
+5. Delegate parallel repository search only for genuinely independent tracks or a large search space. Launch each track as the `code-search` role through `delegation`, on the model `harness models role resolve code-search --json` returns (`principle-launch-on-the-assigned-model`); when the role is unavailable, search inline and say so. Give each a distinct question and reconcile their evidence rather than concatenating their reports. A track searching the repository reports in the shape described under Code-search citations below, and every citation is verified there before reuse; external and telemetry queries stay in this context and keep the Findings ledger's `Evidence:` form.
 
 ## Code-search citations
 
