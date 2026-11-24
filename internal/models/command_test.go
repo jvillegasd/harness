@@ -146,8 +146,8 @@ func TestASessionTierRoleRunsOnTheSessionsModel(t *testing.T) {
 	}
 	assigned, _ := mustLoad(t, path).ForRender(new(Catalog))
 	for _, name := range []string{"reviewer", "review-bugs", "review-spec", "review-risk"} {
-		if a, ok := assigned[name]; ok {
-			t.Errorf("%s at the session tier renders a model: %v", name, a)
+		if a := assigned[name]; a.Client != Session || a.Model != "" || a.Effort != "" {
+			t.Errorf("%s at the session tier is assigned %v", name, a)
 		}
 	}
 	if _, ok := assigned["executor"]; !ok {

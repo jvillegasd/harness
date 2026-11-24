@@ -143,6 +143,10 @@ func TestAgentInstallAndUninstallTouchOnlyRecordedCopies(t *testing.T) {
 		}
 	}
 
+	// Every role at the session tier renders on every client, so each output is checked.
+	for _, role := range []string{"reviewer", "executor", "code-search"} {
+		ok(t, runHarness(t, base, nil, "models", "role", "set", role, "--tier", "session"), "set "+role+" to the session tier")
+	}
 	ok(t, runInstaller(t, base, "agents", "settings"), "install")
 	for _, rel := range agentOutputs {
 		client, name, _ := strings.Cut(rel, "/")
@@ -172,13 +176,13 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 			base := sandbox(t)
 			home := filepath.Join(base, "home")
 			root := filepath.Join(home, ".config", "opencode", "agents")
-			private := filepath.Join(base, "private", "reviewer.md")
+			private := filepath.Join(base, "private", "worker.md")
 			writeMode(t, private, "private agent\n", 0o644)
 			switch kind {
 			case "file":
-				writeMode(t, filepath.Join(root, "reviewer.md"), "private agent\n", 0o644)
+				writeMode(t, filepath.Join(root, "worker.md"), "private agent\n", 0o644)
 			case "foreign-link":
-				symlink(t, private, filepath.Join(root, "reviewer.md"))
+				symlink(t, private, filepath.Join(root, "worker.md"))
 			case "root-link":
 				symlink(t, filepath.Dir(private), root)
 			}
@@ -186,7 +190,7 @@ func TestAgentInstallArchivesUnrecordedCollisions(t *testing.T) {
 			if got := readFile(t, private); got != "private agent\n" {
 				t.Errorf("the install wrote through to %s: %q", private, got)
 			}
-			if installed := filepath.Join(root, "reviewer.md"); isSymlink(installed) || readFileOr(installed) == "private agent\n" {
+			if installed := filepath.Join(root, "worker.md"); isSymlink(installed) || readFileOr(installed) == "private agent\n" {
 				t.Errorf("%s is not the harness copy", installed)
 			}
 			archived, _ := filepath.Glob(filepath.Join(home, ".dotfiles-backups", "harness", "*", ".config", "opencode", "agents*"))

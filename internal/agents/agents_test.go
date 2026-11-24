@@ -452,7 +452,7 @@ func TestIncompleteOrWidenedRoleRefused(t *testing.T) {
 }
 
 func TestAssignments(t *testing.T) {
-	t.Run("an unassigned role inherits on every client", func(t *testing.T) {
+	t.Run("a session role inherits on every client", func(t *testing.T) {
 		out := temp(t)
 		_, stdout, _ := runCommand(t, repoRoot(), out)
 		if !containsLine(head(t, filepath.Join(out, "claude", "reviewer.md")), "model: inherit") {
@@ -471,7 +471,7 @@ func TestAssignments(t *testing.T) {
 		if got := codexSettings(t, filepath.Join(out, "codex", "reviewer.toml")); len(got) != 0 {
 			t.Errorf("codex reviewer writes settings it inherits: %v", got)
 		}
-		if !strings.Contains(stdout, "assignment: claude reviewer model=inherit (client default) effort=inherit (client default)") {
+		if !strings.Contains(stdout, "assignment: claude reviewer model=inherit (session) effort=inherit (session)") {
 			t.Errorf("report = %s", stdout)
 		}
 		if strings.Contains(stdout, "to this account") {
@@ -596,19 +596,6 @@ func TestAssignments(t *testing.T) {
 			}
 		}
 	})
-}
-
-func TestASessionAssignmentRendersEveryClientOnTheSessionsModel(t *testing.T) {
-	out := temp(t)
-	assigned := map[string]Assigned{"reviewer": {Client: Session, Source: "override"}}
-	if code, _, stderr := runWith(t, assigned, repoRoot(), out); code != 0 {
-		t.Fatalf("generate exited %d: %s", code, stderr)
-	}
-	assertHead(t, filepath.Join(out, "claude", "reviewer.md"), []string{"model: inherit"})
-	assertHead(t, filepath.Join(out, "opencode", "reviewer.md"), nil)
-	if got := codexSettings(t, filepath.Join(out, "codex", "reviewer.toml")); len(got) != 0 {
-		t.Errorf("codex reviewer at the session tier names %v", got)
-	}
 }
 
 func TestCheckDetectsWideningBesideAssignments(t *testing.T) {

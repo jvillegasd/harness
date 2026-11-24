@@ -163,7 +163,7 @@ func problem(err error) string {
 	case err == nil:
 		return ""
 	case errors.Is(err, ErrNotListed):
-		return err.Error() + "; install renders the client default"
+		return err.Error() + "; install renders no agent for it"
 	}
 	return "unverified: " + err.Error()
 }
@@ -269,7 +269,7 @@ func drawChoice(s ui.Style, m clientModel, alternatives []string) string {
 
 func tierProblem(t tierView) string {
 	if t.Fallback != "" {
-		return strings.TrimSuffix(t.Problem, "; install renders the client default") + "; roles at " + t.Tier + " fall back to " + t.Fallback
+		return strings.TrimSuffix(t.Problem, "; install renders no agent for it") + "; roles at " + t.Tier + " fall back to " + t.Fallback
 	}
 	return t.Problem
 }

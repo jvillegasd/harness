@@ -128,14 +128,18 @@ func (c Choice) ResolveAll(cat *Catalog) map[string]Resolved {
 	return out
 }
 
-// ForRender is every role's resolution in the form the agent renderer takes,
-// leaving out a role with no runnable model so it keeps the client default.
+// ForRender is every role's resolution in the form the agent renderer takes.
+// A role with no runnable model is left out, so it gets no agent file and a
+// launch fails rather than running on the session's model.
 func (c Choice) ForRender(cat *Catalog) (map[string]agents.Assigned, map[string]Resolved) {
 	all := c.ResolveAll(cat)
 	out := map[string]agents.Assigned{}
 	for name, r := range all {
-		// A role at the session tier is left out too, so every client inherits.
-		if r.Err == nil && r.Tier != Session {
+		switch {
+		case r.Err != nil:
+		case r.Tier == Session:
+			out[name] = agents.Assigned{Client: agents.Session, Source: r.Tier + ", " + r.Source}
+		default:
 			out[name] = agents.Assigned{Client: r.Client, Model: r.Model, Effort: r.Effort, Source: r.Tier + ", " + r.Source}
 		}
 	}

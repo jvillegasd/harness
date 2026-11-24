@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -124,8 +126,8 @@ func TestInstallRendersTheResolvedTiers(t *testing.T) {
 	if !strings.Contains(agentFile(t, base, "codex", "executor"), "\nmodel = \"gpt-6.1-terra\"\n") {
 		t.Error("the Codex executor does not carry the standard tier's model")
 	}
-	if !strings.Contains(agentFile(t, base, "claude", "executor"), "model: inherit\n") {
-		t.Error("the Claude executor, served by Codex, does not keep the client default")
+	if _, err := os.Stat(filepath.Join(base, "home", ".claude", "agents", "executor.md")); !errors.Is(err, fs.ErrNotExist) {
+		t.Error("the Claude executor, served by Codex, has an agent that would run on the session's model")
 	}
 	if a := agentFile(t, base, "claude", "reviewer"); !strings.Contains(a, "model: opus\n") || !strings.Contains(a, "effort: low\n") {
 		t.Errorf("claude reviewer lacks opus at low effort:\n%s", a)
@@ -138,8 +140,8 @@ func TestInstallRendersTheResolvedTiers(t *testing.T) {
 	if a := agentFile(t, base, "opencode", "review-bugs"); !strings.Contains(a, "model: openai/gpt-5.6-sol\n") || !strings.Contains(a, "reasoningEffort: low\n") {
 		t.Errorf("the OpenCode lens does not follow the reviewer's tier:\n%s", a)
 	}
-	if strings.Contains(agentFile(t, base, "claude", "reviewer"), "model: opus") {
-		t.Error("the Claude reviewer kept a model after its tier moved to OpenCode")
+	if _, err := os.Stat(filepath.Join(base, "home", ".claude", "agents", "reviewer.md")); !errors.Is(err, fs.ErrNotExist) {
+		t.Error("the Claude reviewer kept an agent after its tier moved to OpenCode")
 	}
 }
 
@@ -151,8 +153,8 @@ func TestInstallFallsBackWhenATierCannotBeServed(t *testing.T) {
 	if !strings.Contains(r.stderr+r.stdout, "executor runs at the standard tier on codex, which this machine cannot serve") {
 		t.Errorf("no fallback warning:\n%s%s", r.stdout, r.stderr)
 	}
-	if strings.Contains(agentFile(t, base, "codex", "executor"), "model = ") {
-		t.Error("the Codex executor carries a model this machine cannot run")
+	if _, err := os.Stat(filepath.Join(base, "home", ".codex", "agents", "executor.toml")); !errors.Is(err, fs.ErrNotExist) {
+		t.Error("the Codex executor, with no model this machine can run, has an agent that would run on the session's model")
 	}
 	if strings.Contains(r.stderr+r.stdout, "review-bugs runs") {
 		t.Errorf("a lens that follows the reviewer warned on its own:\n%s%s", r.stdout, r.stderr)
@@ -243,7 +245,7 @@ func shown(t *testing.T, base string) string {
 	for _, v := range rep.Tiers {
 		fmt.Fprintf(&b, "%s client=%s model=%s (%s)", v.Tier, v.Client, v.Model, v.Source)
 		if v.Fallback != "" {
-			fmt.Fprintf(&b, " [%s; roles at %s fall back to %s]", strings.TrimSuffix(v.Problem, "; install renders the client default"), v.Tier, v.Fallback)
+			fmt.Fprintf(&b, " [%s; roles at %s fall back to %s]", strings.TrimSuffix(v.Problem, "; install renders no agent for it"), v.Tier, v.Fallback)
 		} else if v.Problem != "" {
 			b.WriteString(" [" + v.Problem + "]")
 		}

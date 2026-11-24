@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jvillegasd/harness/internal/agents"
 	"github.com/jvillegasd/harness/internal/ui"
 )
 
@@ -155,7 +156,7 @@ func (c *Choice) pin(tier, client, model string) {
 // Session is the tier a role takes to run on the launching session's own
 // client, model, and effort: its agent files name no model, so each client
 // gives it the session's. Only a role takes it; no client serves it.
-const Session = "session"
+const Session = agents.Session
 
 // knownRoleTier accepts a tier a role can run at: a served tier, or Session.
 func knownRoleTier(tier string) error {

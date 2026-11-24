@@ -67,9 +67,9 @@ func (in *installer) assigned() map[string]agents.Assigned {
 		switch {
 		case r.Err != nil && r.Source == "reviewer":
 		case errors.Is(r.Err, models.ErrNotListed):
-			in.warnFor("agents", "%s runs at the %s tier on %s, which this machine cannot serve (%v); its agent keeps the client default until `harness models` names a model this machine can run.", role, r.Tier, r.Client, r.Err)
+			in.warnFor("agents", "%s runs at the %s tier on %s, which this machine cannot serve (%v); it gets no agent and cannot launch until `harness models` names a model this machine can run.", role, r.Tier, r.Client, r.Err)
 		case r.Err != nil:
-			in.warnFor("agents", "%v; %s keeps the %s client default.", r.Err, role, r.Client)
+			in.warnFor("agents", "%v; %s gets no agent and cannot launch until `harness models` names a model this machine can run.", r.Err, role)
 		case r.Note != "" && r.Source != "reviewer":
 			in.warnFor("agents", "%s: %s.", role, r.Note)
 		}

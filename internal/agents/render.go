@@ -57,40 +57,40 @@ func Render(root string, assigned map[string]Assigned) (map[string]string, map[s
 		}
 
 		quoted := `"` + strings.ReplaceAll(strings.ReplaceAll(description, `\`, `\\`), `"`, `\"`) + `"`
-		claude := resolved["claude/"+name]
-		codex := resolved["codex/"+name]
-		opencode := resolved["opencode/"+name]
-
-		claudeSettings := "model: " + claude["model"][0] + "\n"
-		if claude["effort"][0] != "inherit" {
-			claudeSettings += "effort: " + claude["effort"][0] + "\n"
+		if claude, ok := resolved["claude/"+name]; ok {
+			settings := "model: " + claude["model"][0] + "\n"
+			if claude["effort"][0] != "inherit" {
+				settings += "effort: " + claude["effort"][0] + "\n"
+			}
+			controls := ""
+			for _, line := range claudeControls[accessLevel] {
+				controls += line + "\n"
+			}
+			outputs["claude/"+name+".md"] = "---\nname: " + name + "\ndescription: " + quoted + "\n" + controls + settings + "---\n\n" + body + "\n"
+			accesses["claude/"+name+".md"] = accessLevel
 		}
-		opencodeSettings := ""
-		if opencode["model"][0] != "inherit" {
-			opencodeSettings += "model: " + opencode["model"][0] + "\n"
+		if opencode, ok := resolved["opencode/"+name]; ok {
+			settings := ""
+			if opencode["model"][0] != "inherit" {
+				settings += "model: " + opencode["model"][0] + "\n"
+			}
+			if opencode["effort"][0] != "inherit" {
+				settings += "reasoningEffort: " + opencode["effort"][0] + "\n"
+			}
+			outputs["opencode/"+name+".md"] = "---\ndescription: " + quoted + "\nmode: all\n" + opencodeControls[accessLevel] + settings + "---\n\n" + body + "\n"
+			accesses["opencode/"+name+".md"] = accessLevel
 		}
-		if opencode["effort"][0] != "inherit" {
-			opencodeSettings += "reasoningEffort: " + opencode["effort"][0] + "\n"
+		if codex, ok := resolved["codex/"+name]; ok {
+			settings := ""
+			if codex["model"][0] != "inherit" {
+				settings += "model = \"" + codex["model"][0] + "\"\n"
+			}
+			if codex["effort"][0] != "inherit" {
+				settings += "model_reasoning_effort = \"" + codex["effort"][0] + "\"\n"
+			}
+			outputs["codex/"+name+".toml"] = "name = \"" + name + "\"\ndescription = " + quoted + "\n" + settings + codexInstructions + body + codexClose + codexTail(accessLevel)
+			accesses["codex/"+name+".toml"] = accessLevel
 		}
-		controls := ""
-		for _, line := range claudeControls[accessLevel] {
-			controls += line + "\n"
-		}
-		outputs["claude/"+name+".md"] = "---\nname: " + name + "\ndescription: " + quoted + "\n" + controls + claudeSettings + "---\n\n" + body + "\n"
-
-		outputs["opencode/"+name+".md"] = "---\ndescription: " + quoted + "\nmode: all\n" + opencodeControls[accessLevel] + opencodeSettings + "---\n\n" + body + "\n"
-
-		codexSettings := ""
-		if codex["model"][0] != "inherit" {
-			codexSettings += "model = \"" + codex["model"][0] + "\"\n"
-		}
-		if codex["effort"][0] != "inherit" {
-			codexSettings += "model_reasoning_effort = \"" + codex["effort"][0] + "\"\n"
-		}
-		outputs["codex/"+name+".toml"] = "name = \"" + name + "\"\ndescription = " + quoted + "\n" + codexSettings + codexInstructions + body + codexClose + codexTail(accessLevel)
-		accesses["claude/"+name+".md"] = accessLevel
-		accesses["codex/"+name+".toml"] = accessLevel
-		accesses["opencode/"+name+".md"] = accessLevel
 	}
 	return outputs, accesses, report, nil
 }
@@ -100,13 +100,25 @@ func resolve(assigned map[string]Assigned) (map[string]map[string][2]string, err
 	resolved := map[string]map[string][2]string{}
 	for _, role := range Roles {
 		for _, client := range clients {
-			settings := map[string][2]string{"model": {"inherit", "client default"}, "effort": {"inherit", "client default"}}
-			if a, ok := assigned[role.Name]; ok && a.Client == client {
+			// A role renders only where `harness models` puts it: on its assigned
+			// client, on every client when assigned to the session, and on every
+			// client for a generic role, whose model is chosen at launch. Anywhere
+			// else a file would name no model and run on the launching session's.
+			a, ok := assigned[role.Name]
+			var settings map[string][2]string
+			switch {
+			case ok && a.Client == client:
 				effort := a.Effort
 				if effort == "" {
 					effort = "inherit"
 				}
 				settings = map[string][2]string{"model": {a.Model, a.Source}, "effort": {effort, a.Source}}
+			case ok && a.Client == Session:
+				settings = map[string][2]string{"model": {"inherit", "session"}, "effort": {"inherit", "session"}}
+			case role.Generic:
+				settings = map[string][2]string{"model": {"inherit", "chosen at launch"}, "effort": {"inherit", "chosen at launch"}}
+			default:
+				continue
 			}
 			for _, f := range supported[client] {
 				if value := settings[f.name][0]; !regexp.MustCompile("^(?:" + f.pattern + ")$").MatchString(value) {
