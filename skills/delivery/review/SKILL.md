@@ -30,9 +30,9 @@ At High, select one or both specialist lenses and state the concrete question ea
 - `review-spec`: independently trace requirements to behavior when a requirements source exists.
 - `review-risk`: inspect consequential trust boundaries, data loss, dependency failures, or concurrency. Name the categories that triggered it; for a security category the lens loads `security-audit` in guidance mode itself.
 
-Choose by consequences, not file count. If no specialist has a distinct useful question, keep only the general reviewer and say why. Resolve roles through `delegation`.
+Choose by consequences, not file count. If no specialist has a distinct useful question, keep only the general reviewer and say why.
 
-Each lens is its own role, and each runs on the model `harness models` resolves for it: the `reviewer` assignment unless the human set that lens on its own. The fix recheck runs as `reviewer`. Never change models or install agents for a review.
+Each lens is its own role, and each runs on the model `harness models` resolves for it: the `reviewer` assignment unless the human set that lens on its own. The fix recheck runs as `reviewer`. Before each launch of a lens, an `executor`, or the recheck `reviewer`, run `harness models role resolve <role> --json` and launch on the client, model, and effort it returns, as `delegation`'s Launch steps 2 and 3 describe: the installed agent natively only when that client is this session's, otherwise T3 Code's `delegate_task` with `target.providerInstanceId`, `target.model`, and the provider's effort option, its brief opening with the role's installed definition. Never change models or install agents for a review.
 
 Launch what coverage needs and no more. When coverage cannot be reached, report the uncovered scope. When no review is triggered, say so with the level, and post nothing.
 
@@ -56,7 +56,7 @@ When a diff is too large for one hunter, split it into coherent slices (by modul
 
 ## Hunt
 
-Launch one fresh lens role per hunter, all in parallel: its lens is in its definition, so give it only the requirements, the diff, and the revision identity, plus `review-risk`'s categories. Withhold conversation history, implementation rationale, plans that carry rationale, task documents, the pull request body (its tradeoffs are rationale), worker results, and prior findings.
+Launch one fresh lens role per hunter, all in parallel, each on its resolved client, model, and effort: its lens is in its definition, so give it only the requirements, the diff, and the revision identity, plus `review-risk`'s categories. Withhold conversation history, implementation rationale, plans that carry rationale, task documents, the pull request body (its tradeoffs are rationale), worker results, and prior findings.
 
 Each report must open with `principles:` as the reviewer role defines and `revision:` matching the snapshot. Retry once with the input repaired, then report that hunter unverified.
 
@@ -100,6 +100,7 @@ The verdict names the head that holds the reviewed content: the repaired head wh
 - The target, its key, and whether it was foreign (no fixes) or a fork (no runs).
 - Level, coverage, and selected specialists with their reasons.
 - The reviewed revision and content identity, and each hunter's `principles:` report.
+- Each role launched, with the client, model, and effort it ran on and whether it ran natively or through `delegate_task`, so a launch that missed its resolved model shows.
 - Each axis's confirmed findings side by side, sorted by severity within the axis and never reranked across axes, each with its disposition and the run that proved it.
 - Each hunter's raised, confirmed, and dropped counts, with the reasons findings were dropped.
 - What stayed unverified: hunters, slices, any worktree left in place.
