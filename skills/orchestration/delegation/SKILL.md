@@ -53,7 +53,7 @@ A skill that ships its own named agents, such as `impeccable`'s reviewers, launc
    - An executor or worker that needs its own checkout gets `isolation: "worktree"`, which starts from the parent's commit, so commit what the child must see first.
    - The child loads no installed role agent, so open its brief with the role's definition as installed for its client (such as `~/.codex/agents/<role>.toml`) before the task. Its access limits are then instructions only.
    - Wait for the completion wake-up instead of polling, and `task_cancel` a delegate you no longer need.
-4. A role has an installed agent only on the client `harness models` assigns it, so it never runs on a model the human did not assign. Never launch it by name on another client, and never stand in another agent or this session's model for it. Outside T3 Code, a role assigned to another client cannot launch. When a role cannot launch, say so and work inline where independence is not required. A missing or stale agent needs deliberate provisioning with `harness install`, not a silent substitute.
+4. A role has an installed agent only on the client `harness models` assigns it. Never launch it by name on another client, and never stand in another agent or this session's model for it. Outside T3 Code, a role assigned to another client cannot launch. When a role cannot launch, say so and work inline where independence is not required. A missing or stale agent needs deliberate provisioning with `harness install`, not a silent substitute.
 
 ## Brief
 

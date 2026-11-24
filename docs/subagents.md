@@ -35,7 +35,7 @@ Where the role runs depends on its client:
 - **Same client as your session:** the role runs as a native subagent.
 - **A different client:** the role runs only inside a T3 Code session, as a delegated task with that client's model and effort. A T3 Code child does not load the installed role agent, so the role's definition is sent along in its brief.
 
-`harness models` is the only place a role's model comes from. A role's agent is installed only on the client it is assigned to, so a role can never fall back to the session's model on a client you did not assign it to: a launch there fails instead. A role whose model this machine cannot run gets no agent at all, and `harness install` warns. The `worker` is installed on every client, because its tier is chosen at each launch.
+`harness models` is the only place a role's model comes from. A role's agent is installed only on the client it is assigned to, so another client has no agent of that name to fall back to the session's model with. Claude Code refuses to launch an agent it does not have; whether Codex and OpenCode refuse too is unverified, so the delegation skill also forbids launching a role on a client it is not assigned to. A role whose model this machine cannot run gets no agent at all, and `harness install` warns. The `worker` is installed on every client, because its tier is chosen at each launch.
 
 If a role is missing or out of date on this machine, `harness install` sets it up. Agents never quietly swap in a different role. When a review needs an independent reviewer that cannot run, the review is reported as unverified. The author does not review its own work instead.
 
