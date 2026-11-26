@@ -32,5 +32,5 @@ Preconditions:
 
 - Uninstall leaves an empty `~/.claude/skills/` directory. That is expected, not leftover state.
 - Settings reconciliation also rewrites `theme`, `model`, and `effortLevel` from `clients/claude.json`, so a seeded `theme` changes. Assert only on keys the harness does not track, and on `skillOverrides` entries.
-- The `skills` component runs the real `claude` CLI (`claude plugin validate`, `claude plugin list`), which rewrites `settings.json` and dropped `skipAutoPermissionPrompt` on a first install from a seeded file (seen 2026-11-26 with Claude Code 2.1.332). The next install restores it, so the "Reinstall is quiet" step fails. That is an open harness bug, not a recipe to weaken: report it in the verdict until it is fixed.
+- The `skills` component validates the skills with the real `claude` CLI under a throwaway `CLAUDE_CONFIG_DIR`. Claude Code runs one-time migrations on startup, and one clears `skipAutoPermissionPrompt` when `permissions.defaultMode` is not `auto`. If "Reinstall is quiet" fails on that key, the installer let Claude Code touch the sandbox's `~/.claude` again: report it as a failure.
 - Install archives replaced files under `$SANDBOX/home/.dotfiles-backups`. Check there before reporting a lost file.

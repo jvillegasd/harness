@@ -24,7 +24,7 @@ Preconditions:
 - **Override.** Run `H models role set review-bugs --effort high`, then resolve again. `effort` is `high`, and `source` names the override.
 - **Reset.** Run `H models role reset review-bugs`, then resolve again. The JSON matches the default step.
 - **Preset.** Run `H models tier preset claude`, then `H models role resolve executor --json`. `client` is `claude`.
-- **Isolation.** `ls "$SANDBOX/home/.harness"` shows the models file the commands wrote, and the real `~/.harness` is unchanged (compare its `ls -l` before and after).
+- **Isolation.** `ls "$SANDBOX/home/.harness"` shows the models file the commands wrote. Every command ran through `H`, whose `HOME` is the sandbox's, so nothing else needs checking; never read or list the real `~/.harness`.
 - **Proof.** Save every resolve JSON, in order, to `$EVIDENCE/models/`.
 
 ## Gotchas

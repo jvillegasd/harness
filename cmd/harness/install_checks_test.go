@@ -1454,3 +1454,15 @@ func TestSkillOverridesKeepTheUsersOwn(t *testing.T) {
 		t.Errorf("skillOverrides after uninstall = %v, want only the user's own", got)
 	}
 }
+
+func TestSkillValidationLeavesTheUsersClaudeConfigAlone(t *testing.T) {
+	t.Parallel()
+	base := sandbox(t)
+	ok(t, runInstaller(t, base, "skills", "--client", "claude"), "install skills")
+	if !strings.Contains(readFileOr(filepath.Join(base, "shims.log")), "claude plugin validate") {
+		t.Fatal("the install never validated the skills")
+	}
+	if _, err := os.Stat(filepath.Join(base, "home", ".claude", "validate-touched")); err == nil {
+		t.Error("claude plugin validate ran against ~/.claude, where Claude Code's startup migrations can rewrite the user's settings")
+	}
+}
