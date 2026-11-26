@@ -14,15 +14,19 @@ func TestVerifySkillFindsOnlyALoadableSkill(t *testing.T) {
 		links map[string]string
 		want  string
 	}{
-		"none":              {want: ""},
-		"verify-work only":  {files: map[string]string{".agents/skills/verify-work/SKILL.md": "x"}, want: ""},
-		"real directory":    {files: map[string]string{".claude/skills/verify-app/SKILL.md": "x"}, want: "verify-app"},
-		"linked from group": {files: map[string]string{"skills/assurance/verify-app/SKILL.md": "x"}, links: map[string]string{".agents/skills/verify-app": "../../skills/assurance/verify-app"}, want: "verify-app"},
-		"link to link":      {files: map[string]string{".agents/skills/verify-app/SKILL.md": "x"}, links: map[string]string{".claude/skills/verify-app": "../../.agents/skills/verify-app"}, want: "verify-app"},
-		"dangling link":     {links: map[string]string{".agents/skills/verify-app": "../../skills/gone/verify-app"}, want: ""},
-		"dangling SKILL.md": {links: map[string]string{".agents/skills/verify-app/SKILL.md": "../../../nowhere/SKILL.md"}, want: ""},
-		"link out of repo":  {links: map[string]string{".agents/skills/verify-app": "../../../../outside"}, want: ""},
-		"no SKILL.md":       {files: map[string]string{".agents/skills/verify-app/README.md": "x"}, want: ""},
+		"none":               {want: ""},
+		"verify-work only":   {files: map[string]string{".agents/skills/verify-work/SKILL.md": "x"}, want: ""},
+		"real directory":     {files: map[string]string{".claude/skills/verify-app/SKILL.md": "x"}, want: "verify-app"},
+		"linked from group":  {files: map[string]string{"skills/assurance/verify-app/SKILL.md": "x"}, links: map[string]string{".agents/skills/verify-app": "../../skills/assurance/verify-app"}, want: "verify-app"},
+		"link to link":       {files: map[string]string{".agents/skills/verify-app/SKILL.md": "x"}, links: map[string]string{".claude/skills/verify-app": "../../.agents/skills/verify-app"}, want: "verify-app"},
+		"dangling link":      {links: map[string]string{".agents/skills/verify-app": "../../skills/gone/verify-app"}, want: ""},
+		"dangling SKILL.md":  {links: map[string]string{".agents/skills/verify-app/SKILL.md": "../../../nowhere/SKILL.md"}, want: ""},
+		"link out of repo":   {links: map[string]string{".agents/skills/verify-app": "../../../../outside"}, want: ""},
+		"no SKILL.md":        {files: map[string]string{".agents/skills/verify-app/README.md": "x"}, want: ""},
+		"linked skills root": {files: map[string]string{".agents/skills/verify-app/SKILL.md": "x"}, links: map[string]string{".claude/skills": "../.agents/skills"}, want: "verify-app"},
+		"intermediate link":  {files: map[string]string{"real/assurance/verify-app/SKILL.md": "x"}, links: map[string]string{"skills": "real", ".agents/skills/verify-app": "../../skills/assurance/verify-app"}, want: "verify-app"},
+		"absolute target":    {links: map[string]string{".agents/skills/verify-app": "/etc"}, want: ""},
+		"cycle":              {links: map[string]string{".agents/skills/verify-app": "verify-loop", ".agents/skills/verify-loop": "verify-app"}, want: ""},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {

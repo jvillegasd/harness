@@ -6,33 +6,40 @@ owned() {
   test "$(cat "$1/owner" 2>/dev/null)" = "$1" || { echo "not a sandbox this script created: $1" >&2; exit 1; }
 }
 
+absolute() {
+  (cd "$1" && pwd -P)
+}
+
 case "${1:-}" in
 up)
-  repo=$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)
-  repo=$(dirname "$repo")
-  dir=$(mktemp -d "${TMPDIR:-/tmp}/verify-harness.XXXXXX")
-  evidence=$(mktemp -d "${TMPDIR:-/tmp}/verify-harness-evidence.XXXXXX")
-  added=""
+  here=$(absolute "$(dirname "$0")")
+  revision=$(git -C "$here" rev-parse HEAD)
+  repo=$(dirname "$(git -C "$here" rev-parse --path-format=absolute --git-common-dir)")
+  tmp=$(absolute "${TMPDIR:-/tmp}")
+  dir="" evidence="" added=""
   rollback() {
     if [ -n "$added" ]; then git -C "$repo" worktree remove --force "$dir/checkout" || true; fi
-    rm -rf "$dir"
-    rmdir "$evidence" 2>/dev/null || true
-    echo "sandbox up failed; rolled back $dir" >&2
+    if [ -n "$dir" ]; then rm -rf "$dir"; fi
+    if [ -n "$evidence" ]; then rmdir "$evidence" 2>/dev/null || true; fi
+    echo "sandbox up failed; rolled back" >&2
   }
-  trap rollback ERR
+  trap rollback EXIT
+  trap 'exit 130' INT TERM
+  dir=$(mktemp -d "$tmp/verify-harness.XXXXXX")
+  evidence=$(mktemp -d "$tmp/verify-harness-evidence.XXXXXX")
   mkdir -p "$dir/home" "$dir/tmp"
-  git -C "$repo" worktree add --quiet --detach "$dir/checkout" HEAD
+  git -C "$repo" worktree add --quiet --detach "$dir/checkout" "$revision"
   added=1
   (cd "$dir/checkout" && go build -o "$dir/harness" ./cmd/harness)
-  git -C "$dir/checkout" rev-parse HEAD > "$dir/revision"
+  echo "$revision" > "$dir/revision"
   echo "$repo" > "$dir/repo"
   echo "$evidence" > "$dir/evidence"
   echo "$dir" > "$dir/owner"
-  trap - ERR
-  printf 'SANDBOX=%s\nEVIDENCE=%s\nREVISION=%s\n' "$dir" "$evidence" "$(cat "$dir/revision")"
+  trap - EXIT INT TERM
+  printf 'SANDBOX=%s\nEVIDENCE=%s\nREVISION=%s\n' "$dir" "$evidence" "$revision"
   ;;
 doctor)
-  dir=${2:?sandbox dir}
+  dir=$(absolute "${2:?sandbox dir}")
   owned "$dir"
   test -x "$dir/harness" || { echo "binary missing: $dir/harness" >&2; exit 1; }
   test "$(git -C "$dir/checkout" rev-parse HEAD)" = "$(cat "$dir/revision")" || { echo "checkout moved off the built revision" >&2; exit 1; }
@@ -40,11 +47,12 @@ doctor)
   echo "ok sandbox $dir at $(cat "$dir/revision")"
   ;;
 down)
-  dir=${2:?sandbox dir}
+  dir=$(absolute "${2:?sandbox dir}")
   owned "$dir"
   evidence=$(cat "$dir/evidence")
+  repo=$(cat "$dir/repo")
   cd /
-  git -C "$(cat "$dir/repo")" worktree remove --force "$dir/checkout"
+  git -C "$repo" worktree remove --force "$dir/checkout"
   rm -rf "$dir"
   echo "removed $dir; evidence kept at $evidence"
   ;;

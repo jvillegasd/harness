@@ -580,53 +580,74 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 }
 
 func verifySkill(root, head string) (string, error) {
-	out, err := run.Git(root, "ls-tree", "--name-only", head, "--", ".claude/skills/", ".agents/skills/", ".cursor/skills/", ".pi/skills/")
-	if err != nil {
-		return "", err
-	}
-	for _, entry := range strings.Split(out, "\n") {
-		name := path.Base(entry)
-		if !strings.HasPrefix(name, "verify-") || name == "verify-work" {
+	for _, skills := range []string{".claude/skills", ".agents/skills", ".cursor/skills", ".pi/skills"} {
+		dir, kind, err := resolveTree(root, head, skills)
+		if err != nil || kind != "tree" {
+			if err != nil {
+				return "", err
+			}
 			continue
 		}
-		dir, kind, err := resolveTree(root, head, entry)
+		out, err := run.Git(root, "ls-tree", "--name-only", head, "--", dir+"/")
 		if err != nil {
 			return "", err
 		}
-		if kind != "tree" {
-			continue
-		}
-		if _, kind, err = resolveTree(root, head, dir+"/SKILL.md"); err != nil {
-			return "", err
-		}
-		if kind == "blob" {
-			return name, nil
+		for _, entry := range strings.Split(out, "\n") {
+			name := path.Base(entry)
+			if !strings.HasPrefix(name, "verify-") || name == "verify-work" {
+				continue
+			}
+			if _, kind, err := resolveTree(root, head, entry+"/SKILL.md"); err != nil {
+				return "", err
+			} else if kind == "blob" {
+				return name, nil
+			}
 		}
 	}
 	return "", nil
 }
 
 func resolveTree(root, head, p string) (string, string, error) {
-	for range 8 {
-		if p == ".." || strings.HasPrefix(p, "../") {
-			return p, "", nil
+	seen := map[string]bool{}
+	resolved := ""
+	parts := strings.Split(p, "/")
+	for len(parts) > 0 {
+		next := path.Join(resolved, parts[0])
+		parts = parts[1:]
+		if next == ".." || strings.HasPrefix(next, "../") {
+			return next, "", nil
 		}
-		out, err := run.Git(root, "ls-tree", head, "--", p)
+		out, err := run.Git(root, "ls-tree", head, "--", next)
 		if err != nil {
 			return "", "", err
 		}
 		mode, rest, _ := strings.Cut(out, " ")
 		kind, _, _ := strings.Cut(rest, " ")
-		if out == "" || mode != "120000" {
-			return p, kind, nil
+		if out == "" {
+			return next, "", nil
 		}
-		target, err := run.Git(root, "cat-file", "-p", head+":"+p)
+		if mode != "120000" {
+			resolved = next
+			if len(parts) == 0 {
+				return resolved, kind, nil
+			}
+			continue
+		}
+		if seen[next] {
+			return next, "", nil
+		}
+		seen[next] = true
+		target, err := run.GitRaw(root, "cat-file", "-p", head+":"+next)
 		if err != nil {
 			return "", "", err
 		}
-		p = path.Clean(path.Join(path.Dir(p), target))
+		if path.IsAbs(string(target)) {
+			return next, "", nil
+		}
+		parts = append(strings.Split(path.Join(path.Dir(next), string(target)), "/"), parts...)
+		resolved = ""
 	}
-	return p, "", nil
+	return resolved, "tree", nil
 }
 
 type posted struct {

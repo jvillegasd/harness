@@ -42,7 +42,7 @@ It confirms that this script created the directory, that the binary exists, that
 
 ## Drive
 
-Pick the features the change touches from [features/README.md](features/README.md) and follow each file's recipe with `H`. Name only components and clients the recipe names: a bare `H install` also runs `clients`, `packages`, and `mcps`, which use Homebrew and the network for any missing tool.
+Pick the features the change touches from [features/README.md](features/README.md) and follow each file's recipe with `H`. Each feature gets its own sandbox: run Cleanup, then Launch again, between features, because one recipe's leftovers (an installed home, a scaffolded skill, an edited file) break the next recipe's preconditions. Name only components and clients the recipe names: a bare `H install` also runs `clients`, `packages`, and `mcps`, which use Homebrew and the network for any missing tool.
 
 ## Evidence
 
