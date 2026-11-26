@@ -16,10 +16,10 @@ From the repository root: `harness change-map`, or `harness change-map --base <r
 
 Preconditions:
 
-- Fresh sandbox. Run from `$SANDBOX/checkout` with `"$SANDBOX/harness"`. The worktree starts clean at `$REVISION`.
+- Fresh sandbox. The worktree starts clean at `$REVISION`. Run each command in a subshell inside it: `C() { ( cd "$SANDBOX/checkout" && "$@" ); }`. Paths below are relative to `$SANDBOX/checkout`.
 
-- **Empty diff.** Run `"$SANDBOX/harness" change-map --base HEAD --json`. Exit code `0`, and no files are listed.
-- **Mixed change.** Append a line to `README.md`, to `FLOOR.md`, and to `internal/ui/ui.go`, and add an untracked `docs/verify-note.md`. Run `"$SANDBOX/harness" change-map --base HEAD --json`. `FLOOR.md` is `critical` (a configured critical path), `README.md` and `docs/verify-note.md` are `tests-docs`, and `internal/ui/ui.go` is at least `structural`.
+- **Empty diff.** Run `C "$SANDBOX/harness" change-map --base HEAD --json`. Exit code `0`, and no files are listed.
+- **Mixed change.** Append a line to `README.md`, to `FLOOR.md`, and to `internal/ui/ui.go`, and add an untracked `docs/verify-note.md`. Run `C "$SANDBOX/harness" change-map --base HEAD --json`. `FLOOR.md` is `critical` (a configured critical path), `README.md` and `docs/verify-note.md` are `tests-docs`, and `internal/ui/ui.go` is at least `structural`.
 - **Proof.** Save the JSON from both runs to `$EVIDENCE/change-map/`.
 
 ## Gotchas

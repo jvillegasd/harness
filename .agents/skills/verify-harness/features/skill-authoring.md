@@ -16,14 +16,14 @@ From the repository root: `harness skills new <name> <group>`, `harness skills m
 
 Preconditions:
 
-- Fresh sandbox. Run every command from `$SANDBOX/checkout` (`cd "$SANDBOX/checkout"`), with `"$SANDBOX/harness"` as the binary. These commands act on the checkout, not on `HOME`.
+- Fresh sandbox. These commands act on the checkout, not on `HOME`, so run each in a subshell inside the sandbox checkout: `C() { ( cd "$SANDBOX/checkout" && "$@" ); }`, then `C "$SANDBOX/harness" skills verify`. Paths below are relative to `$SANDBOX/checkout`.
 
-- **Clean verify.** Run `"$SANDBOX/harness" skills verify`. Exit code `0`.
-- **New skill.** Run `"$SANDBOX/harness" skills new demo-verify planning`. Exit code `0`. `skills/planning/demo-verify/SKILL.md` holds `disable-model-invocation: true` and `opencode/autoinvoke: "false"`, `skills/planning/demo-verify/agents/openai.yaml` holds `allow_implicit_invocation: false`, and `readlink .claude/skills/demo-verify` prints `../../.agents/skills/demo-verify`.
-- **Verify accepts it.** Run `"$SANDBOX/harness" skills verify`. Exit code `0`.
-- **Move.** Run `"$SANDBOX/harness" skills move demo-verify writing`. Exit code `0`, and `readlink .agents/skills/demo-verify` prints `../../skills/writing/demo-verify`.
-- **Verify catches a lost guard.** Delete the `disable-model-invocation: true` line from `skills/writing/demo-verify/SKILL.md`, then run `"$SANDBOX/harness" skills verify`. Exit code is not `0`, and the output names `demo-verify: missing disable-model-invocation`.
-- **Old flag is gone.** Run `"$SANDBOX/harness" skills new other planning --guarded`. Exit code is not `0`, and the output names `unknown flag --guarded`.
+- **Clean verify.** Run `C "$SANDBOX/harness" skills verify`. Exit code `0`.
+- **New skill.** Run `C "$SANDBOX/harness" skills new demo-verify planning`. Exit code `0`. `skills/planning/demo-verify/SKILL.md` holds `disable-model-invocation: true` and `opencode/autoinvoke: "false"`, `skills/planning/demo-verify/agents/openai.yaml` holds `allow_implicit_invocation: false`, and `readlink .claude/skills/demo-verify` prints `../../.agents/skills/demo-verify`.
+- **Verify accepts it.** Run `C "$SANDBOX/harness" skills verify`. Exit code `0`.
+- **Move.** Run `C "$SANDBOX/harness" skills move demo-verify writing`. Exit code `0`, and `readlink .agents/skills/demo-verify` prints `../../skills/writing/demo-verify`.
+- **Verify catches a lost guard.** Delete the `disable-model-invocation: true` line from `skills/writing/demo-verify/SKILL.md`, then run `C "$SANDBOX/harness" skills verify`. Exit code is not `0`, and the output names `demo-verify: missing disable-model-invocation`.
+- **Old flag is gone.** Run `C "$SANDBOX/harness" skills new other planning --guarded`. Exit code is not `0`, and the output names `unknown flag --guarded`.
 - **Proof.** Save each command's output and exit code, and the scaffolded `SKILL.md`, to `$EVIDENCE/skill-authoring/`.
 
 ## Gotchas

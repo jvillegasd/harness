@@ -1,34 +1,50 @@
 #!/usr/bin/env bash
 # Usage: sandbox up | doctor <dir> | down <dir>
 set -euo pipefail
-repo=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
-evidence_root="${TMPDIR:-/tmp}/verify-harness-evidence"
+
+owned() {
+  test "$(cat "$1/owner" 2>/dev/null)" = "$1" || { echo "not a sandbox this script created: $1" >&2; exit 1; }
+}
 
 case "${1:-}" in
 up)
+  repo=$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)
+  repo=$(dirname "$repo")
   dir=$(mktemp -d "${TMPDIR:-/tmp}/verify-harness.XXXXXX")
-  run=$(basename "$dir")
-  mkdir -p "$dir/home" "$dir/tmp" "$evidence_root/$run"
+  evidence=$(mktemp -d "${TMPDIR:-/tmp}/verify-harness-evidence.XXXXXX")
+  added=""
+  rollback() {
+    if [ -n "$added" ]; then git -C "$repo" worktree remove --force "$dir/checkout" || true; fi
+    rm -rf "$dir"
+    rmdir "$evidence" 2>/dev/null || true
+    echo "sandbox up failed; rolled back $dir" >&2
+  }
+  trap rollback ERR
+  mkdir -p "$dir/home" "$dir/tmp"
   git -C "$repo" worktree add --quiet --detach "$dir/checkout" HEAD
+  added=1
   (cd "$dir/checkout" && go build -o "$dir/harness" ./cmd/harness)
   git -C "$dir/checkout" rev-parse HEAD > "$dir/revision"
+  echo "$repo" > "$dir/repo"
+  echo "$evidence" > "$dir/evidence"
   echo "$dir" > "$dir/owner"
-  echo "$evidence_root/$run" > "$dir/evidence"
-  printf 'SANDBOX=%s\nEVIDENCE=%s\nREVISION=%s\n' "$dir" "$evidence_root/$run" "$(cat "$dir/revision")"
+  trap - ERR
+  printf 'SANDBOX=%s\nEVIDENCE=%s\nREVISION=%s\n' "$dir" "$evidence" "$(cat "$dir/revision")"
   ;;
 doctor)
   dir=${2:?sandbox dir}
-  test "$(cat "$dir/owner" 2>/dev/null)" = "$dir" || { echo "not a sandbox this script created: $dir" >&2; exit 1; }
+  owned "$dir"
   test -x "$dir/harness" || { echo "binary missing: $dir/harness" >&2; exit 1; }
   test "$(git -C "$dir/checkout" rev-parse HEAD)" = "$(cat "$dir/revision")" || { echo "checkout moved off the built revision" >&2; exit 1; }
-  env HOME="$dir/home" TMPDIR="$dir/tmp" "$dir/harness" review level --json >/dev/null
+  (cd "$dir/checkout" && env HOME="$dir/home" TMPDIR="$dir/tmp" "$dir/harness" review level --json >/dev/null)
   echo "ok sandbox $dir at $(cat "$dir/revision")"
   ;;
 down)
   dir=${2:?sandbox dir}
-  test "$(cat "$dir/owner" 2>/dev/null)" = "$dir" || { echo "not a sandbox this script created: $dir" >&2; exit 1; }
+  owned "$dir"
   evidence=$(cat "$dir/evidence")
-  git -C "$repo" worktree remove --force "$dir/checkout"
+  cd /
+  git -C "$(cat "$dir/repo")" worktree remove --force "$dir/checkout"
   rm -rf "$dir"
   echo "removed $dir; evidence kept at $evidence"
   ;;

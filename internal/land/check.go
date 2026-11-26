@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/jvillegasd/harness/internal/run"
 	"io"
+	"path"
 	"regexp"
 	"slices"
 	"strconv"
@@ -579,17 +580,53 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 }
 
 func verifySkill(root, head string) (string, error) {
-	out, err := run.Git(root, "ls-tree", "-r", "--name-only", head, "--", ".claude/skills", ".agents/skills", ".cursor/skills", ".pi/skills")
+	out, err := run.Git(root, "ls-tree", "--name-only", head, "--", ".claude/skills/", ".agents/skills/", ".cursor/skills/", ".pi/skills/")
 	if err != nil {
 		return "", err
 	}
-	for _, path := range strings.Split(out, "\n") {
-		parts := strings.Split(path, "/")
-		if len(parts) == 4 && parts[3] == "SKILL.md" && strings.HasPrefix(parts[2], "verify-") && parts[2] != "verify-work" {
-			return parts[2], nil
+	for _, entry := range strings.Split(out, "\n") {
+		name := path.Base(entry)
+		if !strings.HasPrefix(name, "verify-") || name == "verify-work" {
+			continue
+		}
+		dir, kind, err := resolveTree(root, head, entry)
+		if err != nil {
+			return "", err
+		}
+		if kind != "tree" {
+			continue
+		}
+		if _, kind, err = resolveTree(root, head, dir+"/SKILL.md"); err != nil {
+			return "", err
+		}
+		if kind == "blob" {
+			return name, nil
 		}
 	}
 	return "", nil
+}
+
+func resolveTree(root, head, p string) (string, string, error) {
+	for range 8 {
+		if p == ".." || strings.HasPrefix(p, "../") {
+			return p, "", nil
+		}
+		out, err := run.Git(root, "ls-tree", head, "--", p)
+		if err != nil {
+			return "", "", err
+		}
+		mode, rest, _ := strings.Cut(out, " ")
+		kind, _, _ := strings.Cut(rest, " ")
+		if out == "" || mode != "120000" {
+			return p, kind, nil
+		}
+		target, err := run.Git(root, "cat-file", "-p", head+":"+p)
+		if err != nil {
+			return "", "", err
+		}
+		p = path.Clean(path.Join(path.Dir(p), target))
+	}
+	return p, "", nil
 }
 
 type posted struct {

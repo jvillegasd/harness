@@ -30,7 +30,7 @@ Ready means `sandbox doctor "$SANDBOX"` prints `ok sandbox`. Run every command t
 H() { env HOME="$SANDBOX/home" TMPDIR="$SANDBOX/tmp" HARNESS_ASSETS="$SANDBOX/checkout" "$SANDBOX/harness" "$@"; }
 ```
 
-To verify a revision other than `HEAD`, check it out first, or run `git -C "$SANDBOX/checkout" checkout --detach <rev>` and rebuild with `(cd "$SANDBOX/checkout" && go build -o "$SANDBOX/harness" ./cmd/harness)`, then write the new `git rev-parse HEAD` into `$SANDBOX/revision`.
+To verify a revision other than `HEAD`, check it out first, or run `git -C "$SANDBOX/checkout" checkout --detach <rev>` and rebuild with `(cd "$SANDBOX/checkout" && go build -o "$SANDBOX/harness" ./cmd/harness)`, then refresh both records: `export REVISION=$(git -C "$SANDBOX/checkout" rev-parse HEAD) && echo "$REVISION" > "$SANDBOX/revision"`.
 
 ## Doctor
 
@@ -64,4 +64,4 @@ It removes the worktree it created and the sandbox directory, and refuses any di
 
 ## Helpers
 
-`scripts/sandbox up | doctor <dir> | down <dir>` is the only helper. It needs `git` and `go` on `PATH`.
+`scripts/sandbox up | doctor <dir> | down <dir>` is the only helper. It needs `git` and `go` on `PATH`. `up` rolls back its worktree and directory when any step fails, and gives each run its own evidence folder. Commands a recipe runs inside `$SANDBOX/checkout` go in a subshell, `( cd "$SANDBOX/checkout" && … )`, so your shell never sits in the worktree that cleanup removes.
