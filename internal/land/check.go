@@ -549,7 +549,14 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 		say("only test or documentation files changed after the review verdict of %s: %s. Read their hunks; the review stands when they change no shipped behavior", short(r.SHA), describe(r.Changed, "reviewed"))
 	}
 
-	rv.Required = tier.Rank() >= changemap.Behavioral.Rank()
+	drivable, err := verifySkill(root, head)
+	if err != nil {
+		return err
+	}
+	rv.Required = tier.Rank() >= changemap.Behavioral.Rank() && drivable != ""
+	if tier.Rank() >= changemap.Behavioral.Rank() && drivable == "" && rv.Source == "none" {
+		note("no run-as-user verdict: the repository has no verify-<app> skill to drive the change; run /create-verification-skill to add one")
+	}
 	if rv.Source != "none" {
 		if rv.Status, rv.Changed, err = covers(rv.SHA); err != nil {
 			return err
@@ -569,6 +576,20 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 		say("the run-as-user verdict of %s is stale: %s", short(rv.SHA), describe(rv.Changed, "driven"))
 	}
 	return nil
+}
+
+func verifySkill(root, head string) (string, error) {
+	out, err := run.Git(root, "ls-tree", "-r", "--name-only", head, "--", ".claude/skills", ".agents/skills", ".cursor/skills", ".pi/skills")
+	if err != nil {
+		return "", err
+	}
+	for _, path := range strings.Split(out, "\n") {
+		parts := strings.Split(path, "/")
+		if len(parts) == 4 && parts[3] == "SKILL.md" && strings.HasPrefix(parts[2], "verify-") && parts[2] != "verify-work" {
+			return parts[2], nil
+		}
+	}
+	return "", nil
 }
 
 type posted struct {

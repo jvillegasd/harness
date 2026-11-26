@@ -258,7 +258,7 @@ It prints one JSON verdict per PR. The fields you will read most:
 | `mode` | `local` when this checkout is the PR's head, `fork` for a PR from another repository, otherwise `remote` |
 | `mine` | Whether you wrote the PR. `/land` deletes the remote branch, and rebases a PR stacked on it, only when it is yours |
 | `review` | Whether a review is required, the PR's latest verdict (its result, link, and reviewed commit), and whether it still covers the head |
-| `run` | The same for the run-as-user verdict: whether one is required, the latest one, and whether it still covers the head |
+| `run` | The same for the run-as-user verdict: whether one is required (a `behavioral` or `critical` change in a repository whose head carries a `verify-<app>` skill), the latest one, and whether it still covers the head |
 
 Without `--merge`, an open PR reads as `stop`. Run `harness land check --help` for every field.
 
