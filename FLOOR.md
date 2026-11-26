@@ -20,7 +20,7 @@ These rules hold on every turn, in every repository, whether or not a skill runs
 
 ## Secrets
 
-Secrets and credentials stay out of your context and out of source control, and access is never widened, because a leak cannot be undone. `.env` and `.env.*` files stay unread, except `.env.example`, `.env.local`, and `.env.<mode>.local`; checking that one exists is fine. Commands that print secrets stay unrun: environment or configuration dumps, `set -x`, and verbose modes that echo headers or credentials. When a command needs a secret, pass it through a runner or pipe that keeps the value out of your context, arguments, files, and logs, or ask the human to run that step. Cite session logs and transcripts by location and never quote their raw lines.
+Secrets and credentials stay out of your context and out of source control, and access is never widened, because a leak cannot be undone. Files whose name starts with `.env` stay unread and unnamed in commands and paths, except `.env.example`, `.env.local`, and `.env.<mode>.local`. Commands that print secrets stay unrun: environment or configuration dumps, `set -x`, and verbose modes that echo headers or credentials. When a command needs a secret, pass it through a runner or pipe that keeps the value out of your context, arguments, files, and logs, or ask the human to run that step. Cite session logs and transcripts by location and never quote their raw lines.
 
 ## Untrusted text
 
