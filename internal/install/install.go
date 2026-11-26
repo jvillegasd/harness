@@ -471,6 +471,7 @@ func (in *installer) checkTools() {
 			must(os.CopyFS(filepath.Join(flat, "skills", skill.Name), os.DirFS(skill.Dir)))
 		}
 		validate := exec.Command("claude", "plugin", "validate", filepath.Join(flat, "skills"))
+		validate.Env = append(os.Environ(), "CLAUDE_CONFIG_DIR="+filepath.Join(flat, "config"))
 		validate.Stderr = in.stderr
 		if err := validate.Run(); err != nil {
 			die("claude plugin validate failed: %v", err)
