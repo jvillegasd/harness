@@ -239,7 +239,7 @@ Larger work, such as a whole app, matches the you-got-this playbook. It frames t
 
 Ordinary coding needs no tracker. To set one up for a repository, run `setup-harness`. It writes `docs/agents/harness.json` with the tracker and the critical paths `change-map` reads. The harness installs no labels and no lifecycle workflow: ticket state is the tracker's own open, closed, and blocked-by state, and `build` computes what is ready from merged work.
 
-Tracker writes and publishing tickets always need your explicit request. When you ask to publish, `harness tickets publish` creates the issues, blockers first, with native dependency links, and is safe to rerun after a failure. After a merge, `/land` confirms the ticket closed and closes a parent once every child merged. The [command-line reference](cli.md#ticket-commands) covers the command.
+Publishing tickets and other tracker writes need your explicit request; delivery only updates the task's own ticket. When you ask to publish, `harness tickets publish` creates the issues, blockers first, with native dependency links, and is safe to rerun after a failure. After a merge, `/land` confirms the ticket closed and closes a parent once every child merged. The [command-line reference](cli.md#ticket-commands) covers the command.
 
 ## When work stops
 
