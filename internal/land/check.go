@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/jvillegasd/harness/internal/run"
 	"io"
+	"path"
 	"regexp"
 	"slices"
 	"strconv"
@@ -549,7 +550,14 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 		say("only test or documentation files changed after the review verdict of %s: %s. Read their hunks; the review stands when they change no shipped behavior", short(r.SHA), describe(r.Changed, "reviewed"))
 	}
 
-	rv.Required = tier.Rank() >= changemap.Behavioral.Rank()
+	drivable, err := verifySkill(root, head)
+	if err != nil {
+		return err
+	}
+	rv.Required = tier.Rank() >= changemap.Behavioral.Rank() && drivable != ""
+	if tier.Rank() >= changemap.Behavioral.Rank() && drivable == "" && rv.Source == "none" {
+		note("no run-as-user verdict: the repository has no verify-<app> skill to drive the change; run /create-verification-skill to add one")
+	}
 	if rv.Source != "none" {
 		if rv.Status, rv.Changed, err = covers(rv.SHA); err != nil {
 			return err
@@ -569,6 +577,77 @@ func (e Env) review(root string, p pull, c *Check, baseRef string) error {
 		say("the run-as-user verdict of %s is stale: %s", short(rv.SHA), describe(rv.Changed, "driven"))
 	}
 	return nil
+}
+
+func verifySkill(root, head string) (string, error) {
+	for _, skills := range []string{".claude/skills", ".agents/skills", ".cursor/skills", ".pi/skills"} {
+		dir, kind, err := resolveTree(root, head, skills)
+		if err != nil || kind != "tree" {
+			if err != nil {
+				return "", err
+			}
+			continue
+		}
+		out, err := run.Git(root, "ls-tree", "--name-only", head, "--", dir+"/")
+		if err != nil {
+			return "", err
+		}
+		for _, entry := range strings.Split(out, "\n") {
+			name := path.Base(entry)
+			if !strings.HasPrefix(name, "verify-") || name == "verify-work" {
+				continue
+			}
+			if _, kind, err := resolveTree(root, head, entry+"/SKILL.md"); err != nil {
+				return "", err
+			} else if kind == "blob" {
+				return name, nil
+			}
+		}
+	}
+	return "", nil
+}
+
+func resolveTree(root, head, p string) (string, string, error) {
+	seen := map[string]bool{}
+	resolved := ""
+	parts := strings.Split(p, "/")
+	for len(parts) > 0 {
+		next := path.Join(resolved, parts[0])
+		parts = parts[1:]
+		if next == ".." || strings.HasPrefix(next, "../") {
+			return next, "", nil
+		}
+		out, err := run.Git(root, "ls-tree", head, "--", next)
+		if err != nil {
+			return "", "", err
+		}
+		mode, rest, _ := strings.Cut(out, " ")
+		kind, _, _ := strings.Cut(rest, " ")
+		if out == "" {
+			return next, "", nil
+		}
+		if mode != "120000" {
+			resolved = next
+			if len(parts) == 0 {
+				return resolved, kind, nil
+			}
+			continue
+		}
+		if seen[next] {
+			return next, "", nil
+		}
+		seen[next] = true
+		target, err := run.GitRaw(root, "cat-file", "-p", head+":"+next)
+		if err != nil {
+			return "", "", err
+		}
+		if path.IsAbs(string(target)) {
+			return next, "", nil
+		}
+		parts = append(strings.Split(path.Join(path.Dir(next), string(target)), "/"), parts...)
+		resolved = ""
+	}
+	return resolved, "tree", nil
 }
 
 type posted struct {

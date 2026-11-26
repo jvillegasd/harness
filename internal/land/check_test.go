@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -69,6 +70,9 @@ func (f *fixture) git(dir string, args ...string) string {
 func (f *fixture) commit(files map[string]string) string {
 	f.t.Helper()
 	for name, body := range files {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(f.dir, name)), 0o755); err != nil {
+			f.t.Fatal(err)
+		}
 		if err := os.WriteFile(filepath.Join(f.dir, name), []byte(body), 0o644); err != nil {
 			f.t.Fatal(err)
 		}
@@ -538,6 +542,25 @@ func TestRunVerdict(t *testing.T) {
 	holds(t, c)
 
 	p.Body = "Tiers: critical 0, behavioral 1, structural 0, tests-docs 1, mechanical 0\n"
+	c = f.one(1)
+	if r := c.RunVerdict; r.Required || r.Source != "none" {
+		t.Fatalf("a behavioral change in a repository with no verify-<app> skill got run %+v", r)
+	}
+	holds(t, c)
+	if !slices.ContainsFunc(c.Notes, func(n string) bool { return strings.Contains(n, "/create-verification-skill") }) {
+		t.Errorf("no note names /create-verification-skill: %q", c.Notes)
+	}
+
+	f.git(f.dir, "switch", "-q", "code")
+	f.commit(map[string]string{".agents/skills/verify-work/SKILL.md": "---\nname: verify-work\n---\n"})
+	f.push(p)
+	f.verdict(1, "PASS", p.HeadRefOid, "me")
+	if r := f.one(1).RunVerdict; r.Required {
+		t.Fatalf("the harness's own verify-work counted as a verify-<app> skill: %+v", r)
+	}
+	f.commit(map[string]string{".agents/skills/verify-demo/SKILL.md": "---\nname: verify-demo\n---\n"})
+	f.push(p)
+	f.verdict(1, "PASS", p.HeadRefOid, "me")
 	c = f.one(1)
 	if r := c.RunVerdict; !r.Required || r.Source != "none" {
 		t.Fatalf("a behavioral change with only a review verdict got run %+v", r)

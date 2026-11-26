@@ -38,7 +38,7 @@ Only steps 4 and 5 count as verified. A small script that imports the shipped li
 
 ## Verdict
 
-Before a pull request opens or its head changes, and at `build`'s integration, get an independent run-as-user verdict when `change-map` lists `critical` or `behavioral` items and the project has a `verify-<app>` skill from `/create-verification-skill`. Without one, report the verdict as unavailable and name `/create-verification-skill`; `harness land check` then holds the pull request until the human accepts landing without one. The author's own drive of the app is a check, not a verdict.
+Before a pull request opens or its head changes, and at `build`'s integration, get an independent run-as-user verdict when `change-map` lists `critical` or `behavioral` items and the project has a `verify-<app>` skill from `/create-verification-skill`. Without one, report the verdict as unavailable and name `/create-verification-skill`; `harness land check` then notes the gap without holding the pull request, and holds only once the pull request's head carries a `verify-<app>` skill. The author's own drive of the app is a check, not a verdict.
 
 1. **Scope.** Pick the files under `verify-<app>/features/` that the `critical` and `behavioral` items touch. Each such item that no feature covers is a gap: name it, and suggest the feature map update `/maintain-verification-skill` would make.
 2. **Revisions.** A feature change is driven at the head. A bugfix is driven at the base and then the head: its reproduction must fail on the base for the reported reason and pass on the head.
