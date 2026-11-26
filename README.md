@@ -268,7 +268,7 @@ Skills live in `skills/<group>/<name>/`, grouped by purpose: `orchestration`, `i
 Create or move a skill of your own with these commands, which also write the links each client reads:
 
 ```sh
-harness skills new <name> <group> [--guarded]   # --guarded: callable only by name
+harness skills new <name> <group>   # guarded: callable only by name
 harness skills move <name> <group>
 ```
 

@@ -886,9 +886,13 @@ func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	source := filepath.Join(base, "checkout", "skills", "ops", "retired")
-	writeMode(t, filepath.Join(source, "SKILL.md"), "---\ndescription: retired\n---\n", 0o644)
+	guards := "disable-model-invocation: true\nmetadata:\n  opencode/autoinvoke: \"false\"\n"
+	sidecar := "policy:\n  allow_implicit_invocation: false\n"
+	writeMode(t, filepath.Join(source, "SKILL.md"), "---\ndescription: retired\n"+guards+"---\n", 0o644)
+	writeMode(t, filepath.Join(source, "agents", "openai.yaml"), sidecar, 0o644)
 	linkedSource := filepath.Join(base, "checkout", "skills", "ops", "retired-linked")
-	writeMode(t, filepath.Join(linkedSource, "SKILL.md"), "---\ndescription: retired too\n---\n", 0o644)
+	writeMode(t, filepath.Join(linkedSource, "SKILL.md"), "---\ndescription: retired too\n"+guards+"---\n", 0o644)
+	writeMode(t, filepath.Join(linkedSource, "agents", "openai.yaml"), sidecar, 0o644)
 	ok(t, runInstaller(t, base, "skills", "aliases"), "install asset")
 	edited := filepath.Join(home, ".claude", "skills", "retired", "SKILL.md")
 	writeMode(t, edited, "my edited skill\n", 0o644)

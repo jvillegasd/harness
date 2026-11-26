@@ -87,7 +87,7 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 	writeSkill(t, c, "workflow", "---\ndescription: auto-invoked\n---\nbody\n")
 	writeSkill(t, c, "land", "---\ndescription: merges\n---\nbody\n")
 	writeSkill(t, c, "build", "---\ndescription: runs unattended\n---\nbody\n")
-	writeSkill(t, c, "review", "---\ndescription: model-invoked when a change map flags a critical hunk\n---\nbody\n")
+	writeSkill(t, c, "open-pr", "---\ndescription: model-invoked delivery\n---\nbody\n")
 	writeSkill(t, c, "codex-only", "---\ndescription: guarded for Codex alone\n---\nbody\n")
 	if err := os.WriteFile(filepath.Join(c.Skills(), "g", "codex-only", "agents", "openai.yaml"), []byte("policy:\n  allow_implicit_invocation: false\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -113,6 +113,9 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 		"build: missing agents/openai.yaml allow_implicit_invocation",
 		"codex-only: missing disable-model-invocation",
 		"codex-only: missing opencode/autoinvoke",
+		"workflow: missing disable-model-invocation",
+		"workflow: missing opencode/autoinvoke",
+		"workflow: missing agents/openai.yaml allow_implicit_invocation",
 	}
 	got := strings.Join(problems, "\n")
 	for _, w := range want {
@@ -120,7 +123,7 @@ func TestUnguardedNamesEachLocalSkillAndKey(t *testing.T) {
 			t.Errorf("Unguarded did not report %q:\n%s", w, got)
 		}
 	}
-	for _, exempt := range []string{"locked", "guarded-one", "workflow", "review"} {
+	for _, exempt := range []string{"locked", "guarded-one", "open-pr"} {
 		if strings.Contains(got, exempt+":") {
 			t.Errorf("Unguarded reported %s:\n%s", exempt, got)
 		}

@@ -16,10 +16,9 @@ Commands:
   update                   Update every locked skill from upstream
   remove <name>            Remove one locked body, lock entry, and Claude link
   verify                   Recompute every locked body's folder hash offline
-  new <name> <group> [--guarded]
-                           Create a local skill in skills/<group>/ with a
-                           starting body and both links; --guarded adds the
-                           three invocation guards, one per client
+  new <name> <group>       Create a local skill in skills/<group>/ with a
+                           starting body, both links, and the three
+                           invocation guards, so it loads only by name
   move <name> <group>      Move a skill's body to another group with git mv
                            and repoint its link
 `
@@ -94,9 +93,6 @@ func validateInvocation(sub string, rest []string) error {
 	case "new", "move":
 		var names []string
 		for _, a := range rest {
-			if sub == "new" && a == "--guarded" {
-				continue
-			}
 			if strings.HasPrefix(a, "-") {
 				return fmt.Errorf("unknown flag %s", a)
 			}

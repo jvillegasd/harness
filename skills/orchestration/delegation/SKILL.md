@@ -1,10 +1,12 @@
 ---
 name: delegation
 description: "Trigger: launch a role (executor, code-search, worker, reviewer, a review lens) or hand work to any subagent. Resolve the role's tier and model, launch it natively or through T3 Code, and check its result."
+disable-model-invocation: true
 license: MIT
 metadata:
   author: jvillegasd
   version: "1.0"
+  opencode/autoinvoke: "false"
 ---
 
 Launch a role at the tier and effort this machine assigns it, and check what it returns. Every subagent is a role.

@@ -11,11 +11,7 @@ import (
 	"github.com/jvillegasd/harness/internal/checkout"
 )
 
-var mustGuard = map[string]bool{
-	"land": true, "setup-harness": true, "build": true, "jvillegasd-mode": true,
-	"epic":    true,
-	"cleanup": true,
-}
+var autoInvoked = map[string]bool{"open-pr": true, "address-review": true}
 
 func Unguarded(c checkout.Checkout) ([]string, error) {
 	lf, err := readLock(c.Lock())
@@ -48,7 +44,7 @@ func Unguarded(c checkout.Checkout) ([]string, error) {
 			continue
 		}
 		codex := codexGuarded(string(sidecar))
-		if !mustGuard[sk.Name] && !claude && !opencode && !codex {
+		if autoInvoked[sk.Name] {
 			continue
 		}
 		if !claude {

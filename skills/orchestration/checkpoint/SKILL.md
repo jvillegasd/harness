@@ -1,10 +1,12 @@
 ---
 name: checkpoint
 description: "Trigger: long or unattended work, a pause, a resume, or compaction. Keep a local task document only when recovery across an interruption warrants one, pause safely, and resume without redoing verified work."
+disable-model-invocation: true
 license: MIT
 metadata:
   author: jvillegasd
   version: "2.0"
+  opencode/autoinvoke: "false"
 ---
 
 Keep work recoverable across sessions, with one local task document when recovery across an interruption warrants one, and pause and resume without losing or redoing work.
