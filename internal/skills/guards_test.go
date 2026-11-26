@@ -180,9 +180,13 @@ func TestShippedSkillLinksResolve(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, e := range entries {
-			if !names[e.Name()] {
-				t.Errorf("%s holds a link for %s, which no skill group has", dir, e.Name())
+			if names[e.Name()] {
+				continue
 			}
+			if projectOnly, err := os.Lstat(filepath.Join(c.AgentSkills(), e.Name())); err == nil && projectOnly.IsDir() {
+				continue
+			}
+			t.Errorf("%s holds a link for %s, which no skill group or project-only skill has", dir, e.Name())
 		}
 	}
 }
