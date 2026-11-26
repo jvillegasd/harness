@@ -65,4 +65,4 @@ Recommend `/jvillegasd-mode epic from findings F2,F4` with the actual finding id
 ## Skills this loads
 
 - `references/evidence.md`, this skill's evidence protocol, for any load-bearing claim about runtime behavior, impact, or frequency
-- `diagnosing-bugs` when the question is why something breaks and the first two evidence queries do not settle it
+- `diagnosing-bugs`, read from its `SKILL.md` in the installed skills, when the question is why something breaks and the first two evidence queries do not settle it

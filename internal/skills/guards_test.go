@@ -2,6 +2,7 @@ package skills
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -229,7 +230,61 @@ func TestSkillToolCallsReachASkillTheModelSees(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	calls, problems := skillLoads(t, root)
+	if calls == 0 {
+		t.Fatal("found no Skill tool calls; the pattern no longer matches the skill bodies")
+	}
+	for _, p := range problems {
+		t.Error(p)
+	}
+}
+
+func TestSkillLoadsCatchEveryBrokenForm(t *testing.T) {
+	root := t.TempDir()
+	write := func(path, text string) {
+		t.Helper()
+		full := filepath.Join(root, path)
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("skills-lock.json", `{"version": 1, "skills": {}}`+"\n")
+	write("clients/claude.json", `{"skillOverrides": {"listed": "name-only", "user-only": "user-invocable-only"}}`)
+	write("skills/g/listed/SKILL.md", "---\nname: listed\n---\n")
+	write("skills/g/user-only/SKILL.md", "---\nname: user-only\n---\n")
+	write("skills/g/guarded/SKILL.md", "---\nname: guarded\ndisable-model-invocation: true\n---\n")
+	write("skills/g/caller/SKILL.md", strings.Join([]string{
+		"Call the Skill tool with \"listed\".",
+		"Call `user-only` via the Skill tool.",
+		"Call the Skill tool twice, for \"listed\" and \"lisetd\".",
+		"For security, load the `guarded` skill.",
+		"## Skills this loads",
+		"- `guarded` when the bug resists",
+		"- `user-only`, read from its `SKILL.md` in the installed skills, when needed",
+	}, "\n"))
 	c := checkout.Checkout{Root: root}
+	for _, link := range []string{c.AgentSkills(), c.ClaudeSkills()} {
+		if err := os.MkdirAll(link, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, problems := skillLoads(t, root)
+	got := strings.Join(problems, "\n")
+	for _, want := range []string{"caller/SKILL.md:2 loads user-only", "caller/SKILL.md:3 names lisetd", "caller/SKILL.md:4 loads guarded", "caller/SKILL.md:6 loads guarded"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in:\n%s", want, got)
+		}
+	}
+	if len(problems) != 4 {
+		t.Errorf("got %d problems, want 4:\n%s", len(problems), got)
+	}
+}
+
+func skillLoads(t *testing.T, root string) (calls int, problems []string) {
+	t.Helper()
 	var settings struct {
 		SkillOverrides map[string]string `json:"skillOverrides"`
 	}
@@ -240,7 +295,7 @@ func TestSkillToolCallsReachASkillTheModelSees(t *testing.T) {
 	if err := json.Unmarshal(data, &settings); err != nil {
 		t.Fatal(err)
 	}
-	skills, err := c.SkillDirs()
+	skills, err := checkout.Checkout{Root: root}.SkillDirs()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,11 +303,14 @@ func TestSkillToolCallsReachASkillTheModelSees(t *testing.T) {
 	for _, sk := range skills {
 		dirs[sk.Name] = sk.Dir
 	}
-	call := regexp.MustCompile(`Skill tool|load (?:the )?` + "`" + `[a-z0-9-]+` + "`" + ` skill`)
-	name := regexp.MustCompile(`"([a-z0-9-]+)"|` + "`" + `([a-z0-9-]+)` + "`")
-	calls := 0
+	tool := regexp.MustCompile(`Skill tool|load (?:the )?` + "`" + `[a-z0-9-]+` + "`" + ` skill`)
+	quoted := regexp.MustCompile(`"([a-z0-9-]+)"`)
+	ticked := regexp.MustCompile("`([a-z0-9-]+)`")
 	for _, top := range []string{"skills", "roles"} {
 		err := filepath.WalkDir(filepath.Join(root, top), func(path string, d os.DirEntry, err error) error {
+			if os.IsNotExist(err) {
+				return filepath.SkipDir
+			}
 			if err != nil || d.IsDir() || filepath.Ext(path) != ".md" {
 				return err
 			}
@@ -260,12 +318,30 @@ func TestSkillToolCallsReachASkillTheModelSees(t *testing.T) {
 			if err != nil {
 				return err
 			}
+			rel, _ := filepath.Rel(root, path)
+			loadsSection := false
 			for i, line := range strings.Split(string(text), "\n") {
-				if !call.MatchString(line) {
+				if strings.HasPrefix(line, "#") {
+					loadsSection = strings.Contains(strings.ToLower(line), "loads")
 					continue
 				}
-				for _, m := range name.FindAllStringSubmatch(line[call.FindStringIndex(line)[0]:], -1) {
-					target := m[1] + m[2]
+				byTool := tool.MatchString(line)
+				if !byTool && !(loadsSection && strings.HasPrefix(line, "- ")) || strings.Contains(line, "SKILL.md") {
+					continue
+				}
+				var targets []string
+				for _, m := range ticked.FindAllStringSubmatch(line, -1) {
+					targets = append(targets, m[1])
+				}
+				if byTool {
+					for _, m := range quoted.FindAllStringSubmatch(line, -1) {
+						if _, ok := dirs[m[1]]; !ok {
+							problems = append(problems, fmt.Sprintf("%s:%d names %s for the Skill tool, but no such skill exists", rel, i+1, m[1]))
+						}
+						targets = append(targets, m[1])
+					}
+				}
+				for _, target := range targets {
 					dir, ok := dirs[target]
 					if !ok {
 						continue
@@ -280,8 +356,7 @@ func TestSkillToolCallsReachASkillTheModelSees(t *testing.T) {
 						hidden = true
 					}
 					if hidden {
-						rel, _ := filepath.Rel(root, path)
-						t.Errorf("%s:%d loads %s through the Skill tool, which refuses it: list it name-only in clients/claude.json or read its SKILL.md by path", rel, i+1, target)
+						problems = append(problems, fmt.Sprintf("%s:%d loads %s by name, which the Claude listing hides: list it name-only in clients/claude.json or read its SKILL.md by path", rel, i+1, target))
 					}
 				}
 			}
@@ -291,7 +366,5 @@ func TestSkillToolCallsReachASkillTheModelSees(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if calls == 0 {
-		t.Fatal("found no Skill tool calls; the pattern no longer matches the skill bodies")
-	}
+	return calls, problems
 }
