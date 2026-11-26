@@ -1,6 +1,7 @@
 package skills
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -180,6 +181,44 @@ func TestShippedSkillLinksResolve(t *testing.T) {
 			if !names[e.Name()] {
 				t.Errorf("%s holds a link for %s, which no skill group has", dir, e.Name())
 			}
+		}
+	}
+}
+
+func TestShippedLockedSkillsStayOutOfTheClaudeListing(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := checkout.Checkout{Root: root}
+	var settings struct {
+		SkillOverrides map[string]string `json:"skillOverrides"`
+	}
+	data, err := os.ReadFile(filepath.Join(root, "clients", "claude.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatal(err)
+	}
+	lf, err := readLock(c.Lock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	skills, err := c.SkillDirs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, sk := range skills {
+		if !lf.skills.has(sk.Name) {
+			continue
+		}
+		body, err := os.ReadFile(filepath.Join(sk.Dir, "SKILL.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if claude, _ := guarded(string(body)); !claude && settings.SkillOverrides[sk.Name] == "" {
+			t.Errorf("locked skill %s reaches the Claude listing in full; add it to skillOverrides in clients/claude.json", sk.Name)
 		}
 	}
 }

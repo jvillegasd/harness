@@ -47,6 +47,7 @@
     "command": "\"$HOME/.local/bin/harness\" statusline"
   },
   "skillOverrides": {
+    "caveman-commit": "name-only",
     "codebase-design": "name-only",
     "diagnosing-bugs": "user-invocable-only",
     "domain-modeling": "name-only",

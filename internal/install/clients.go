@@ -259,9 +259,11 @@ func mergeEntries(live, tracked json.RawMessage, add bool) json.RawMessage {
 	want, err := parseObject(tracked)
 	must(err)
 	for _, name := range want.keys {
-		if add {
+		have, ok := merged.get(name)
+		switch {
+		case add && !ok:
 			merged.set(name, want.vals[name])
-		} else {
+		case !add && ok && string(have) == string(want.vals[name]):
 			merged.del(name)
 		}
 	}
@@ -353,7 +355,8 @@ func (in *installer) trackedSettingsHold(removed bool) bool {
 		if key == "skillOverrides" {
 			owned, _ := live[key].(map[string]any)
 			for name, entry := range want.(map[string]any) {
-				if !holds(owned, name, entry) {
+				value, present := owned[name]
+				if removed && reflect.DeepEqual(value, entry) || !removed && !present {
 					return false
 				}
 			}

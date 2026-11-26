@@ -1445,12 +1445,12 @@ func TestSkillOverridesKeepTheUsersOwn(t *testing.T) {
 	}
 	ok(t, runInstaller(t, base, "settings"), "install")
 	got := overrides()
-	if got["mine"] != "off" || got["tdd"] != "user-invocable-only" || got["grilling"] != "name-only" {
+	if got["mine"] != "off" || got["tdd"] != "on" || got["impeccable"] != "user-invocable-only" || got["grilling"] != "name-only" {
 		t.Errorf("skillOverrides after install = %v", got)
 	}
 	ok(t, runInstaller(t, base, "settings"), "reinstall")
 	ok(t, runUninstaller(t, base, "settings", "--yes"), "uninstall")
-	if got := overrides(); len(got) != 1 || got["mine"] != "off" {
+	if got := overrides(); len(got) != 2 || got["mine"] != "off" || got["tdd"] != "on" {
 		t.Errorf("skillOverrides after uninstall = %v, want only the user's own", got)
 	}
 }
