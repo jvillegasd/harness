@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -220,5 +221,77 @@ func TestShippedLockedSkillsStayOutOfTheClaudeListing(t *testing.T) {
 		if claude, _ := guarded(string(body)); !claude && settings.SkillOverrides[sk.Name] == "" {
 			t.Errorf("locked skill %s reaches the Claude listing in full; add it to skillOverrides in clients/claude.json", sk.Name)
 		}
+	}
+}
+
+func TestSkillToolCallsReachASkillTheModelSees(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := checkout.Checkout{Root: root}
+	var settings struct {
+		SkillOverrides map[string]string `json:"skillOverrides"`
+	}
+	data, err := os.ReadFile(filepath.Join(root, "clients", "claude.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatal(err)
+	}
+	skills, err := c.SkillDirs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dirs := map[string]string{}
+	for _, sk := range skills {
+		dirs[sk.Name] = sk.Dir
+	}
+	call := regexp.MustCompile(`Skill tool|load (?:the )?` + "`" + `[a-z0-9-]+` + "`" + ` skill`)
+	name := regexp.MustCompile(`"([a-z0-9-]+)"|` + "`" + `([a-z0-9-]+)` + "`")
+	calls := 0
+	for _, top := range []string{"skills", "roles"} {
+		err := filepath.WalkDir(filepath.Join(root, top), func(path string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() || filepath.Ext(path) != ".md" {
+				return err
+			}
+			text, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			for i, line := range strings.Split(string(text), "\n") {
+				if !call.MatchString(line) {
+					continue
+				}
+				for _, m := range name.FindAllStringSubmatch(line[call.FindStringIndex(line)[0]:], -1) {
+					target := m[1] + m[2]
+					dir, ok := dirs[target]
+					if !ok {
+						continue
+					}
+					calls++
+					body, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+					if err != nil {
+						return err
+					}
+					hidden, _ := guarded(string(body))
+					if o := settings.SkillOverrides[target]; o == "user-invocable-only" || o == "off" {
+						hidden = true
+					}
+					if hidden {
+						rel, _ := filepath.Rel(root, path)
+						t.Errorf("%s:%d loads %s through the Skill tool, which refuses it: list it name-only in clients/claude.json or read its SKILL.md by path", rel, i+1, target)
+					}
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if calls == 0 {
+		t.Fatal("found no Skill tool calls; the pattern no longer matches the skill bodies")
 	}
 }

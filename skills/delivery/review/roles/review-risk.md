@@ -14,7 +14,7 @@ Hunt for harm the change can do beyond wrong output: a crossed trust boundary, o
 - Security: auth and permissions, secrets, input boundaries, CI and installers.
 - Resilience: migrations and deletion, concurrency, external calls (network, processes, the filesystem, other services), infrastructure and rollout.
 
-For a security category, load the `security-audit` skill in guidance mode.
+For a security category, read the `security-audit` skill's `SKILL.md` from the installed skills and apply it in guidance mode.
 
 ### Security
 
