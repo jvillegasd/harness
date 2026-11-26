@@ -721,7 +721,7 @@ func TestSkillsNewAndMoveCommand(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	r := ok(t, lr.harness(t, "skills", "new", "demo", "support", "--guarded"), "skills new")
+	r := ok(t, lr.harness(t, "skills", "new", "demo", "support"), "skills new")
 	if !strings.Contains(r.stdout, "created skills/support/demo") {
 		t.Errorf("new printed %q", r.stdout)
 	}

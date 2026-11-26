@@ -2,6 +2,9 @@
 name: research
 description: "Investigate a question or claim against primary sources and return a sourced finding ledger. Use for \"look into X\", \"is it true that\", or a question needing external or telemetry evidence."
 argument-hint: "[question or claim]"
+disable-model-invocation: true
+metadata:
+  opencode/autoinvoke: "false"
 ---
 
 Investigate a question or claim in depth and return a sourced finding ledger. This is read-only work: it reads, queries, and may launch read-only `code-search` workers, and it writes no files, edits no code, changes no configuration, and makes no commits. The one exception is a disposable bisect worktree in step 3.
@@ -62,4 +65,4 @@ Recommend `/jvillegasd-mode epic from findings F2,F4` with the actual finding id
 ## Skills this loads
 
 - `references/evidence.md`, this skill's evidence protocol, for any load-bearing claim about runtime behavior, impact, or frequency
-- `diagnosing-bugs` when the question is why something breaks and the first two evidence queries do not settle it
+- `diagnosing-bugs`, read from its `SKILL.md` in the installed skills, when the question is why something breaks and the first two evidence queries do not settle it

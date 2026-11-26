@@ -1,10 +1,12 @@
 ---
 name: review
 description: "Trigger: the human asks for review, or `open-pr`, `build`, or `/jvillegasd-mode` calls for one at the level `harness review level` sets."
+disable-model-invocation: true
 license: MIT
 metadata:
   author: jvillegasd
   version: "3.0"
+  opencode/autoinvoke: "false"
 ---
 
 Get independent eyes on a change at the depth the human's review level allows. Blind hunters find defects. A finding survives only when a run proves it; everything else is dropped and counted.

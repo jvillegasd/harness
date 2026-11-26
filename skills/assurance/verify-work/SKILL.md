@@ -1,10 +1,12 @@
 ---
 name: verify-work
 description: "Trigger: verify changes or coordinate checks. Run proportionate checks and report revision-bound evidence."
+disable-model-invocation: true
 license: MIT
 metadata:
   author: jvillegasd
   version: "1.0"
+  opencode/autoinvoke: "false"
 ---
 
 Choose and coordinate the checks for a change, and report evidence tied to the exact revision it covers. Ordinary checks do not need this skill.

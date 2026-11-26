@@ -1,6 +1,9 @@
 ---
 name: how
 description: Use for code walkthroughs, runtime flows, architecture, and ownership or layering questions. Explain how a subsystem works; use why for its motivation.
+disable-model-invocation: true
+metadata:
+  opencode/autoinvoke: "false"
 ---
 
 # How

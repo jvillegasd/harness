@@ -51,27 +51,16 @@ func linksResolve(t *testing.T, c checkout.Checkout, name, body string) {
 	}
 }
 
-func TestNewCreatesALinkedSkillWithAllGuardsOrNone(t *testing.T) {
+func TestNewCreatesALinkedSkillWithAllGuards(t *testing.T) {
 	c := localCheckout(t)
-	if _, err := New(c, "demo", "support", false); err != nil {
+	if _, err := New(c, "gated", "ops"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := New(c, "gated", "ops", true); err != nil {
-		t.Fatal(err)
-	}
-	linksResolve(t, c, "demo", filepath.Join(c.Skills(), "support", "demo"))
 	linksResolve(t, c, "gated", filepath.Join(c.Skills(), "ops", "gated"))
-	raw, _ := os.ReadFile(filepath.Join(c.Skills(), "support", "demo", "SKILL.md"))
-	if claude, opencode := guarded(string(raw)); claude || opencode {
-		t.Errorf("an unguarded skill carries a guard:\n%s", raw)
-	}
-	if _, err := os.Stat(filepath.Join(c.Skills(), "support", "demo", "agents")); !os.IsNotExist(err) {
-		t.Error("an unguarded skill has agents/openai.yaml")
-	}
-	raw, _ = os.ReadFile(filepath.Join(c.Skills(), "ops", "gated", "SKILL.md"))
+	raw, _ := os.ReadFile(filepath.Join(c.Skills(), "ops", "gated", "SKILL.md"))
 	sidecar, _ := os.ReadFile(filepath.Join(c.Skills(), "ops", "gated", "agents", "openai.yaml"))
 	if claude, opencode := guarded(string(raw)); !claude || !opencode || !codexGuarded(string(sidecar)) {
-		t.Errorf("a guarded skill lacks a guard:\n%s\n%s", raw, sidecar)
+		t.Errorf("a new skill lacks a guard:\n%s\n%s", raw, sidecar)
 	}
 	if problems, err := Unguarded(c); err != nil || len(problems) != 0 {
 		t.Errorf("guard check: %v %v", problems, err)
@@ -83,11 +72,11 @@ func TestNewCreatesALinkedSkillWithAllGuardsOrNone(t *testing.T) {
 
 func TestNewRefusesAnExistingNameOrUnknownGroupAndWritesNothing(t *testing.T) {
 	c := localCheckout(t)
-	if _, err := New(c, "demo", "support", false); err != nil {
+	if _, err := New(c, "demo", "support"); err != nil {
 		t.Fatal(err)
 	}
 	for _, args := range [][2]string{{"demo", "ops"}, {"other", "nope"}} {
-		if _, err := New(c, args[0], args[1], false); err == nil {
+		if _, err := New(c, args[0], args[1]); err == nil {
 			t.Errorf("new %v was accepted", args)
 		}
 	}
@@ -101,7 +90,7 @@ func TestNewRefusesAnExistingNameOrUnknownGroupAndWritesNothing(t *testing.T) {
 
 func TestMoveKeepsHistoryLinksAndTheLock(t *testing.T) {
 	c := localCheckout(t)
-	if _, err := New(c, "demo", "support", false); err != nil {
+	if _, err := New(c, "demo", "support"); err != nil {
 		t.Fatal(err)
 	}
 	body := filepath.Join(c.Skills(), "support", "demo")
@@ -145,7 +134,7 @@ func TestMoveKeepsHistoryLinksAndTheLock(t *testing.T) {
 
 func TestMoveRefusesAnUnexpectedLinkBeforeMovingAnything(t *testing.T) {
 	c := localCheckout(t)
-	if _, err := New(c, "demo", "support", false); err != nil {
+	if _, err := New(c, "demo", "support"); err != nil {
 		t.Fatal(err)
 	}
 	link := filepath.Join(c.ClaudeSkills(), "demo")

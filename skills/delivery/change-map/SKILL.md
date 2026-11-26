@@ -1,10 +1,12 @@
 ---
 name: change-map
 description: "Trigger: before opening or refreshing a PR, when the human asks what changed or what to review, or to catch them up since a commit or session. Classify every change into review tiers and tell the human exactly what to read."
+disable-model-invocation: true
 license: MIT
 metadata:
   author: jvillegasd
   version: "1.0"
+  opencode/autoinvoke: "false"
 ---
 
 Map a change for its human reviewer: sort every changed file and hunk into a review tier, say what must be read line by line and what can be skimmed or skipped, back each risky item with the one fact it is safe because of, and surface the tradeoffs behind the change.

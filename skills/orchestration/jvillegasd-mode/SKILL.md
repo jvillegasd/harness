@@ -71,7 +71,7 @@ These hold at every step of every playbook.
 - **A step that verifies** passes only on the surface it names. Inconclusive, or green or measured on another surface, is not a pass.
 - **A subagent to launch** (executor, code-search, reviewer, a review lens, or any other, which runs as the `worker` at a tier): launch it through `delegation`, on the client, model, and effort `harness models role resolve <role> --json` returns, and name them in the reply (`principle-launch-on-the-assigned-model`).
 - **Bulk that would crowd the context** (a broad search, a long log, transcript, trace, or profile, a sweep of mechanical edits, an implementation big enough to bury the plan): route it to a role through `delegation`, resolved the same way, and keep only its reduced result, so this session stays on planning, review, and verification (`principle-guard-the-context-window`).
-- **A principle applies** (the index below): apply its rule. Read the principle's `SKILL.md` from the installed skills (`~/.claude/skills` in Claude Code, `~/.agents/skills` in Codex and OpenCode) only when you need more than the rule, and name in the reply each principle that changed a decision.
+- **A principle applies** (the index below): apply its rule. Read the principle's `SKILL.md` only when you need more than the rule, and name in the reply each principle that changed a decision.
 
 ### Principles
 

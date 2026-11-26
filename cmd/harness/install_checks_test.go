@@ -886,9 +886,13 @@ func TestRetiredAssetsPreserveEditsAndPrivateWorktrees(t *testing.T) {
 	base := sandbox(t)
 	home := filepath.Join(base, "home")
 	source := filepath.Join(base, "checkout", "skills", "ops", "retired")
-	writeMode(t, filepath.Join(source, "SKILL.md"), "---\ndescription: retired\n---\n", 0o644)
+	guards := "disable-model-invocation: true\nmetadata:\n  opencode/autoinvoke: \"false\"\n"
+	sidecar := "policy:\n  allow_implicit_invocation: false\n"
+	writeMode(t, filepath.Join(source, "SKILL.md"), "---\ndescription: retired\n"+guards+"---\n", 0o644)
+	writeMode(t, filepath.Join(source, "agents", "openai.yaml"), sidecar, 0o644)
 	linkedSource := filepath.Join(base, "checkout", "skills", "ops", "retired-linked")
-	writeMode(t, filepath.Join(linkedSource, "SKILL.md"), "---\ndescription: retired too\n---\n", 0o644)
+	writeMode(t, filepath.Join(linkedSource, "SKILL.md"), "---\ndescription: retired too\n"+guards+"---\n", 0o644)
+	writeMode(t, filepath.Join(linkedSource, "agents", "openai.yaml"), sidecar, 0o644)
 	ok(t, runInstaller(t, base, "skills", "aliases"), "install asset")
 	edited := filepath.Join(home, ".claude", "skills", "retired", "SKILL.md")
 	writeMode(t, edited, "my edited skill\n", 0o644)
@@ -1422,5 +1426,43 @@ func TestMacBashUsesTheExistingProfile(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(home, ".bash_profile")); err == nil {
 		t.Error("the install created ~/.bash_profile, which hides ~/.profile")
+	}
+}
+
+func TestSkillOverridesKeepTheUsersOwn(t *testing.T) {
+	t.Parallel()
+	base := sandbox(t)
+	settings := filepath.Join(base, "home", ".claude", "settings.json")
+	writeMode(t, settings, `{"skillOverrides": {"mine": "off", "tdd": "on"}}`+"\n", 0o644)
+	overrides := func() map[string]string {
+		var got struct {
+			SkillOverrides map[string]string `json:"skillOverrides"`
+		}
+		if err := json.Unmarshal([]byte(readFile(t, settings)), &got); err != nil {
+			t.Fatal(err)
+		}
+		return got.SkillOverrides
+	}
+	ok(t, runInstaller(t, base, "settings"), "install")
+	got := overrides()
+	if got["mine"] != "off" || got["tdd"] != "on" || got["impeccable"] != "user-invocable-only" || got["grilling"] != "name-only" {
+		t.Errorf("skillOverrides after install = %v", got)
+	}
+	ok(t, runInstaller(t, base, "settings"), "reinstall")
+	ok(t, runUninstaller(t, base, "settings", "--yes"), "uninstall")
+	if got := overrides(); len(got) != 2 || got["mine"] != "off" || got["tdd"] != "on" {
+		t.Errorf("skillOverrides after uninstall = %v, want only the user's own", got)
+	}
+}
+
+func TestSkillValidationLeavesTheUsersClaudeConfigAlone(t *testing.T) {
+	t.Parallel()
+	base := sandbox(t)
+	ok(t, runInstaller(t, base, "skills", "--client", "claude"), "install skills")
+	if !strings.Contains(readFileOr(filepath.Join(base, "shims.log")), "claude plugin validate") {
+		t.Fatal("the install never validated the skills")
+	}
+	if _, err := os.Stat(filepath.Join(base, "home", ".claude", "validate-touched")); err == nil {
+		t.Error("claude plugin validate ran against ~/.claude, where Claude Code's startup migrations can rewrite the user's settings")
 	}
 }

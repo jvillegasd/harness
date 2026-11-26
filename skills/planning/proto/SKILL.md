@@ -1,10 +1,12 @@
 ---
 name: proto
 description: "Trigger: prototype, spike, or mock up an idea. Run optional local experiments, as a logic model or UI variants, to resolve a specific uncertainty."
+disable-model-invocation: true
 license: MIT
 metadata:
   author: jvillegasd
   version: "2.0"
+  opencode/autoinvoke: "false"
 ---
 
 Run a small local experiment to resolve a specific uncertainty. Ordinary implementation is not routed here merely because some decisions remain open.

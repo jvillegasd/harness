@@ -118,6 +118,7 @@ func shimScripts(shims string) map[string]string {
 "plugin list --json") echo '[{"id": "engram@engram"}]' ;;
 "mcp get agent-browser"|"mcp get engram") echo 'Scope: User config' ;;
 "plugin validate "*)
+mkdir -p "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" && touch "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/validate-touched"
 [ -d "$3" ] && [ ! -L "$3" ] || exit 1
 for skill in "$3"/*; do
   [ -d "$skill" ] && [ ! -L "$skill" ] && [ -f "$skill/SKILL.md" ] && [ ! -L "$skill/SKILL.md" ] || exit 1

@@ -23,17 +23,12 @@ func group(p paths, name string) (string, error) {
 	return dir, nil
 }
 
-func starter(name string, guarded bool) string {
-	var b strings.Builder
-	b.WriteString("---\nname: " + name + "\ndescription: \"Say what this skill does and when to use it.\"\n")
-	if guarded {
-		b.WriteString("disable-model-invocation: true\nmetadata:\n  opencode/autoinvoke: \"false\"\n")
-	}
-	b.WriteString("---\n\n# " + name + "\n")
-	return b.String()
+func starter(name string) string {
+	return "---\nname: " + name + "\ndescription: \"Say what this skill does and when to use it.\"\n" +
+		"disable-model-invocation: true\nmetadata:\n  opencode/autoinvoke: \"false\"\n---\n\n# " + name + "\n"
 }
 
-func New(c checkout.Checkout, name, groupName string, guarded bool) ([]string, error) {
+func New(c checkout.Checkout, name, groupName string) ([]string, error) {
 	p := pathsFor(c)
 	if err := validateName(name); err != nil {
 		return nil, err
@@ -58,9 +53,9 @@ func New(c checkout.Checkout, name, groupName string, guarded bool) ([]string, e
 		}
 	}
 	body := filepath.Join(dir, name)
-	files := map[string]string{filepath.Join(body, "SKILL.md"): starter(name, guarded)}
-	if guarded {
-		files[filepath.Join(body, "agents", "openai.yaml")] = "policy:\n  allow_implicit_invocation: false\n"
+	files := map[string]string{
+		filepath.Join(body, "SKILL.md"):              starter(name),
+		filepath.Join(body, "agents", "openai.yaml"): "policy:\n  allow_implicit_invocation: false\n",
 	}
 	for path, text := range files {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -143,17 +138,8 @@ func rel(p paths, path string) string {
 }
 
 func newSkill(c checkout.Checkout, args []string, stdout io.Writer) error {
-	guarded := false
-	var rest []string
-	for _, a := range args {
-		if a == "--guarded" {
-			guarded = true
-			continue
-		}
-		rest = append(rest, a)
-	}
-	fmt.Fprintln(stdout, ui.For(stdout).Title("harness skills new", rest[0]))
-	done, err := New(c, rest[0], rest[1], guarded)
+	fmt.Fprintln(stdout, ui.For(stdout).Title("harness skills new", args[0]))
+	done, err := New(c, args[0], args[1])
 	for _, line := range done {
 		fmt.Fprintln(stdout, ui.For(stdout).OK(line))
 	}
