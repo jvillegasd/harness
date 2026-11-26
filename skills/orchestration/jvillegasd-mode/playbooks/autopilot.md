@@ -11,7 +11,7 @@
 
 ## What the grant covers
 
-The floor already delivers the run's work: commits, pushes of the run's own branches, opening pull requests ready (never as drafts), pull requests for side fixes, and repairs of their checks. The grant adds the decisions the human would make, taken as `agent` defaults below. It never covers a merge unless the request says full, a tracker write, a message to a person, or anything the floor holds back. A pushed branch is never rewritten: a fix goes on the branch that owns the code, and a stacked child picks it up when `/land` repairs the child after its parent merges.
+The floor already delivers the run's work: commits, pushes of the run's own branches, opening pull requests ready (never as drafts), pull requests for side fixes, repairs of their checks, and updates to the task's own ticket. The grant adds the decisions the human would make, taken as `agent` defaults below. It never covers a merge unless the request says full, or anything else the floor holds back. A pushed branch is never rewritten: a fix goes on the branch that owns the code, and a stacked child picks it up when `/land` repairs the child after its parent merges.
 
 ## Running
 

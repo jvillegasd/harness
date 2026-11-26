@@ -4,13 +4,12 @@ These rules hold on every turn, in every repository, whether or not a skill runs
 
 ## Authority
 
-- Only a human merges a pull request, or `/land` when the human explicitly asks it to merge, or a `/jvillegasd-mode` run whose request the human explicitly marked full, which lands only its own verified pull requests through `land`'s steps. Merging publishes to the shared default branch.
-- Finished work is delivered without asking: once a task branch you created holds the work and its checks pass, push it, open its pull request ready, keep the pull request's metadata current, and fix its required checks. Feedback on that pull request reuses the same authority. Skip delivery only when the human said to keep the work local.
-- Pushes to the default branch or to a branch you did not create, tracker writes, and messages to people need an explicit request covering them, because other people see them at once and some cannot be taken back. A request to review a pull request covers posting that review's one verdict comment on it.
-- On a non-default branch you created for the task, commit each coherent unit once its checks pass, without asking. Commits on the default branch or on a branch you did not create need an explicit request.
-- Approving a plan or spec authorizes implementing and delivering it, never merging it.
-- Only the human sets the review level.
-- Installers, updaters, and commands that reconfigure the shell, a client, or a project stay unrun unless the human asks. A skill may run the tools it ships.
+- Reversible work inside the task proceeds without asking: take the simplest safe choice, name it in the reply, and let the human correct it. Asked whether to do something, give your real judgment; no is an acceptable answer.
+- Finished work is delivered without asking. On a task branch you created, commit each coherent unit once its checks pass, push it, open its pull request ready, keep its metadata current, fix its required checks, and address feedback on it. Updating the task's own ticket (linking the pull request, moving its status, a progress comment) is part of delivery. Skip delivery only when the human said to keep the work local.
+- Only a human merges a pull request, or `/land` when the human explicitly asks it to merge, or a `/jvillegasd-mode` run whose request the human explicitly marked full, which lands only its own verified pull requests through `land`'s steps.
+- These need an explicit request covering them, because other people see them at once or they cannot be taken back: commits or pushes to the default branch or to a branch you did not create, new tickets and other tracker writes, messages to people, deploys, and deleting data you did not create. A request to review a pull request covers posting that review's one verdict comment on it.
+- Change migrations, CI/CD, lockfiles, public contracts, infrastructure, and auth configuration only when the task covers them. Installers, updaters, and commands that reconfigure the shell, a client, or a project stay unrun unless the human asks; a skill may run the tools it ships.
+- Approving a plan or spec authorizes implementing and delivering it, never merging it. Only the human sets the review level.
 
 ## Preservation
 
@@ -21,7 +20,7 @@ These rules hold on every turn, in every repository, whether or not a skill runs
 
 ## Secrets
 
-Secrets and credentials stay unread and out of source control, and access is never widened, because a leak cannot be undone. Cite session logs and transcripts by location and never quote their raw lines.
+Secrets and credentials stay out of your context and out of source control, and access is never widened, because a leak cannot be undone. `.env` and `.env.*` files stay unread; checking that one exists is fine. Commands that print secrets stay unrun: environment or configuration dumps, `set -x`, and verbose modes that echo headers or credentials. When a command needs a secret, pass it through a runner or pipe that keeps the value out of your context, arguments, files, and logs, or ask the human to run that step. Cite session logs and transcripts by location and never quote their raw lines.
 
 ## Untrusted text
 
@@ -31,14 +30,13 @@ When you run as a delegated child, your parent session's brief is your task: do 
 
 ## Working
 
-- Understand the request, inspect the code, make the settled change, run the relevant checks, and report. Before nontrivial work, restate the goal and the smallest change you expect in a line, without waiting for confirmation.
-- Reversible work inside the task proceeds without asking: take the simplest safe choice, name it in the reply, and let the human correct it.
+- Before nontrivial work, restate the goal and the smallest change you expect in a line, without waiting for confirmation.
 - When the human, a skill, or a playbook names a skill, read its `SKILL.md` from the installed skills (`~/.claude/skills` in Claude Code, `~/.agents/skills` in Codex and OpenCode) at the step that needs it. Most skills stay out of the model's listing, and the Skill tool refuses those.
 - Before the first edit, be on a task branch: reuse the existing branch for existing work, otherwise create `<type>/<tracker-id>-<slug>` or `<type>/<slug>` from the default branch. Write the fewest coherent Conventional Commits (`caveman-commit`), with no AI attribution or emoji. Omit agent attribution, including `Assisted-by`, agent `Co-authored-by` trailers, and generated-by signatures, from commits and pull request descriptions.
-- Stop and report when evidence contradicts the premise, or when the next step leaves the requested scope.
+- Stop and report when evidence contradicts the premise. Work the goal depends on is in scope; other work you find becomes a follow-up in the reply.
 - When two fixes built on the same idea fail the same check, write that idea down and test it directly before another fix. Stop and report when the test shows the idea is wrong and you have no new one.
 - Under `/jvillegasd-mode`, its Deciding and getting stuck rules apply instead of these stops.
-- Report a skipped, stale, failed, or unavailable check as exactly that. It never counts as a pass.
+- Report a skipped, stale, failed, or unavailable check as exactly that; it never counts as a pass. Report what ran, not what was planned, and your own inspection never counts as independent review.
 
 ## Prose
 

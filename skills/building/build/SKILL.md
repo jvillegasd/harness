@@ -13,7 +13,7 @@ Input: $ARGUMENTS
 
 ## Why
 
-The several-slice path runs many workers without supervision and spends model budget at that scale, so only a human starts it: by typing `/build` or through `/jvillegasd-mode`. The invocation authorizes its branches and worker worktrees, local merges and rebases of its unpushed branches, and the floor's delivery of its pull requests; never a tracker write or a merge the floor holds back. Under jvillegasd-mode, the mode's Deciding and getting stuck rules replace this skill's asks and stops.
+The several-slice path runs many workers without supervision and spends model budget at that scale, so only a human starts it: by typing `/build` or through `/jvillegasd-mode`. The invocation authorizes its branches and worker worktrees, local merges and rebases of its unpushed branches, and the floor's delivery of its pull requests; never what the floor holds back, such as a merge or a new ticket. Under jvillegasd-mode, the mode's Deciding and getting stuck rules replace this skill's asks and stops.
 
 Atomic pull requests sized by blast radius let a human read a risky change in full and land or revert each slice on its own, where one combined pull request mixes a migration with its docs. Computing the frontier from committed work, rather than from tracker counts, keeps the run correct when a ticket is closed by hand or a label goes stale mid-run. Running one slice end to end before fanning out means a broken brief fails once instead of N times.
 

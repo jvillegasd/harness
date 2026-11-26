@@ -24,7 +24,7 @@ The harness installs the same rules, skills, and helper roles into all three cli
 ## Highlights
 
 - **One install, three clients.** `harness install` provisions the floor rules, skills, roles, MCP servers, and client settings for Claude Code, Codex, and OpenCode, and never overwrites a file you edited.
-- **You stay in control.** Agents work on their own task branches. Finished work on an agent's own task branch is pushed and opened as a ready pull request unless you say to keep it local. Merges, discards, tracker writes, and messages to people wait for you.
+- **You stay in control.** Agents work on their own task branches. Finished work on an agent's own task branch is pushed and opened as a ready pull request unless you say to keep it local. Merges, discards, deploys, new tickets, and messages to people wait for you.
 - **Proven review.** Independent reviewers hunt for defects without the author's reasoning, only problems a run proves are reported, and each review posts one `PASS`, `PASS+NOTES`, or `FAIL` verdict on its pull request.
 - **Guarded landing.** `/land` merges only on your request and only when the checks, the review verdict, the run-as-user verdict, and the forge gates allow it, then cleans up branches and worktrees without losing work.
 - **Deterministic steps.** Repeatable workflow steps are `harness` commands with tests, not prose an agent has to interpret.
@@ -92,7 +92,7 @@ The [workflow guide](docs/workflow.md) lists every skill and when to reach for i
 
 ## What the agent does on its own, and what waits for you
 
-- **Finished work becomes a pull request.** The agent edits and commits on its own task branch, then pushes it and opens a ready PR once its checks pass. Say "keep it local" to stop before the push. Tracker writes and messages to people still wait for you.
+- **Finished work becomes a pull request.** The agent edits and commits on its own task branch, then pushes it and opens a ready PR once its checks pass. Say "keep it local" to stop before the push. The agent also updates the task's own ticket; new tickets and messages to people still wait for you.
 - **You merge.** Every pull request ends with a readiness report. You read it and merge. The agent merges only when you run `/land merge` or explicitly mark a `/jvillegasd-mode` run full, which lands only its own verified pull requests through `land`'s steps.
 - **Nothing is thrown away without your say.** The agent discards work only when you name it. If the scope is unclear, it asks.
 - **It stops and asks** when it needs a decision only you can make, or when a required check cannot run.
