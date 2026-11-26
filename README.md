@@ -216,6 +216,7 @@ Uninstall removes the line only from files that carry the harness marker.
 ## Other things the installer sets up
 
 - **A status line for Claude Code.** Codex keeps its own footer.
+- **A light skill listing.** Every local skill except `open-pr` and `address-review` is guarded: you still run it as `/name`, and a skill or playbook that names it reads its `SKILL.md`, but its description stays out of the model's prompt. In Claude Code, the installer also sets `skillOverrides` for the locked third-party skills: `codebase-design`, `domain-modeling`, and `grilling` are listed by name only, because other skills call them, and the rest are `user-invocable-only`. Entries you add yourself survive install and uninstall. Codex and OpenCode still list the locked third-party skills.
 - **A compaction hook in every client.** When a long session is compacted, the hook runs `harness resume`, so the agent gets back the branch, its latest commit, and the next step from the task document. Codex runs the hook only after you trust it once in its `/hooks` screen.
 - **Tracked client settings.** These are reapplied on every install, so some preferences you changed inside a client can be overwritten.
 

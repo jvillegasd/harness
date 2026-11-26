@@ -242,9 +242,30 @@ func (in *installer) reconcileClaudeSettings() {
 			current, _ := live.get(key)
 			value = mergeHooks(current, value, true)
 		}
+		if key == "skillOverrides" {
+			current, _ := live.get(key)
+			value = mergeEntries(current, value, true)
+		}
 		live.set(key, value)
 	}
 	in.writeIfChanged(path, before, render(live), "Reconciled the tracked Claude settings in %s")
+}
+
+func mergeEntries(live, tracked json.RawMessage, add bool) json.RawMessage {
+	merged, err := parseObject(live)
+	if err != nil {
+		merged = newObject()
+	}
+	want, err := parseObject(tracked)
+	must(err)
+	for _, name := range want.keys {
+		if add {
+			merged.set(name, want.vals[name])
+		} else {
+			merged.del(name)
+		}
+	}
+	return encode(merged)
 }
 
 func mergeAllow(live, tracked json.RawMessage, add bool) json.RawMessage {
@@ -274,6 +295,12 @@ func (in *installer) removeClaudeSettings() {
 		current, ok := live.get(key)
 		if ok && key == "hooks" {
 			if rest := mergeHooks(current, tracked.vals[key], false); string(rest) != "{}" {
+				live.set(key, rest)
+				continue
+			}
+		}
+		if ok && key == "skillOverrides" {
+			if rest := mergeEntries(current, tracked.vals[key], false); string(rest) != "{}" {
 				live.set(key, rest)
 				continue
 			}
@@ -320,6 +347,15 @@ func (in *installer) trackedSettingsHold(removed bool) bool {
 		if key == "hooks" {
 			if !hooksHold(live[key], want, removed) {
 				return false
+			}
+			continue
+		}
+		if key == "skillOverrides" {
+			owned, _ := live[key].(map[string]any)
+			for name, entry := range want.(map[string]any) {
+				if !holds(owned, name, entry) {
+					return false
+				}
 			}
 			continue
 		}

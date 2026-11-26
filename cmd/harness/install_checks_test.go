@@ -1428,3 +1428,29 @@ func TestMacBashUsesTheExistingProfile(t *testing.T) {
 		t.Error("the install created ~/.bash_profile, which hides ~/.profile")
 	}
 }
+
+func TestSkillOverridesKeepTheUsersOwn(t *testing.T) {
+	t.Parallel()
+	base := sandbox(t)
+	settings := filepath.Join(base, "home", ".claude", "settings.json")
+	writeMode(t, settings, `{"skillOverrides": {"mine": "off", "tdd": "on"}}`+"\n", 0o644)
+	overrides := func() map[string]string {
+		var got struct {
+			SkillOverrides map[string]string `json:"skillOverrides"`
+		}
+		if err := json.Unmarshal([]byte(readFile(t, settings)), &got); err != nil {
+			t.Fatal(err)
+		}
+		return got.SkillOverrides
+	}
+	ok(t, runInstaller(t, base, "settings"), "install")
+	got := overrides()
+	if got["mine"] != "off" || got["tdd"] != "user-invocable-only" || got["grilling"] != "name-only" {
+		t.Errorf("skillOverrides after install = %v", got)
+	}
+	ok(t, runInstaller(t, base, "settings"), "reinstall")
+	ok(t, runUninstaller(t, base, "settings", "--yes"), "uninstall")
+	if got := overrides(); len(got) != 1 || got["mine"] != "off" {
+		t.Errorf("skillOverrides after uninstall = %v, want only the user's own", got)
+	}
+}

@@ -46,6 +46,17 @@
     "type": "command",
     "command": "\"$HOME/.local/bin/harness\" statusline"
   },
+  "skillOverrides": {
+    "codebase-design": "name-only",
+    "diagnosing-bugs": "user-invocable-only",
+    "domain-modeling": "name-only",
+    "grilling": "name-only",
+    "impeccable": "user-invocable-only",
+    "modern-web-guidance": "user-invocable-only",
+    "security-audit": "user-invocable-only",
+    "tdd": "user-invocable-only",
+    "writing-for-agents": "user-invocable-only"
+  },
   "hooks": {
     "PreToolUse": [
       {
