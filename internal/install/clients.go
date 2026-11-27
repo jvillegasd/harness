@@ -244,12 +244,16 @@ func (in *installer) reconcileClaudeSettings() {
 		}
 		if key == "skillOverrides" {
 			current, _ := live.get(key)
-			value = mergeEntries(current, value, true)
+			value = mergeEntries(mergeEntries(current, retiredSkillOverrides, false), value, true)
 		}
 		live.set(key, value)
 	}
 	in.writeIfChanged(path, before, render(live), "Reconciled the tracked Claude settings in %s")
 }
+
+// retiredSkillOverrides are skillOverrides an earlier harness wrote for skills it no longer ships.
+// Install and uninstall drop each one only while it still holds that value, so a value the user set stays.
+var retiredSkillOverrides = json.RawMessage(`{"impeccable": "user-invocable-only"}`)
 
 func mergeEntries(live, tracked json.RawMessage, add bool) json.RawMessage {
 	merged, err := parseObject(live)
@@ -302,7 +306,7 @@ func (in *installer) removeClaudeSettings() {
 			}
 		}
 		if ok && key == "skillOverrides" {
-			if rest := mergeEntries(current, tracked.vals[key], false); string(rest) != "{}" {
+			if rest := mergeEntries(mergeEntries(current, retiredSkillOverrides, false), tracked.vals[key], false); string(rest) != "{}" {
 				live.set(key, rest)
 				continue
 			}

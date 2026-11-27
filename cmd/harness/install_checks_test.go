@@ -1455,6 +1455,32 @@ func TestSkillOverridesKeepTheUsersOwn(t *testing.T) {
 	}
 }
 
+func TestRetiredSkillOverridesAreDroppedUnlessTheUserChangedThem(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		value string
+		kept  bool
+	}{{"user-invocable-only", false}, {"on", true}} {
+		base := sandbox(t)
+		settings := filepath.Join(base, "home", ".claude", "settings.json")
+		writeMode(t, settings, `{"skillOverrides": {"mine": "off", "impeccable": "`+tc.value+`"}}`+"\n", 0o644)
+		ok(t, runInstaller(t, base, "settings"), "install")
+		var got struct {
+			SkillOverrides map[string]string `json:"skillOverrides"`
+		}
+		if err := json.Unmarshal([]byte(readFile(t, settings)), &got); err != nil {
+			t.Fatal(err)
+		}
+		value, present := got.SkillOverrides["impeccable"]
+		if present != tc.kept || tc.kept && value != tc.value {
+			t.Errorf("impeccable seeded as %q: after install present=%v value=%q, want present=%v", tc.value, present, value, tc.kept)
+		}
+		if got.SkillOverrides["mine"] != "off" {
+			t.Errorf("install dropped the user's own override: %v", got.SkillOverrides)
+		}
+	}
+}
+
 func TestSkillValidationLeavesTheUsersClaudeConfigAlone(t *testing.T) {
 	t.Parallel()
 	base := sandbox(t)
