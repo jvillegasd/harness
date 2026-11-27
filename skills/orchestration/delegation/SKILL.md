@@ -42,7 +42,7 @@ A tier names the kind of work a model is meant for. `harness models` maps each t
 
 Choose the `worker`'s tier by this table, from the work the brief asks for, not from the skill that asked. When a skill names a model family, such as a judge on a family no candidate used, pass the matching client.
 
-A skill that ships its own named agents, such as `impeccable`'s reviewers, launches those agents as it describes; they are not roles.
+A skill that ships its own named agents launches those agents as it describes; they are not roles.
 
 ## Launch
 
