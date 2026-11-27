@@ -29,7 +29,8 @@ jvillegasd-mode lasts the conversation. "New task" means match again from step 1
 | New or changed behavior | [feature](playbooks/feature.md) |
 | A read-only question (how, why, are we sure, should we), or a ticket or production error to analyze with no fix requested | [investigate](playbooks/investigate.md) |
 | The structure changes and the behavior does not | [refactor](playbooks/refactor.md) |
-| Slow, with a number to move | [perf](playbooks/perf.md) |
+| Slow, with a number to move | [perf issue](playbooks/perf-issue.md) |
+| Whether a skill, prompt, or instruction change changes agent behavior | [eval](playbooks/eval.md) |
 | One metric to climb toward a target over many attempts | [hillclimb](playbooks/hillclimb.md) |
 | A runtime symptom or a captured profile to diagnose, with no fix requested | [forensics](playbooks/forensics.md) |
 | A shape or interface to choose, with no precedent | [design](playbooks/design.md) |
@@ -45,7 +46,7 @@ jvillegasd-mode lasts the conversation. "New task" means match again from step 1
 | Resume or pick up earlier work | `checkpoint`'s Resume, then continue the playbook and step it recorded, or match what is left |
 | Large, multi-part, or none of the above | [you-got-this](playbooks/you-got-this.md) |
 
-A bug that is a slowdown with a number is perf, and a one-off speedup is perf while a target reached over many measured attempts is hillclimb. A single ticket or a plain request to change behavior matches its kind's row (bug fix, feature, refactor), whose playbook runs `build` on one slice. New behavior that needs several pull requests is an epic, not the feature row. When the task fits two rows, take the narrower one, and you-got-this only when no narrower row covers it.
+A bug that is a slowdown with a number, and a one-off speedup, are perf issue, while a target reached over many measured attempts is hillclimb. A single ticket or a plain request to change behavior matches its kind's row (bug fix, feature, refactor), whose playbook runs `build` on one slice. New behavior that needs several pull requests is an epic, not the feature row. When the task fits two rows, take the narrower one, and you-got-this only when no narrower row covers it.
 
 A row that names a skill runs that skill's steps as the playbook: they go into the todo list like any playbook's, and jvillegasd-mode adds only its triggers and reply. `epic` and `build` are guarded so the model never starts them on its own; the human's `/jvillegasd-mode` request is what starts them, and it covers an epic continuing into `build`.
 
