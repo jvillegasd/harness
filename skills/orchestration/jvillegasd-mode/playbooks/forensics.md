@@ -10,6 +10,6 @@
 4. **Prove the mechanism.** For a live process, confirm it cheaply with injected instrumentation or a hot patch on the running process. For a captured artifact, diff it against a paired capture; with none, label the finding the strongest hypothesis the artifact supports, not a confirmed cause.
 5. **Attribute it to source**: file, symbol, and the line that allocates or schedules. A frame with no source mapping is not yet a diagnosis: resolve the symbols, or say the artifact does not carry them.
 
-When the cause is known and a fix is wanted, that is a new task, matched again as a bug fix or perf.
+When the cause is known and a fix is wanted, that is a new task, matched again as a bug fix or perf issue.
 
 **Reply:** the artifact and its format, the reduced finding, how the mechanism was proved or that it is a hypothesis, the source location, and the artifact paths.

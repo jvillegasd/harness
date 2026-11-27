@@ -2,7 +2,7 @@
 
 **You own the contract.** The structure changes and the behavior does not. When the work turns up a bug or a missing feature, split it out and ship the structural change first against the pinned contract. A redesign is allowed, but name it and match it as a feature. Large or cross-cutting structural work is the [you-got-this](you-got-this.md) playbook.
 
-1. Pin the behavior before moving anything. Run `how` over the affected subsystem to learn the contract, then write a characterization test, snapshot, or equivalence harness that captures current behavior. Type checks and lint are not a pin.
+1. Pin the behavior before moving anything. Trace the affected subsystem to learn the contract, then write a characterization test, snapshot, or equivalence harness that captures current behavior. Type checks and lint are not a pin.
 2. Name the structure the code is missing (`principle-model-the-domain`). The reshape deletes branches or invalid states; it does not add indirection. Code whose shape is already clear and local stays.
 3. Name the target shape: the module layout, types, and call graph you would build today (`principle-foundational-thinking`, `principle-redesign-from-first-principles`). When it crosses a function boundary, run [design](design.md)'s step 2 first.
 4. Subtract before adding: delete dead code, collapse one-caller wrappers, and drop redundant validators before the new shape goes in (`principle-subtract-before-you-add`, `principle-laziness-protocol`). Revert any speculative cleanup.

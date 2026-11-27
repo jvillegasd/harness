@@ -4,7 +4,7 @@
 
 1. Run `diagnosing-bugs`' Phases 1 to 4, with two bindings:
    - Its loop drives the surface where the bug shows up: the project's `verify-<app>` skill, the CLI, or a test. Ask the human to reproduce only with a stated reason that surface cannot reach the target, after driving it as far as it goes.
-   - Seed its hypotheses with `how` over the affected subsystem and `why` for the regression history.
+   - Seed its hypotheses with a trace of the affected subsystem and `why` for the regression history.
 
    Done when runtime evidence confirms the surviving mechanism.
 2. Plan the smallest fix the evidence justifies. When it crosses a function boundary, run [design](design.md)'s step 2 first.

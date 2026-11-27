@@ -77,8 +77,9 @@ The agent picks the playbook from the task:
 | New or changed behavior | Feature playbook |
 | A question (how, why, are we sure, should we), or a ticket or production error to analyze | Investigate playbook (read-only) |
 | The structure changes, the behavior does not | Refactor playbook |
-| Something is slow, with a number to move | Perf playbook |
+| Something is slow, with a number to move | Perf issue playbook |
 | One metric to climb toward a target over many attempts | Hillclimb playbook |
+| Whether a skill, prompt, or instruction change changes agent behavior | Eval playbook (changes no tracked file) |
 | A runtime symptom or a captured profile to diagnose, with no fix | Forensics playbook (read-only) |
 | A shape or interface to choose, with no precedent | Design playbook |
 | Write or change a skill, an `AGENTS.md`, or a `CLAUDE.md` | `writing-for-agents`, then the repository's checks |
