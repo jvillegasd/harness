@@ -23,7 +23,7 @@ Preconditions:
 - **Install.** Run `H install skills floor settings --client claude`. Exit code `0`, and the output contains `Harness AI installed`.
 - **Skills copied and guarded.** `head -8 "$SANDBOX/home/.claude/skills/review/SKILL.md"` shows `disable-model-invocation: true`, and `head -8 "$SANDBOX/home/.claude/skills/open-pr/SKILL.md"` does not.
 - **Floor written.** `cmp "$SANDBOX/home/.claude/CLAUDE.md" "$SANDBOX/checkout/FLOOR.md"` exits `0`.
-- **Settings merged.** `jq .skillOverrides "$SANDBOX/home/.claude/settings.json"` keeps `"mine": "off"` and `"tdd": "on"` and adds `"grilling": "name-only"` and `"modern-web-guidance": "user-invocable-only"`.
+- **Settings merged.** `jq .skillOverrides "$SANDBOX/home/.claude/settings.json"` keeps `"mine": "off"` and `"tdd": "on"` and adds `"grilling": "name-only"` and `"impeccable": "user-invocable-only"`.
 - **Reinstall is quiet.** Run the install again. Exit code `0`, and `settings.json` is byte-identical to the first run's copy.
 - **Uninstall.** Run `H uninstall skills floor settings --client claude --yes`. Exit code `0`. `jq . "$SANDBOX/home/.claude/settings.json"` holds the seeded `skillOverrides` entries (`mine`, `tdd`) and no harness entry. `test ! -e "$SANDBOX/home/.claude/CLAUDE.md"` passes.
 - **Proof.** Copy `settings.json` after install and after uninstall, and the head of both `SKILL.md` files, into `$EVIDENCE/install-uninstall/`.

@@ -4,7 +4,7 @@
 
 1. Name the decision as one question. When there is no decision to make, there is no design step: `skip:` this playbook and match the task again.
 2. Explore by the kind of question:
-   - **UI or interaction:** build two or three competing variants side by side with `proto`.
+   - **UI or interaction:** build two or three competing variants side by side with `proto`, using `impeccable` for craft.
    - **A module or backend boundary:** run `codebase-design`'s Design It Twice, with three or more subagents each producing a very different interface for the same module, compared by how much each hides behind a small interface.
    - **Logic or state:** build a `proto` logic model.
 3. Compare the options on evidence, pick one, and record it as a decision with the alternative it beat, in the task document's `## Decisions` table when there is one (`checkpoint`), otherwise in the reply.

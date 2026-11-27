@@ -33,6 +33,7 @@ Every skill is callable by name. The skills you start yourself come first; the r
 | A formal check may be out of date after merges or refactors | `/maintain-formal-verification-skill` |
 | A state machine needs model checking | `/statechart` |
 | A codebase needs a scan for deepening opportunities | `/improve-codebase-architecture` |
+| A frontend needs design, critique, or polish work (also called by the design playbook) | `impeccable` |
 | Frontend code needs current web platform APIs and their fallbacks | `modern-web-guidance` |
 | Documentation needs a technical-writing pass | `technical-writing` |
 | A reply did not land and needs a simpler re-pitch with context | `/wait-what` |
