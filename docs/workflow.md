@@ -34,7 +34,6 @@ Every skill is callable by name. The skills you start yourself come first; the r
 | A state machine needs model checking | `/statechart` |
 | A codebase needs a scan for deepening opportunities | `/improve-codebase-architecture` |
 | A frontend needs design, critique, or polish work (also called by the design playbook) | `impeccable` |
-| Frontend code needs current web platform APIs and their fallbacks | `modern-web-guidance` |
 | Motion to build, review, audit, or remove: an animation, choreography, gestures, or frame drops | `/animate`, `/animate-expo`, `/review-animations`, `/improve-animations`, `/find-animation-opportunities`, `/remove-animations`, `/choreograph`, `/gestures`, `/animation-performance`, `/animation-vocabulary` |
 | UI craft, mobile web feel, worst-case data, or picking a UI library | `/emil-design-eng`, `/apple-design`, `/mobile-native`, `/break-ui`, `/prototype`, `/pick-ui-library`, `/ask-sonner`, `/learn-taste`, or `/ask-emil` to choose |
 | Swift code to write, review, or migrate | `/write-swift` |
