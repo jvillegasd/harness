@@ -33,7 +33,6 @@ Install the named components, or every component when none is named. Each
 choice applies to this run only.
 
 Components:
-  clients   Claude Code, Codex, and OpenCode, when missing
   packages  node, gh, and uv, when missing
   mcps      Engram and agent-browser when missing, and their registration in
             each client; also reconciles settings, which Engram's setup rewrites
@@ -46,8 +45,8 @@ Components:
             Linux, the bash login profile on macOS)
 
   --client     Limit the run to claude, codex, or opencode; repeatable.
-               Without it, the run configures every client that is installed
-               or that this run installs.
+               Without it, the run configures every client that is installed.
+               The dotfiles' ./macos.sh and ./linux.sh install the clients.
   --no-backup  Delete files at managed paths instead of archiving them in
                ~/.dotfiles-backups. Private skills and hand-edited configs at
                those paths will be lost.
@@ -87,7 +86,7 @@ registrations) and leave every tool installed.
                These archives hold files displaced from managed paths.
                Nothing else in ~/.dotfiles-backups is touched. Runs alone.
 
-Naming clients, packages, or mcps removes the tools the harness recorded
+Naming packages or mcps removes the tools the harness recorded
 installing, the way it installed them. A tool that was on the machine before
 the harness stays. No uninstall deletes a tool's data (~/.engram,
 ~/.agent-browser, ~/.claude, ~/.codex) or ~/.dotfiles-backups. Edited copies
@@ -251,26 +250,28 @@ func (in *installer) has(component string) bool { return slices.Contains(in.comp
 
 func (in *installer) targets(client string) bool { return slices.Contains(in.clients, client) }
 
+// installClients tells the human where the clients come from now that the harness no longer installs them.
+const installClients = "install it yourself, as the dotfiles' ./macos.sh and ./linux.sh do, then re-run"
+
 var clientNames = map[string]string{"claude": "Claude Code", "codex": "Codex", "opencode": "OpenCode"}
 
 func (in *installer) resolveTargets() {
-	installing := in.has("clients")
 	if in.clients != nil {
 		in.clients = inOrder(in.clients, allClients)
 		for _, client := range in.clients {
-			if !installing && !present(client) {
-				die("%s is not installed; run harness install clients --client %s first.", clientNames[client], client)
+			if !present(client) {
+				die("%s is not installed; %s.", clientNames[client], installClients)
 			}
 		}
 		return
 	}
 	for _, client := range allClients {
-		if installing || present(client) {
+		if present(client) {
 			in.clients = append(in.clients, client)
 		}
 	}
 	if len(in.clients) == 0 && slices.ContainsFunc(in.components, func(c string) bool { return slices.Contains(configComponents, c) }) {
-		die("No client is installed; run harness install clients first.")
+		die("No client is installed; %s.", installClients)
 	}
 }
 
