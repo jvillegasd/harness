@@ -10,7 +10,7 @@ import (
 )
 
 type tool struct {
-	name, component, client string
+	name, component string
 
 	data string
 }
@@ -19,46 +19,17 @@ var tools = []tool{
 	{name: "node", component: "packages"},
 	{name: "gh", component: "packages"},
 	{name: "uv", component: "packages"},
-	{name: "claude", component: "clients", client: "claude", data: ".claude"},
-	{name: "codex", component: "clients", client: "codex", data: ".codex"},
-	{name: "opencode", component: "clients", client: "opencode", data: ".local/share/opencode"},
 	{name: "engram", component: "mcps", data: ".engram"},
 	{name: "agent-browser", component: "mcps", data: ".agent-browser"},
 }
 
-const (
-	viaBrew   = "brew:"
-	viaCask   = "cask:"
-	viaNPM    = "npm:"
-	viaNative = "native:"
-)
+const viaBrew = "brew:"
 
-var through = map[string]string{viaNPM: "node"}
-
-func installedThrough(pkg string, recorded map[string]string, removing []tool) []string {
-	var out []string
-	for _, t := range tools {
-		method, ok := recorded[t.name]
-		kind, _, _ := strings.Cut(method, ":")
-		if ok && through[kind+":"] == pkg && !slices.ContainsFunc(removing, func(r tool) bool { return r.name == t.name }) {
-			out = append(out, t.name)
-		}
-	}
-	return out
-}
+// clientTools are the clients an earlier harness installed. You install them yourself now, so the harness forgets their records and never removes them.
+var clientTools = []string{"claude", "codex", "opencode"}
 
 func (t tool) method() string {
 	switch t.name {
-	case "claude":
-		return viaNative + "claude"
-	case "codex":
-
-		if runtime.GOOS == "darwin" {
-			return viaCask + "codex"
-		}
-		return viaNPM + "@openai/codex"
-	case "opencode":
-		return viaBrew + "anomalyco/tap/opencode-v2"
 	case "engram":
 		return viaBrew + engramFormula
 	case "agent-browser":
@@ -78,7 +49,7 @@ func (in *installer) usePATH() {
 
 func (in *installer) selectedTools() []tool {
 	return slices.DeleteFunc(slices.Clone(tools), func(t tool) bool {
-		return !slices.Contains(in.components, t.component) || t.client != "" && !slices.Contains(in.clients, t.client)
+		return !slices.Contains(in.components, t.component)
 	})
 }
 
@@ -95,28 +66,17 @@ func (in *installer) installTools() {
 		method := t.method()
 		kind, target, _ := strings.Cut(method, ":")
 		in.log("Installing %s", t.name)
-		switch kind + ":" {
-		case viaBrew, viaCask:
-			if _, err := exec.LookPath("brew"); err != nil {
-				die("Homebrew is required to install %s; run the root ./macos.sh or ./linux.sh first.", t.name)
-			}
-			if tap := filepath.Dir(target); kind+":" == viaBrew && tap != "." && !tapped[tap] {
-				in.run(nil, "brew", "tap", tap)
-				tapped[tap] = true
-			}
-			if kind+":" == viaCask {
-				in.run(nil, "brew", "install", "--cask", target)
-			} else {
-				in.run(nil, "brew", "install", target)
-			}
-		case viaNPM:
-			if _, err := exec.LookPath("npm"); err != nil {
-				die("npm is required to install %s; run harness install packages first.", t.name)
-			}
-			in.run(nil, "npm", "install", "--global", target)
-		case viaNative:
-			in.run(nil, "bash", "-c", "set -o pipefail; curl -fsSL https://claude.ai/install.sh | bash")
+		if kind+":" != viaBrew {
+			die("Unknown install method %q for %s.", method, t.name)
 		}
+		if _, err := exec.LookPath("brew"); err != nil {
+			die("Homebrew is required to install %s; run the root ./macos.sh or ./linux.sh first.", t.name)
+		}
+		if tap := filepath.Dir(target); tap != "." && !tapped[tap] {
+			in.run(nil, "brew", "tap", tap)
+			tapped[tap] = true
+		}
+		in.run(nil, "brew", "install", target)
 		in.updateState(func(s *state) { s.Tools[t.name] = method })
 
 		if t.name == "agent-browser" {
@@ -142,14 +102,6 @@ func (in *installer) removeTool(t tool, method string) {
 	switch kind + ":" {
 	case viaBrew:
 		in.run(nil, "brew", "uninstall", target)
-	case viaCask:
-		in.run(nil, "brew", "uninstall", "--cask", target)
-	case viaNPM:
-		in.run(nil, "npm", "uninstall", "--global", target)
-	case viaNative:
-
-		must(os.RemoveAll(filepath.Join(in.home, ".local", "bin", "claude")))
-		must(os.RemoveAll(filepath.Join(in.home, ".local", "share", "claude")))
 	default:
 		die("Unknown install method %q recorded for %s; fix or delete it in %s.", method, t.name, in.statePath())
 	}

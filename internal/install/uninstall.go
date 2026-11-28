@@ -62,20 +62,17 @@ func (in *installer) uninstallSelected() {
 	var notes []string
 	for i := len(tools) - 1; i >= 0; i-- {
 		t := tools[i]
-		if !in.all && !slices.Contains(in.components, t.component) || t.client != "" && !slices.Contains(clients, t.client) {
+		if !in.all && !slices.Contains(in.components, t.component) {
 			continue
 		}
 		_, recorded := s.Tools[t.name]
-		dependents := installedThrough(t.name, s.Tools, removals)
 		switch {
 		case !recorded:
 			if present(t.name) {
 				notes = append(notes, t.name+": present before the harness, left installed")
 			}
-		case t.client == "" && len(s.Installed) > 0:
+		case len(s.Installed) > 0:
 			notes = append(notes, fmt.Sprintf("%s: still used by %s, left installed", t.name, strings.Join(inOrder(slices.Collect(maps.Keys(s.Installed)), allClients), ", ")))
-		case len(dependents) > 0:
-			notes = append(notes, fmt.Sprintf("%s: %s was installed through it, left installed", t.name, strings.Join(dependents, ", ")))
 		default:
 			removals = append(removals, t)
 		}

@@ -55,7 +55,7 @@ You keep working the way you already do. Ask the agent for something in plain wo
 
 ## Quick start
 
-You need macOS or Linux, zsh or bash, Homebrew, and Go 1.26 or newer.
+You need macOS or Linux, zsh or bash, Homebrew, Go 1.26 or newer, and at least one of Claude Code, Codex, or OpenCode installed. The harness sets up whichever of them it finds.
 
 1. From this checkout, run the installer:
 
@@ -66,7 +66,7 @@ You need macOS or Linux, zsh or bash, Homebrew, and Go 1.26 or newer.
 2. Sign in to each client (Claude Code, Codex, OpenCode) yourself. The installer does not log in for you.
 3. Open a client in any repository and ask for what you need.
 
-The installer adds any missing tools, copies the rules, skills, and roles into each client, sets up the Engram memory server and agent-browser, and adds a few shell aliases. A tool you already have on your `PATH` is left exactly as it is.
+The installer adds any missing packages and MCP servers, copies the rules, skills, and roles into each client, sets up the Engram memory server and agent-browser, and adds a few shell aliases. A tool you already have on your `PATH` is left exactly as it is.
 
 After the first install, the `harness` command lives at `~/.local/bin/harness`. The [installation guide](docs/installation.md) explains what happens to files that are already there.
 
@@ -229,7 +229,7 @@ harness install skills agents       # only these components
 harness install --client claude     # only Claude Code
 ```
 
-The components are `clients`, `packages`, `mcps`, `skills`, `agents`, `floor`, `settings`, and `aliases`. `harness update` and `harness uninstall` accept the same names. The [command-line reference](docs/cli.md#components) explains each one.
+The components are `packages`, `mcps`, `skills`, `agents`, `floor`, `settings`, and `aliases`. `harness update` and `harness uninstall` accept the same names. The [command-line reference](docs/cli.md#components) explains each one.
 
 Editing this repository does not change installed clients. Run an install to apply your edits.
 

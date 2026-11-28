@@ -584,8 +584,8 @@ func TestMissingClientIsRefusedOnlyWhenNamed(t *testing.T) {
 	}
 	before := homeTree(t, home)
 	r := runInstaller(t, base, "skills", "--client", "opencode")
-	if r.code == 0 || !strings.Contains(r.stderr, "harness install clients --client opencode") {
-		t.Fatalf("exit %d, stderr %q; want the refusal naming the client install", r.code, r.stderr)
+	if r.code == 0 || !strings.Contains(r.stderr, "OpenCode is not installed; install it first") {
+		t.Fatalf("exit %d, stderr %q; want the refusal pointing to the dotfiles", r.code, r.stderr)
 	}
 	if got := homeTree(t, home); got != before {
 		t.Errorf("the refused run wrote into the home tree:\n%s", got)
@@ -706,13 +706,10 @@ func TestNamedToolUninstallKeepsSharedTools(t *testing.T) {
 	t.Parallel()
 	base := sandbox(t)
 	seedFull(t, base)
-	missingTools(t, base, "codex", "engram")
+	missingTools(t, base, "engram")
 	ok(t, runInstaller(t, base), "install")
-	r := ok(t, runUninstaller(t, base, "mcps", "clients", "--client", "codex", "--yes"), "Codex mcps and client uninstall")
+	r := ok(t, runUninstaller(t, base, "mcps", "--client", "codex", "--yes"), "Codex mcps uninstall")
 	log := readFile(t, filepath.Join(base, "shims.log"))
-	if !strings.Contains(log, "npm uninstall --global @openai/codex") && !strings.Contains(log, "brew uninstall --cask codex") {
-		t.Errorf("the Codex uninstall kept the Codex the harness installed:\n%s", log)
-	}
 	if strings.Contains(log, "brew uninstall gentleman-programming/tap/engram") {
 		t.Errorf("the Codex uninstall removed Engram, which other clients still use:\n%s", log)
 	}
@@ -721,60 +718,19 @@ func TestNamedToolUninstallKeepsSharedTools(t *testing.T) {
 	}
 }
 
-func TestUninstallFindsANativeClaudeInLocalBin(t *testing.T) {
+func TestClientToolRecordsAreForgotten(t *testing.T) {
 	t.Parallel()
 	base := sandbox(t)
-	home := filepath.Join(base, "home")
-	if err := os.Remove(filepath.Join(base, "shims", "claude")); err != nil {
-		t.Fatal(err)
-	}
-	writeMode(t, stateFile(base), `{"version":1,"installed":{},"files":[],"tools":{"claude":"native:claude"}}`+"\n", 0o644)
-	writeMode(t, filepath.Join(home, ".local", "bin", "claude"), "#!/bin/sh\n", 0o755)
-	writeMode(t, filepath.Join(home, ".local", "share", "claude", "versions", "1"), "binary\n", 0o755)
-	r := ok(t, runUninstaller(t, base, "clients", "--client", "claude", "--yes"), "Claude Code client uninstall")
-	if strings.Contains(r.stdout, "already gone") {
-		t.Errorf("the uninstall took the Claude Code in ~/.local/bin for gone:\n%s", r.stdout)
-	}
-	for _, gone := range []string{".local/bin/claude", ".local/share/claude", ".harness"} {
-		if _, err := os.Stat(filepath.Join(home, gone)); err == nil {
-			t.Errorf("the Claude Code uninstall left %s", gone)
+	writeMode(t, stateFile(base), `{"version":1,"installed":{},"files":[],"tools":{"node":"brew:node","claude":"native:claude","codex":"cask:codex","opencode":"brew:anomalyco/tap/opencode-v2"}}`+"\n", 0o644)
+	ok(t, runUninstaller(t, base, "packages", "--yes"), "packages uninstall")
+	log := readFileOr(filepath.Join(base, "shims.log"))
+	for _, kept := range []string{"claude.ai", "uninstall --cask codex", "opencode-v2"} {
+		if strings.Contains(log, kept) {
+			t.Errorf("the uninstall touched a client the dotfiles own (%q):\n%s", kept, log)
 		}
 	}
-}
-
-func TestPackageStaysWhileAToolInstalledThroughItIsRecorded(t *testing.T) {
-	t.Parallel()
-	base := sandbox(t)
-	shims := filepath.Join(base, "shims")
-	writeMode(t, stateFile(base), `{"version":1,"installed":{},"files":[],"tools":{"node":"brew:node","codex":"npm:@openai/codex"}}`+"\n", 0o644)
-	writeShim(t, base, "brew", `if [ "$*" = "uninstall node" ]; then rm -f '`+shims+`/node' '`+shims+`/npm'; fi`)
-	writeShim(t, base, "npm", `if [ "$*" = "uninstall --global @openai/codex" ]; then rm -f '`+shims+`/codex'; fi`)
-
-	r := ok(t, runUninstaller(t, base, "packages", "--yes"), "packages uninstall with Codex recorded")
-	if log := readFileOr(filepath.Join(base, "shims.log")); strings.Contains(log, "brew uninstall node") {
-		t.Fatalf("the packages uninstall removed node while the Codex installed through npm is recorded:\n%s", log)
-	}
-	if !strings.Contains(r.stdout, "node: codex was installed through it, left installed") {
-		t.Errorf("the kept package does not say why:\n%s", r.stdout)
-	}
-	if got := recordedTools(t, base); got["node"] == "" {
-		t.Errorf("the packages uninstall dropped node's record: %v", got)
-	}
-
-	ok(t, runUninstaller(t, base, "clients", "--yes"), "clients uninstall")
-	if log := readFile(t, filepath.Join(base, "shims.log")); !strings.Contains(log, "npm uninstall --global @openai/codex") {
-		t.Fatalf("the clients uninstall did not remove Codex through npm:\n%s", log)
-	}
-	if got := recordedTools(t, base); got["codex"] != "" {
-		t.Errorf("the clients uninstall kept Codex's record: %v", got)
-	}
-
-	ok(t, runUninstaller(t, base, "packages", "--yes"), "packages uninstall after Codex")
-	if log := readFile(t, filepath.Join(base, "shims.log")); !strings.Contains(log, "brew uninstall node") {
-		t.Errorf("node stayed after the Codex installed through it was removed:\n%s", log)
-	}
 	if _, err := os.Stat(filepath.Join(base, "home", ".harness")); err == nil {
-		t.Error("the last tool removal left ~/.harness")
+		t.Error("the client records kept ~/.harness alive after the last tool went")
 	}
 }
 
@@ -790,31 +746,6 @@ func TestOldComponentNamesAreMigrated(t *testing.T) {
 	}
 	if got := readFile(t, stateFile(base)); strings.Contains(got, `"policy"`) || strings.Contains(got, `"mcp"`) {
 		t.Errorf("the state kept the old names:\n%s", got)
-	}
-}
-
-func TestInstallAddsClaudeOnlyWhenAbsent(t *testing.T) {
-	t.Parallel()
-	base := sandbox(t)
-	seedFull(t, base)
-	shims, log := filepath.Join(base, "shims"), filepath.Join(base, "shims.log")
-	claude := filepath.Join(shims, "claude")
-	saved := filepath.Join(base, "claude.saved")
-	writeMode(t, saved, readFile(t, claude), 0o755)
-	if err := os.Remove(claude); err != nil {
-		t.Fatal(err)
-	}
-
-	writeMode(t, filepath.Join(shims, "bash"), "#!/bin/sh\nprintf '%s\\n' \"bash $*\" >> '"+log+"'\ncp '"+saved+"' '"+claude+"'\nchmod +x '"+claude+"'\nexit 0\n", 0o755)
-
-	ok(t, runInstaller(t, base), "full install without claude")
-
-	logged := readFile(t, log)
-	if got := strings.Count(logged, "claude.ai/install.sh"); got != 1 {
-		t.Errorf("claude absent ran the native installer %d times, want exactly 1:\n%s", got, logged)
-	}
-	if _, err := os.Stat(claude); err != nil {
-		t.Errorf("the native installer left claude off PATH: %v", err)
 	}
 }
 
@@ -1129,17 +1060,6 @@ func TestOpenCodeKeepsAStricterUserRule(t *testing.T) {
 	ok(t, runUninstaller(t, base, "settings", "--yes"), "uninstall")
 	if text := readFile(t, config); !strings.Contains(text, `"gh pr merge *": "deny"`) || strings.Contains(text, "git push") {
 		t.Errorf("the uninstall should leave only the user's deny:\n%s", text)
-	}
-}
-
-func TestInstallsOpenCodeV2(t *testing.T) {
-	t.Parallel()
-	base := sandbox(t)
-	seedFull(t, base)
-	missingTools(t, base, "opencode")
-	ok(t, runInstaller(t, base), "full install")
-	if got := recordedTools(t, base)["opencode"]; got != "brew:anomalyco/tap/opencode-v2" {
-		t.Errorf("recorded %q for OpenCode, want the v2 formula, the first that honors the skill guard", got)
 	}
 }
 

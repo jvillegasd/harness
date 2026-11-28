@@ -4,11 +4,10 @@ This page covers `harness` command behavior that does not fit in `--help`. For t
 
 ## Components
 
-`harness install`, `harness update`, and `harness uninstall` all accept the same component names. Name one or more to act on only those. Name none to act on the command's default.
+`harness install`, `harness update`, and `harness uninstall` accept the same component names. Name one or more to act on only those. Name none to act on the command's default.
 
 | Component | What it covers | Kind |
 | --- | --- | --- |
-| `clients` | Claude Code, Codex, and OpenCode | Tool |
 | `packages` | node, gh, and uv | Tool |
 | `mcps` | Engram and agent-browser, and their registration in each client | Tool and managed config |
 | `skills` | The skills, copied into each client | Managed config |
@@ -40,15 +39,15 @@ A choice of components or clients applies to that run only. A later `harness ins
 ### How install treats tools
 
 - **A tool on your `PATH` counts as installed**, however it got there. Install never reinstalls or upgrades it. Use `harness update` for upgrades.
-- **A missing tool is installed** with Homebrew, npm, or Anthropic's installer. Only then does install use the network. It records each tool it adds.
-- **Without `--client`**, install configures every client that is installed or that this run installs.
+- **A missing tool is installed** with Homebrew. Only then does install use the network. It records each tool it adds.
+- **Without `--client`**, install configures every client that is installed.
 - **Naming a client that is not installed** stops the run before it writes anything.
 - **Installing `mcps` also reconciles `settings`**, because Engram's setup rewrites `settings.json` and `opencode.json`. The output says when this happens.
 
 ### How uninstall treats tools
 
 - **With no names**, uninstall removes the managed config of every component and leaves every tool installed.
-- **Naming `clients`, `packages`, or `mcps`, or passing `--all`**, also removes those components' tools. It removes only the tools the harness recorded installing, and uses the same method that installed them.
+- **Naming `packages` or `mcps`, or passing `--all`**, also removes those components' tools. It removes only the tools the harness recorded installing, and uses the same method that installed them.
 - **A tool you had before the harness stays**, and the summary names it.
 - **A shared tool** (node, gh, uv, Engram, agent-browser) stays while any client still has harness config.
 - **No uninstall deletes a tool's data** (`~/.engram`, `~/.agent-browser`, `~/.claude`, `~/.codex`) or `~/.dotfiles-backups`.
@@ -68,7 +67,7 @@ Two notes for older installs:
 
 ## Update installed tools
 
-`harness update` upgrades tools in this order: packages, clients, MCPs, then locked skills. Name components to update only those.
+`harness update` upgrades tools in this order: packages, clients, MCPs, then locked skills. Name components to update only those. `clients` is a name only `harness update` takes, because the harness configures Claude Code, Codex, and OpenCode but does not install them.
 
 | Component | Updates |
 | --- | --- |

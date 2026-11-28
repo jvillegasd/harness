@@ -96,20 +96,6 @@ The `external_directory` rules are the exception. OpenCode v2 allows every path 
 
 Codex rules can only cover commands. In Codex, the agent keeps secrets unread because its instructions say so, not because a rule blocks it.
 
-## Move OpenCode from v1 to v2
-
-The harness installs OpenCode v2 where OpenCode is missing, and never replaces a v1 you already have. Only v2 honors the skill invocation guards: v1 offers every skill to the model. The two Homebrew formulas conflict, so back up `~/.local/share/opencode` and switch by hand:
-
-```sh
-brew uninstall anomalyco/tap/opencode
-brew install anomalyco/tap/opencode-v2
-harness install --client opencode
-```
-
-OpenCode v2 does not read `OPENCODE_PERMISSION`, so the `ocyolo` alias skips no prompt there.
-
-If the harness installed your v1, its state still records that formula. Remove v2 with `brew uninstall anomalyco/tap/opencode-v2` before `harness uninstall clients`.
-
 ## Uninstall
 
 Run `harness uninstall`. It asks you to confirm first. Pass `--yes` to skip the question. Component names and `--client` narrow what it removes.

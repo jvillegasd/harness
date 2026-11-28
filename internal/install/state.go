@@ -25,7 +25,7 @@ const stateVersion = 1
 var (
 	allClients = []string{"claude", "codex", "opencode"}
 
-	allComponents    = []string{"clients", "packages", "mcps", "skills", "agents", "floor", "settings", "aliases"}
+	allComponents    = []string{"packages", "mcps", "skills", "agents", "floor", "settings", "aliases"}
 	configComponents = []string{"agents", "aliases", "floor", "mcps", "settings", "skills"}
 )
 
@@ -91,6 +91,9 @@ func (in *installer) loadState() state {
 	}
 	if s.Tools == nil {
 		s.Tools = map[string]string{}
+	}
+	for _, name := range clientTools {
+		delete(s.Tools, name)
 	}
 
 	for client, components := range s.Installed {

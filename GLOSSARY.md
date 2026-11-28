@@ -37,7 +37,7 @@ The short set of rules that hold on every turn in every repository, loaded into 
 _Avoid_: policy, global rules, conventions
 
 **Component**:
-A named part of the installation that install, update, and uninstall select by the same name: `clients`, `packages`, `mcps`, `skills`, `agents`, `floor`, `settings`, or `aliases`.
+A named part of the installation that install, update, and uninstall select by the same name: `packages`, `mcps`, `skills`, `agents`, `floor`, `settings`, or `aliases`.
 _Avoid_: group, piece
 
 **Tool**:

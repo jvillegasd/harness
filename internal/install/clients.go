@@ -819,7 +819,7 @@ func (in *installer) registerEngramClaudeMCP() {
 		die("Engram is missing; run harness install mcps to install it.")
 	}
 	if !present("claude") {
-		die("Claude Code is missing; run harness install clients --client claude to install it.")
+		die("Claude Code is missing; %s.", installClients)
 	}
 	must(in.registerMCP("claude", "engram", binary))
 }
@@ -856,7 +856,7 @@ func (in *installer) installAgentBrowser() {
 			continue
 		}
 		if client != "opencode" && !present(client) {
-			die("%s is missing; run harness install clients --client %s to install it.", clientNames[client], client)
+			die("%s is missing; %s.", clientNames[client], installClients)
 		}
 		must(in.registerMCP(client, "agent-browser", binary))
 	}
