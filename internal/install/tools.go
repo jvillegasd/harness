@@ -25,7 +25,7 @@ var tools = []tool{
 
 const viaBrew = "brew:"
 
-// clientTools are the clients an earlier harness installed. The dotfiles install them now, so the harness forgets their records and never removes them.
+// clientTools are the clients an earlier harness installed. You install them yourself now, so the harness forgets their records and never removes them.
 var clientTools = []string{"claude", "codex", "opencode"}
 
 func (t tool) method() string {

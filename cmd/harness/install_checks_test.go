@@ -584,7 +584,7 @@ func TestMissingClientIsRefusedOnlyWhenNamed(t *testing.T) {
 	}
 	before := homeTree(t, home)
 	r := runInstaller(t, base, "skills", "--client", "opencode")
-	if r.code == 0 || !strings.Contains(r.stderr, "OpenCode is not installed; install it yourself") {
+	if r.code == 0 || !strings.Contains(r.stderr, "OpenCode is not installed; install it first") {
 		t.Fatalf("exit %d, stderr %q; want the refusal pointing to the dotfiles", r.code, r.stderr)
 	}
 	if got := homeTree(t, home); got != before {

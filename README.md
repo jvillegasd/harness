@@ -55,7 +55,7 @@ You keep working the way you already do. Ask the agent for something in plain wo
 
 ## Quick start
 
-You need macOS or Linux, zsh or bash, Homebrew, Go 1.26 or newer, and at least one of Claude Code, Codex, or OpenCode on your `PATH`. The harness does not install the clients; the dotfiles' `./macos.sh` and `./linux.sh` do, and then run this installer.
+You need macOS or Linux, zsh or bash, Homebrew, Go 1.26 or newer, and at least one of Claude Code, Codex, or OpenCode installed. The harness sets up whichever of them it finds.
 
 1. From this checkout, run the installer:
 
@@ -229,7 +229,7 @@ harness install skills agents       # only these components
 harness install --client claude     # only Claude Code
 ```
 
-The components are `packages`, `mcps`, `skills`, `agents`, `floor`, `settings`, and `aliases`. `harness update` and `harness uninstall` accept the same names, and `harness update` also takes `clients`. The harness configures the clients but does not install them: the dotfiles' `./macos.sh` and `./linux.sh` do. The [command-line reference](docs/cli.md#components) explains each one.
+The components are `packages`, `mcps`, `skills`, `agents`, `floor`, `settings`, and `aliases`. `harness update` and `harness uninstall` accept the same names. The [command-line reference](docs/cli.md#components) explains each one.
 
 Editing this repository does not change installed clients. Run an install to apply your edits.
 

@@ -46,7 +46,6 @@ Components:
 
   --client     Limit the run to claude, codex, or opencode; repeatable.
                Without it, the run configures every client that is installed.
-               The dotfiles' ./macos.sh and ./linux.sh install the clients.
   --no-backup  Delete files at managed paths instead of archiving them in
                ~/.dotfiles-backups. Private skills and hand-edited configs at
                those paths will be lost.
@@ -251,7 +250,7 @@ func (in *installer) has(component string) bool { return slices.Contains(in.comp
 func (in *installer) targets(client string) bool { return slices.Contains(in.clients, client) }
 
 // installClients tells the human where the clients come from now that the harness no longer installs them.
-const installClients = "install it yourself, as the dotfiles' ./macos.sh and ./linux.sh do, then re-run"
+const installClients = "install it first, then re-run"
 
 var clientNames = map[string]string{"claude": "Claude Code", "codex": "Codex", "opencode": "OpenCode"}
 
